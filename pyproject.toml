@@ -1,0 +1,126 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm>=8", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "orthofinder"
+authors = [
+    {name = "David Emms", email = "david_emms@hotmail.com"},
+]
+description = "Phylogenetic orthology inference for comparative genomics"
+readme = "README.md"
+version= "3.0.1"
+requires-python = ">=3.8"
+keywords = [
+    "comparative genomics",
+    "Orthology inference", 
+    "Phylogeneticrelationships"
+]
+license = { file = "License" }
+classifiers = [
+    # How mature is this project? Common values are
+    #   3 - Alpha
+    #   4 - Beta
+    #   5 - Production/Stable
+    'Development Status :: 4 - Beta',
+
+    # Indicate who your project is intended for
+    'Intended Audience :: Science/Research',
+    'Topic :: Scientific/Engineering :: Bio-Informatics',
+
+    # Pick your license as you wish (should match "license" above)
+    'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
+
+    # Specify the Python versions you support here.
+    'Programming Language :: Python :: 2.7', # Untested
+    'Programming Language :: Python :: 3.5', # Untested
+    'Programming Language :: Python :: 3.6', # Untested
+    'Programming Language :: Python :: 3.7', # Untested
+    'Programming Language :: Python :: 3.8', # Untested
+    'Programming Language :: Python :: 3.9', # Untested
+    "Programming Language :: Python :: 3.10", # base version, tested
+    "Programming Language :: Python :: 3.11", # Untested
+]
+dependencies = [
+    "numpy",
+    "scipy",
+    "scikit-learn",
+    "biopython"
+]
+
+    [project.urls]
+    repository = "https://github.com/davidemms/OrthoFinder"
+
+    [project.optional-dependencies]
+    build = ["build", "twine"]
+    dev = [
+        "python-semantic-release",
+        "mypy",
+        "pytest",
+        "pytest-cov",
+        "tox",
+        "pandas",
+        "seaborn",
+        "delayed-assert",
+        "flake8",
+        "pylint",
+        "black",
+        "build",
+        "wheel",
+        "setuptools_scm"
+    ]
+
+    [project.scripts]
+    orthofinder = "orthofinder.run.__main__:main"
+    primary_transcript = "tools.primary_transcript:main"
+    make_ultrametric = "tools.make_ultrametric:main"
+    convert_orthofinder_tree_ids = "tools.convert_orthofinder_tree_ids:main"
+
+[tool.semantic_release]
+version_variable = "pyproject.toml:version"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = [
+    "orthofinder",
+]
+
+[tool.setuptools.package-data]
+"orthofinder.bin" = ["*"]
+"orthofinder.bin.mafft.bin" = ["*"]
+"orthofinder.run" = ["*.json"]
+"ExampleData" = ["*"]
+
+[tool.setuptools.exclude-package-data]
+mypkg = ["tests"]
+
+[tool.pytest.ini_options]
+addopts = "--cov=orthofinder"
+testpaths = ["tests"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "disabled: marks tests as disabled (deselect with '-m \"not disabled\"')",
+    "regression: marks a test as a regression test",
+]
+
+[tool.mypy]
+mypy_path = "src"
+check_untyped_defs = true
+disallow_any_generics = true
+ignore_missing_imports = true
+no_implicit_optional = true
+show_error_codes = true
+strict_equality = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+no_implicit_reexport = true
+
+[tool.setuptools_scm]
+version_file = "src/orthofinder/_version.py"
+version_scheme = "no-guess-dev"
+root = "."  
+tag_regex = "^(?P<prefix>v)?(?P<version>[^\\+]+)(?P<suffix>.*)?$"
+fallback_version = "2.5.5"
+local_scheme = "dirty"
