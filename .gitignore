@@ -12,4 +12,4 @@ dist*/
 *tar.gz
 *_cache/
 *.egg-info/
-scoring_matrix
+scoring_matrix/
