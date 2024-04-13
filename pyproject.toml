@@ -67,7 +67,8 @@ dependencies = [
         "black",
         "build",
         "wheel",
-        "setuptools_scm"
+        "setuptools>=64",
+        "setuptools_scm>=8"
     ]
 
     [project.scripts]
