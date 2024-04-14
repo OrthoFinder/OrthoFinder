@@ -17,8 +17,12 @@ if os.path.exists(output_dir):
             shutil.rmtree(output)
 
 # Please change this path accordingly before you run this test
-path_to_benchmark = pathlib.Path(r"/home/yiliu/benchmark/OrthoFinder/")
-bencmark_output_dir = path_to_benchmark / "ExampleData" / "OrthoFinder"
+# path_to_benchmark = pathlib.Path(r"/home/yiliu/benchmark/OrthoFinder/")
+# bencmark_output_dir = path_to_benchmark / "ExampleData" / "OrthoFinder"
+
+path_to_benchmark = pathlib.Path.cwd()
+bencmark_output_dir = path_to_benchmark / "BENCHMARK_OrthoFinderV255" / "OrthoFinder"
+
 benchmark_output_list = sorted([(entry.stat().st_mtime, entry.path) for entry in os.scandir(bencmark_output_dir)])
 
 benchmark_latest_output = pathlib.Path(benchmark_output_list[-1][1])
