@@ -256,10 +256,10 @@ def create_ndarray(ordered_output_dict, matrices):
 
     return val_arr
 
-def orthogroups_analysis(cwd, datadir, benchmark):
+def orthogroups_analysis(cwd, datadir, benchmark, benchmark_dir):
 
     orthogroup_file_dict, _, _ = obtain_ogs_datafiles(cwd, datadir)
-    orthogroup_file_dict_orig, _, _ = obtain_ogs_datafiles(benchmark, datadir)
+    orthogroup_file_dict_orig, _, _ = obtain_ogs_datafiles(benchmark, benchmark_dir)
     orthogroup_file_dict.update(orthogroup_file_dict_orig)
     orthogroup_sets_dict = {}
     with multiprocessing.Pool() as pool1:
@@ -301,10 +301,10 @@ def orthogroups_analysis(cwd, datadir, benchmark):
     return  comparison_stats
 
 
-def unassigned_gens_analysis(cwd, datadir, benchmark):    
+def unassigned_gens_analysis(cwd, datadir, benchmark, benchmark_dir):    
     
     _, unassigned_gens_file_dict, _ = obtain_ogs_datafiles(cwd, datadir)
-    _, unassigned_gens_file_dict_orig, _ = obtain_ogs_datafiles(benchmark, datadir)
+    _, unassigned_gens_file_dict_orig, _ = obtain_ogs_datafiles(benchmark, benchmark_dir)
     unassigned_gens_file_dict.update(unassigned_gens_file_dict_orig)
 
     unassgined_gens_matrix_sets = create_unassgined_gens_matrix_sets(unassigned_gens_file_dict)
@@ -313,10 +313,10 @@ def unassigned_gens_analysis(cwd, datadir, benchmark):
     return comparison_stats
 
 
-def orthologues_analysis(cwd, datadir, benchmark):
+def orthologues_analysis(cwd, datadir, benchmark, benchmark_dir):
 
     _, _, orthologue_file_dict = obtain_ogs_datafiles(cwd, datadir)
-    _, _, orthologue_file_dict_orig = obtain_ogs_datafiles(benchmark, datadir)
+    _, _, orthologue_file_dict_orig = obtain_ogs_datafiles(benchmark, benchmark_dir)
     orthologue_file_dict.update(orthologue_file_dict_orig)
 
     items3 = []

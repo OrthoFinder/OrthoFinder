@@ -18,10 +18,12 @@ if os.path.exists(output_dir):
 
 # Please change this path accordingly before you run this test
 # path_to_benchmark = pathlib.Path(r"/home/yiliu/benchmark/OrthoFinder/")
+# benchmark_dir = "ExampleData" 
 # bencmark_output_dir = path_to_benchmark / "ExampleData" / "OrthoFinder"
 
-path_to_benchmark = pathlib.Path.cwd()
-bencmark_output_dir = path_to_benchmark / "BENCHMARK_OrthoFinderV255" / "OrthoFinder"
+path_to_benchmark = pathlib.Path.cwd() / "tests" / "test_reconfig"
+benchmark_dir = "BENCHMARK_OrthoFinderV255"
+bencmark_output_dir = path_to_benchmark / benchmark_dir / "OrthoFinder"
 
 benchmark_output_list = sorted([(entry.stat().st_mtime, entry.path) for entry in os.scandir(bencmark_output_dir)])
 
@@ -45,15 +47,15 @@ Before running this test, please make sure the test data is obtained with the `-
 
 @pytest.fixture(scope="module")
 def orthogroup_stats():
-    orthostats = benchmark_compare.orthogroups_analysis(pathlib.Path.cwd(), "ExampleData", path_to_benchmark)
+    orthostats = benchmark_compare.orthogroups_analysis(pathlib.Path.cwd(), "ExampleData", path_to_benchmark, benchmark_dir)
     return orthostats
 
 @pytest.fixture(scope="module")
 def unassigned_gens_stats():
-    orthostats = benchmark_compare.unassigned_gens_analysis(pathlib.Path.cwd(), "ExampleData", path_to_benchmark)
+    orthostats = benchmark_compare.unassigned_gens_analysis(pathlib.Path.cwd(), "ExampleData", path_to_benchmark, benchmark_dir)
     return orthostats
 
 @pytest.fixture(scope="module")
 def orthologues_stats():
-    orthostats = benchmark_compare.orthologues_analysis(pathlib.Path.cwd(), "ExampleData", path_to_benchmark)
+    orthostats = benchmark_compare.orthologues_analysis(pathlib.Path.cwd(), "ExampleData", path_to_benchmark, benchmark_dir)
     return orthostats
