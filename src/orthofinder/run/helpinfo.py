@@ -9,8 +9,9 @@ def PrintHelp(prog_caller):
     search_ops = prog_caller.ListSearchMethods()
     if __version__ == "3.0.1":
         print('\U0001F31F' + " NEW RELEASE NOTES " + '\U0001F31F')
-        print(f"OrthoFinder v{__version__} can now be run with a different scoring matrix orther than BLOSUM62 when using DIAMOND as the search program.")
-        print("Run  `orthofinder -sm`  to find out more.")
+        print(f"1. Python Version >= 3.8 is requireed to run OrthoFinder v{__version__}")
+        print(f"2. OrthoFinder v{__version__} can now be run with a different scoring matrix orther than BLOSUM62 when using DIAMOND as the search program.")
+        print("   Run  `orthofinder -sm`  to find out more.")
         print("")
 
     print("SIMPLE USAGE:") 

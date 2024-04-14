@@ -32,14 +32,11 @@ classifiers = [
     'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
 
     # Specify the Python versions you support here.
-    'Programming Language :: Python :: 2.7', # Untested
-    'Programming Language :: Python :: 3.5', # Untested
-    'Programming Language :: Python :: 3.6', # Untested
-    'Programming Language :: Python :: 3.7', # Untested
-    'Programming Language :: Python :: 3.8', # Untested
-    'Programming Language :: Python :: 3.9', # Untested
+    'Programming Language :: Python :: 3.8', # tested
+    'Programming Language :: Python :: 3.9', # tested
     "Programming Language :: Python :: 3.10", # base version, tested
-    "Programming Language :: Python :: 3.11", # Untested
+    "Programming Language :: Python :: 3.11", # tested
+    "Programming Language :: Python :: 3.12", # tested
 ]
 dependencies = [
     "numpy",
