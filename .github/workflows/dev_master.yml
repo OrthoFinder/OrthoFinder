@@ -1,0 +1,41 @@
+name: OrthoFinder
+on:
+  push:
+    branches: [ "dev_master" ]
+  pull_request:
+    branches: [ "dev_master" ]
+permissions:
+  contents: read-write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["2.7", "3.6", "3.7", "3.8", "3.9", "3.10", "3.11"]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version:  ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        
+    - name: Install OrthoFinder
+      run: |
+        pip install git+https://github.com/OrthoFinder/OrthoFinder.git@dev_master
+
+    - name: Test screen print
+      run: |
+        orthofinder
+
+    - name: Test OrthoFinder on ExampleData
+      run: |
+        orthofinder -f ExampleData -efn
+        
+    - name: Test with pytest
+      run: |
+        pytest -m regression -sv  tests/test_reconfig --no-cov
