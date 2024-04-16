@@ -1,19 +1,12 @@
 from ..utils import util
-from orthofinder import g_mclInflation, nThreadsDefault, __version__
-from orthofinder import notes
-
+from orthofinder import g_mclInflation, nThreadsDefault
 
 def PrintHelp(prog_caller):  
     msa_ops = prog_caller.ListMSAMethods()
     tree_ops = prog_caller.ListTreeMethods()
     search_ops = prog_caller.ListSearchMethods()
-    if __version__ == "3.0.1":
-        print('\U0001F31F' + " NEW RELEASE NOTES " + '\U0001F31F')
-        print(f"1. Python Version >= 3.8 is requireed to run OrthoFinder v{__version__}")
-        print(f"2. OrthoFinder v{__version__} can now be run with a different scoring matrix orther than BLOSUM62 when using DIAMOND as the search program.")
-        print("   Run  `orthofinder -sm`  to find out more.")
-        print("")
 
+    print("")
     print("SIMPLE USAGE:") 
     print("Run full OrthoFinder analysis on FASTA format proteomes in <dir>")
     print("  orthofinder [options] -f <dir>")   
@@ -51,8 +44,7 @@ def PrintHelp(prog_caller):
     print(" -n <txt>                Name to append to the results directory")  
     print(" -o <txt>                Non-default results directory")  
     print(" -h                      Print this help text")
-    print(" -efn                     Extend the output directory name with the name of the scoring matrix")
-    print(" -sm                     Print the usage of a user-specified scoring matrix")
+    print(" -efn                    Extend the output directory name with the name of the scoring matrix, gap penalties, search program, MSA program and tree program")
     print(" --matrix <txt>          Scoring matrix allowed by DIAMOND")
     print(" --custom-matrix <txt>   Custom scoring matrix")
 
@@ -80,7 +72,3 @@ def PrintHelp(prog_caller):
     print("LICENSE:")
     print(" Distributed under the GNU General Public License (GPLv3). See License.md")
     util.PrintCitation() 
-
-def PrintNotes(arg):
-    if arg == "-sm" or arg == "--scoring-matrix":
-        print(notes.diamond_cm_options_table)

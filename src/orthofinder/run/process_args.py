@@ -457,10 +457,6 @@ def ProcessArgs(prog_caller, args):
         elif arg == "-h" or arg == "--help":
             helpinfo.PrintHelp(prog_caller)
             util.Success()
-        
-        elif arg == "-sm" or arg == "--scoring-matrix":
-            helpinfo.PrintNotes(arg)
-            util.Success()
 
         elif arg == "--matrix" or arg == "--custom-matrix":
             options.score_matrix = GetScoreMatrix(args.pop(0))

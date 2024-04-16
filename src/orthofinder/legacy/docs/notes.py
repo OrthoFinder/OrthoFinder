@@ -13,6 +13,7 @@ if __version__ == "3.0.1":
     print("")
 
 arg = "-sm"
+print(" -sm                     Print the usage of a user-specified scoring matrix")
 PrintNotes(arg)
 util.Success()
 
