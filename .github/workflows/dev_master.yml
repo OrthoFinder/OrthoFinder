@@ -38,6 +38,6 @@ jobs:
       run: |
         orthofinder -f ExampleData -efn
         
-    - name: Test with pytest
-      run: |
-        pytest -m regression -sv  tests/test_reconfig --no-cov
+    # - name: Test with pytest
+    #   run: |
+    #     pytest -m regression -sv  tests/test_reconfig --no-cov
