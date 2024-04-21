@@ -13,5 +13,6 @@ dist*/
 *_cache/
 *.egg-info/
 scoring_matrix/
+ExtraSpecies/
 *tox/
 tox.ini
