@@ -115,7 +115,7 @@ class SpeciesInfo(object):
             return [iSp for iSp in  self.speciesToUse if iSp < self.iFirstNewSpecies]
 
 
-picProtocol = 1
+# picProtocol = 1
 # version = "3.0.1"
     
 def PrintNoNewLine(text):

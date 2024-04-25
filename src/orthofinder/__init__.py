@@ -18,6 +18,11 @@ g_mclInflation = 1.2
 # Clade-specific genes
 orphan_genes_version = 2
 
+# Protocol vesion for pickling
+# Updated to version 5, since the new OrthoFinder works on py38 and above
+# version 5 add support for out-of-band data and speedup for in-band data.
+picProtocol = 5
+
 os.environ["OPENBLAS_NUM_THREADS"] = "1"    # fix issue with numpy/openblas. Will mean that single threaded options aren't automatically parallelised 
 
 # Get directory containing script/bundle
