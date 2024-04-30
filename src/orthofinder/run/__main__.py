@@ -79,7 +79,7 @@ from ..orthogroups import gathering, orthogroups_set
 from ..orthogroups import accelerate as acc
 
 from ..tools import astral, tree, mcl, trees_msa
-from ..gene_tree_inference import trees2ologs_of
+from ..gene_tree_inference import trees2ologs_of, infer_trees
 from . import process_args, check_dependencies, run_commands, species_info
 from orthofinder import orphan_genes_version, __version__, __location__
 from ..comparative_genomics import orthologues
@@ -183,7 +183,7 @@ def BetweenCoreOrthogroupsWorkflow(continuationDir, speciesInfoObj, seqsInfo, op
         gathering.post_clustering_orthogroups(clustersFilename_pairs, speciesInfoObj, seqsInfo, speciesNamesDict, options,
                                               speciesXML=None, q_incremental=True)
 
-        orthologues.InferGeneAndSpeciesTrees(ogSet,
+        infer_trees.InferGeneAndSpeciesTrees(ogSet,
                                               prog_caller, options.msa_program, options.tree_program,
                                               options.nBlast, options.nProcessAlg, options.qDoubleBlast,
                                               options.qAddSpeciesToIDs,

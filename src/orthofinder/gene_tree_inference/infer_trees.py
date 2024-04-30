@@ -1,5 +1,14 @@
 from ..utils import util, files
-from ..tools import trees_msa, dendroblast
+from ..tools import trees_msa, dendroblast, tree
+
+
+def ConvertUserSpeciesTree(speciesTreeFN_in, speciesDict, speciesTreeFN_out):
+    t = tree.Tree(speciesTreeFN_in, format=1)  
+    t.prune(t.get_leaf_names())
+    revDict = {v:k for k,v in speciesDict.items()}
+    for sp in t:
+        sp.name = revDict[sp.name]       
+    t.write(outfile=speciesTreeFN_out)
 
 def InferGeneAndSpeciesTrees(ogSet,
                        program_caller,
