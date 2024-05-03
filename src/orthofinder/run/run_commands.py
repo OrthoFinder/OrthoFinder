@@ -3,7 +3,7 @@ import subprocess
 import glob     
 import shutil
 from . import run_info
-from orthofinder import my_env
+from .. import my_env
 import os
 
 def RunBlastDBCommand(command):

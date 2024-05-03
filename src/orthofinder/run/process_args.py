@@ -1,6 +1,6 @@
 import os
 from ..utils import util, files
-from orthofinder import __version__, g_mclInflation, nThreadsDefault
+from .. import __version__, g_mclInflation, nThreadsDefault
 from . import helpinfo
 import shutil
 from typing import Optional
@@ -357,7 +357,7 @@ def ProcessArgs(prog_caller, args):
 
         elif arg == "-S" or arg == "--search":
             choices = ['blast'] + prog_caller.ListSearchMethods()
-
+            print(prog_caller.ListSearchMethods())
             switch_used = arg
             if len(args) == 0:
                 print("Missing option for command line argument %s\n" % arg)

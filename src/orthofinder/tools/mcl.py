@@ -34,7 +34,7 @@ from collections import defaultdict, Counter
 import xml.etree.ElementTree as ET              # Y
 from xml.etree.ElementTree import SubElement    # Y
 from xml.dom import minidom
-from orthofinder import __version__
+from .. import __version__
 
 def GetPredictedOGs(clustersFilename):
     """

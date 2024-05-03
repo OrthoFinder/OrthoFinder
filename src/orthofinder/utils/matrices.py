@@ -33,7 +33,7 @@ except ImportError:
     import pickle as pic
 
 from . import util, files
-from orthofinder import picProtocol
+from .. import picProtocol
 
 def DumpMatrix(name, m, iSpecies, jSpecies, d_pickle):
     with open(d_pickle + "%s%d_%d.pic" % (name, iSpecies, jSpecies), 'wb') as picFile:

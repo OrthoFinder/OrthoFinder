@@ -47,8 +47,8 @@ from ..gene_tree_inference import trees2ologs_dlcpar, trees2ologs_of, infer_tree
 from ..utils import util, files, parallel_task_manager, program_caller
 from ..orthogroups import accelerate, orthogroups_set
 from . import stats
-from orthofinder import nThreadsDefault as nThreads
-from orthofinder import my_env
+from .. import nThreadsDefault as nThreads
+from .. import my_env
 
    
 

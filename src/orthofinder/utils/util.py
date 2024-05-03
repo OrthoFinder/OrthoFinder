@@ -36,7 +36,7 @@ try:
 except ImportError:
     import Queue as queue
 from collections import namedtuple
-from orthofinder.citation import citation, print_citation
+from ..citation import citation, print_citation
 from ..tools import tree
 from . import parallel_task_manager
 

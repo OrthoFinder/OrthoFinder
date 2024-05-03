@@ -32,7 +32,7 @@ import traceback
 import subprocess
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, wait, as_completed
-from orthofinder import my_env
+from .. import my_env
 try:
     import queue
 except ImportError:

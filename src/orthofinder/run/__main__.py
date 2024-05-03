@@ -81,7 +81,7 @@ from ..orthogroups import accelerate as acc
 from ..tools import astral, tree, mcl, trees_msa
 from ..gene_tree_inference import trees2ologs_of, infer_trees
 from . import process_args, check_dependencies, run_commands, species_info
-from orthofinder import orphan_genes_version, __version__, __location__
+from .. import orphan_genes_version, __version__, __location__
 from ..comparative_genomics import orthologues
 from . import helpinfo
 

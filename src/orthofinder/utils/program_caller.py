@@ -32,7 +32,7 @@ import time
 import subprocess
 import multiprocessing as mp
 from queue import Queue
-from orthofinder import my_env 
+from .. import my_env 
 
 PY2 = sys.version_info <= (3,)
 from . import util, parallel_task_manager
@@ -43,7 +43,7 @@ except ImportError:
     # Try backported to PY<37 `importlib_resources`.
     import importlib_resources as impresources
 
-from orthofinder import test_sequences
+from .. import test_sequences
 
 try:
     longer_file = (impresources.files(test_sequences) / 'longer.txt')

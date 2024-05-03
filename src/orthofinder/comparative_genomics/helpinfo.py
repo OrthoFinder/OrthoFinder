@@ -1,5 +1,5 @@
 from ..utils import util
-from othofinder import nThreadsDefault
+from .. import nThreadsDefault
 
 
 def PrintHelp():

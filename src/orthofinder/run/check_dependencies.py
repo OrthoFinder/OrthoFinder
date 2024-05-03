@@ -1,7 +1,7 @@
 from ..utils import util, program_caller, files, parallel_task_manager
 from ..tools import trees_msa
 import os
-from orthofinder import __location__
+from .. import __location__, my_env
 
 def CanRunBLAST():
     if parallel_task_manager.CanRunCommand("makeblastdb -help") and parallel_task_manager.CanRunCommand("blastp -help"):

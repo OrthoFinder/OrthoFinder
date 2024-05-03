@@ -44,7 +44,7 @@ import shutil
 import datetime
 
 from . import util
-from orthofinder import __version__
+from .. import __version__
 
 class __Files_new_dont_manually_create__(object):    
     def __init__(self):

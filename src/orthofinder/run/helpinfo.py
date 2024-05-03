@@ -1,5 +1,5 @@
 from ..utils import util
-from orthofinder import g_mclInflation, nThreadsDefault
+from .. import g_mclInflation, nThreadsDefault
 
 def PrintHelp(prog_caller):  
     msa_ops = prog_caller.ListMSAMethods()

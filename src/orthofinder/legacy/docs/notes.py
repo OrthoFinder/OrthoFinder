@@ -1,4 +1,4 @@
-from orthofinder import __version__
+from .. import __version__
 from ..utils import util
 
 def PrintNotes(arg):
