@@ -1,10 +1,11 @@
 import os
 from ..utils import util, files
+from ..comparative_genomics import orthologues
 from .. import __version__, g_mclInflation, nThreadsDefault
-from . import helpinfo
+from . import helpinfo, species_info
 import shutil
 from typing import Optional
-
+import time
 
 # Default DIAMOND custom scoring matricies and their corresponding gapopen and gapextend values
 diamond_cm_options = {"BLOSUM45": [{2: 14}, {3: (10, 13), 2: (12, 16), 1: (16, 19)}],
@@ -584,7 +585,7 @@ def CheckOptions(options, speciesToUse):
     - user supplied species tree
     """
     if options.speciesTreeFN:
-        expSpecies = list(SpeciesNameDict(files.FileHandler.GetSpeciesIDsFN()).values())
+        expSpecies = list(species_info.SpeciesNameDict(files.FileHandler.GetSpeciesIDsFN()).values())
         orthologues.CheckUserSpeciesTree(options.speciesTreeFN, expSpecies)
 
     # check can open enough files

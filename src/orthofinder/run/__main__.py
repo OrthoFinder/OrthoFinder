@@ -45,8 +45,6 @@ if __name__ == "__main__":
 from ..utils import parallel_task_manager, blast_file_processor, timeit, \
     files, util, matrices, program_caller, split_ortholog_files, fasta_processor
 
-ptm_initialised = parallel_task_manager.ParallelTaskManager_singleton()
-
 import os                                       # Y
 # os.environ["OPENBLAS_NUM_THREADS"] = "1"    # fix issue with numpy/openblas. Will mean that single threaded options aren't automatically parallelised 
 
