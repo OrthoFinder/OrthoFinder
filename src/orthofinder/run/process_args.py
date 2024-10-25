@@ -59,6 +59,8 @@ class Options(object):#
         self.gapextend = None#
         self.extended_filename = False
         self.method_threads = None
+        self.rm_gene_trees = False
+        self.rm_resolved_gene_trees = False
 
     def what(self):
         for k, v in self.__dict__.items():
@@ -263,6 +265,12 @@ def ProcessArgs(prog_caller, args):
             except:
                 print("Incorrect argument for number of method threads: %s\n" % arg)
                 util.Fail()
+
+        elif arg == "-rmgt" or arg == "--rm-gene-trees":
+            options.rm_gene_trees = True
+
+        elif arg == "-rmrgt" or arg == "--rm-resolved-gene-trees":
+            options.rm_resolved_gene_trees = True
 
         elif arg == "-1":
             options.qDoubleBlast = False

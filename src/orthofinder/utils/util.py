@@ -26,19 +26,13 @@
 import gzip
 import os
 import sys
-import time
-import copy
 import numpy as np
-import subprocess
 import datetime
-try: 
-    import queue
-except ImportError:
-    import Queue as queue
 from collections import namedtuple
 from ..citation import citation, print_citation
 from ..tools import tree
 from . import parallel_task_manager
+import shutil
 
 PY2 = sys.version_info <= (3,)
 csv_write_mode = 'wb' if PY2 else 'wt'
@@ -558,3 +552,29 @@ def file_open(filename_with_gz, mode, gz):
         return gzip.open(filename_with_gz + ".gz", mode)
     else:
         return open(filename_with_gz, mode)
+
+
+def compress_files(src_dir, output_fn):
+    try:
+        with open(output_fn, "w") as writer:
+            with os.scandir(src_dir) as it:
+                for entry in it:
+                    if entry.is_file():
+                        fn = entry.name.partition("_")[0]
+                        try:
+                            with open(entry.path, "r") as infile:
+                                og_tree = "".join(line.strip() for line in infile)
+                            writer.write(f"{fn}: {og_tree}\n")
+                        except IOError as e:
+                            print(f"ERROR reading file {entry.name}: {e}")
+    except IOError as e:
+        print(f"ERROR writing to output file {output_fn}: {e}") 
+
+def cleanup_path(path):
+    try:
+        if os.path.isfile(path) or os.path.islink(path):
+            os.remove(path)
+        elif os.path.isdir(path):
+            shutil.rmtree(path)
+    except OSError as e:
+        print("Error: %s - %s." % (e.filename, e.strerror))

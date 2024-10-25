@@ -395,6 +395,24 @@ def main(args=None):
         if not options.save_space and not options.qFastAdd:
             # split up the orthologs into one file per species-pair
             split_ortholog_files.split_ortholog_files(files.FileHandler.GetOrthologuesDirectory())
+        
+        ### ------------- Compress the Gene_Trees --------------
+        gene_tree_dir = files.FileHandler.GetOGsTreeDir(qResults=True)
+        usr_gene_tree_fn = files.FileHandler.GetUserTreeFN()
+        util.compress_files(gene_tree_dir, usr_gene_tree_fn)
+        
+        ### ------------- Comprees the Resolved_Gene_Trees ------------
+        resolved_gene_tree_dir = files.FileHandler.GetOGsReconTreeDir(qResults=True)
+        usr_resolved_gene_tree_fn = files.FileHandler.GetUserResolvedTreeFN()
+        util.compress_files(resolved_gene_tree_dir, usr_resolved_gene_tree_fn)
+
+        ### ---------- Clean up WorkingDirectory ---------------
+        if options.rm_gene_trees:
+            util.cleanup_path(gene_tree_dir)
+        
+        if options.rm_resolved_gene_trees:
+            util.cleanup_path(resolved_gene_tree_dir)
+
         d_results = os.path.normpath(files.FileHandler.GetResultsDirectory1()) + os.path.sep
         print("\nResults:\n    %s" % d_results)
         util.PrintCitation(d_results)

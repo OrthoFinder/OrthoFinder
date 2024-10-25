@@ -467,7 +467,24 @@ class __Files_new_dont_manually_create__(object):
         return self.rd1 + "MultipleSequenceAlignments/"
         
     def GetResultsTreesDir(self):
-        return self.rd1 + "Gene_Trees/"
+        # return self.rd1 + "Gene_Trees/"
+        return self.wd_trees + "Gene_Trees/"
+
+    def GetUserTreeDir(self):
+        d = self.rd1 + "Gene_Trees/"
+        if not os.path.exists(d): os.mkdir(d)
+        return d
+    
+    def GetUserResolvedTreeDir(self):
+        d = self.rd1 + "Resolved_Gene_Trees/"
+        if not os.path.exists(d): os.mkdir(d)
+        return d
+    
+    def GetUserTreeFN(self):
+        return self.GetUserTreeDir() + "Gene_Trees.txt"
+    
+    def GetUserResolvedTreeFN(self):
+        return self.GetUserResolvedTreeDir() + "Resolved_Gene_Trees.txt"
     
     def GetOGsSeqFN(self, iOG, qResults=False):
         if qResults:
@@ -483,7 +500,8 @@ class __Files_new_dont_manually_create__(object):
             
     def GetOGsTreeFN(self, iOG, qResults=False):
         if qResults:
-            return self.rd1 + "Gene_Trees/" + (self.baseOgFormat % iOG) + "_tree.txt"
+            # return self.rd1 + "Gene_Trees/" + (self.baseOgFormat % iOG) + "_tree.txt"
+            return self.wd_trees + "Gene_Trees/" + (self.baseOgFormat % iOG) + "_tree.txt"
         else:
             return self.wd_trees + "Trees_ids/" + (self.baseOgFormat % iOG) + "_tree_id.txt"   
         
@@ -548,7 +566,8 @@ class __Files_new_dont_manually_create__(object):
             
     def GetOGsTreeDir(self, qResults=False):
         if qResults:
-            return self.rd1 + "Gene_Trees/" 
+            # return self.rd1 + "Gene_Trees/" 
+            return self.wd_trees + "Gene_Trees/" 
         else:
             return self.wd_trees + "Trees_ids/"
 
@@ -557,14 +576,16 @@ class __Files_new_dont_manually_create__(object):
             
     def GetOGsReconTreeDir(self, qResults=False):
         if qResults:
-            d = self.rd1 + "Resolved_Gene_Trees/" 
+            d = self.wd_trees + "Resolved_Gene_Trees/" 
+            # d = self.rd1 + "Resolved_Gene_Trees/"
             if not os.path.exists(d): os.mkdir(d)
             return d
         else:
             raise NotImplemented() 
 
     def GetOGsReconTreeFN(self, iOG):
-        return self.rd1 + "Resolved_Gene_Trees/OG%07d_tree.txt" % iOG
+        # return self.rd1 + "Resolved_Gene_Trees/OG%07d_tree.txt" % iOG
+        return self.wd_trees + "Resolved_Gene_Trees/OG%07d_tree.txt" % iOG
             
     def GetPhyldogWorkingDirectory(self):
         d = self.wd_current + "phyldog/"
