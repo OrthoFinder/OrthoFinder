@@ -1,5 +1,5 @@
 from ..utils import util, files
-from ..tools import trees_msa, dendroblast, tree
+from ..tools import trees_msa, dendroblast, tree, wrapper_phyldog
 
 
 def ConvertUserSpeciesTree(speciesTreeFN_in, speciesDict, speciesTreeFN_out):
@@ -19,6 +19,7 @@ def InferGeneAndSpeciesTrees(ogSet,
                        qDoubleBlast,
                        qAddSpeciesToIDs,
                        qTrim,
+                       method_threads=None,
                        userSpeciesTree = None,
                        qStopAfterSeqs = False,
                        qStopAfterAlign = False,
@@ -79,7 +80,8 @@ def InferGeneAndSpeciesTrees(ogSet,
                                                qStopAfterAlign or qPhyldog, 
                                                qDoSpeciesTree=qDoMSASpeciesTree,
                                                qTrim=qTrim,
-                                               i_og_restart=i_og_restart)
+                                               i_og_restart=i_og_restart,
+                                               method_threads=method_threads)
         util.PrintTime("Done MSA/Trees")
         if qDoMSASpeciesTree:
             spTreeFN_ids = files.FileHandler.GetSpeciesTreeUnrootedFN()

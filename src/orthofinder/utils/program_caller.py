@@ -161,79 +161,103 @@ class ProgramCaller(object):
     def ListSearchMethods(self):
         return [key for key in self.search_db]
 
-    def GetMSAMethodCommand(self, method_name, infilename, outfilename_proposed, identifier, nSeqs=None):
-        return self._GetCommand('msa', method_name, infilename, outfilename_proposed, identifier, nSeqs=nSeqs)
-    def GetTreeMethodCommand(self, method_name, infilename, outfilename_proposed, identifier, nSeqs=None):
-        return self._GetCommand('tree', method_name, infilename, outfilename_proposed, identifier, nSeqs=nSeqs)
+    def GetMSAMethodCommand(self, method_name, infilename, outfilename_proposed, identifier, nSeqs=None, method_threads=None):
+        return self._GetCommand('msa', method_name, infilename, outfilename_proposed, 
+                                identifier, nSeqs=nSeqs, method_threads=method_threads)
+    
+    def GetTreeMethodCommand(self, method_name, infilename, outfilename_proposed, identifier, nSeqs=None, method_threads=None):
+        return self._GetCommand('tree', method_name, infilename, outfilename_proposed, 
+                                identifier, nSeqs=nSeqs, method_threads=method_threads)
+    
     def GetSearchMethodCommand_DB(self, method_name, infilename, outfilename, 
-                                  scorematrix=None, gapopen=None, gapextend=None):
+                                  scorematrix=None, gapopen=None, gapextend=None, method_threads=None):
         return self._GetCommand('search_db', method_name, infilename, outfilename, 
-                                 scorematrix=scorematrix, gapopen=gapopen, gapextend=gapextend)[0]  # output filename isn't returned
+                                 scorematrix=scorematrix, gapopen=gapopen, 
+                                 gapextend=gapextend, method_threads=method_threads)[0]  # output filename isn't returned
+    
     def GetSearchMethodCommand_Search(self, method_name, queryfilename, dbfilename, outfilename, \
-                                      scorematrix=None, gapopen=None, gapextend=None):
+                                      scorematrix=None, gapopen=None, gapextend=None, method_threads=None):
         return self._GetCommand('search_search', method_name, queryfilename, 
                                  outfilename, None, dbfilename, 
-                                 scorematrix=scorematrix, gapopen=gapopen, gapextend=gapextend)[0]  # output filename isn't returned
+                                 scorematrix=scorematrix, gapopen=gapopen, 
+                                 gapextend=gapextend, method_threads=method_threads)[0]  # output filename isn't returned
     
-    
-    def GetMSACommands(self, method_name, infn_list, outfn_list, id_list, nSeqs=None):
+    def GetMSACommands(self, method_name, infn_list, outfn_list, id_list, nSeqs=None, method_threads=None):
         if nSeqs == None:        
-            return [self.GetMSAMethodCommand(method_name, infn, outfn, ident) for infn, outfn, ident in zip(infn_list, outfn_list, id_list)]
+            return [self.GetMSAMethodCommand(method_name, infn, outfn, ident, method_threads=method_threads) for infn, outfn, ident in zip(infn_list, outfn_list, id_list)]
         else:        
-            return [self.GetMSAMethodCommand(method_name, infn, outfn, ident, n) for infn, outfn, ident, n in zip(infn_list, outfn_list, id_list, nSeqs)]
-        
-    def GetTreeCommands(self, method_name, infn_list, outfn_list, id_list, nSeqs=None):        
+            return [self.GetMSAMethodCommand(method_name, infn, outfn, ident, n, method_threads=method_threads) for infn, outfn, ident, n in zip(infn_list, outfn_list, id_list, nSeqs)]
+       
+    def GetTreeCommands(self, method_name, infn_list, outfn_list, id_list, nSeqs=None, method_threads=None):        
         if nSeqs == None:        
-            return [self.GetTreeMethodCommand(method_name, infn, outfn, ident) for infn, outfn, ident in zip(infn_list, outfn_list, id_list)]
+            return [self.GetTreeMethodCommand(method_name, infn, outfn, ident, method_threads=method_threads) for infn, outfn, ident in zip(infn_list, outfn_list, id_list)]
         else:
-            return [self.GetTreeMethodCommand(method_name, infn, outfn, ident, n) for infn, outfn, ident, n in zip(infn_list, outfn_list, id_list, nSeqs)]
-        
-    def GetSearchCommands_DB(self, method_name,  infn_list, outfn_list):        
-        return [self.GetSearchMethodCommand_DB(method_name, infn, outfn) for infn, outfn in zip(infn_list, outfn_list)]
-
+            return [self.GetTreeMethodCommand(method_name, infn, outfn, ident, n, method_threads=method_threads) for infn, outfn, ident, n in zip(infn_list, outfn_list, id_list, nSeqs)]
+   
+    # not used      
+    def GetSearchCommands_DB(self, method_name,  infn_list, outfn_list, 
+                             scorematrix=None, gapopen=None, gapextend=None, method_threads=None):        
+        return [self.GetSearchMethodCommand_DB(method_name, infn, outfn, 
+                                               scorematrix=scorematrix, 
+                                               gapopen=gapopen, 
+                                               gapextend=gapextend, 
+                                               method_threads=method_threads) for infn, outfn in zip(infn_list, outfn_list)]
+    # not used 
     def GetSearchCommands_Search(self, method_name, querryfn_list, dblist, outfn_list,
-                                 scorematrix=None, gapopen=None, gapextend=None):        
+                                 scorematrix=None, gapopen=None, gapextend=None, method_threads=None):        
         return [self.GetSearchMethodCommand_Search(method_name, querryfn, 
                                                    dbname, outfn,
                                                    scorematrix=scorematrix, 
                                                    gapopen=gapopen, 
-                                                   gapextend=gapextend) for querryfn, dbname, outfn in zip(querryfn_list, dblist, outfn_list)]
+                                                   gapextend=gapextend,
+                                                   method_threads=method_threads) for querryfn, dbname, outfn in zip(querryfn_list, dblist, outfn_list)]
     
-    def CallMSAMethod(self, method_name, infilename, outfilename, identifier, nSeqs=None):
-        return self._CallMethod('msa', method_name, infilename, outfilename, identifier, nSeqs=nSeqs)
+    # not used
+    def CallMSAMethod(self, method_name, infilename, outfilename, identifier, nSeqs=None, method_threads=None):
+        return self._CallMethod('msa', method_name, infilename, outfilename, identifier, nSeqs=nSeqs, method_threads=method_threads)
+    # not used    
+    def CallTreeMethod(self, method_name, infilename, outfilename, identifier, nSeqs=None, method_threads=None):
+        return self._CallMethod('tree', method_name, infilename, outfilename, identifier, nSeqs=nSeqs, method_threads=method_threads)   
         
-    def CallTreeMethod(self, method_name, infilename, outfilename, identifier, nSeqs=None):
-        return self._CallMethod('tree', method_name, infilename, outfilename, identifier, nSeqs=nSeqs)   
-        
-    def CallSearchMethod_DB(self, method_name, infilename, outfilename):
-        return self._CallMethod('search_db', method_name, infilename, outfilename)     
+    def CallSearchMethod_DB(self, method_name, infilename, outfilename, 
+                            scorematrix=None, gapopen=None, gapextend=None, method_threads=None):
+        return self._CallMethod('search_db', method_name, infilename, outfilename, 
+                                scorematrix=scorematrix, gapopen=gapopen, gapextend=gapextend,
+                                method_threads=method_threads)     
         
     def CallSearchMethod_Search(self, method_name, queryfilename, 
                                 dbfilename, outfilename,
-                                scorematrix=None, gapopen=None, gapextend=None):
+                                scorematrix=None, gapopen=None, gapextend=None, method_threads=None):
         return self._CallMethod('search_search', method_name, queryfilename, 
                                 outfilename, dbname=dbfilename, 
-                                scorematrix=scorematrix, gapopen=gapopen, gapextend=gapextend)  
+                                scorematrix=scorematrix, gapopen=gapopen, gapextend=gapextend,
+                                method_threads=method_threads)      
 
-    def TestMSAMethod(self, method_name, d_test):
-        return self._TestMethod('msa', method_name, d_test)
+    def TestMSAMethod(self, method_name, d_test, method_threads="1"):
+        return self._TestMethod('msa', method_name, d_test, method_threads=method_threads)
         
-    def TestTreeMethod(self, method_name, d_test):
-        return self._TestMethod('tree', method_name, d_test)
+    def TestTreeMethod(self, method_name, d_test, method_threads="1"):
+        return self._TestMethod('tree', method_name, d_test, method_threads=method_threads)
         
     def TestSearchMethod(self, method_name, d_deps_check, 
-                         scorematrix=None, gapopen=None, gapextend=None):
+                         scorematrix=None, gapopen=None, gapextend=None, method_threads="1"):
         success = False
         fasta = self._WriteTestSequence_Longer(d_deps_check)
         dbname = d_deps_check + method_name + "DBSpecies0"
-        stdout_db, stderr_db, cmd_db = self.CallSearchMethod_DB(method_name, fasta, dbname)
+        stdout_db, stderr_db, cmd_db = self.CallSearchMethod_DB(method_name, fasta, dbname,
+                                                                 scorematrix=scorematrix, 
+                                                                 gapopen=gapopen,
+                                                                 gapextend=gapextend,
+                                                                 method_threads=method_threads
+                                                                )
         # it doesn't matter what file(s) it writes out the database to, only that we can use the database
         resultsfn = d_deps_check + "test_search_results.txt"
         stdout_s, stderr_s, cmd_s = self.CallSearchMethod_Search(method_name, fasta, 
                                                                  dbname, resultsfn,
                                                                  scorematrix=scorematrix,
                                                                  gapopen=gapopen,
-                                                                 gapextend=gapextend)
+                                                                 gapextend=gapextend,
+                                                                 method_threads=method_threads)
 
         success = os.path.exists(resultsfn) or os.path.exists(resultsfn + ".gz")
         if not success:
@@ -247,13 +271,15 @@ class ProgramCaller(object):
     
     def _CallMethod(self, method_type, method_name, infilename,
                     outfilename, identifier=None, dbname=None, nSeqs=None, 
-                    scorematrix=None, gapopen=None, gapextend=None):
+                    scorematrix=None, gapopen=None, gapextend=None, method_threads=None):
 
         cmd, actual_target_fns = self._GetCommand(method_type, method_name, infilename, 
                                                   outfilename, identifier, dbname, nSeqs, 
                                                   scorematrix=scorematrix,
                                                   gapopen=gapopen, 
-                                                  gapextend=gapextend)
+                                                  gapextend=gapextend,
+                                                  method_threads=method_threads
+                                                  )
         capture = subprocess.Popen(cmd, shell=True, 
                                    stdout=subprocess.PIPE, 
                                    stderr=subprocess.PIPE, 
@@ -289,14 +315,14 @@ class ProgramCaller(object):
         method_parameters = dictionary[method_name]
         return method_parameters.skip_check
 
-    def _TestMethod(self, method_type, method_name, d_test):
+    def _TestMethod(self, method_type, method_name, d_test, method_threads=None):
         util.PrintNoNewLine("Test can run \"%s\"" % method_name) 
         if self._ShouldSkipTest(method_type, method_name):
             print(" - test has been manually over-ridden")
             return True
         infn = self._WriteTestSequence(d_test)
         propossed_outfn = infn + ".output.txt"
-        stdout, stderr, cmd = self._CallMethod(method_type, method_name, infn, propossed_outfn, "test")
+        stdout, stderr, cmd = self._CallMethod(method_type, method_name, infn, propossed_outfn, "test", method_threads=method_threads)
         success = os.path.exists(propossed_outfn) and os.stat(propossed_outfn).st_size > 0 
         if success:
             print(" - ok")
@@ -308,7 +334,7 @@ class ProgramCaller(object):
 
     def _ReplaceVariables(self, instring, infilename, outfilename, 
                           identifier=None, dbname=None, scorematrix=None, 
-                          gapopen=None, gapextend=None):
+                          gapopen=None, gapextend=None, method_threads=None):
 
         path, basename = os.path.split(infilename)
         path_out, basename_out = os.path.split(outfilename)
@@ -324,10 +350,12 @@ class ProgramCaller(object):
                             replace("GAPOPEN", gapopen).\
                             replace("GAPEXTEND", gapextend)
         
-        if identifier != None:
+        if identifier is not None:
             outstring = outstring.replace("IDENTIFIER", identifier)
-        if dbname != None:
+        if dbname is not  None:
             outstring = outstring.replace("DATABASE", dbname)
+        if method_threads is not None and "METHODTHREAD" in instring:
+            outstring = outstring.replace("METHODTHREAD", method_threads)
 
         return outstring
 
@@ -345,7 +373,7 @@ class ProgramCaller(object):
                     infilename, outfilename_proposed, 
                     identifier=None, dbname=None,
                     nSeqs=None, scorematrix=None,
-                    gapopen=None, gapextend=None):
+                    gapopen=None, gapextend=None, method_threads=None):
         """
         Returns:
             cmd, actual_target_fn
@@ -374,20 +402,26 @@ class ProgramCaller(object):
                                          outfilename_proposed, identifier, dbname,
                                          scorematrix=scorematrix, 
                                          gapopen=gapopen,
-                                         gapextend=gapextend)
+                                         gapextend=gapextend,
+                                         method_threads=method_threads
+                                         )
         else:
             cmd = self._ReplaceVariables(method_parameters.cmd, infilename, 
                                          outfilename_proposed, identifier, dbname,
                                          scorematrix=scorematrix, 
                                          gapopen=gapopen,
-                                         gapextend=gapextend)
+                                         gapextend=gapextend,
+                                         method_threads=method_threads
+                                         )
         actual_target_fn = None
         if method_parameters.non_default_outfn:
             actual_fn = self._ReplaceVariables(method_parameters.non_default_outfn, 
                                                infilename, outfilename_proposed, identifier,
                                                scorematrix=scorematrix, 
                                                gapopen=gapopen,
-                                               gapextend=gapextend)
+                                               gapextend=gapextend,
+                                               method_threads=method_threads
+                                               )
 
             target_fn = outfilename_proposed
             actual_target_fn = (actual_fn, target_fn)
@@ -427,6 +461,39 @@ def RunParallelCommands(nProcesses, commands, qListOfList, q_print_on_error=Fals
         commands_and_no_filenames = [(cmd, None) for cmd in commands]
     RunParallelCommandsAndMoveResultsFile(nProcesses, commands_and_no_filenames, qListOfList, q_print_on_error,
                                           q_always_print_stderr)
+
+
+# def RunParallelCommandsAndMoveResultsFile(nProcesses, commands_and_filenames, qListOfList, q_print_on_error=False,
+#                                           q_always_print_stderr=False):
+#     """
+#     Calls the commands in parallel and if required moves the results file to the required new filename
+#     Args:
+#         nProcess - the number of parallel process to use
+#         commands_and_filenames : tuple (cmd, actual_target_fn) where actual_target_fn = None if no move is required 
+#                                  and actual_target_fn = (actual_fn, target_fn) is actual_fn is produced by cmd and this 
+#                                  file should be moved to target_fn
+#         actual_target_fn - None if the cmd will save the results file to outfilename_proposed 
+#                            otherwise (actual_fn, outfilename_proposed)
+#         qListOfList - if False then commands_and_filenames is a list of (cmd, actual_target_fn) tuples
+#                       if True then commands_and_filenames is a list of lists of (cmd, actual_target_fn) tuples where the elements 
+#                       of the inner list need to be run in the order they appear.
+#         q_print_on_error - If error code returend print stdout & stederr
+#     """
+#     cmd_queue = Queue()
+#     i = -1
+#     for i, cmd in enumerate(commands_and_filenames):
+#         cmd_queue.put((i, cmd))
+
+#     with concurrent.futures.ThreadPoolExecutor() as executor:
+#         futures = [executor.submit(parallel_task_manager.Worker_RunCommands_And_Move,
+#                                    cmd_queue,
+#                                    nProcesses,
+#                                    i+1,
+#                                    qListOfList,
+#                                    q_print_on_error,
+#                                    q_always_print_stderr=q_always_print_stderr)
+#                    for _ in range(nProcesses)]
+#     concurrent.futures.wait(futures)
 
 
 def RunParallelCommandsAndMoveResultsFile(nProcesses, commands_and_filenames, qListOfList, q_print_on_error=False,

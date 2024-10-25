@@ -39,7 +39,7 @@ class Options(object):#
         self.qTrim = True
         self.gathering_version = (1, 0)    # < 3 is the original method
         self.search_program = "diamond"
-        self.msa_program = "mafft"
+        self.msa_program = "famsa"
         self.tree_program = "fasttree"
         self.recon_method = "of_recon"
         self.name = None   # name to identify this set of results
@@ -58,6 +58,7 @@ class Options(object):#
         self.gapopen = None
         self.gapextend = None#
         self.extended_filename = False
+        self.method_threads = None
 
     def what(self):
         for k, v in self.__dict__.items():
@@ -142,7 +143,7 @@ def GetGapOpen(matrixid: str, gapopen: Optional[str] = None, gapextend: Optional
                         raise Exception(f"User defined --gapopen penalty is not allowed by DIAMOND. Acceptable gapopen when gapextend={gapextend} is between {gapopen_range}")
                 
                 elif isinstance(gapopen_range, list):
-                    if gaoopen_penalty in gapopen_range:
+                    if gapopen_penalty in gapopen_range:
                         return str(gapopen_penalty)
                     else:
                         raise Exception(f"User defined --gapopen penalty is not allowed by DIAMOND. When gapextend={gapextend} the acceptable gapopen penalties are {gapopen_range}")
@@ -251,6 +252,17 @@ def ProcessArgs(prog_caller, args):
             except:
                 print("Incorrect argument for number of BLAST threads: %s\n" % arg)
                 util.Fail()  
+
+        elif arg == "-mt" or arg == "--method-threads":
+            if len(args) == 0:
+                print("Missing option for command line argument %s\n" % arg)
+                util.Fail()
+            arg = args.pop(0)
+            try:
+                options.method_threads = str(arg)
+            except:
+                print("Incorrect argument for number of method threads: %s\n" % arg)
+                util.Fail()
 
         elif arg == "-1":
             options.qDoubleBlast = False

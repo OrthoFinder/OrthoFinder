@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "orthofinder"
 authors = [
     {name = "David Emms", email = "david_emms@hotmail.com"},
+    {name = "Yi Liu", email = "caoxen7ys@yahoo.com"}
 ]
 description = "Phylogenetic orthology inference for comparative genomics"
 readme = "README.md"
@@ -52,16 +53,8 @@ dependencies = [
     build = ["build", "twine"]
     dev = [
         "python-semantic-release",
-        "mypy",
         "pytest",
         "pytest-cov",
-        "tox",
-        "pandas",
-        "seaborn",
-        "delayed-assert",
-        "flake8",
-        "pylint",
-        "black",
         "build",
         "wheel",
         "setuptools>=64",

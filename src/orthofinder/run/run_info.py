@@ -24,7 +24,9 @@ def GetOrderedSearchCommands(seqsInfo, speciesInfoObj,
                        [(i, j) for i, j in itertools.product(iSpeciesNew, iSpeciesPrevious) if (options.qDoubleBlast or i <=j)] + \
                        [(i, j) for i, j in itertools.product(iSpeciesPrevious, iSpeciesNew) if (options.qDoubleBlast or i <=j)]
         taskSizes = [seqsInfo.nSeqsPerSpecies[i]*seqsInfo.nSeqsPerSpecies[j] for i,j in speciesPairs]
-    taskSizes, speciesPairs = util.SortArrayPairByFirst(taskSizes, speciesPairs, True)
+    
+    # Smaller files should be processed first 
+    taskSizes, speciesPairs = util.SortArrayPairByFirst(taskSizes, speciesPairs, qLargestFirst=False)
     if options.search_program == "blast":
         commands = [" ".join(["blastp", "-outfmt", "6", "-evalue", "0.001",
                               "-query", files.FileHandler.GetSpeciesUnassignedFastaFN(iFasta) if q_new_species_unassigned_genes else files.FileHandler.GetSpeciesFastaFN(iFasta),
@@ -37,7 +39,9 @@ def GetOrderedSearchCommands(seqsInfo, speciesInfoObj,
                         files.FileHandler.GetBlastResultsFN(iFasta, iDB, qForCreation=True),
                         scorematrix=options.score_matrix,
                         gapopen=options.gapopen,
-                        gapextend=options.gapextend) 
+                        gapextend=options.gapextend,
+                        method_threads=options.method_threads
+                        ) 
                         for iFasta, iDB in speciesPairs]
     return commands
 
@@ -66,7 +70,9 @@ def GetOrderedSearchCommands_clades(seqsInfo, speciesInfoObj,
                         files.FileHandler.GetBlastResultsFN(iFasta, iDB, qForCreation=True),
                         scorematrix=options.score_matrix,
                         gapopen=options.gapopen,
-                        gapextend=options.gapextend) 
+                        gapextend=options.gapextend,
+                        method_threads=options.method_threads
+                        ) 
                         for iFasta, iDB in speciesPairs]
     return commands
 
@@ -87,7 +93,11 @@ def GetOrderedSearchCommands_accelerate(speciesInfoObj, diamond_db, options, pro
                         outfile.write(line)
                     outfile.write("\n")
         results = wd + "Blast_all_sequences.txt"
-        # commands = [prog_caller.GetSearchMethodCommand_Search(search_program, fn_single_fasta, diamond_db, results)]
+        # commands = [prog_caller.GetSearchMethodCommand_Search(search_program, fn_single_fasta, diamond_db, results,
+                                                                # scorematrix=options.score_matrix, 
+                                                                # gapopen=options.gapopen, 
+                                                                # gapextend=options.gapextend,#
+                                                                # method_threads=options.method_threads)]
         commands = ["diamond blastp --ignore-warnings -d %s -q %s -o %s --more-sensitive -p %d --quiet -e 0.001 --compress 1" % (diamond_db, fn_single_fasta, results, threads)]
         results_files = [results + ".gz"]
     else:
@@ -98,7 +108,9 @@ def GetOrderedSearchCommands_accelerate(speciesInfoObj, diamond_db, options, pro
             files.FileHandler.GetBlastResultsFN(iFasta, -1, qForCreation=True),
             scorematrix=options.score_matrix, 
             gapopen=options.gapopen, 
-            gapextend=options.gapextend)
+            gapextend=options.gapextend,#
+            method_threads=options.method_threads
+            )
             for iFasta in iSpeciesNew
         ]
         results_files = [files.FileHandler.GetBlastResultsFN(iFasta, -1, qForCreation=True) + ".gz" for iFasta in iSpeciesNew]

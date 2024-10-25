@@ -136,6 +136,7 @@ def GetOrthologues(speciesInfoObj, options, prog_caller, i_og_restart=0):
                                     options.qAddSpeciesToIDs,
                                     options.qTrim,
                                     options.fewer_open_files,
+                                    options.method_threads,
                                     options.speciesTreeFN,
                                     options.qStopAfterSeqs,
                                     options.qStopAfterAlignments,

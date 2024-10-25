@@ -10,6 +10,7 @@
     "__comment": "SCOREMATRIX: The name or the full path of a scoring matrix",
     "__comment": "GAPOPEN: Gap open penalty used in DIAMOND search",
     "__comment": "GAPEXTEND: Gap extend penalty used in DIAMOND search",
+    "__comment": "METHODTHREAD: Number of threads used by different methods",
     "muscle": {
         "program_type": "msa",
         "cmd_line": "muscle -in INPUT -out OUTPUT"
@@ -17,6 +18,10 @@
     "mafft_memsave": {
         "program_type": "msa",
         "cmd_line": "mafft --anysymbol --memsave INPUT > OUTPUT"
+    },
+    "famsa": {
+        "program_type": "msa",
+        "cmd_line": "famsa INPUT OUTPUT -t METHODTHREAD"
     },
     "fasttree_fastest": {
         "program_type": "tree",

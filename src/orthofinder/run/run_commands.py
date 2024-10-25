@@ -5,6 +5,7 @@ import shutil
 from . import run_info
 from .. import my_env
 import os
+import time
 
 def RunBlastDBCommand(command):
     capture = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=my_env, shell=True)
@@ -101,7 +102,8 @@ def CreateSearchDatabases(speciesInfoObj, options, prog_caller, q_unassigned_gen
                                                             files.FileHandler.GetSpeciesDatabaseN(iSp, options.search_program),
                                                             options.score_matrix,
                                                             options.gapopen,
-                                                            options.gapextend)
+                                                            options.gapextend,
+                                                            options.method_threads)
             util.PrintTime("Creating %s database %d of %d" % (options.search_program, iSp + 1, len(iSpeciesToDo)))
             ret_code = parallel_task_manager.RunCommand(command, qPrintOnError=True, qPrintStderr=False)
             if ret_code != 0:

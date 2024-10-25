@@ -51,7 +51,8 @@ def CheckDependencies(options, user_specified_m, prog_caller, dirForTempFiles):
                                                                         d_deps_check,
                                                                         scorematrix=options.score_matrix,
                                                                         gapopen=options.gapopen,
-                                                                        gapextend=options.gapextend)
+                                                                        gapextend=options.gapextend
+                                                                        )
             if not success:
                 print("\nERROR: Cannot run %s" % options.search_program)
                 prog_caller.PrintDependencyCheckFailure(cmd)

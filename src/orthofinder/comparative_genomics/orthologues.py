@@ -374,6 +374,7 @@ def OrthologuesWorkflow(speciesToUse, nSpAll,
                        qAddSpeciesToIDs,
                        qTrim,
                        fewer_open_files,  # Open one ortholog file per species when analysing trees
+                       method_threads=None,
                        userSpeciesTree = None,
                        qStopAfterSeqs = False,
                        qStopAfterAlign = False,
@@ -391,8 +392,10 @@ def OrthologuesWorkflow(speciesToUse, nSpAll,
 
     return_obj = infer_trees.InferGeneAndSpeciesTrees(ogSet,
                        program_caller, msa_method, tree_method,
-                       nHighParallel, nLowParallel, qDoubleBlast, qAddSpeciesToIDs, qTrim,
-                       userSpeciesTree, qStopAfterSeqs, qStopAfterAlign, qMSA, qPhyldog,
+                       nHighParallel, nLowParallel, qDoubleBlast, 
+                       qAddSpeciesToIDs, qTrim, method_threads,
+                       userSpeciesTree, qStopAfterSeqs, 
+                       qStopAfterAlign, qMSA, qPhyldog,
                        results_name, root_from_previous, i_og_restart)
     if return_obj is None:
         return
