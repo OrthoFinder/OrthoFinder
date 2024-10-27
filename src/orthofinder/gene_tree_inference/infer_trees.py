@@ -19,7 +19,11 @@ def InferGeneAndSpeciesTrees(ogSet,
                        qDoubleBlast,
                        qAddSpeciesToIDs,
                        qTrim,
+                       cmd_order="ascending",
                        method_threads=None,
+                       method_threads_large=None,
+                       method_threads_small=None, 
+                       threshold=None,
                        userSpeciesTree = None,
                        qStopAfterSeqs = False,
                        qStopAfterAlign = False,
@@ -81,7 +85,12 @@ def InferGeneAndSpeciesTrees(ogSet,
                                                qDoSpeciesTree=qDoMSASpeciesTree,
                                                qTrim=qTrim,
                                                i_og_restart=i_og_restart,
-                                               method_threads=method_threads)
+                                               cmd_order=cmd_order,
+                                               method_threads=method_threads,
+                                               method_threads_large=method_threads_large,
+                                               method_threads_small=method_threads_small, 
+                                               threshold=threshold,
+                                               )
         util.PrintTime("Done MSA/Trees")
         if qDoMSASpeciesTree:
             spTreeFN_ids = files.FileHandler.GetSpeciesTreeUnrootedFN()

@@ -374,7 +374,11 @@ def OrthologuesWorkflow(speciesToUse, nSpAll,
                        qAddSpeciesToIDs,
                        qTrim,
                        fewer_open_files,  # Open one ortholog file per species when analysing trees
+                       cmd_order="ascending",
                        method_threads=None,
+                       method_threads_large=None,
+                       method_threads_small=None, 
+                       threshold=None,
                        userSpeciesTree = None,
                        qStopAfterSeqs = False,
                        qStopAfterAlign = False,
@@ -393,7 +397,12 @@ def OrthologuesWorkflow(speciesToUse, nSpAll,
     return_obj = infer_trees.InferGeneAndSpeciesTrees(ogSet,
                        program_caller, msa_method, tree_method,
                        nHighParallel, nLowParallel, qDoubleBlast, 
-                       qAddSpeciesToIDs, qTrim, method_threads,
+                       qAddSpeciesToIDs, qTrim, 
+                       cmd_order,
+                       method_threads,
+                       method_threads_large,
+                       method_threads_small, 
+                       threshold,
                        userSpeciesTree, qStopAfterSeqs, 
                        qStopAfterAlign, qMSA, qPhyldog,
                        results_name, root_from_previous, i_og_restart)
@@ -411,9 +420,9 @@ def OrthologuesWorkflow(speciesToUse, nSpAll,
 
     InferOrthologs(ogSet, rooted_sp_tree, fn_rooted_sp_tree, q_multiple_roots, qSpeciesTreeSupports, stride_dups,
                    recon_method,
-                       nHighParallel, nLowParallel, fewer_open_files,
-                       userSpeciesTree, qPhyldog,
-                       q_split_para_clades, save_space, root_from_previous)
+                    nHighParallel, nLowParallel, fewer_open_files,
+                    userSpeciesTree, qPhyldog,
+                    q_split_para_clades, save_space, root_from_previous)
 
     fastaWriter = trees_msa.FastaWriter(files.FileHandler.GetSpeciesSeqsDir(), speciesToUse)
     ogs = accelerate.read_hogs(files.FileHandler.GetResultsDirectory1(), "N0")

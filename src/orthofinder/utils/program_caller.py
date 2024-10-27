@@ -28,13 +28,16 @@ import concurrent.futures
 import os
 import sys
 import json
-import time
+import numpy as np
 import subprocess
-import multiprocessing as mp
-from queue import Queue
 from .. import my_env 
+import types 
+import traceback
+try:
+    import queue
+except ImportError:
+    import Queue as queue     
 
-PY2 = sys.version_info <= (3,)
 from . import util, parallel_task_manager
 
 try:
@@ -44,6 +47,11 @@ except ImportError:
     import importlib_resources as impresources
 
 from .. import test_sequences
+
+
+import multiprocessing as mp
+
+
 
 try:
     longer_file = (impresources.files(test_sequences) / 'longer.txt')
@@ -454,12 +462,29 @@ class ProgramCaller(object):
 
 # ========================================================================================================================
 
-def RunParallelCommands(nProcesses, commands, qListOfList, q_print_on_error=False, q_always_print_stderr=False):
+def RunParallelCommands(nProcesses, commands, qListOfList,
+                        method_threads=None,
+                        method_threads_large=None,
+                        method_threads_small=None, 
+                        threshold=None, 
+                        tasksize=None,
+                        qTrim=False,
+                        q_print_on_error=False, 
+                        q_always_print_stderr=False):
     if qListOfList:
         commands_and_no_filenames = [[(cmd, None) for cmd in cmd_list] for cmd_list in commands]
     else:
         commands_and_no_filenames = [(cmd, None) for cmd in commands]
-    RunParallelCommandsAndMoveResultsFile(nProcesses, commands_and_no_filenames, qListOfList, q_print_on_error,
+    RunParallelCommandsAndMoveResultsFile(nProcesses, 
+                                          commands_and_no_filenames, 
+                                          qListOfList,
+                                          method_threads,
+                                          method_threads_large,
+                                          method_threads_small, 
+                                          threshold,
+                                          tasksize,
+                                          qTrim,
+                                          q_print_on_error,
                                           q_always_print_stderr)
 
 
@@ -496,7 +521,14 @@ def RunParallelCommands(nProcesses, commands, qListOfList, q_print_on_error=Fals
 #     concurrent.futures.wait(futures)
 
 
-def RunParallelCommandsAndMoveResultsFile(nProcesses, commands_and_filenames, qListOfList, q_print_on_error=False,
+def RunParallelCommandsAndMoveResultsFile(nProcesses, commands_and_filenames, qListOfList,
+                                          method_threads=None,
+                                          method_threads_large=None,
+                                          method_threads_small=None, 
+                                          threshold=None,
+                                          tasksize=None,
+                                          qTrim=False,
+                                          q_print_on_error=False,
                                           q_always_print_stderr=False):
     """
     Calls the commands in parallel and if required moves the results file to the required new filename
@@ -512,18 +544,289 @@ def RunParallelCommandsAndMoveResultsFile(nProcesses, commands_and_filenames, qL
                       of the inner list need to be run in the order they appear.
         q_print_on_error - If error code returend print stdout & stederr
     """
-    cmd_queue = Queue()
-    i = -1
-    for i, cmd in enumerate(commands_and_filenames):
-        cmd_queue.put((i, cmd))
+    # cmd_queue = queue.Queue()
+    # i = -1
+    # for i, cmd in enumerate(commands_and_filenames):
+    #     # print(cmd)
+    #     cmd_queue.put((i, cmd))
 
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = [executor.submit(parallel_task_manager.Worker_RunCommands_And_Move,
-                                   cmd_queue,
-                                   nProcesses,
-                                   i+1,
-                                   qListOfList,
-                                   q_print_on_error,
-                                   q_always_print_stderr=q_always_print_stderr)
-                   for _ in range(nProcesses)]
-    concurrent.futures.wait(futures)
+    # with concurrent.futures.ThreadPoolExecutor() as executor:
+    #     futures = [executor.submit(parallel_task_manager.Worker_RunCommands_And_Move,
+    #                                cmd_queue,
+    #                                nProcesses,
+    #                                i+1,
+    #                                qListOfList,
+    #                                q_print_on_error,
+    #                                q_always_print_stderr=q_always_print_stderr)
+    #                for _ in range(nProcesses)]
+    # concurrent.futures.wait(futures)
+
+    completed_count = 0
+    total_commands = len(commands_and_filenames)
+    if threshold is not None and tasksize is not None:
+        cutoff = np.percentile(tasksize, threshold)#.astype(int)
+
+        if not qListOfList:
+            if "METHODTHREAD" in commands_and_filenames[0][0]:
+                if method_threads_large is not None and method_threads_small is not None:
+                    commands_and_filenames = [
+                        (cmd[0].replace("METHODTHREAD", method_threads_large if size >= cutoff else method_threads_small), cmd[1]) 
+                        for cmd, size in zip(commands_and_filenames, tasksize)
+                    ]
+                elif method_threads is not None:
+                    commands_and_filenames = [
+                        (cmd[0].replace("METHODTHREAD", method_threads), cmd[1]) 
+                        for cmd in commands_and_filenames
+                    ]
+                else:
+                    commands_and_filenames = [
+                        (cmd[0].replace("METHODTHREAD", "1"), cmd[1]) 
+                        for cmd in commands_and_filenames
+                    ]
+
+        else:
+            if "METHODTHREAD" in commands_and_filenames[0][0][0]:
+                if qTrim:
+                    if method_threads_large is not None and method_threads_small is not None:
+                        commands_and_filenames = [
+                            [(cmd[0][0].replace("METHODTHREAD", method_threads_large if size >= cutoff else method_threads_small), cmd[0][1]), 
+                            (cmd[1][0], cmd[1][1].replace("METHODTHREAD", method_threads_large if size >= cutoff else method_threads_small)), 
+                            (cmd[2][0].replace("METHODTHREAD", method_threads_large if size >= cutoff else method_threads_small), cmd[2][1])] 
+                            if len(cmd) > 1 
+                            else [(cmd[0][0].replace("METHODTHREAD", method_threads_large if size >= cutoff else method_threads_small), cmd[0][1])]
+                            for cmd, size in zip(commands_and_filenames, tasksize)
+                        ]
+                    elif method_threads is not None:
+                        commands_and_filenames = [
+                            [(cmd[0][0].replace("METHODTHREAD", method_threads), cmd[0][1]), 
+                            (cmd[1][0], cmd[1][1].replace("METHODTHREAD", method_threads)), 
+                            (cmd[2][0].replace("METHODTHREAD", method_threads), cmd[2][1])] 
+                            if len(cmd) > 1 
+                            else [(cmd[0][0].replace("METHODTHREAD", method_threads), cmd[0][1])] 
+                            for cmd in commands_and_filenames
+                        ]
+                    else:
+                        commands_and_filenames = [
+                            [(cmd[0][0].replace("METHODTHREAD", "1"), cmd[0][1]), 
+                            (cmd[1][0], cmd[1][1].replace("METHODTHREAD", "1")), 
+                            (cmd[2][0].replace("METHODTHREAD", "1"), cmd[2][1])]
+                            if len(cmd) > 1 
+                            else [(cmd[0][0].replace("METHODTHREAD", "1"), cmd[0][1])]
+                            for cmd in commands_and_filenames
+                        ]
+                else:
+                    if method_threads_large is not None and method_threads_small is not None:
+                        commands_and_filenames = [
+                            [(cmd[0][0].replace("METHODTHREAD", method_threads_large if size >= cutoff else method_threads_small), cmd[0][1]), 
+                            (cmd[1][0].replace("METHODTHREAD", method_threads_large if size >= cutoff else method_threads_small), cmd[1][1])] 
+                            for cmd, size in zip(commands_and_filenames, tasksize)
+                        ]
+                    elif method_threads is not None:
+                        commands_and_filenames = [
+                            [(cmd[0][0].replace("METHODTHREAD", method_threads), cmd[0][1]),  
+                            (cmd[1][0].replace("METHODTHREAD", method_threads), cmd[1][1])] 
+                            for cmd in commands_and_filenames
+                        ]
+
+                    else:
+                        commands_and_filenames = [
+                            [(cmd[0][0].replace("METHODTHREAD", "1"), cmd[0][1]), 
+                            (cmd[1][0].replace("METHODTHREAD", "1"), cmd[1][1])]  
+                            for cmd in commands_and_filenames
+                        ]
+
+        large_file_commands = [cmd for cmd, size in zip(commands_and_filenames, tasksize) if size >= cutoff]
+        small_file_commands = [cmd for cmd, size in zip(commands_and_filenames, tasksize) if size < cutoff]
+        
+        nProcesses_small_files = nProcesses
+        nProcesses_large_files = nProcesses
+        # if nProcesses == mp.cpu_count():
+        #     if int(method_threads_small) > 1:
+        #         nProcesses_small_files = mp.cpu_count() // int(method_threads_small)
+        #     else:
+        #         nProcesses_small_files = nProcesses
+        #     nProcesses_large_files = mp.cpu_count() // int(method_threads_large) #np.amax((nProcesses // 8, 1))
+        
+        if nProcesses_small_files * int(method_threads_small) > mp.cpu_count():
+            nProcesses_small_files = mp.cpu_count() // int(method_threads_small)
+        
+        if nProcesses_large_files * int(method_threads_large) > mp.cpu_count():
+            nProcesses_large_files = mp.cpu_count() // int(method_threads_large)
+
+        if method_threads is not None:
+            if nProcesses * int(method_threads) > mp.cpu_count():
+                nProcesses_small_files = mp.cpu_count() // int(method_threads)
+                nProcesses_large_files = mp.cpu_count() // int(method_threads)
+
+        if small_file_commands:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=nProcesses_small_files) as executor:
+                futures = {executor.submit(Worker_RunCommands_And_Move, 
+                                           cmd, 
+                                           qListOfList,
+                                           q_print_on_error,
+                                           q_always_print_stderr
+                                           ): cmd for cmd in small_file_commands}
+                for future in concurrent.futures.as_completed(futures):
+                    try:
+                        result = future.result()
+
+                        completed_count += 1
+                        if divmod(completed_count, 10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000)[1] == 0:
+                            util.PrintTime("Done %d of %d" % (completed_count, total_commands))
+
+                        if result != 0 and q_print_on_error:
+                            print(f"ERROR occurred with small-file command: {futures[future]}")
+                    except Exception as e:
+                        print(f"Exception with small-file command {futures[future]}: {e}")
+
+        if large_file_commands:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=nProcesses_large_files) as executor:
+                futures = {executor.submit(Worker_RunCommands_And_Move, 
+                                           cmd, 
+                                           qListOfList,
+                                           q_print_on_error,
+                                           q_always_print_stderr
+                                           ): cmd for cmd in large_file_commands}
+                for future in concurrent.futures.as_completed(futures):
+                    try:
+                        result = future.result()
+
+                        completed_count += 1
+                        if divmod(completed_count, 10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000)[1] == 0:
+                            util.PrintTime("Done %d of %d" % (completed_count, total_commands))
+
+                        if result != 0 and q_print_on_error:
+                            print(f"ERROR occurred with large-file command: {futures[future]}")
+                    except Exception as e:
+                        print(f"Exception with large-file command {futures[future]}: {e}")
+
+    else:
+        if method_threads is None:
+            method_threads = "1"
+
+        if method_threads is not None:
+            if nProcesses * int(method_threads) > mp.cpu_count():
+                nProcesses = mp.cpu_count() // int(method_threads)
+            
+        if not qListOfList:
+            if "METHODTHREAD" in commands_and_filenames[0][0]:
+                commands_and_filenames = [(cmd[0].replace("METHODTHREAD", method_threads), cmd[1]) 
+                                        for cmd in commands_and_filenames]
+
+        else:
+            if "METHODTHREAD" in commands_and_filenames[0][0][0]:
+                if qTrim:
+                    commands_and_filenames = [
+                        [(cmd[0][0].replace("METHODTHREAD", method_threads), cmd[0][1]), 
+                        (cmd[1][0], cmd[1][1].replace("METHODTHREAD", method_threads)), 
+                        (cmd[2][0].replace("METHODTHREAD", method_threads), cmd[2][1])]
+                        if len(cmd) > 1 
+                        else ((cmd[0][0].replace("METHODTHREAD", method_threads), cmd[0][1])) 
+                        for cmd in commands_and_filenames
+                    ]
+
+                else:
+                   commands_and_filenames = [
+                        [(cmd[0][0].replace("METHODTHREAD", method_threads), cmd[0][1]), 
+                        (cmd[1][0].replace("METHODTHREAD", method_threads), cmd[1][1])]
+                        for cmd in commands_and_filenames
+                    ]
+                
+        with concurrent.futures.ThreadPoolExecutor(max_workers=nProcesses) as executor:
+            futures = {executor.submit(Worker_RunCommands_And_Move, 
+                                    cmd, 
+                                    qListOfList, 
+                                    q_print_on_error, 
+                                    q_always_print_stderr): cmd for cmd in commands_and_filenames}
+
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    result = future.result()
+                    completed_count += 1 
+                    if divmod(completed_count, 10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000)[1] == 0:
+                        util.PrintTime("Done %d of %d" % (completed_count, total_commands))
+
+                    if result != 0 and q_print_on_error:
+                        print(f"ERROR occurred with command: {futures[future]}")
+                except Exception as e:
+                    print(f"Exception with command {futures[future]}: {e}")
+
+q_print_first_traceback_0 = False
+def Worker_RunCommands_And_Move(cmd_and_filename_queue, qListOfLists, q_print_on_error, q_always_print_stderr):
+    """
+    Continuously takes commands that need to be run from the cmd_and_filename_queue until the queue is empty. If required, moves 
+    the output filename produced by the cmd to a specified filename. The elements of the queue can be single cmd_filename tuples
+    or an ordered list of tuples that must be run in the provided order.
+  
+    Args:
+        cmd_and_filename_queue - queue containing (cmd, actual_target_fn) tuples (if qListOfLists is False) or a list of such 
+            tuples (if qListOfLists is True). Alternatively, 'cmd' can be a python fn and actual_target_fn the fn to call it on.
+        nProcesses - the number of processes that are working on the queue.
+        nToDo - The total number of elements in the original queue
+        qListOfLists - Boolean, whether each element of the queue corresponds to a single command or a list of ordered commands
+        qShell - Boolean, should a shell be used to run the command.
+        
+    Implementation:
+        nProcesses and nToDo are used to print out the progress.
+    """
+    # while True:
+    try:
+        # i, command_fns_list = cmd_and_filename_queue.get(True, 1)
+        command_fns_list = cmd_and_filename_queue
+        
+        # nDone = i - nProcesses + 1
+        # if nDone >= 0 and divmod(nDone, 10 if nToDo <= 200 else 100 if nToDo <= 2000 else 1000)[1] == 0:
+        #     util.PrintTime("Done %d of %d" % (nDone, nToDo))
+        if not qListOfLists:
+            command_fns_list = [command_fns_list]
+        
+        return_code = 1
+        for command, fns in command_fns_list:
+            if isinstance(command, types.FunctionType):
+                # This will block the process, but it is ok for trimming, it takes minimal time
+                fn = command
+                fn(fns)
+                return_code = 0
+            else:
+                if not isinstance(command, str):
+                    print("ERROR: Cannot run command: " + str(command))
+                    print("Please report this issue.")
+                else:
+                    return_code = RunCommand(command, qPrintOnError=q_print_on_error, qPrintStderr=q_always_print_stderr)
+                    if fns != None:
+                        actual, target = fns
+                        if os.path.exists(actual):
+                            os.rename(actual, target)
+        return return_code            
+    # except queue.Empty:
+    #     return     
+    except Exception as e:
+        print("WARNING: ")
+        print(str(e))
+        global q_print_first_traceback_0
+        if not q_print_first_traceback_0:
+            util.print_traceback(e)
+            q_print_first_traceback_0 = True
+    except:
+        print("WARNING: Unknown caught unknown exception")
+
+
+def RunCommand(command, qPrintOnError=False, qPrintStderr=True):
+    """ Run a single command """
+    popen = subprocess.Popen(command, env=my_env, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if qPrintOnError:
+        stdout, stderr = popen.communicate()
+        if popen.returncode != 0:
+            print(("\nERROR: external program called by OrthoFinder returned an error code: %d" % popen.returncode))
+            print(("\nCommand: %s" % command))
+            print(("\nstdout:\n%s" % stdout))
+            print(("stderr:\n%s" % stderr))
+        elif qPrintStderr and len(stderr) > 0 and not util.stderr_exempt(stderr):
+            print("\nWARNING: program called by OrthoFinder produced output to stderr")
+            print(("\nCommand: %s" % command))
+            print(("\nstdout:\n%s" % stdout))
+            print(("stderr:\n%s" % stderr))
+        return popen.returncode
+    else:
+        popen.communicate()
+        return popen.returncode

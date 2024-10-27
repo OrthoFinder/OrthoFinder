@@ -47,14 +47,17 @@ def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller,
         util.PrintUnderline("Running %s searches for new non-core species clades" % name_to_print)
     else:
         util.PrintUnderline("Running %s all-versus-all" % name_to_print)
+    taskSizes = None
     if species_clades is None:
-        commands = run_info.GetOrderedSearchCommands(seqsInfo, 
+        print("running GetOrderedSearchCommands")
+        commands, taskSizes = run_info.GetOrderedSearchCommands(seqsInfo, 
                                                      speciessInfoObj,
                                                      options,
                                                      prog_caller, 
                                                      n_genes_per_species, 
                                                      q_new_species_unassigned_genes=q_new_species_unassigned_genes)
     else:
+        print("running GetOrderedSearchCommands_clades")
         commands = run_info.GetOrderedSearchCommands_clades(seqsInfo, 
                                                             speciessInfoObj,
                                                             options,
@@ -67,8 +70,15 @@ def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller,
         util.Success()
     print("Using %d thread(s)" % options.nBlast)
     util.PrintTime("This may take some time....")
-    program_caller.RunParallelCommands(options.nBlast, commands, qListOfList=False,
-                                       q_print_on_error=True, q_always_print_stderr=False)
+    program_caller.RunParallelCommands(options.nBlast, commands,
+                                       method_threads=options.method_threads, 
+                                       method_threads_large=options.method_threads_large,
+                                       method_threads_small=options.method_threads_small,
+                                       threshold=options.threshold, 
+                                       tasksize=taskSizes,
+                                       qListOfList=False,
+                                       q_print_on_error=True, 
+                                       q_always_print_stderr=False)
 
     # remove BLAST databases
     util.PrintTime("Done all-versus-all sequence search")
@@ -85,7 +95,6 @@ def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller,
                     except OSError:
                         time.sleep(1)
                         shutil.rmtree(tmp_dir, True)  # shutil / NFS bug - ignore errors, it's less crucial that the files are deleted
-
 
 # 6
 def CreateSearchDatabases(speciesInfoObj, options, prog_caller, q_unassigned_genes=False):
@@ -126,6 +135,7 @@ def RunSearch_accelerate(options, speciessInfoObj, fn_diamond_db, prog_caller, q
             util.Fail()
         util.PrintTime("Done profiles search\n")
         return results_files
+    
     program_caller.RunParallelCommands(options.nBlast, commands, qListOfList=False, q_print_on_error=True)
     util.PrintTime("Done profiles search")
     return results_files

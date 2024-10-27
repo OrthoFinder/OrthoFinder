@@ -1259,8 +1259,10 @@ class TreeAnalyser(object):
             # don't relabel nodes, they've already been done
             util.RenameTreeTaxa(recon_tree, self.reconTreesRenamedDir + "OG%07d_tree.txt" % iog, self.spec_seq_dict, qSupport=False, qFixNegatives=True)
             # recon_tree.delete_traverse()
-            if iog >= 0 and divmod(iog, 10 if self.nOgs <= 200 else 100 if self.nOgs <= 2000 else 1000)[1] == 0:
+            # if iog >= 0 and divmod(iog, 10 if self.nOgs <= 200 else 100 if self.nOgs <= 2000 else 1000)[1] == 0:
+            if iog > 0 and divmod(iog, 10 if self.nOgs <= 200 else 100 if self.nOgs <= 2000 else 1000)[1] == 0:
                 util.PrintTime("Done %d of %d" % (iog, self.nOgs))
+
             return nOrthologues_SpPair, olog_lines, olog_sus_lines
         except Exception as e:
             print(str(e))

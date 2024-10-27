@@ -17,7 +17,7 @@
     },
     "mafft_memsave": {
         "program_type": "msa",
-        "cmd_line": "mafft --anysymbol --memsave INPUT > OUTPUT"
+        "cmd_line": "mafft --thread METHODTHREAD --anysymbol --memsave INPUT > OUTPUT"
     },
     "famsa": {
         "program_type": "msa",

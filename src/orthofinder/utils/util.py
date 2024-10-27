@@ -33,11 +33,31 @@ from ..citation import citation, print_citation
 from ..tools import tree
 from . import parallel_task_manager
 import shutil
+import traceback
 
 PY2 = sys.version_info <= (3,)
 csv_write_mode = 'wb' if PY2 else 'wt'
 csv_append_mode = 'ab' if PY2 else 'at'
 csv_read_mode = 'rb' if PY2 else 'rt'
+
+def print_traceback(e):
+    if PY2:
+        traceback.print_exc()
+    else:
+        traceback.print_tb(e.__traceback__)
+
+def stderr_exempt(stderr):
+    ok_line_starts = {"diamond v", "Licensed under the GNU GPL", "Check http://github.com/"}
+    try:
+        stderr = stderr.decode()
+    except (UnicodeDecodeError, AttributeError):
+        stderr = stderr.encode()
+    lines = stderr.split("\n")
+    for line in lines:
+        if line.rstrip() == "": continue
+        if any(line.startswith(x) for x in ok_line_starts): continue
+        return False
+    return True
 
 """
 Utilities

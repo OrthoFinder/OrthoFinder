@@ -61,6 +61,10 @@ class Options(object):#
         self.method_threads = None
         self.rm_gene_trees = False
         self.rm_resolved_gene_trees = False
+        self.cmd_order="descending"  #"ascending"
+        self.threshold=None
+        self.method_threads_large = None 
+        self.method_threads_small = None
 
     def what(self):
         for k, v in self.__dict__.items():
@@ -124,7 +128,7 @@ def GetGapOpen(matrixid: str, gapopen: Optional[str] = None, gapextend: Optional
             if isinstance(gapopen_range, tuple):
                 return str(gapopen_range[1])
             elif isinstance(gapopen_range, list):
-                return str(max(apopen_range))
+                return str(max(gapopen_range))
 
     if len(gapopen) != 0:
         try:
@@ -240,6 +244,9 @@ def ProcessArgs(prog_caller, args):
             arg = args.pop(0)
             try:
                 options.nBlast = int(arg)
+                if options.nBlast > nThreadsDefault:
+                    print("WARNING: The specified number of BLAST threads exceed the number of cores: %s" % str(nThreadsDefault))
+                    print("The number of BLAST threads is reset to %s" % str(nThreadsDefault))
             except:
                 print("Incorrect argument for number of BLAST threads: %s\n" % arg)
                 util.Fail()
@@ -251,8 +258,12 @@ def ProcessArgs(prog_caller, args):
             arg = args.pop(0)
             try:
                 options.nProcessAlg = int(arg)
+                if options.nProcessAlg > nThreadsDefault:
+                    print("WARNING: The specified number of OrthoFinder threads exceed the number of cores: %s" % str(nThreadsDefault))
+                    print("The number of OrthoFinder threads is reset to %s" % str(nThreadsDefault))
+                    options.nProcessAlg = nThreadsDefault
             except:
-                print("Incorrect argument for number of BLAST threads: %s\n" % arg)
+                print("Incorrect argument for number of OrthoFinder threads: %s\n" % arg)
                 util.Fail()  
 
         elif arg == "-mt" or arg == "--method-threads":
@@ -262,8 +273,65 @@ def ProcessArgs(prog_caller, args):
             arg = args.pop(0)
             try:
                 options.method_threads = str(arg)
+                if int(options.method_threads) > nThreadsDefault:
+                    print("WARNING: The specified number of threads for external commands exceed the number of cores: %d" % nThreadsDefault)
+                    print("The number of threads for external commands is reset to %d" %  nThreadsDefault)
+                    options.method_threads = str(nThreadsDefault)
             except:
                 print("Incorrect argument for number of method threads: %s\n" % arg)
+                util.Fail()
+
+        elif arg == "-mtl" or arg == "--method-threads-large":
+            if len(args) == 0:
+                print("Missing option for command line argument %s\n" % arg)
+                util.Fail()
+            arg = args.pop(0)
+            try:
+                options.method_threads_large = str(arg)
+                if int(options.method_threads_large) > nThreadsDefault:
+                    print("WARNING: The specified number of threads for external commands to process large file exceed the number of cores: %d" % nThreadsDefault)
+                    print("The number of threads for external commands to process large file is reset to %d" % nThreadsDefault)
+                    options.method_threads_large = str(nThreadsDefault)
+
+            except:
+                print("Incorrect argument for number of method threads for the large files: %s\n" % arg)
+                util.Fail()
+
+        elif arg == "-mts" or arg == "--method-threads-small":
+            if len(args) == 0:
+                print("Missing option for command line argument %s\n" % arg)
+                util.Fail()
+            arg = args.pop(0)
+            try:
+                options.method_threads_small = str(arg)
+                if int(options.method_threads_small) > nThreadsDefault:
+                    print("WARNING: The specified number of threads for external commands to process small file exceed the number of cores: %" % nThreadsDefault)
+                    print("The number of threads for external commands to process small file is reset to %d" % nThreadsDefault)
+                    options.method_threads_small = str(nThreadsDefault)
+            except:
+                print("Incorrect argument for number of method threads for the small files: %s\n" % arg)
+                util.Fail()
+
+        elif arg == "--order":
+            if len(args) == 0:
+                print("Missing option for command line argument %s\n" % arg)
+                util.Fail()
+            arg = args.pop(0)
+            try:
+                options.cmd_order = str(arg)
+            except:
+                print("Incorrect argument for command order: %s. It must be either descending or ascending.\n" % arg)
+                util.Fail()
+
+        elif arg == "--threshold":
+            if len(args) == 0:
+                print("Missing option for command line argument %s\n" % arg)
+                util.Fail()
+            arg = args.pop(0)
+            try:
+                options.threshold = int(arg)
+            except:
+                print("Incorrect argument for threshold: %s. Values must be between 0 and 100 inclusive.\n" % arg)
                 util.Fail()
 
         elif arg == "-rmgt" or arg == "--rm-gene-trees":

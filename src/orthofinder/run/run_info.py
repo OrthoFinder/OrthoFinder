@@ -26,7 +26,12 @@ def GetOrderedSearchCommands(seqsInfo, speciesInfoObj,
         taskSizes = [seqsInfo.nSeqsPerSpecies[i]*seqsInfo.nSeqsPerSpecies[j] for i,j in speciesPairs]
     
     # Smaller files should be processed first 
-    taskSizes, speciesPairs = util.SortArrayPairByFirst(taskSizes, speciesPairs, qLargestFirst=False)
+    qLargestFirst = False
+    if options.cmd_order != "ascending":
+        qLargestFirst = True 
+    
+    taskSizes, speciesPairs = util.SortArrayPairByFirst(taskSizes, speciesPairs, qLargestFirst=qLargestFirst)
+    
     if options.search_program == "blast":
         commands = [" ".join(["blastp", "-outfmt", "6", "-evalue", "0.001",
                               "-query", files.FileHandler.GetSpeciesUnassignedFastaFN(iFasta) if q_new_species_unassigned_genes else files.FileHandler.GetSpeciesFastaFN(iFasta),
@@ -40,10 +45,10 @@ def GetOrderedSearchCommands(seqsInfo, speciesInfoObj,
                         scorematrix=options.score_matrix,
                         gapopen=options.gapopen,
                         gapextend=options.gapextend,
-                        method_threads=options.method_threads
+                        # method_threads=options.method_threads
                         ) 
                         for iFasta, iDB in speciesPairs]
-    return commands
+    return commands, taskSizes
 
 
 def GetOrderedSearchCommands_clades(seqsInfo, speciesInfoObj, 

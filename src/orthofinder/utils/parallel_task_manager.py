@@ -28,11 +28,11 @@ import sys
 import time
 import types
 import datetime
-import traceback
 import subprocess
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, wait, as_completed
 from .. import my_env
+from . import util
 try:
     import queue
 except ImportError:
@@ -45,27 +45,6 @@ except ImportError:
 #         subprocess.call("taskset -p 0xffffffffffff %d" % os.getpid(), shell=True, stdout=f)
 
 
-PY2 = sys.version_info <= (3,)
-
-def print_traceback(e):
-    if PY2:
-        traceback.print_exc()
-    else:
-        traceback.print_tb(e.__traceback__)
-
-
-def stderr_exempt(stderr):
-    ok_line_starts = {"diamond v", "Licensed under the GNU GPL", "Check http://github.com/"}
-    try:
-        stderr = stderr.decode()
-    except (UnicodeDecodeError, AttributeError):
-        stderr = stderr.encode()
-    lines = stderr.split("\n")
-    for line in lines:
-        if line.rstrip() == "": continue
-        if any(line.startswith(x) for x in ok_line_starts): continue
-        return False
-    return True
 
 def PrintTime(message):
     print((str(datetime.datetime.now()).rsplit(".", 1)[0] + " : " + message))
@@ -103,7 +82,7 @@ def ManageQueue(runningProcesses, cmd_queue):
     if qError:
         Fail()
 
-
+# not used 
 def RunCommand_Simple(command):
     subprocess.call(command, env=my_env, shell=True)
 
@@ -118,7 +97,7 @@ def RunCommand(command, qPrintOnError=False, qPrintStderr=True):
             print(("\nCommand: %s" % command))
             print(("\nstdout:\n%s" % stdout))
             print(("stderr:\n%s" % stderr))
-        elif qPrintStderr and len(stderr) > 0 and not stderr_exempt(stderr):
+        elif qPrintStderr and len(stderr) > 0 and not util.stderr_exempt(stderr):
             print("\nWARNING: program called by OrthoFinder produced output to stderr")
             print(("\nCommand: %s" % command))
             print(("\nstdout:\n%s" % stdout))
@@ -199,7 +178,7 @@ def Worker_RunCommands_And_Move(cmd_and_filename_queue, nProcesses, nToDo, qList
             print(str(e))
             global q_print_first_traceback_0
             if not q_print_first_traceback_0:
-                print_traceback(e)
+                util.print_traceback(e)
                 q_print_first_traceback_0 = True
         except:
             print("WARNING: Unknown caught unknown exception")
@@ -216,7 +195,7 @@ def Worker_RunMethod(Function, args_queue):
             print("Error in function: " + str(Function))
             global q_print_first_traceback_1
             if not q_print_first_traceback_1:
-                print_traceback(e)
+                util.print_traceback(e)
                 q_print_first_traceback_1 = True
             return
 

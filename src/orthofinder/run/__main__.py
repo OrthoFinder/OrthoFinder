@@ -48,7 +48,7 @@ from ..utils import parallel_task_manager, blast_file_processor, timeit, \
 import os                                       # Y
 # os.environ["OPENBLAS_NUM_THREADS"] = "1"    # fix issue with numpy/openblas. Will mean that single threaded options aren't automatically parallelised 
 
-
+import time
 import copy                                     # Y
 import subprocess                               # Y
 import glob                                     # Y
@@ -136,7 +136,11 @@ def GetOrthologues(speciesInfoObj, options, prog_caller, i_og_restart=0):
                                     options.qAddSpeciesToIDs,
                                     options.qTrim,
                                     options.fewer_open_files,
+                                    options.cmd_order,
                                     options.method_threads,
+                                    options.method_threads_large,
+                                    options.method_threads_small,
+                                    options.threshold,
                                     options.speciesTreeFN,
                                     options.qStopAfterSeqs,
                                     options.qStopAfterAlignments,
@@ -186,7 +190,9 @@ def BetweenCoreOrthogroupsWorkflow(continuationDir, speciesInfoObj, seqsInfo, op
                                               prog_caller, options.msa_program, options.tree_program,
                                               options.nBlast, options.nProcessAlg, options.qDoubleBlast,
                                               options.qAddSpeciesToIDs,
-                                              options.qTrim, userSpeciesTree=None, qStopAfterSeqs=False,
+                                              options.qTrim, 
+                                              cmd_order=options.cmd_order,
+                                              userSpeciesTree=None, qStopAfterSeqs=False,
                                               qStopAfterAlign=False, qMSA=options.qMSATrees,
                                               qPhyldog=False, results_name=options.name,
                                               root_from_previous=True)
@@ -252,15 +258,16 @@ def GetOrthologues_FromTrees(options):
     orthologues.OrthologuesFromTrees(options.recon_method, options.nBlast, options.nProcessAlg, options.speciesTreeFN,
                                      options.qAddSpeciesToIDs, options.qSplitParaClades, options.fewer_open_files)
 
-@timeit.timeit
+# @timeit.timeit
 def main(args=None): 
-    
+    start = time.perf_counter()
     try:
+
         if args is None:
             args = sys.argv[1:]
 
     # Create PTM right at start
-        ptm_initialised = parallel_task_manager.ParallelTaskManager_singleton()
+        ptm = parallel_task_manager.ParallelTaskManager_singleton()
         prog_caller = GetProgramCaller()
         options, fastaDir, continuationDir, resultsDir_nonDefault, pickleDir_nonDefault, user_specified_M = process_args.ProcessArgs(prog_caller, args)
         
@@ -390,7 +397,7 @@ def main(args=None):
                 GetOrthologues(speciesInfoObj, options, prog_caller, i_og_restart)
         else:
             raise NotImplementedError
-            ptm = parallel_task_manager.ParallelTaskManager_singleton()
+            # ptm = parallel_task_manager.ParallelTaskManager_singleton()
             ptm.Stop()
         if not options.save_space and not options.qFastAdd:
             # split up the orthologs into one file per species-pair
@@ -420,8 +427,8 @@ def main(args=None):
 
     except Exception as e:
         print(str(e))
-        parallel_task_manager.print_traceback(e)
-        ptm = parallel_task_manager.ParallelTaskManager_singleton()
+        util.print_traceback(e)
+        # ptm = parallel_task_manager.ParallelTaskManager_singleton()
         ptm.Stop()
         raise
 
@@ -430,8 +437,13 @@ def main(args=None):
         sys.exit(1)
     
     finally:
-        ptm = parallel_task_manager.ParallelTaskManager_singleton()
+        # ptm = parallel_task_manager.ParallelTaskManager_singleton()
         ptm.Stop()
+        end = time.perf_counter()
+        time_elapsed = end - start
+        print()
+        print(f"OrthoFinder finished in {time_elapsed:5f}s", end='\n'*2)
+        sys.exit()
 
 if __name__ == "__main__":
     args = sys.argv[1:]
