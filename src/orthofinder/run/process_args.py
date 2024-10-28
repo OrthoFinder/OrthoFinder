@@ -58,7 +58,7 @@ class Options(object):#
         self.gapopen = None
         self.gapextend = None#
         self.extended_filename = False
-        self.method_threads = None
+        self.method_threads = "1"
         self.rm_gene_trees = True
         self.rm_resolved_gene_trees = True
         self.cmd_order="descending"  #"ascending"
