@@ -47,10 +47,10 @@ def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller,
         util.PrintUnderline("Running %s searches for new non-core species clades" % name_to_print)
     else:
         util.PrintUnderline("Running %s all-versus-all" % name_to_print)
-    taskSizes = None
+    tasksizes = None
     if species_clades is None:
         print("running GetOrderedSearchCommands")
-        commands, taskSizes = run_info.GetOrderedSearchCommands(seqsInfo, 
+        commands, tasksizes = run_info.GetOrderedSearchCommands(seqsInfo, 
                                                      speciessInfoObj,
                                                      options,
                                                      prog_caller, 
@@ -58,7 +58,7 @@ def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller,
                                                      q_new_species_unassigned_genes=q_new_species_unassigned_genes)
     else:
         print("running GetOrderedSearchCommands_clades")
-        commands = run_info.GetOrderedSearchCommands_clades(seqsInfo, 
+        commands, tasksizes = run_info.GetOrderedSearchCommands_clades(seqsInfo, 
                                                             speciessInfoObj,
                                                             options,
                                                             prog_caller, 
@@ -75,10 +75,12 @@ def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller,
                                        method_threads_large=options.method_threads_large,
                                        method_threads_small=options.method_threads_small,
                                        threshold=options.threshold, 
-                                       tasksize=taskSizes,
+                                       tasksize=tasksizes,
                                        qListOfList=False,
                                        q_print_on_error=True, 
-                                       q_always_print_stderr=False)
+                                       q_always_print_stderr=False,
+                                       old_version=options.old_version
+                                       )
 
     # remove BLAST databases
     util.PrintTime("Done all-versus-all sequence search")
@@ -119,15 +121,20 @@ def CreateSearchDatabases(speciesInfoObj, options, prog_caller, q_unassigned_gen
                 files.FileHandler.LogFailAndExit("ERROR: diamond makedb failed")
 
 
-def RunSearch_accelerate(options, speciessInfoObj, fn_diamond_db, prog_caller, q_one_query=False):
+def RunSearch_accelerate(options, 
+                         speciessInfoObj, 
+                         fn_diamond_db, 
+                         prog_caller, 
+                         q_one_query=False):
     name_to_print = "BLAST" if options.search_program == "blast" else options.search_program
     util.PrintUnderline("Running %s profiles search" % name_to_print)
-    commands, results_files = run_info.GetOrderedSearchCommands_accelerate(speciessInfoObj, 
+    commands, tasksizes, results_files = run_info.GetOrderedSearchCommands_accelerate(speciessInfoObj, 
                                                        fn_diamond_db, 
                                                        options,
                                                        prog_caller, 
                                                        q_one_query=q_one_query, 
                                                        threads=options.nBlast)
+
     if q_one_query:
         return_code = parallel_task_manager.RunCommand(commands[0], qPrintOnError=True)
         if return_code != 0:
@@ -136,6 +143,18 @@ def RunSearch_accelerate(options, speciessInfoObj, fn_diamond_db, prog_caller, q
         util.PrintTime("Done profiles search\n")
         return results_files
     
-    program_caller.RunParallelCommands(options.nBlast, commands, qListOfList=False, q_print_on_error=True)
+    program_caller.RunParallelCommands(options.nBlast, 
+                                        commands,     
+                                        method_threads=options.method_threads, 
+                                       method_threads_large=options.method_threads_large,
+                                       method_threads_small=options.method_threads_small,
+                                       threshold=options.threshold,
+                                       tasksize=tasksizes, 
+                                       qListOfList=False,
+                                       q_print_on_error=True, 
+                                       q_always_print_stderr=False,
+                                       old_version=options.old_version
+                                       )
+
     util.PrintTime("Done profiles search")
     return results_files

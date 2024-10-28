@@ -141,6 +141,7 @@ def GetOrthologues(speciesInfoObj, options, prog_caller, i_og_restart=0):
                                     options.method_threads_large,
                                     options.method_threads_small,
                                     options.threshold,
+                                    options.old_version,
                                     options.speciesTreeFN,
                                     options.qStopAfterSeqs,
                                     options.qStopAfterAlignments,

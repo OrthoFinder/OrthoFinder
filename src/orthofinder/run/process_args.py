@@ -59,12 +59,13 @@ class Options(object):#
         self.gapextend = None#
         self.extended_filename = False
         self.method_threads = None
-        self.rm_gene_trees = False
-        self.rm_resolved_gene_trees = False
+        self.rm_gene_trees = True
+        self.rm_resolved_gene_trees = True
         self.cmd_order="descending"  #"ascending"
         self.threshold=None
         self.method_threads_large = None 
         self.method_threads_small = None
+        self.old_version = False
 
     def what(self):
         for k, v in self.__dict__.items():
@@ -335,10 +336,13 @@ def ProcessArgs(prog_caller, args):
                 util.Fail()
 
         elif arg == "-rmgt" or arg == "--rm-gene-trees":
-            options.rm_gene_trees = True
+            options.rm_gene_trees = False
 
         elif arg == "-rmrgt" or arg == "--rm-resolved-gene-trees":
-            options.rm_resolved_gene_trees = True
+            options.rm_resolved_gene_trees = False
+
+        elif arg == "--old-version":
+            options.old_version = True
 
         elif arg == "-1":
             options.qDoubleBlast = False

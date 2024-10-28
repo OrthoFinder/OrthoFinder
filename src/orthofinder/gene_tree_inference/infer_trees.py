@@ -24,6 +24,7 @@ def InferGeneAndSpeciesTrees(ogSet,
                        method_threads_large=None,
                        method_threads_small=None, 
                        threshold=None,
+                       old_version=False,
                        userSpeciesTree = None,
                        qStopAfterSeqs = False,
                        qStopAfterAlign = False,
@@ -90,6 +91,7 @@ def InferGeneAndSpeciesTrees(ogSet,
                                                method_threads_large=method_threads_large,
                                                method_threads_small=method_threads_small, 
                                                threshold=threshold,
+                                               old_version=old_version
                                                )
         util.PrintTime("Done MSA/Trees")
         if qDoMSASpeciesTree:

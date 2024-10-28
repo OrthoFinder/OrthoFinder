@@ -332,6 +332,7 @@ class TreesForOrthogroups(object):
                 method_threads_large=None,
                 method_threads_small=None, 
                 threshold=None,
+                old_version=False,
                 ):
         print_on_error = True
         idDict.update(speciesIdDict) # same code will then also convert concatenated alignment for species tree
@@ -366,7 +367,7 @@ class TreesForOrthogroups(object):
             aln_tasksize = [
                 os.stat(item).st_size
                 for fn, _ in orig_alignCommands_and_filenames
-                for item in fn.split() if os.path.isfile(item)
+                for item in fn.split() if os.path.isfile(item) and os.path.exists(item)
             ]
         if qStopAfterAlignments:
             util.PrintUnderline("Inferring multiple sequence alignments")
@@ -379,7 +380,9 @@ class TreesForOrthogroups(object):
                                                      method_threads_small=method_threads_small, 
                                                      threshold=threshold,
                                                      qTrim=qTrim,
-                                                     q_print_on_error=print_on_error)
+                                                     q_print_on_error=print_on_error,
+                                                     old_version=old_version
+                                                     )
             if qDoSpeciesTree:
                 CreateConcatenatedAlignment(iOgsForSpeciesTree, ogs, self.GetAlignmentFilename, concatenated_algn_fn, fSingleCopy)
                 # write OGs used to file
@@ -433,7 +436,7 @@ class TreesForOrthogroups(object):
                 tree_tasksize = [
                         os.stat(item).st_size
                         for cmd in orig_commands_and_filenames
-                        for item in cmd[0][0].split() if os.path.isfile(item)
+                        for item in cmd[0][0].split() if os.path.isfile(item) and os.path.exists(item)
                     ]
 
             pc.RunParallelCommandsAndMoveResultsFile(nProcesses, 
@@ -445,7 +448,9 @@ class TreesForOrthogroups(object):
                                                      method_threads_small=method_threads_small, 
                                                      threshold=threshold,
                                                      qTrim=qTrim,
-                                                     q_print_on_error=print_on_error)
+                                                     q_print_on_error=print_on_error,
+                                                     old_version=old_version
+                                                     )
             CreateConcatenatedAlignment(iOgsForSpeciesTree, ogs, self.GetAlignmentFilename, concatenated_algn_fn, fSingleCopy)
             # write OGs used to file
             dSpeciesTree = os.path.split(files.FileHandler.GetSpeciesTreeResultsFN(0, True))[0] + "/"
@@ -483,7 +488,7 @@ class TreesForOrthogroups(object):
             tree_tasksize = [
                         os.stat(item).st_size
                         for cmd in orig_commands_and_filenames
-                        for item in cmd[0][0].split() if os.path.isfile(item)
+                        for item in cmd[0][0].split() if os.path.isfile(item) and os.path.exists(item)
                     ]
 
         pc.RunParallelCommandsAndMoveResultsFile(nProcesses, 
@@ -495,7 +500,9 @@ class TreesForOrthogroups(object):
                                                  method_threads_small=method_threads_small, 
                                                  threshold=threshold,
                                                  qTrim=qTrim,
-                                                 q_print_on_error=print_on_error)
+                                                 q_print_on_error=print_on_error,
+                                                 old_version=old_version
+                                                 )
         
         # Convert ids to accessions for MSA
         accessionAlignmentFNs = [self.GetAlignmentFilename(i, True) for i in iogs_align]
