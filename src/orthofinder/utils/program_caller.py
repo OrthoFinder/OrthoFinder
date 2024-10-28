@@ -646,12 +646,12 @@ def RunParallelCommandsAndMoveResultsFile(nProcesses, commands_and_filenames, qL
         #     else:
         #         nProcesses_small_files = nProcesses
         #     nProcesses_large_files = mp.cpu_count() // int(method_threads_large) #np.amax((nProcesses // 8, 1))
-        
-        if nProcesses_small_files * int(method_threads_small) > mp.cpu_count():
-            nProcesses_small_files = mp.cpu_count() // int(method_threads_small)
-        
-        if nProcesses_large_files * int(method_threads_large) > mp.cpu_count():
-            nProcesses_large_files = mp.cpu_count() // int(method_threads_large)
+        if method_threads_small is not None and method_threads_large is not None:
+            if nProcesses_small_files * int(method_threads_small) > mp.cpu_count():
+                nProcesses_small_files = mp.cpu_count() // int(method_threads_small)
+            
+            if nProcesses_large_files * int(method_threads_large) > mp.cpu_count():
+                nProcesses_large_files = mp.cpu_count() // int(method_threads_large)
 
         if method_threads is not None:
             if nProcesses * int(method_threads) > mp.cpu_count():
@@ -665,7 +665,7 @@ def RunParallelCommandsAndMoveResultsFile(nProcesses, commands_and_filenames, qL
                                            qListOfList,
                                            q_print_on_error,
                                            q_always_print_stderr
-                                           ): cmd for cmd in small_file_commands}
+                                           ): cmd for cmd in small_file_commands if cmd is not None}
                 for future in concurrent.futures.as_completed(futures):
                     try:
                         result = future.result()
@@ -686,7 +686,7 @@ def RunParallelCommandsAndMoveResultsFile(nProcesses, commands_and_filenames, qL
                                            qListOfList,
                                            q_print_on_error,
                                            q_always_print_stderr
-                                           ): cmd for cmd in large_file_commands}
+                                           ): cmd for cmd in large_file_commands if cmd is not None}
                 for future in concurrent.futures.as_completed(futures):
                     try:
                         result = future.result()
@@ -721,7 +721,7 @@ def RunParallelCommandsAndMoveResultsFile(nProcesses, commands_and_filenames, qL
                         (cmd[1][0], cmd[1][1].replace("METHODTHREAD", method_threads)), 
                         (cmd[2][0].replace("METHODTHREAD", method_threads), cmd[2][1])]
                         if len(cmd) > 1 
-                        else ((cmd[0][0].replace("METHODTHREAD", method_threads), cmd[0][1])) 
+                        else [(cmd[0][0].replace("METHODTHREAD", method_threads), cmd[0][1])] 
                         for cmd in commands_and_filenames
                     ]
 
@@ -737,7 +737,7 @@ def RunParallelCommandsAndMoveResultsFile(nProcesses, commands_and_filenames, qL
                                     cmd, 
                                     qListOfList, 
                                     q_print_on_error, 
-                                    q_always_print_stderr): cmd for cmd in commands_and_filenames}
+                                    q_always_print_stderr): cmd for cmd in commands_and_filenames if cmd is not None}
 
             for future in concurrent.futures.as_completed(futures):
                 try:
@@ -752,7 +752,7 @@ def RunParallelCommandsAndMoveResultsFile(nProcesses, commands_and_filenames, qL
                     print(f"Exception with command {futures[future]}: {e}")
 
 q_print_first_traceback_0 = False
-def Worker_RunCommands_And_Move(cmd_and_filename_queue, qListOfLists, q_print_on_error, q_always_print_stderr):
+def Worker_RunCommands_And_Move(command_fns_list, qListOfLists, q_print_on_error, q_always_print_stderr):
     """
     Continuously takes commands that need to be run from the cmd_and_filename_queue until the queue is empty. If required, moves 
     the output filename produced by the cmd to a specified filename. The elements of the queue can be single cmd_filename tuples
@@ -772,14 +772,13 @@ def Worker_RunCommands_And_Move(cmd_and_filename_queue, qListOfLists, q_print_on
     # while True:
     try:
         # i, command_fns_list = cmd_and_filename_queue.get(True, 1)
-        command_fns_list = cmd_and_filename_queue
         
         # nDone = i - nProcesses + 1
         # if nDone >= 0 and divmod(nDone, 10 if nToDo <= 200 else 100 if nToDo <= 2000 else 1000)[1] == 0:
         #     util.PrintTime("Done %d of %d" % (nDone, nToDo))
         if not qListOfLists:
             command_fns_list = [command_fns_list]
-        
+    
         return_code = 1
         for command, fns in command_fns_list:
             if isinstance(command, types.FunctionType):
