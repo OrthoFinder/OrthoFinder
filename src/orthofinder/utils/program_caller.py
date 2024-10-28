@@ -467,6 +467,7 @@ def RunParallelCommands(nProcesses, commands, qListOfList,
                         method_threads_large=None,
                         method_threads_small=None, 
                         threshold=None, 
+                        cmd_order="ascending",
                         tasksize=None,
                         qTrim=False,
                         q_print_on_error=False, 
@@ -484,6 +485,7 @@ def RunParallelCommands(nProcesses, commands, qListOfList,
                                           method_threads_large,
                                           method_threads_small, 
                                           threshold,
+                                          cmd_order,
                                           tasksize,
                                           qTrim,
                                           q_print_on_error,
@@ -530,6 +532,7 @@ def RunParallelCommandsAndMoveResultsFile(nProcesses, commands_and_filenames, qL
                                           method_threads_large=None,
                                           method_threads_small=None, 
                                           threshold=None,
+                                          cmd_order="ascending",
                                           tasksize=None,
                                           qTrim=False,
                                           q_print_on_error=False,
@@ -662,47 +665,85 @@ def RunParallelCommandsAndMoveResultsFile(nProcesses, commands_and_filenames, qL
                     nProcesses_small_files = mp.cpu_count() // int(method_threads)
                     nProcesses_large_files = mp.cpu_count() // int(method_threads)
 
-            if small_file_commands:
-                with concurrent.futures.ThreadPoolExecutor(max_workers=nProcesses_small_files) as executor:
-                    futures = {executor.submit(Worker_RunCommands_And_Move, 
-                                            cmd, 
-                                            qListOfList,
-                                            q_print_on_error,
-                                            q_always_print_stderr
-                                            ): cmd for cmd in small_file_commands if cmd is not None}
-                    for future in concurrent.futures.as_completed(futures):
-                        try:
-                            result = future.result()
 
-                            completed_count += 1
-                            if divmod(completed_count, 10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000)[1] == 0:
-                                util.PrintTime("Done %d of %d" % (completed_count, total_commands))
+            if cmd_order == "ascending":
+                if small_file_commands:
+                    split_files_MP(nProcesses_small_files, 
+                        small_file_commands, 
+                        completed_count, 
+                        total_commands,
+                        qListOfList,
+                        q_print_on_error,
+                        q_always_print_stderr)
+                
+                if large_file_commands:
+                    split_files_MP(nProcesses_large_files, 
+                                    large_file_commands, 
+                                    completed_count, 
+                                    total_commands,
+                                    qListOfList,
+                                    q_print_on_error,
+                                    q_always_print_stderr)
+            else:
+                if large_file_commands:
+                    split_files_MP(nProcesses_large_files, 
+                                    large_file_commands, 
+                                    completed_count, 
+                                    total_commands,
+                                    qListOfList,
+                                    q_print_on_error,
+                                    q_always_print_stderr)
+                    
+                if small_file_commands:
+                    split_files_MP(nProcesses_small_files, 
+                        small_file_commands, 
+                        completed_count, 
+                        total_commands,
+                        qListOfList,
+                        q_print_on_error,
+                        q_always_print_stderr)
+                
+            # if small_file_commands:
+                # with concurrent.futures.ThreadPoolExecutor(max_workers=nProcesses_small_files) as executor:
+                #     futures = {executor.submit(Worker_RunCommands_And_Move, 
+                #                             cmd, 
+                #                             qListOfList,
+                #                             q_print_on_error,
+                #                             q_always_print_stderr
+                #                             ): cmd for cmd in small_file_commands if cmd is not None}
+                #     for future in concurrent.futures.as_completed(futures):
+                #         try:
+                #             result = future.result()
 
-                            if result != 0 and q_print_on_error:
-                                print(f"ERROR occurred with small-file command: {futures[future]}")
-                        except Exception as e:
-                            print(f"Exception with small-file command {futures[future]}: {e}")
+                #             completed_count += 1
+                #             if divmod(completed_count, 10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000)[1] == 0:
+                #                 util.PrintTime("Done %d of %d" % (completed_count, total_commands))
 
-            if large_file_commands:
-                with concurrent.futures.ThreadPoolExecutor(max_workers=nProcesses_large_files) as executor:
-                    futures = {executor.submit(Worker_RunCommands_And_Move, 
-                                            cmd, 
-                                            qListOfList,
-                                            q_print_on_error,
-                                            q_always_print_stderr
-                                            ): cmd for cmd in large_file_commands if cmd is not None}
-                    for future in concurrent.futures.as_completed(futures):
-                        try:
-                            result = future.result()
+                #             if result != 0 and q_print_on_error:
+                #                 print(f"ERROR occurred with small-file command: {futures[future]}")
+                #         except Exception as e:
+                #             print(f"Exception with small-file command {futures[future]}: {e}")
 
-                            completed_count += 1
-                            if divmod(completed_count, 10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000)[1] == 0:
-                                util.PrintTime("Done %d of %d" % (completed_count, total_commands))
+            # if large_file_commands:
+                # with concurrent.futures.ThreadPoolExecutor(max_workers=nProcesses_large_files) as executor:
+                #     futures = {executor.submit(Worker_RunCommands_And_Move, 
+                #                             cmd, 
+                #                             qListOfList,
+                #                             q_print_on_error,
+                #                             q_always_print_stderr
+                #                             ): cmd for cmd in large_file_commands if cmd is not None}
+                #     for future in concurrent.futures.as_completed(futures):
+                #         try:
+                #             result = future.result()
 
-                            if result != 0 and q_print_on_error:
-                                print(f"ERROR occurred with large-file command: {futures[future]}")
-                        except Exception as e:
-                            print(f"Exception with large-file command {futures[future]}: {e}")
+                #             completed_count += 1
+                #             if divmod(completed_count, 10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000)[1] == 0:
+                #                 util.PrintTime("Done %d of %d" % (completed_count, total_commands))
+
+                #             if result != 0 and q_print_on_error:
+                #                 print(f"ERROR occurred with large-file command: {futures[future]}")
+                #         except Exception as e:
+                #             print(f"Exception with large-file command {futures[future]}: {e}")
 
         else:
             if method_threads is None:
@@ -754,6 +795,38 @@ def RunParallelCommandsAndMoveResultsFile(nProcesses, commands_and_filenames, qL
                             print(f"ERROR occurred with command: {futures[future]}")
                     except Exception as e:
                         print(f"Exception with command {futures[future]}: {e}")
+
+
+def split_files_MP(nthreads, 
+                   file_commands, 
+                   completed_count, 
+                   total_commands,
+                    qListOfList,
+                    q_print_on_error,
+                    q_always_print_stderr):
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=nthreads) as executor:
+        futures = {executor.submit(Worker_RunCommands_And_Move, 
+                                cmd, 
+                                qListOfList,
+                                q_print_on_error,
+                                q_always_print_stderr
+                                ): cmd for cmd in file_commands if cmd is not None}
+        
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                result = future.result()
+
+                completed_count += 1
+                if divmod(completed_count, 10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000)[1] == 0:
+                    util.PrintTime("Done %d of %d" % (completed_count, total_commands))
+
+                if result != 0 and q_print_on_error:
+                    print(f"ERROR occurred with large-file command: {futures[future]}")
+            except Exception as e:
+                print(f"Exception with large-file command {futures[future]}: {e}")
+
+
 
 q_print_first_traceback_0 = False
 def Worker_RunCommands_And_Move(command_fns_list, qListOfLists, q_print_on_error, q_always_print_stderr):

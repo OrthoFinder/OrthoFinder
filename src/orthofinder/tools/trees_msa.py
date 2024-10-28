@@ -379,6 +379,7 @@ class TreesForOrthogroups(object):
                                                      method_threads_large=method_threads_large,
                                                      method_threads_small=method_threads_small, 
                                                      threshold=threshold,
+                                                     cmd_order=cmd_order,
                                                      qTrim=qTrim,
                                                      q_print_on_error=print_on_error,
                                                      old_version=old_version
@@ -447,6 +448,7 @@ class TreesForOrthogroups(object):
                                                      method_threads_large=method_threads_large,
                                                      method_threads_small=method_threads_small, 
                                                      threshold=threshold,
+                                                     cmd_order=cmd_order,
                                                      qTrim=qTrim,
                                                      q_print_on_error=print_on_error,
                                                      old_version=old_version
@@ -499,6 +501,7 @@ class TreesForOrthogroups(object):
                                                  method_threads_large=method_threads_large,
                                                  method_threads_small=method_threads_small, 
                                                  threshold=threshold,
+                                                 cmd_order=cmd_order,
                                                  qTrim=qTrim,
                                                  q_print_on_error=print_on_error,
                                                  old_version=old_version
