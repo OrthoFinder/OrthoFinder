@@ -665,43 +665,26 @@ def RunParallelCommandsAndMoveResultsFile(nProcesses, commands_and_filenames, qL
                     nProcesses_small_files = mp.cpu_count() // int(method_threads)
                     nProcesses_large_files = mp.cpu_count() // int(method_threads)
 
-
+            nProcesses_files = np.amin((nProcesses_small_files, nProcesses_large_files))
             if cmd_order == "ascending":
-                if small_file_commands:
-                    split_files_MP(nProcesses_small_files, 
-                        small_file_commands, 
-                        completed_count, 
-                        total_commands,
-                        qListOfList,
-                        q_print_on_error,
-                        q_always_print_stderr)
+                split_files_MP(nProcesses_files, 
+                    small_file_commands + large_file_commands, 
+                    completed_count, 
+                    total_commands,
+                    qListOfList,
+                    q_print_on_error,
+                    q_always_print_stderr)
                 
-                if large_file_commands:
-                    split_files_MP(nProcesses_large_files, 
-                                    large_file_commands, 
-                                    completed_count, 
-                                    total_commands,
-                                    qListOfList,
-                                    q_print_on_error,
-                                    q_always_print_stderr)
             else:
-                if large_file_commands:
-                    split_files_MP(nProcesses_large_files, 
-                                    large_file_commands, 
-                                    completed_count, 
-                                    total_commands,
-                                    qListOfList,
-                                    q_print_on_error,
-                                    q_always_print_stderr)
+                split_files_MP(nProcesses_files, 
+                            large_file_commands + small_file_commands, 
+                            completed_count, 
+                            total_commands,
+                            qListOfList,
+                            q_print_on_error,
+                            q_always_print_stderr)
                     
-                if small_file_commands:
-                    split_files_MP(nProcesses_small_files, 
-                        small_file_commands, 
-                        completed_count, 
-                        total_commands,
-                        qListOfList,
-                        q_print_on_error,
-                        q_always_print_stderr)
+
                 
             # if small_file_commands:
                 # with concurrent.futures.ThreadPoolExecutor(max_workers=nProcesses_small_files) as executor:
