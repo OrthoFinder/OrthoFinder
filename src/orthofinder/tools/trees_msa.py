@@ -297,21 +297,19 @@ class TreesForOrthogroups(object):
               
     def GetAlignmentCommandsAndNewFilenames(self, ogs, i_og_restart=0, method_threads=None):
         iogs_align = [i for i, og in enumerate(ogs) if len(og) >= 2 and i >= i_og_restart]
-        filtered_ogs = [og for i, og in enumerate(ogs) if len(og) >= 2 and i >= i_og_restart]
         infn_list = [self.GetFastaFilename(i) for i in iogs_align]
         outfn_list = [self.GetAlignmentFilename(i) for i in iogs_align]
         id_list = ["OG%07d" % i for i in iogs_align]
         nSeqs = [len(ogs[i]) for i in iogs_align]
-        return filtered_ogs, self.program_caller.GetMSACommands(self.msa_program, infn_list, outfn_list, id_list, nSeqs, method_threads=method_threads), iogs_align
+        return self.program_caller.GetMSACommands(self.msa_program, infn_list, outfn_list, id_list, nSeqs, method_threads=method_threads), iogs_align
         
     def GetTreeCommands(self, alignmentsForTree, iogs_align, ogs, method_threads=None):
         iogs_tree = [i for i in iogs_align if len(ogs[i]) >= 3]
         alignmentsForTree = [alignmentsForTree[i] for i, iog in enumerate(iogs_align) if len(ogs[iog]) >= 3]  # Remove those to align with tree filenames
-        filtered_ogs = [ogs[iog] for iog in iogs_align if len(ogs[iog]) >= 3]
         outfn_list = [self.GetTreeFilename(i) for i in iogs_tree]
         id_list = ["OG%07d" % i for i in iogs_tree]
         nSeqs = [len(ogs[i]) for i in iogs_tree]
-        return filtered_ogs, self.program_caller.GetTreeCommands(self.tree_program, alignmentsForTree, outfn_list, id_list, nSeqs, method_threads=method_threads), iogs_tree
+        return self.program_caller.GetTreeCommands(self.tree_program, alignmentsForTree, outfn_list, id_list, nSeqs, method_threads=method_threads), iogs_tree
      
     def RenameAlignmentTaxa(self, idsAlignFNS, accAlignFNs, idsDict):
         for i, (alignFN, outAlignFN) in enumerate(zip(idsAlignFNS, accAlignFNs)):
@@ -354,7 +352,7 @@ class TreesForOrthogroups(object):
             concatenated_algn_fn = files.FileHandler.GetSpeciesTreeConcatAlignFN()
         else:
             iOgsForSpeciesTree = []
-        aln_filtered_ogs, orig_alignCommands_and_filenames, orig_iogs_align = self.GetAlignmentCommandsAndNewFilenames(ogs, i_og_restart, method_threads=method_threads)
+        orig_alignCommands_and_filenames, orig_iogs_align = self.GetAlignmentCommandsAndNewFilenames(ogs, i_og_restart, method_threads=method_threads)
         
 
         alignCommands_and_filenames = copy.deepcopy(orig_alignCommands_and_filenames)
@@ -406,7 +404,7 @@ class TreesForOrthogroups(object):
         # 3. Create second list of commands [speciestree] + [remaining alignments and trees]
         alignmentFilesToUse = [self.GetAlignmentFilename(i) for i in iogs_align]
 
-        tree_filtered_ogs, orig_treeCommands_and_filenames, orig_iogs_tree = self.GetTreeCommands(alignmentFilesToUse, 
+        orig_treeCommands_and_filenames, orig_iogs_tree = self.GetTreeCommands(alignmentFilesToUse, 
                                                                      iogs_align, 
                                                                      ogs,
                                                                      method_threads=method_threads)

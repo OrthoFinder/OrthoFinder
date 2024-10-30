@@ -52,23 +52,23 @@
     },
     "diamond": {
         "program_type": "search",
-        "db_cmd": "diamond makedb --ignore-warnings --in INPUT -d OUTPUT",
-        "search_cmd": "diamond blastp --ignore-warnings -d DATABASE -q INPUT -o OUTPUT --matrix SCOREMATRIX --gapopen GAPOPEN --gapextend GAPEXTEND --more-sensitive -p 1 --quiet -e 0.001 --compress 1"
+        "db_cmd": "diamond makedb --threads METHODTHREAD --ignore-warnings --in INPUT -d OUTPUT",
+        "search_cmd": "diamond blastp --threads METHODTHREAD --ignore-warnings -d DATABASE -q INPUT -o OUTPUT --matrix SCOREMATRIX --gapopen GAPOPEN --gapextend GAPEXTEND --more-sensitive -p 1 --quiet -e 0.001 --compress 1"
     },
     "diamond_ultra_sens": {
         "program_type": "search",
-        "db_cmd": "diamond makedb --ignore-warnings --in INPUT -d OUTPUT",
-        "search_cmd": "diamond blastp --ignore-warnings -d DATABASE -q INPUT -o OUTPUT --matrix SCOREMATRIX --gapopen GAPOPEN --gapextend GAPEXTEND --ultra-sensitive -p 1 --quiet -e 0.001 --compress 1"
+        "db_cmd": "diamond makedb --threads METHODTHREAD --ignore-warnings --in INPUT -d OUTPUT",
+        "search_cmd": "diamond blastp --threads METHODTHREAD --ignore-warnings -d DATABASE -q INPUT -o OUTPUT --matrix SCOREMATRIX --gapopen GAPOPEN --gapextend GAPEXTEND --ultra-sensitive -p 1 --quiet -e 0.001 --compress 1"
     },
     "diamond_custom": {
         "program_type": "search",
-        "db_cmd": "diamond makedb --ignore-warnings --in INPUT -d OUTPUT",
-        "search_cmd": "diamond blastp --ignore-warnings -d DATABASE -q INPUT -o OUTPUT --custom-matrix SCOREMATRIX  --gapopen GAPOPEN --gapextend GAPEXTEND --more-sensitive -p 1 --quiet -e 0.001 --compress 1"
+        "db_cmd": "diamond makedb --threads METHODTHREAD --ignore-warnings --in INPUT -d OUTPUT",
+        "search_cmd": "diamond blastp --threads METHODTHREAD --ignore-warnings -d DATABASE -q INPUT -o OUTPUT --custom-matrix SCOREMATRIX  --gapopen GAPOPEN --gapextend GAPEXTEND --more-sensitive -p 1 --quiet -e 0.001 --compress 1"
     },
     "diamond_ultra_sens_custom": {
         "program_type": "search",
-        "db_cmd": "diamond makedb --ignore-warnings --in INPUT -d OUTPUT",
-        "search_cmd": "diamond blastp --ignore-warnings -d DATABASE -q INPUT -o OUTPUT --custom-matrix SCOREMATRIX  --gapopen GAPOPEN --gapextend GAPEXTEND --ultra-sensitive -p 1 --quiet -e 0.001 --compress 1"
+        "db_cmd": "diamond makedb --threads METHODTHREAD --ignore-warnings --in INPUT -d OUTPUT",
+        "search_cmd": "diamond blastp --threads METHODTHREAD --ignore-warnings -d DATABASE -q INPUT -o OUTPUT --custom-matrix SCOREMATRIX  --gapopen GAPOPEN --gapextend GAPEXTEND --ultra-sensitive -p 1 --quiet -e 0.001 --compress 1"
     },
     "blast_gz": {
         "program_type": "search",
