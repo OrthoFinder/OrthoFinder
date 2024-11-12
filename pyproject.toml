@@ -5,17 +5,17 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "orthofinder"
 authors = [
-    {name = "David Emms", email = "david_emms@hotmail.com"},
-    {name = "Yi Liu", email = "caoxen7ys@yahoo.com"}
+    { name = "David Emms", email = "david_emms@hotmail.com" },
+    { name = "Yi Liu", email = "caoxen7ys@yahoo.com" },
 ]
 description = "Phylogenetic orthology inference for comparative genomics"
 readme = "README.md"
-version= "3.0.1"
+version = "3.0.1"
 requires-python = ">=3.8"
 keywords = [
     "comparative genomics",
-    "Orthology inference", 
-    "Phylogeneticrelationships"
+    "Orthology inference",
+    "Phylogeneticrelationships",
 ]
 license = { file = "License" }
 classifiers = [
@@ -33,48 +33,40 @@ classifiers = [
     'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
 
     # Specify the Python versions you support here.
-    'Programming Language :: Python :: 3.8', # tested
-    'Programming Language :: Python :: 3.9', # tested
+    'Programming Language :: Python :: 3.8',  # tested
+    'Programming Language :: Python :: 3.9',  # tested
     "Programming Language :: Python :: 3.10", # base version, tested
     "Programming Language :: Python :: 3.11", # tested
     "Programming Language :: Python :: 3.12", # tested
 ]
-dependencies = [
-    "numpy",
-    "scipy",
-    "scikit-learn",
-    "biopython"
+dependencies = ["numpy", "scipy", "scikit-learn", "biopython"]
+
+[project.urls]
+repository = "https://github.com/davidemms/OrthoFinder"
+
+[project.optional-dependencies]
+build = ["build", "twine", "wheel"]
+dev = [
+    "python-semantic-release",
+    "pytest",
+    "pytest-cov",
+    "setuptools>=64",
+    "setuptools_scm>=8",
 ]
+colors = ["rich"]
 
-    [project.urls]
-    repository = "https://github.com/davidemms/OrthoFinder"
-
-    [project.optional-dependencies]
-    build = ["build", "twine"]
-    dev = [
-        "python-semantic-release",
-        "pytest",
-        "pytest-cov",
-        "build",
-        "wheel",
-        "setuptools>=64",
-        "setuptools_scm>=8"
-    ]
-
-    [project.scripts]
-    orthofinder = "orthofinder.run.__main__:main"
-    primary_transcript = "tools.primary_transcript:main"
-    make_ultrametric = "tools.make_ultrametric:main"
-    convert_orthofinder_tree_ids = "tools.convert_orthofinder_tree_ids:main"
+[project.scripts]
+orthofinder = "orthofinder.run.__main__:main"
+primary_transcript = "tools.primary_transcript:main"
+make_ultrametric = "tools.make_ultrametric:main"
+convert_orthofinder_tree_ids = "tools.convert_orthofinder_tree_ids:main"
 
 [tool.semantic_release]
 version_variable = "pyproject.toml:version"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = [
-    "orthofinder",
-]
+include = ["orthofinder"]
 
 [tool.setuptools.package-data]
 "orthofinder.bin" = ["*"]
@@ -111,7 +103,7 @@ no_implicit_reexport = true
 [tool.setuptools_scm]
 version_file = "src/orthofinder/_version.py"
 version_scheme = "no-guess-dev"
-root = "."  
+root = "."
 tag_regex = "^(?P<prefix>v)?(?P<version>[^\\+]+)(?P<suffix>.*)?$"
 fallback_version = "2.5.5"
 local_scheme = "dirty"

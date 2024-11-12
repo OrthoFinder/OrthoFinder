@@ -1,74 +1,104 @@
 from ..utils import util
 from .. import g_mclInflation, nThreadsDefault
 
-def PrintHelp(prog_caller):  
+try:
+    from rich import print
+except ImportError:
+    ...
+
+
+def PrintHelp(prog_caller):
     msa_ops = prog_caller.ListMSAMethods()
     tree_ops = prog_caller.ListTreeMethods()
     search_ops = prog_caller.ListSearchMethods()
 
     print("")
-    print("SIMPLE USAGE:") 
+    print("SIMPLE USAGE:")
     print("Run full OrthoFinder analysis on FASTA format proteomes in <dir>")
-    print("  orthofinder [options] -f <dir>")   
+    print("  orthofinder [options] -f <dir>")
     # print("")
     # print("Add new species in <dir1> to previous run in <dir2> and run new analysis")
     # print("  orthofinder [options] -f <dir1> -b <dir2>")
     print("")
     print("To assign species from <dir1> to existing OrthoFinder orthogroups in <dir2>")
     print("  orthofinder [options] --assign <dir1> --core <dir2>")
-    print("") 
-      
+    print("")
+
     print("OPTIONS:")
-    print(" -t <int>                Number of parallel sequence search threads [Default = %d]" % nThreadsDefault)
+    print(
+        " -t <int>                Number of parallel sequence search threads [Default = %d]"
+        % nThreadsDefault
+    )
     print(" -a <int>                Number of parallel analysis threads")
     print(" -d                      Input is DNA sequences")
-    print(" -M <txt>                Method for gene tree inference. Options 'dendroblast' & 'msa'")
+    print(
+        " -M <txt>                Method for gene tree inference. Options 'dendroblast' & 'msa'"
+    )
     print("                         [Default = msa]")
     print(" -S <txt>                Sequence search program [Default = diamond]")
-    print("                         Options: " + ", ".join(['blast'] + search_ops))
+    print("                         Options: " + ", ".join(["blast"] + search_ops))
     print(" -A <txt>                MSA program, requires '-M msa' [Default = mafft]")
     print("                         Options: " + ", ".join(msa_ops))
-    print(" -T <txt>                Tree inference method, requires '-M msa' [Default = fasttree]")
-    print("                         Options: " + ", ".join(tree_ops)) 
-#    print(" -R <txt>                Tree reconciliation method [Default = of_recon]")
-#    print("                      Options: of_recon, dlcpar, dlcpar_convergedsearch")
+    print(
+        " -T <txt>                Tree inference method, requires '-M msa' [Default = fasttree]"
+    )
+    print("                         Options: " + ", ".join(tree_ops))
+    #    print(" -R <txt>                Tree reconciliation method [Default = of_recon]")
+    #    print("                      Options: of_recon, dlcpar, dlcpar_convergedsearch")
     print(" -s <file>               User-specified rooted species tree")
-    print(" -I <int>                MCL inflation parameter [Default = %0.1f]" % g_mclInflation)
-    print(" --save-space            Only create one compressed orthologs file per species")
+    print(
+        " -I <int>                MCL inflation parameter [Default = %0.1f]"
+        % g_mclInflation
+    )
+    print(
+        " --save-space            Only create one compressed orthologs file per species"
+    )
     print(" -x <file>               Info for outputting results in OrthoXML format")
     print(" -p <dir>                Write the temporary pickle files to <dir>")
     print(" -1                      Only perform one-way sequence search")
     print(" -X                      Don't add species names to sequence IDs")
-    print(" -y                      Split paralogous clades below root of a HOG into separate HOGs")
-    print(" -z                      Don't trim MSAs (columns>=90% gap, min. alignment length 500)")
-    print(" -n <txt>                Name to append to the results directory")  
-    print(" -o <txt>                Non-default results directory")  
+    print(
+        " -y                      Split paralogous clades below root of a HOG into separate HOGs"
+    )
+    print(
+        " -z                      Don't trim MSAs (columns>=90% gap, min. alignment length 500)"
+    )
+    print(" -n <txt>                Name to append to the results directory")
+    print(" -o <txt>                Non-default results directory")
     print(" -h                      Print this help text")
-    print(" -efn                    Extend the output directory name with the name of the scoring matrix, gap penalties, search program, MSA program and tree program")
+    print(
+        " -efn                    Extend the output directory name with the name of the scoring matrix, gap penalties, search program, MSA program and tree program"
+    )
     print(" --matrix <txt>          Scoring matrix allowed by DIAMOND")
     print(" --custom-matrix <txt>   Custom scoring matrix")
 
-    print("")    
-    print("WORKFLOW STOPPING OPTIONS:")   
-    print(" -op                     Stop after preparing input files for BLAST" )
+    print("")
+    print("WORKFLOW STOPPING OPTIONS:")
+    print(" -op                     Stop after preparing input files for BLAST")
     print(" -og                     Stop after inferring orthogroups")
     print(" -os                     Stop after writing sequence files for orthogroups")
     print("                         (requires '-M msa')")
     print(" -oa                     Stop after inferring alignments for orthogroups")
     print("                         (requires '-M msa')")
-    print(" -ot                     Stop after inferring gene trees for orthogroups " )
-   
-    print("")   
-    print("WORKFLOW RESTART COMMANDS:") 
-    print(" -b  <dir>               Start OrthoFinder from pre-computed BLAST results in <dir>")   
-    print(" -fg <dir>               Start OrthoFinder from pre-computed orthogroups in <dir>")
-    print(" -ft <dir>               Start OrthoFinder from pre-computed gene trees in <dir>")
+    print(" -ot                     Stop after inferring gene trees for orthogroups ")
+
+    print("")
+    print("WORKFLOW RESTART COMMANDS:")
+    print(
+        " -b  <dir>               Start OrthoFinder from pre-computed BLAST results in <dir>"
+    )
+    print(
+        " -fg <dir>               Start OrthoFinder from pre-computed orthogroups in <dir>"
+    )
+    print(
+        " -ft <dir>               Start OrthoFinder from pre-computed gene trees in <dir>"
+    )
 
     print("")
     print("VERSION:")
     print(" -v                      Show the current version number")
-    
+
     print("")
     print("LICENSE:")
     print(" Distributed under the GNU General Public License (GPLv3). See License.md")
-    util.PrintCitation() 
+    util.PrintCitation()
