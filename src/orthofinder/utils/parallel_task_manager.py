@@ -16,9 +16,9 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#  
+#
 #  When publishing work that uses OrthoFinder please cite:
-#      Emms, D.M. and Kelly, S. (2015) OrthoFinder: solving fundamental biases in whole genome comparisons dramatically 
+#      Emms, D.M. and Kelly, S. (2015) OrthoFinder: solving fundamental biases in whole genome comparisons dramatically
 #      improves orthogroup inference accuracy, Genome Biology 16:157
 #
 # For any enquiries send an email to David Emms
@@ -34,9 +34,14 @@ from concurrent.futures import ProcessPoolExecutor, wait, as_completed
 from .. import my_env
 from . import util
 try:
+    from rich import print
+except ImportError:
+    ...
+
+try:
     import queue
 except ImportError:
-    import Queue as queue     
+    import Queue as queue
 
 # uncomment to get round problem with python multiprocessing library that can set all cpu affinities to a single cpu
 # This can cause use of only a limited number of cpus in other cases so it has been commented out
@@ -45,55 +50,80 @@ except ImportError:
 #         subprocess.call("taskset -p 0xffffffffffff %d" % os.getpid(), shell=True, stdout=f)
 
 
-
 def PrintTime(message):
     print((str(datetime.datetime.now()).rsplit(".", 1)[0] + " : " + message))
     sys.stdout.flush()
 
+
 def PrintNoNewLine(text):
     sys.stdout.write(text)
 
+
 def ManageQueue(runningProcesses, cmd_queue):
     """Manage a set of runningProcesses working through cmd_queue.
-    If there is an error the exit all processes as quickly as possible and 
+    If there is an error the exit all processes as quickly as possible and
     exit via Fail() methods. Otherwise return when all work is complete
-    """            
+    """
     # set all completed processes to None
     qError = False
-#    dones = [False for _ in runningProcesses]
+    #    dones = [False for _ in runningProcesses]
     nProcesses = len(runningProcesses)
     nProcesses_list = list(range(nProcesses))
     while True:
-        if runningProcesses.count(None) == len(runningProcesses): break
-        time.sleep(.1)
-#        for proc in runningProcesses:
+        # if runningProcesses.count(None) == len(runningProcesses):
+        #     break
+        if all(proc is None for proc in runningProcesses):
+            break
+        time.sleep(0.1)
+        #        for proc in runningProcesses:
         for i in nProcesses_list:
             proc = runningProcesses[i]
-            if proc == None: continue
+            if proc == None:
+                continue
             if not proc.is_alive():
                 if proc.exitcode != 0:
                     qError = True
-                    while True:
+
+                    while not cmd_queue.empty():
                         try:
-                            cmd_queue.get(True, .1)
+                            cmd_queue.get_nowait()
                         except queue.Empty:
                             break
+
+                    for p in runningProcesses:
+                        if p is not None and p.is_alive():
+                            p.terminate()
+                    break
+
+                    # while True:
+                    #     try:
+                    #         cmd_queue.get(True, 0.1)
+                    #     except queue.Empty:
+                    #         break
                 runningProcesses[i] = None
     if qError:
         Fail()
 
-# not used 
+
+# not used
 def RunCommand_Simple(command):
     subprocess.call(command, env=my_env, shell=True)
 
 
 def RunCommand(command, qPrintOnError=False, qPrintStderr=True):
-    """ Run a single command """
-    popen = subprocess.Popen(command, env=my_env, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    """Run a single command"""
+    popen = subprocess.Popen(
+        command, env=my_env, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     if qPrintOnError:
         stdout, stderr = popen.communicate()
         if popen.returncode != 0:
-            print(("\nERROR: external program called by OrthoFinder returned an error code: %d" % popen.returncode))
+            print(
+                (
+                    "\nERROR: external program called by OrthoFinder returned an error code: %d"
+                    % popen.returncode
+                )
+            )
             print(("\nCommand: %s" % command))
             print(("\nstdout:\n%s" % stdout))
             print(("stderr:\n%s" % stderr))
@@ -107,44 +137,72 @@ def RunCommand(command, qPrintOnError=False, qPrintStderr=True):
         popen.communicate()
         return popen.returncode
 
-def CanRunCommand(command, qAllowStderr = False, qPrint = True, qRequireStdout=True, qCheckReturnCode=False):
-    if qPrint: PrintNoNewLine("Test can run \"%s\"" % command)       # print without newline
-    capture = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=my_env)
+
+def CanRunCommand(
+    command,
+    qAllowStderr=False,
+    qPrint=True,
+    qRequireStdout=True,
+    qCheckReturnCode=False,
+):
+    if qPrint:
+        PrintNoNewLine('Test can run "%s"' % command)  # print without newline
+    capture = subprocess.Popen(
+        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=my_env
+    )
     capture.wait()
     stdout = [x for x in capture.stdout]
     stderr = [x for x in capture.stderr]
     if qCheckReturnCode:
-        return_code_check = (capture.returncode == 0)
+        return_code_check = capture.returncode == 0
     else:
         return_code_check = True
-    if (len(stdout) > 0 or not qRequireStdout) and (qAllowStderr or len(stderr) == 0) and return_code_check:
-        if qPrint: print(" - ok")
+    if (
+        (len(stdout) > 0 or not qRequireStdout)
+        and (qAllowStderr or len(stderr) == 0)
+        and return_code_check
+    ):
+        if qPrint:
+            print(" - ok")
         return True
     else:
-        if qPrint: print(" - failed")
+        if qPrint:
+            print(" - failed")
         if not return_code_check:
             print("Returned a non-zero code: %d" % capture.returncode)
-        print("\nstdout:")        
-        for l in stdout: print(l)
-        print("\nstderr:")        
-        for l in stderr: print(l)
+        print("\nstdout:")
+        for l in stdout:
+            print(l)
+        print("\nstderr:")
+        for l in stderr:
+            print(l)
         return False
 
+
 q_print_first_traceback_0 = False
-def Worker_RunCommands_And_Move(cmd_and_filename_queue, nProcesses, nToDo, qListOfLists, q_print_on_error, q_always_print_stderr):
+
+
+def Worker_RunCommands_And_Move(
+    cmd_and_filename_queue,
+    nProcesses,
+    nToDo,
+    qListOfLists,
+    q_print_on_error,
+    q_always_print_stderr,
+):
     """
-    Continuously takes commands that need to be run from the cmd_and_filename_queue until the queue is empty. If required, moves 
+    Continuously takes commands that need to be run from the cmd_and_filename_queue until the queue is empty. If required, moves
     the output filename produced by the cmd to a specified filename. The elements of the queue can be single cmd_filename tuples
     or an ordered list of tuples that must be run in the provided order.
-  
+
     Args:
-        cmd_and_filename_queue - queue containing (cmd, actual_target_fn) tuples (if qListOfLists is False) or a list of such 
+        cmd_and_filename_queue - queue containing (cmd, actual_target_fn) tuples (if qListOfLists is False) or a list of such
             tuples (if qListOfLists is True). Alternatively, 'cmd' can be a python fn and actual_target_fn the fn to call it on.
         nProcesses - the number of processes that are working on the queue.
         nToDo - The total number of elements in the original queue
         qListOfLists - Boolean, whether each element of the queue corresponds to a single command or a list of ordered commands
         qShell - Boolean, should a shell be used to run the command.
-        
+
     Implementation:
         nProcesses and nToDo are used to print out the progress.
     """
@@ -152,7 +210,13 @@ def Worker_RunCommands_And_Move(cmd_and_filename_queue, nProcesses, nToDo, qList
         try:
             i, command_fns_list = cmd_and_filename_queue.get(True, 1)
             nDone = i - nProcesses + 1
-            if nDone >= 0 and divmod(nDone, 10 if nToDo <= 200 else 100 if nToDo <= 2000 else 1000)[1] == 0:
+            if (
+                nDone >= 0
+                and divmod(
+                    nDone, 10 if nToDo <= 200 else 100 if nToDo <= 2000 else 1000
+                )[1]
+                == 0
+            ):
                 PrintTime("Done %d of %d" % (nDone, nToDo))
             if not qListOfLists:
                 command_fns_list = [command_fns_list]
@@ -166,13 +230,17 @@ def Worker_RunCommands_And_Move(cmd_and_filename_queue, nProcesses, nToDo, qList
                         print("ERROR: Cannot run command: " + str(command))
                         print("Please report this issue.")
                     else:
-                        RunCommand(command, qPrintOnError=q_print_on_error, qPrintStderr=q_always_print_stderr)
+                        RunCommand(
+                            command,
+                            qPrintOnError=q_print_on_error,
+                            qPrintStderr=q_always_print_stderr,
+                        )
                         if fns != None:
                             actual, target = fns
                             if os.path.exists(actual):
                                 os.rename(actual, target)
         except queue.Empty:
-            return     
+            return
         except Exception as e:
             print("WARNING: ")
             print(str(e))
@@ -183,14 +251,17 @@ def Worker_RunCommands_And_Move(cmd_and_filename_queue, nProcesses, nToDo, qList
         except:
             print("WARNING: Unknown caught unknown exception")
 
+
 q_print_first_traceback_1 = False
+
+
 def Worker_RunMethod(Function, args_queue):
     while True:
         try:
-            args = args_queue.get(True, .1)
+            args = args_queue.get(True, 0.1)
             Function(*args)
         except queue.Empty:
-            return 
+            return
         except Exception as e:
             print("Error in function: " + str(Function))
             global q_print_first_traceback_1
@@ -199,8 +270,12 @@ def Worker_RunMethod(Function, args_queue):
                 q_print_first_traceback_1 = True
             return
 
+
 def RunMethodParallel(Function, args_queue, nProcesses):
-    runningProcesses = [mp.Process(target=Worker_RunMethod, args=(Function, args_queue)) for i_ in range(nProcesses)]
+    runningProcesses = [
+        mp.Process(target=Worker_RunMethod, args=(Function, args_queue))
+        for i_ in range(nProcesses)
+    ]
     for proc in runningProcesses:
         proc.start()
     ManageQueue(runningProcesses, args_queue)
@@ -222,7 +297,7 @@ def _I_Spawn_Processes(message_to_spawner, message_to_PTM):
     while True:
         try:
             # peak in qoq - it is the only method that tried to remove things from the queue
-            message = message_to_spawner.get(timeout=.1)
+            message = message_to_spawner.get(timeout=0.1)
             if message is None:
                 # Respond to request to terminate
                 return
@@ -249,6 +324,7 @@ def _I_Spawn_Processes(message_to_spawner, message_to_PTM):
             time.sleep(1)  # there wasn't anything this time, sleep then try again
     pass
 
+
 class ParallelTaskManager_singleton:
     """
     Creating new process requires forking parent process and can lea to very high RAM usage. One way to mitigate this is
@@ -258,6 +334,7 @@ class ParallelTaskManager_singleton:
     When running external programs there is no need to use multiprocessing, multithreading is sufficient since new process
     will be created anyway, so the SIL is no longer an issue.
     """
+
     class __Singleton(object):
         def __init__(self):
             """Implementation:
@@ -273,13 +350,19 @@ class ParallelTaskManager_singleton:
             # 'Done' (spawn_thread -> PTM) - the cmds from the cmd queue have completed
             # Anything else = (nParallel, nTasks) (PTM -> spawn_thread) - cmds (nTasks of them) have been placed in the cmd queue,
             #   they should be executed using nParallel threads
-            self.manager_process = mp.Process(target=_I_Spawn_Processes, args=(self.message_to_spawner, self.message_to_PTM))
+            self.manager_process = mp.Process(
+                target=_I_Spawn_Processes,
+                args=(self.message_to_spawner, self.message_to_PTM),
+            )
             self.manager_process.start()
+
     instance = None
 
     def __init__(self):
         if not ParallelTaskManager_singleton.instance:
-            ParallelTaskManager_singleton.instance = ParallelTaskManager_singleton.__Singleton()
+            ParallelTaskManager_singleton.instance = (
+                ParallelTaskManager_singleton.__Singleton()
+            )
 
     def RunParallel(self, func, args_list, nParallel):
         """
@@ -312,16 +395,18 @@ def RunParallelMethods(func, args_list, nProcesses):
     ptm = ParallelTaskManager_singleton()
     ptm.RunParallel(func, args_list, nProcesses)
 
+
 def Success():
     ptm = ParallelTaskManager_singleton()
     ptm.Stop()
     sys.exit()
 
+
 def Fail():
     sys.stderr.flush()
     ptm = ParallelTaskManager_singleton()
     ptm.Stop()
-    print("ERROR: An error occurred, ***please review the error messages*** they may contain useful information about the problem.")
+    print(
+        "ERROR: An error occurred, ***please review the error messages*** they may contain useful information about the problem."
+    )
     sys.exit(1)
-
-

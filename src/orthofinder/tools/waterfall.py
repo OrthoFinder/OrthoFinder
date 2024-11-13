@@ -7,24 +7,32 @@ import numpy.core.numeric as numeric
 from scipy.optimize import curve_fit
 import multiprocessing as mp
 from ..utils import util, files, blast_file_processor, matrices
+
 try:
     import queue
 except ImportError:
     import Queue as queue
+try:
+    from rich import print
+except ImportError:
+    ...
+
 
 """
 scnorm
 -------------------------------------------------------------------------------
 """
+
+
 class scnorm:
     @staticmethod
     def loglinear(x, a, b):
-        return a*np.log10(x)+b
+        return a * np.log10(x) + b
 
     @staticmethod
     def GetLengthArraysForMatrix(m, len_i, len_j):
         I, J = m.nonzero()
-        scores = [v for row in m.data for v in row]     # use fact that it's lil
+        scores = [v for row in m.data for v in row]  # use fact that it's lil
         Li = np.array(len_i[I])
         Lj = np.array(len_j[J])
         return Li, Lj, scores
@@ -45,54 +53,74 @@ class scnorm:
         topScores = []
         topLengths = []
         for i in range(nBins):
-            first = i*nInBins
-            last = min((i+1)*nInBins-1, nScores - 1)
-            theseLengths = l_sorted[first:last+1]
-            theseScores = s_sorted[first:last+1]
+            first = i * nInBins
+            last = min((i + 1) * nInBins - 1, nScores - 1)
+            theseLengths = l_sorted[first : last + 1]
+            theseScores = s_sorted[first : last + 1]
             cutOff = np.percentile(theseScores, percentileToKeep)
-            lengthsToKeep = [thisL for thisL, thisScore in zip(theseLengths, theseScores) if thisScore >= cutOff]
+            lengthsToKeep = [
+                thisL
+                for thisL, thisScore in zip(theseLengths, theseScores)
+                if thisScore >= cutOff
+            ]
             topLengths.extend(lengthsToKeep)
-            topScores.extend([thisScore for thisL, thisScore in zip(theseLengths, theseScores) if thisScore >= cutOff])
+            topScores.extend(
+                [
+                    thisScore
+                    for thisL, thisScore in zip(theseLengths, theseScores)
+                    if thisScore >= cutOff
+                ]
+            )
         return topLengths, topScores
 
     @staticmethod
     def CalculateFittingParameters(Lf, S):
-        pars,covar =  curve_fit(scnorm.loglinear, Lf, np.log10(S))
+        pars, covar = curve_fit(scnorm.loglinear, Lf, np.log10(S))
         return pars
 
     @staticmethod
     def NormaliseScoresByLogLengthProduct(b, Lq, Lh, params):
         rangeq = list(range(len(Lq)))
         rangeh = list(range(len(Lh)))
-        li_vals = Lq**(-params[0])
-        lj_vals = Lh**(-params[0])
+        li_vals = Lq ** (-params[0])
+        lj_vals = Lh ** (-params[0])
         li_matrix = sparse.csr_matrix((li_vals, (rangeq, rangeq)))
         lj_matrix = sparse.csr_matrix((lj_vals, (rangeh, rangeh)))
-        return sparse.lil_matrix(10**(-params[1]) * li_matrix * b * lj_matrix)
+        return sparse.lil_matrix(10 ** (-params[1]) * li_matrix * b * lj_matrix)
 
 
 """
 WaterfallMethod
 -------------------------------------------------------------------------------
 """
+
+
 class WaterfallMethod:
     @staticmethod
     def NormaliseScores(B, Lengths, iSpecies, jSpecies):
-        Li, Lj, scores = scnorm.GetLengthArraysForMatrix(B, Lengths[iSpecies], Lengths[jSpecies])
+        Li, Lj, scores = scnorm.GetLengthArraysForMatrix(
+            B, Lengths[iSpecies], Lengths[jSpecies]
+        )
         Lf = Li * Lj
         topLf, topScores = scnorm.GetTopPercentileOfScores(Lf, scores, 95)
         if len(topScores) > 1:
             fittingParameters = scnorm.CalculateFittingParameters(topLf, topScores)
-            return scnorm.NormaliseScoresByLogLengthProduct(B, Lengths[iSpecies], Lengths[jSpecies], fittingParameters)
+            return scnorm.NormaliseScoresByLogLengthProduct(
+                B, Lengths[iSpecies], Lengths[jSpecies], fittingParameters
+            )
         elif iSpecies == jSpecies and B.nnz == 0:
             print(
-                "WARNING: THIS IS UNCOMMON, there are zero hits when searching the genes in species %d against itself. Check the input proteome contains all the genes from that species and check the search program is working (default is diamond)." % iSpecies)
+                "WARNING: THIS IS UNCOMMON, there are zero hits when searching the genes in species %d against itself. Check the input proteome contains all the genes from that species and check the search program is working (default is diamond)."
+                % iSpecies
+            )
             return sparse.lil_matrix(B.get_shape())
         else:
             print(
-                "WARNING: Too few hits between species %d and species %d to normalise the scores, these hits will be ignored" % (
-                iSpecies, jSpecies))
+                "WARNING: Too few hits between species %d and species %d to normalise the scores, these hits will be ignored"
+                % (iSpecies, jSpecies)
+            )
             return sparse.lil_matrix(B.get_shape())
+
     @staticmethod
     def NormalisedBitScore(B, Lengths, iSpecies, jSpecies):
         """
@@ -107,14 +135,23 @@ class WaterfallMethod:
         Lh = Lengths[jSpecies]
         rangeq = list(range(len(Lq)))
         rangeh = list(range(len(Lh)))
-        li_vals = Lq**(-0.5)
-        lj_vals = Lh**(-0.5)
+        li_vals = Lq ** (-0.5)
+        lj_vals = Lh ** (-0.5)
         li_matrix = sparse.csr_matrix((li_vals, (rangeq, rangeq)))
         lj_matrix = sparse.csr_matrix((lj_vals, (rangeh, rangeh)))
         return sparse.lil_matrix(li_matrix * B * lj_matrix)
 
     @staticmethod
-    def ProcessBlastHits(seqsInfo, blastDir_list, Lengths, iSpecies, d_pickle, qDoubleBlast, v2_scores, q_allow_empty=False):
+    def ProcessBlastHits(
+        seqsInfo,
+        blastDir_list,
+        Lengths,
+        iSpecies,
+        d_pickle,
+        qDoubleBlast,
+        v2_scores,
+        q_allow_empty=False,
+    ):
         """
         iLimitNewSpecies: int - Only process fasta files with OrthoFidner ID >= iLimitNewSpecies
         """
@@ -123,25 +160,53 @@ class WaterfallMethod:
             # process up to the best hits for each species
             Bi = []
             for jSpecies in range(seqsInfo.nSpecies):
-                Bij = blast_file_processor.GetBLAST6Scores(seqsInfo, blastDir_list, seqsInfo.speciesToUse[iSpecies],
-                                                           seqsInfo.speciesToUse[jSpecies], qDoubleBlast=qDoubleBlast, q_allow_empty=q_allow_empty)
+                Bij = blast_file_processor.GetBLAST6Scores(
+                    seqsInfo,
+                    blastDir_list,
+                    seqsInfo.speciesToUse[iSpecies],
+                    seqsInfo.speciesToUse[jSpecies],
+                    qDoubleBlast=qDoubleBlast,
+                    q_allow_empty=q_allow_empty,
+                )
                 if v2_scores:
-                    Bij = WaterfallMethod.NormalisedBitScore(Bij, Lengths, iSpecies, jSpecies)
+                    Bij = WaterfallMethod.NormalisedBitScore(
+                        Bij, Lengths, iSpecies, jSpecies
+                    )
                 else:
-                    Bij = WaterfallMethod.NormaliseScores(Bij, Lengths, iSpecies, jSpecies)
+                    Bij = WaterfallMethod.NormaliseScores(
+                        Bij, Lengths, iSpecies, jSpecies
+                    )
                 Bi.append(Bij)
             matrices.DumpMatrixArray("B", Bi, iSpecies, d_pickle)
             BH = WaterfallMethod.GetBH_s(Bi, seqsInfo, iSpecies)
             matrices.DumpMatrixArray("BH", BH, iSpecies, d_pickle)
             util.PrintTime("Initial processing of species %d complete" % iSpecies)
 
+
     @staticmethod
-    def Worker_ProcessBlastHits(seqsInfo, blastDir_list, Lengths, cmd_queue, d_pickle, qDoubleBlast, v2_scores, q_allow_empty):
+    def Worker_ProcessBlastHits(
+        seqsInfo,
+        blastDir_list,
+        Lengths,
+        cmd_queue,
+        d_pickle,
+        qDoubleBlast,
+        v2_scores,
+        q_allow_empty,
+    ):
         while True:
             try:
                 iSpecies = cmd_queue.get(True, 1)
-                WaterfallMethod.ProcessBlastHits(seqsInfo, blastDir_list, Lengths, iSpecies, d_pickle=d_pickle,
-                                                 qDoubleBlast=qDoubleBlast, v2_scores=v2_scores, q_allow_empty=q_allow_empty)
+                WaterfallMethod.ProcessBlastHits(
+                    seqsInfo,
+                    blastDir_list,
+                    Lengths,
+                    iSpecies,
+                    d_pickle=d_pickle,
+                    qDoubleBlast=qDoubleBlast,
+                    v2_scores=v2_scores,
+                    q_allow_empty=q_allow_empty,
+                )
             except queue.Empty:
                 return
             except Exception:
@@ -153,7 +218,9 @@ class WaterfallMethod:
     def GetBH_s(pairwiseScoresMatrices, seqsInfo, iSpecies, tol=1e-3):
         nSeqs_i = seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[iSpecies]]
         bestHitForSequence = -1 * np.ones(nSeqs_i)
-        H = [None for i_ in range(seqsInfo.nSpecies)]  # create array of Nones to be replace by matrices
+        H = [
+            None for i_ in range(seqsInfo.nSpecies)
+        ]  # create array of Nones to be replace by matrices
         for j in range(seqsInfo.nSpecies):
             if iSpecies == j:
                 # identify orthologs then come back to paralogs
@@ -166,9 +233,15 @@ class WaterfallMethod:
                 if values.nnz == 0:
                     continue
                 m = max(values.data[0])
-                bestHitForSequence[kRow] = m if m > bestHitForSequence[kRow] else bestHitForSequence[kRow]
+                bestHitForSequence[kRow] = (
+                    m if m > bestHitForSequence[kRow] else bestHitForSequence[kRow]
+                )
                 # get all above this value with tolerance
-                temp = [index for index, value in zip(values.rows[0], values.data[0]) if value > m - tol]
+                temp = [
+                    index
+                    for index, value in zip(values.rows[0], values.data[0])
+                    if value > m - tol
+                ]
                 J.extend(temp)
                 I.extend(kRow * np.ones(len(temp), dtype=np.dtype(int)))
             H[j] = sparse.csr_matrix((np.ones(len(I)), (I, J)), shape=W.get_shape())
@@ -180,8 +253,11 @@ class WaterfallMethod:
             values = W.getrowview(kRow)
             if values.nnz == 0:
                 continue
-            temp = [index for index, value in zip(values.rows[0], values.data[0]) if
-                    value > bestHitForSequence[kRow] - tol]
+            temp = [
+                index
+                for index, value in zip(values.rows[0], values.data[0])
+                if value > bestHitForSequence[kRow] - tol
+            ]
             J.extend(temp)
             I.extend(kRow * np.ones(len(temp), dtype=np.dtype(int)))
         H[iSpecies] = sparse.csr_matrix((np.ones(len(I)), (I, J)), shape=W.get_shape())
@@ -192,10 +268,14 @@ class WaterfallMethod:
         # calculate RBH for species i
         BHix = matrices.LoadMatrixArray("BH", seqsInfo, iSpecies, d_pickle)
         BHxi = matrices.LoadMatrixArray("BH", seqsInfo, iSpecies, d_pickle, row=False)
-        RBHi = matrices.MatricesAndTr_s(BHix, BHxi)  # twice as much work as before (only did upper triangular before)
+        RBHi = matrices.MatricesAndTr_s(
+            BHix, BHxi
+        )  # twice as much work as before (only did upper triangular before)
         del BHix, BHxi
         B = matrices.LoadMatrixArray("B", seqsInfo, iSpecies, d_pickle)
-        connect = WaterfallMethod.ConnectAllBetterThanAnOrtholog_s(RBHi, B, seqsInfo, iSpecies, v2_scores)
+        connect = WaterfallMethod.ConnectAllBetterThanAnOrtholog_s(
+            RBHi, B, seqsInfo, iSpecies, v2_scores
+        )
         matrices.DumpMatrixArray("connect", connect, iSpecies, d_pickle)
 
     @staticmethod
@@ -205,7 +285,9 @@ class WaterfallMethod:
             while True:
                 try:
                     args = cmd_queue.get(True, 1)
-                    WaterfallMethod.ConnectCognates(*args, d_pickle=d_pickle, v2_scores=v2_scores)
+                    WaterfallMethod.ConnectCognates(
+                        *args, d_pickle=d_pickle, v2_scores=v2_scores
+                    )
                 except queue.Empty:
                     return
 
@@ -215,14 +297,24 @@ class WaterfallMethod:
         # Should use PTM?
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            with open(graphFN, 'w') as graphFile:
-                graphFile.write("(mclheader\nmcltype matrix\ndimensions %dx%d\n)\n" % (seqsInfo.nSeqs, seqsInfo.nSeqs))
+            with open(graphFN, "w") as graphFile:
+                graphFile.write(
+                    "(mclheader\nmcltype matrix\ndimensions %dx%d\n)\n"
+                    % (seqsInfo.nSeqs, seqsInfo.nSeqs)
+                )
                 graphFile.write("\n(mclmatrix\nbegin\n\n")
             pool = mp.Pool(nProcess)
-            pool.map(func, [(seqsInfo, graphFN, iSpec, files.FileHandler.GetPickleDir()) for iSpec in
-                                             range(seqsInfo.nSpecies)])
+            pool.map(
+                func,
+                [
+                    (seqsInfo, graphFN, iSpec, files.FileHandler.GetPickleDir())
+                    for iSpec in range(seqsInfo.nSpecies)
+                ],
+            )
             for iSp in range(seqsInfo.nSpecies):
-                subprocess.call("cat " + graphFN + "_%d" % iSp + " >> " + graphFN, shell=True)
+                subprocess.call(
+                    "cat " + graphFN + "_%d" % iSp + " >> " + graphFN, shell=True
+                )
                 os.remove(graphFN + "_%d" % iSp)
             # Cleanup
             pool.close()
@@ -233,9 +325,13 @@ class WaterfallMethod:
     @staticmethod
     def GetMostDistant_s(RBH, B, seqsInfo, iSpec):
         # most distant RBB - as cut-off for connecting to other genes
-        mostDistant = numeric.transpose(np.ones(seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[iSpec]]) * 1e9)
+        mostDistant = numeric.transpose(
+            np.ones(seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[iSpec]]) * 1e9
+        )
         # Best hit in another species: species-specific paralogues will now be connected - closer than any gene in any other species
-        bestHit = numeric.transpose(np.zeros(seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[iSpec]]))
+        bestHit = numeric.transpose(
+            np.zeros(seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[iSpec]])
+        )
         for kSpec in range(seqsInfo.nSpecies):
             B[kSpec] = B[kSpec].tocsr()
             if iSpec == kSpec:
@@ -246,9 +342,10 @@ class WaterfallMethod:
                 mostDistant[I] = np.minimum(B[kSpec][I, J], mostDistant[I])
         # anything that doesn't have an RBB, set to distance to the closest gene in another species. I.e. it will hit just that gene and all genes closer to it in the its own species
         I = mostDistant > 1e8
-        mostDistant[I] = bestHit[I] + 1e-6  # to connect to one in it's own species it must be closer than other species. We can deal with hits outside the species later
+        mostDistant[I] = (
+            bestHit[I] + 1e-6
+        )  # to connect to one in it's own species it must be closer than other species. We can deal with hits outside the species later
         return mostDistant
-
 
     @staticmethod
     def GetMostDistant_s_estimate_from_relative_rbhs(RBH, B, seqsInfo, iSpec, p=90):
@@ -261,7 +358,7 @@ class WaterfallMethod:
         Returns:
             mostDistant - the cut-off for each sequence in this species
         Implementation:
-			Stage 1: conversion factors for rbh from iSpec to furthest rbh
+                        Stage 1: conversion factors for rbh from iSpec to furthest rbh
             - Get the relative similarity scores for RBHs from iSpec to species j
               versus species k where the two RBHs exist
             - Find the p^th percentile of what the rbh would be in species j given
@@ -278,13 +375,25 @@ class WaterfallMethod:
         q_debug_gather = False
         RBH = [rbh.tocsr() for rbh in RBH]
         B = [b.tocsr() for b in B]
-        RBH_B = [(rbh.multiply(b)).tolil() for i, (rbh, b) in enumerate(zip(RBH, B)) if i!= iSpec]
+        RBH_B = [
+            (rbh.multiply(b)).tolil()
+            for i, (rbh, b) in enumerate(zip(RBH, B))
+            if i != iSpec
+        ]
         # create a vector of these scores
         nseqi = seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[iSpec]]
         # nsp-1 x nseqi
-        Z = np.matrix([[rhb_b.data[i][0] if rhb_b.getrowview(i).nnz == 1 else 0. for i in range(nseqi)] for rhb_b in RBH_B])   # RBH if it exists else zero
+        Z = np.matrix(
+            [
+                [
+                    rhb_b.data[i][0] if rhb_b.getrowview(i).nnz == 1 else 0.0
+                    for i in range(nseqi)
+                ]
+                for rhb_b in RBH_B
+            ]
+        )  # RBH if it exists else zero
         nsp_m1 = Z.shape[0]
-        Zr = 1./Z
+        Zr = 1.0 / Z
         rs = []
         for isp in range(nsp_m1):
             rs.append([])
@@ -292,39 +401,59 @@ class WaterfallMethod:
                 if isp == jsp:
                     rs[-1].append(1.0)
                     continue
-                ratios = np.multiply(Z[isp,:], Zr[jsp,:])
-                i_nonzeros = np.where(np.logical_and(np.isfinite(ratios), ratios > 0))  # only those which a score is availabe for both
+                ratios = np.multiply(Z[isp, :], Zr[jsp, :])
+                i_nonzeros = np.where(
+                    np.logical_and(np.isfinite(ratios), ratios > 0)
+                )  # only those which a score is availabe for both
                 if i_nonzeros[0].size == 0:
-                    rs[-1].append(1.)  # no conversion between this pair
+                    rs[-1].append(1.0)  # no conversion between this pair
                 else:
                     ratios = ratios[i_nonzeros]
-                    r = np.percentile(np.asarray(ratios), 100-p)
+                    r = np.percentile(np.asarray(ratios), 100 - p)
                     rs[-1].append(r)
                 # calculate the n vectors and take the min
-        C = np.matrix(rs)   # Conversion matrix:
+        C = np.matrix(rs)  # Conversion matrix:
         # To convert from a hit in species j to one in species i multiply by Cij
         # To convert from a hit in species j to the furthest hit, need to take
         # the column-wise minimum
-        C = np.amin(C, axis=0)    # conversion from a RBH to the estmate of what the most distant RBH should be
-        mostDistant = numeric.transpose(np.ones(seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[iSpec]])*1e9)
+        C = np.amin(
+            C, axis=0
+        )  # conversion from a RBH to the estmate of what the most distant RBH should be
+        mostDistant = numeric.transpose(
+            np.ones(seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[iSpec]]) * 1e9
+        )
 
-        bestHit = numeric.transpose(np.zeros(seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[iSpec]]))
+        bestHit = numeric.transpose(
+            np.zeros(seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[iSpec]])
+        )
         j_conversion = 0
         for kSpec in range(seqsInfo.nSpecies):
             B[kSpec] = B[kSpec].tocsr()
             if iSpec == kSpec:
                 continue
-            species_factor_to_most_distant = C[0,j_conversion]
-            if q_debug_gather: print(species_factor_to_most_distant)
+            species_factor_to_most_distant = C[0, j_conversion]
+            if q_debug_gather:
+                print(species_factor_to_most_distant)
             j_conversion += 1
             bestHit = np.maximum(bestHit, matrices.sparse_max_row(B[kSpec]))
             I, J = RBH[kSpec].nonzero()
             if len(I) > 0:
-                if q_debug_gather: print("%d updated" % np.count_nonzero(species_factor_to_most_distant * B[kSpec][I, J] < mostDistant[I]))
-                mostDistant[I] = np.minimum(species_factor_to_most_distant * B[kSpec][I, J], mostDistant[I])
+                if q_debug_gather:
+                    print(
+                        "%d updated"
+                        % np.count_nonzero(
+                            species_factor_to_most_distant * B[kSpec][I, J]
+                            < mostDistant[I]
+                        )
+                    )
+                mostDistant[I] = np.minimum(
+                    species_factor_to_most_distant * B[kSpec][I, J], mostDistant[I]
+                )
         # anything that doesn't have an RBB, set to distance to the closest gene in another species. I.e. it will hit just that gene and all genes closer to it in the its own species
         I = mostDistant > 1e8
-        mostDistant[I] = bestHit[I] + 1e-6   # to connect to one in its own species it must be closer than other species. We can deal with hits outside the species later
+        mostDistant[I] = (
+            bestHit[I] + 1e-6
+        )  # to connect to one in its own species it must be closer than other species. We can deal with hits outside the species later
         return mostDistant
 
     @staticmethod
@@ -334,24 +463,38 @@ class WaterfallMethod:
         for jSpec in range(seqsInfo.nSpecies):
             M = B[jSpec].tolil()
             if iSpec != jSpec:
-                IIJJ = [(i, j) for i, (valueRow, indexRow) in enumerate(zip(M.data, M.rows)) for j, v in
-                        zip(indexRow, valueRow) if v >= mostDistant[i]]
+                IIJJ = [
+                    (i, j)
+                    for i, (valueRow, indexRow) in enumerate(zip(M.data, M.rows))
+                    for j, v in zip(indexRow, valueRow)
+                    if v >= mostDistant[i]
+                ]
             else:
-                IIJJ = [(i, j) for i, (valueRow, indexRow) in enumerate(zip(M.data, M.rows)) for j, v in
-                        zip(indexRow, valueRow) if (i != j) and v >= mostDistant[i]]
+                IIJJ = [
+                    (i, j)
+                    for i, (valueRow, indexRow) in enumerate(zip(M.data, M.rows))
+                    for j, v in zip(indexRow, valueRow)
+                    if (i != j) and v >= mostDistant[i]
+                ]
             II = [i for (i, j) in IIJJ]
             JJ = [j for (i, j) in IIJJ]
             onesArray = np.ones(len(IIJJ))
-            mat = sparse.csr_matrix((onesArray, (II, JJ)),
-                                    shape=(nSeqs_i, seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[jSpec]]))
+            mat = sparse.csr_matrix(
+                (onesArray, (II, JJ)),
+                shape=(nSeqs_i, seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[jSpec]]),
+            )
             connect.append(mat)
         return connect
 
     @staticmethod
     def ConnectAllBetterThanAnOrtholog_s(RBH, B, seqsInfo, iSpec, v2_scores):
         if v2_scores:
-            mostDistant = WaterfallMethod.GetMostDistant_s_estimate_from_relative_rbhs(RBH, B, seqsInfo, iSpec)
+            mostDistant = WaterfallMethod.GetMostDistant_s_estimate_from_relative_rbhs(
+                RBH, B, seqsInfo, iSpec
+            )
         else:
             mostDistant = WaterfallMethod.GetMostDistant_s(RBH, B, seqsInfo, iSpec)
-        connect = WaterfallMethod.ConnectAllBetterThanCutoff_s(B, mostDistant, seqsInfo, iSpec)
+        connect = WaterfallMethod.ConnectAllBetterThanCutoff_s(
+            B, mostDistant, seqsInfo, iSpec
+        )
         return connect
