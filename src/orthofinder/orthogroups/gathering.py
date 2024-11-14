@@ -23,10 +23,9 @@ from . import orthogroups_set
 from ..utils import util, files, blast_file_processor, matrices, parallel_task_manager
 
 try:
-    from rich import print, progress
+    from rich import print
 except ImportError:
     ...
-
 
 def WriteGraph_perSpecies(args):
     seqsInfo, graphFN, iSpec, d_pickle = args
@@ -120,13 +119,6 @@ def DoOrthogroups(
     i_unassigned=None,
 ):
 
-    try:
-        width = os.get_terminal_size().columns
-    except OSError as e:
-        width = 80
-
-
-
     # Run Algorithm, cluster and output cluster files with original accessions
     q_unassigned = i_unassigned is not None
     util.PrintUnderline(
@@ -142,12 +134,13 @@ def DoOrthogroups(
 
     # Process BLAST hits
     util.PrintTime("Initial processing of each species")
-    cmd_queue = mp.Queue()
+
     blastDir_list = files.FileHandler.GetBlastResultsDir()
     if q_unassigned:
         blastDir_list = blastDir_list[:1]  # only use latet directory with unassigned gene searches
-    for iSpeciesJob in range(seqsInfo.nSpecies):  # The i-th job, not the OrthoFinder species ID
-        cmd_queue.put(iSpeciesJob)
+    # cmd_queue = mp.Queue()  
+    # for iSpeciesJob in range(seqsInfo.nSpecies):  # The i-th job, not the OrthoFinder species ID
+    #     cmd_queue.put(iSpeciesJob)
 
     files.FileHandler.GetPickleDir()  # create the pickle directory before the parallel processing to prevent a race condition
     # Should use PTM?
@@ -178,73 +171,127 @@ def DoOrthogroups(
 
 ## ----------------------------------------------------------------------------
 
-    gathering_progress = progress.Progress(
-        progress.TextColumn("[progress.description]{task.description}"),
-        progress.BarColumn(bar_width=width // 2),
-        progress.SpinnerColumn(),
-        progress.MofNCompleteColumn(),
-        progress.TimeElapsedColumn(),
-        transient=False,
-        # progress.TextColumn("{task.completed}/{task.total}")
-    )
-    task = gathering_progress.add_task(
-        "[yellow]Processing...", total=seqsInfo.nSpecies
-    )
+    # gathering_progress = progress.Progress(
+    #     progress.TextColumn("[progress.description]{task.description}"),
+    #     progress.BarColumn(bar_width=width // 2),
+    #     progress.SpinnerColumn(),
+    #     progress.MofNCompleteColumn(),
+    #     progress.TimeElapsedColumn(),
+    #     transient=False,
+    #     # progress.TextColumn("{task.completed}/{task.total}")
+    # )
+    # task = gathering_progress.add_task(
+    #     "[yellow]Processing...", total=seqsInfo.nSpecies
+    # )
+    gathering_progress, task = util.get_progressbar(seqsInfo.nSpecies)
     update_cycle = 1
 
-## ---------------------------------------------------------
+## ------------------------------------------------------------
     gathering_progress.start()
-    with ProcessPoolExecutor(max_workers=options.nProcessAlg) as executor:
-        # Submit the worker task n_processes times
-        futures = {
-            executor.submit(
-            waterfall.WaterfallMethod.ProcessBlastHits,
-            seqsInfo,
-            blastDir_list,
-            Lengths, 
-            iSpeciesJob,
-            files.FileHandler.GetPickleDir(),
-            options.qDoubleBlast,
-            options.v2_scores,
-            q_unassigned,
-            ): iSpeciesJob
-            for iSpeciesJob in range(seqsInfo.nSpecies)
-        }
-
-        for i, future in enumerate(as_completed(futures)):
-            iSpeciesJob = futures[future]
-            try:
-                future.result() 
-            except Exception as e:
-                for f in futures:
-                    f.cancel()
-                print("ERROR: Error processing files Blast%d_*" % seqsInfo.speciesToUse[iSpeciesJob])
-                util.Fail()  
-                break
-            finally:
-                if (i + 1) % update_cycle == 0:
-                    gathering_progress.update(task, advance=update_cycle)
+    result_queue = mp.Queue()
+    runningProcesses = []
+    for iSpecies in range(seqsInfo.nSpecies):
+        proc = mp.Process(
+            target=waterfall.WaterfallMethod.Worker_ProcessBlastHits,
+            args=(
+                seqsInfo,
+                blastDir_list,
+                Lengths,
+                iSpecies,
+                files.FileHandler.GetPickleDir(),
+                options.qDoubleBlast,
+                options.v2_scores,
+                q_unassigned,
+                result_queue,
+            ),
+        )
+        runningProcesses.append(proc)
+        proc.start()
+        if len(runningProcesses) >= options.nProcessAlg:
+            parallel_task_manager.ManageQueue(runningProcesses, result_queue, gathering_progress, task, update_cycle)
+            
+    parallel_task_manager.ManageQueue(runningProcesses, result_queue, gathering_progress, task, update_cycle)
     gathering_progress.stop()
+## ---------------------------------------------------------
+    # gathering_progress.start()
+
+    # with ProcessPoolExecutor(max_workers=options.nProcessAlg) as executor:
+    #     # Submit the worker task n_processes times
+    #     futures = {
+    #         executor.submit(
+    #         waterfall.WaterfallMethod.ProcessBlastHits,
+    #         seqsInfo,
+    #         blastDir_list,
+    #         Lengths, 
+    #         iSpeciesJob,
+    #         files.FileHandler.GetPickleDir(),
+    #         options.qDoubleBlast,
+    #         options.v2_scores,
+    #         q_unassigned,
+    #         ): iSpeciesJob
+    #         for iSpeciesJob in range(seqsInfo.nSpecies)
+    #     }
+
+    #     for i, future in enumerate(as_completed(futures)):
+    #         iSpeciesJob = futures[future]
+    #         try:
+    #             future.result() 
+    #         except Exception as e:
+    #             for f in futures:
+    #                 f.cancel()
+    #             print("ERROR: Error processing files Blast%d_*" % seqsInfo.speciesToUse[iSpeciesJob])
+    #             util.Fail()  
+    #             break
+    #         finally:
+    #             if (i + 1) % update_cycle == 0:
+    #                 gathering_progress.update(task, advance=update_cycle)
+    # gathering_progress.stop()
 ## --------------------------------------------------------------------
 
     if options.gathering_version < (3, 0):
-        cmd_queue = mp.Queue()
-        for iSpecies in range(seqsInfo.nSpecies):
-            cmd_queue.put((seqsInfo, iSpecies))
+        util.PrintTime("Connected putative homologues")
+        ## -------------------------------------------------------------
+
+        # cmd_queue = mp.Queue()
+        # for iSpecies in range(seqsInfo.nSpecies):
+        #     cmd_queue.put((seqsInfo, iSpecies))
         # args_list = [(cmd_queue, files.FileHandler.GetPickleDir(), options.v2_scores) for i_ in range(options.nProcessAlg)]
         # parallel_task_manager.RunParallelMethods(WaterfallMethod.Worker_ConnectCognates, args_list, options.nProcessAlg)
-        runningProcesses = [
-            mp.Process(
+        
+        # runningProcesses = [
+        #     mp.Process(
+        #         target=waterfall.WaterfallMethod.Worker_ConnectCognates,
+        #         args=(cmd_queue, files.FileHandler.GetPickleDir(), options.v2_scores),
+        #     )
+        #     for i_ in range(options.nProcessAlg)
+        # ]
+        # for proc in runningProcesses:
+        #     proc.start()
+        # parallel_task_manager.ManageQueue(runningProcesses, cmd_queue)
+        ## -------------------------------------------------------------------------
+        gathering_progress, task = util.get_progressbar(seqsInfo.nSpecies)
+        gathering_progress.start()
+        result_queue = mp.Queue()
+        runningProcesses = []
+        for iSpecies in range(seqsInfo.nSpecies):
+            proc = mp.Process(
                 target=waterfall.WaterfallMethod.Worker_ConnectCognates,
-                args=(cmd_queue, files.FileHandler.GetPickleDir(), options.v2_scores),
+                args=(
+                    seqsInfo,
+                    iSpecies,
+                    files.FileHandler.GetPickleDir(),
+                    result_queue,
+                    options.v2_scores,
+                ),
             )
-            for i_ in range(options.nProcessAlg)
-        ]
-        for proc in runningProcesses:
+            runningProcesses.append(proc)
             proc.start()
-        parallel_task_manager.ManageQueue(runningProcesses, cmd_queue)
-
-        util.PrintTime("Connected putative homologues")
+            if len(runningProcesses) >= options.nProcessAlg:
+                parallel_task_manager.ManageQueue(runningProcesses, result_queue, gathering_progress, task, update_cycle)
+            
+        parallel_task_manager.ManageQueue(runningProcesses, result_queue, gathering_progress, task, update_cycle)
+        gathering_progress.stop()
+ 
         graphFilename = waterfall.WaterfallMethod.WriteGraphParallel(
             WriteGraph_perSpecies, seqsInfo, options.nProcessAlg, i_unassigned
         )

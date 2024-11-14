@@ -34,10 +34,13 @@ from concurrent.futures import ProcessPoolExecutor, wait, as_completed
 from .. import my_env
 from . import util
 try:
-    from rich import print
+    from rich import print, progress
 except ImportError:
     ...
-
+try:
+    width = os.get_terminal_size().columns
+except OSError as e:
+    width = 80
 try:
     import queue
 except ImportError:
@@ -59,51 +62,71 @@ def PrintNoNewLine(text):
     sys.stdout.write(text)
 
 
-def ManageQueue(runningProcesses, cmd_queue):
-    """Manage a set of runningProcesses working through cmd_queue.
-    If there is an error the exit all processes as quickly as possible and
-    exit via Fail() methods. Otherwise return when all work is complete
-    """
-    # set all completed processes to None
-    qError = False
-    #    dones = [False for _ in runningProcesses]
-    nProcesses = len(runningProcesses)
-    nProcesses_list = list(range(nProcesses))
-    while True:
-        # if runningProcesses.count(None) == len(runningProcesses):
-        #     break
-        if all(proc is None for proc in runningProcesses):
-            break
-        time.sleep(0.1)
-        #        for proc in runningProcesses:
-        for i in nProcesses_list:
-            proc = runningProcesses[i]
-            if proc == None:
-                continue
+# def ManageQueue(runningProcesses, cmd_queue):
+#     """Manage a set of runningProcesses working through cmd_queue.
+#     If there is an error the exit all processes as quickly as possible and
+#     exit via Fail() methods. Otherwise return when all work is complete
+#     """
+#     # set all completed processes to None
+#     qError = False
+#     #    dones = [False for _ in runningProcesses]
+#     nProcesses = len(runningProcesses)
+#     nProcesses_list = list(range(nProcesses))
+#     while True:
+#         # if runningProcesses.count(None) == len(runningProcesses):
+#         #     break
+#         if all(proc is None for proc in runningProcesses):
+#             break
+#         time.sleep(0.1)
+#         #        for proc in runningProcesses:
+#         for i in nProcesses_list:
+#             proc = runningProcesses[i]
+#             if proc == None:
+#                 continue
+#             if not proc.is_alive():
+#                 if proc.exitcode != 0:
+#                     qError = True
+
+#                     while not cmd_queue.empty():
+#                         try:
+#                             cmd_queue.get_nowait()
+#                         except queue.Empty:
+#                             break
+
+#                     for p in runningProcesses:
+#                         if p is not None and p.is_alive():
+#                             p.terminate()
+#                     break
+
+#                     # while True:
+#                     #     try:
+#                     #         cmd_queue.get(True, 0.1)
+#                     #     except queue.Empty:
+#                     #         break
+#                 runningProcesses[i] = None
+#     if qError:
+#         Fail()
+
+def ManageQueue(processes, result_queue, progress_bar, task, update_cycle):
+    while processes:
+        for i, proc in enumerate(processes[:]):
             if not proc.is_alive():
-                if proc.exitcode != 0:
-                    qError = True
-
-                    while not cmd_queue.empty():
-                        try:
-                            cmd_queue.get_nowait()
-                        except queue.Empty:
-                            break
-
-                    for p in runningProcesses:
-                        if p is not None and p.is_alive():
+                proc.join()
+                processes.remove(proc)
+                
+                if not result_queue.empty():
+                    ijob, result = result_queue.get(True, 0.1)
+                    if result != "success":
+                        for p in processes:
                             p.terminate()
-                    break
+                        print(f"ERROR: Error processing job {ijob}")
+                        util.Fail()
+                        return
+                if (i + 1) % update_cycle == 0:
+                    progress_bar.update(task, advance=update_cycle)
 
-                    # while True:
-                    #     try:
-                    #         cmd_queue.get(True, 0.1)
-                    #     except queue.Empty:
-                    #         break
-                runningProcesses[i] = None
-    if qError:
-        Fail()
-
+        time.sleep(0.1)
+    
 
 # not used
 def RunCommand_Simple(command):
@@ -271,15 +294,48 @@ def Worker_RunMethod(Function, args_queue):
             return
 
 
-def RunMethodParallel(Function, args_queue, nProcesses):
-    runningProcesses = [
-        mp.Process(target=Worker_RunMethod, args=(Function, args_queue))
-        for i_ in range(nProcesses)
-    ]
-    for proc in runningProcesses:
-        proc.start()
-    ManageQueue(runningProcesses, args_queue)
+# def RunMethodParallel(Function, args_queue, nProcesses):
+#     runningProcesses = [
+#         mp.Process(target=Worker_RunMethod, args=(Function, args_queue))
+#         for i_ in range(nProcesses)
+#     ]
+#     for proc in runningProcesses:
+#         proc.start()
+#     ManageQueue(runningProcesses, args_queue)
 
+def RunMethodParallel(Function, args_queue,  nProcesses):
+    
+    # method_progress = progress.Progress(
+    #     progress.TextColumn("[progress.description]{task.description}"),
+    #     progress.BarColumn(bar_width=width // 2),
+    #     progress.SpinnerColumn(),
+    #     progress.MofNCompleteColumn(),
+    #     progress.TimeElapsedColumn(),
+    #     transient=False,
+    #     # progress.TextColumn("{task.completed}/{task.total}")
+    # )
+    # task = method_progress.add_task(
+    #     "[yellow]Processing...", total=args_queue.qsize()
+    # )
+    print(Function.__name__)
+    method_progress, task = util.get_progressbar(args_queue.qsize())
+    update_cycle = 1
+
+    method_progress.start()
+    result_queue = mp.Queue()
+    runningProcesses = []
+
+    while not args_queue.empty():
+        args = args_queue.get()
+        proc = mp.Process(target=Function, args=(*args, result_queue))
+        runningProcesses.append(proc)
+        proc.start()
+
+        if len(runningProcesses) >= nProcesses:
+            ManageQueue(runningProcesses, result_queue, method_progress, task, update_cycle)
+
+    ManageQueue(runningProcesses, result_queue, method_progress, task, update_cycle)
+    method_progress.stop()
 
 def _I_Spawn_Processes(message_to_spawner, message_to_PTM):
     """

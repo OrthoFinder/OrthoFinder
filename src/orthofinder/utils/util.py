@@ -36,10 +36,13 @@ import shutil
 import traceback
 
 try:
-    from rich import print
+    from rich import print, progress
 except ImportError:
     ...
-
+try:
+    width = os.get_terminal_size().columns
+except OSError as e:
+    width = 80
 
 PY2 = sys.version_info <= (3,)
 csv_write_mode = "wb" if PY2 else "wt"
@@ -754,3 +757,31 @@ def cleanup_path(path):
             shutil.rmtree(path)
     except OSError as e:
         print("Error: %s - %s." % (e.filename, e.strerror))
+
+
+
+def get_progressbar(len_task):
+    progressbar = progress.Progress(
+        progress.TextColumn("[progress.description]{task.description}"),
+        progress.BarColumn(bar_width=width // 2),
+        progress.SpinnerColumn(),
+        progress.MofNCompleteColumn(),
+        progress.TimeElapsedColumn(),
+        transient=False,
+        # progress.TextColumn("{task.completed}/{task.total}")
+    )
+    # task = progressbar.add_task(
+    #     "[yellow]Processing...", total=len_task
+    # )
+
+    if "task" in locals():
+        progressbar.reset(task)
+        progressbar.remove_task(task)
+        task = progressbar.add_task(
+            "[yellow]Processing...", total=len_task
+        )
+    else:
+        task = progressbar.add_task(
+            "[yellow]Processing...", total=len_task
+        )
+    return progressbar, task

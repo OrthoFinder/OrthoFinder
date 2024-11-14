@@ -1344,6 +1344,9 @@ def RunParallelCommandsAndMoveResultsFile(
                             ]
                             for cmd in commands_and_filenames
                         ]
+            progressbar, task = util.get_progressbar(total_commands)
+            progressbar.start()
+            update_cycle = 1 #10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000
 
             with concurrent.futures.ThreadPoolExecutor(
                 max_workers=nProcesses
@@ -1360,7 +1363,7 @@ def RunParallelCommandsAndMoveResultsFile(
                     if cmd is not None
                 }
 
-                for future in concurrent.futures.as_completed(futures):
+                for i, future in enumerate(concurrent.futures.as_completed(futures)):
                     try:
                         result = future.result()
                         completed_count += 1
@@ -1384,6 +1387,10 @@ def RunParallelCommandsAndMoveResultsFile(
                     except Exception as e:
                         print(f"Exception with command {futures[future]}: {e}")
 
+                    finally:
+                        if (i + 1) % update_cycle == 0:
+                            progressbar.update(task, advance=update_cycle)
+            progressbar.stop()
 
 def split_files_MP(
     nthreads,
@@ -1394,6 +1401,10 @@ def split_files_MP(
     q_print_on_error,
     q_always_print_stderr,
 ):
+    
+    progressbar, task = util.get_progressbar(total_commands)
+    progressbar.start()
+    update_cycle = 1 #10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=nthreads) as executor:
         futures = {
@@ -1408,7 +1419,7 @@ def split_files_MP(
             if cmd is not None
         }
 
-        for future in concurrent.futures.as_completed(futures):
+        for i, future in enumerate(concurrent.futures.as_completed(futures)):
             try:
                 result = future.result()
 
@@ -1430,6 +1441,11 @@ def split_files_MP(
                     print(f"ERROR occurred with large-file command: {futures[future]}")
             except Exception as e:
                 print(f"Exception with large-file command {futures[future]}: {e}")
+
+            finally:
+                if (i + 1) % update_cycle == 0:
+                    progressbar.update(task, advance=update_cycle)
+    progressbar.stop()
 
 
 q_print_first_traceback_0 = False

@@ -18,7 +18,7 @@ import operator
 import itertools
 import multiprocessing as mp
 from collections import defaultdict, deque
-
+import warnings
 from ..tools import tree as tree_lib
 from . import resolve
 from ..utils import util, files, parallel_task_manager
@@ -972,11 +972,22 @@ def RootAndGetOrthologues_from_tree(iog, tree_fn, species_tree_rooted, GeneToSpe
         directory = os.path.split(tree_fn)[0]
         WriteQfO2(orthologues, directory + "_Orthologues_M3/" + os.path.split(tree_fn)[1], qAppend=False)
 
+def Worker_RootAndGetOrthologues_from_tree(iog, tree_fn, species_tree_rooted, GeneToSpecies, neighbours, result_queue):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        try:
+            RootAndGetOrthologues_from_tree(iog, tree_fn, species_tree_rooted, GeneToSpecies, neighbours)
+            result_queue.put((iog, "success"))
+        except Exception as e:
+            result_queue.put((iog, e))
+
+
 def GetOrthologuesStandalone_Parallel(trees_dir, species_tree_rooted_fn, GeneToSpecies, output_dir, qSingleTree):
     species_tree_rooted = tree_lib.Tree(species_tree_rooted_fn)
     neighbours = GetSpeciesNeighbours(species_tree_rooted)
     args_queue = mp.Queue()
-    for treeFn in glob.glob(trees_dir + ("*" if qSingleTree else "/*")): args_queue.put((0, treeFn, species_tree_rooted, GeneToSpecies, neighbours))
+    for treeFn in glob.glob(trees_dir + ("*" if qSingleTree else "/*")): 
+        args_queue.put((0, treeFn, species_tree_rooted, GeneToSpecies, neighbours))
     # Now need to root the tree first
     parallel_task_manager.RunMethodParallel(RootAndGetOrthologues_from_tree, args_queue, 16)
 
@@ -1416,10 +1427,12 @@ def SortParallelFiles(n_parallel, speciesToUse, speciesDict, fewer_open_files):
     fns_type.extend([(fn, "h") for fn in glob.glob(os.path.dirname(files.FileHandler.GetHierarchicalOrthogroupsFN("N0.tsv")) + "/*")])
     # Duplications
     fns_type.append((files.FileHandler.GetDuplicationsFN(), "d"))
+
     args_queue = mp.Queue()
     for x in fns_type:
         args_queue.put(x)
-    parallel_task_manager.RunMethodParallel(SortFile, args_queue, n_parallel)
+
+    parallel_task_manager.RunMethodParallel(Worker_SortFile, args_queue, n_parallel)
 
 def SortFile(fn, f_type):
     """
@@ -1459,6 +1472,16 @@ def SortFile(fn, f_type):
         with open(fn, util.csv_write_mode) as outfile:
             outfile.write(header)
             outfile.write("".join(lines))
+
+def Worker_SortFile(fn, f_type, result_queue):
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        try:
+            SortFile(fn, f_type)
+            result_queue.put((fn, "success"))
+        except Exception as e:
+            result_queue.put((fn, e))
 
 def GetOrthologues_from_phyldog_tree(iog, treeFN, GeneToSpecies, qWrite=False, dupsWriter=None, seqIDs=None, spIDs=None):
     """ if dupsWriter != None then seqIDs and spIDs must also be provided"""
