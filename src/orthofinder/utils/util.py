@@ -760,7 +760,7 @@ def cleanup_path(path):
 
 
 
-def get_progressbar(len_task):
+def get_progressbar(len_task, visible=True):
     progressbar = progress.Progress(
         progress.TextColumn("[progress.description]{task.description}"),
         progress.BarColumn(bar_width=width // 2),
@@ -770,18 +770,15 @@ def get_progressbar(len_task):
         transient=False,
         # progress.TextColumn("{task.completed}/{task.total}")
     )
-    # task = progressbar.add_task(
-    #     "[yellow]Processing...", total=len_task
-    # )
 
     if "task" in locals():
         progressbar.reset(task)
         progressbar.remove_task(task)
         task = progressbar.add_task(
-            "[yellow]Processing...", total=len_task
+            "[yellow]Processing...", total=len_task, visible=visible,
         )
     else:
         task = progressbar.add_task(
-            "[yellow]Processing...", total=len_task
+            "[yellow]Processing...", total=len_task, visible=visible,
         )
     return progressbar, task

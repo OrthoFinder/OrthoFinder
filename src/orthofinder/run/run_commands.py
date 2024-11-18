@@ -102,7 +102,12 @@ def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller,
 # 6
 def CreateSearchDatabases(speciesInfoObj, options, prog_caller, q_unassigned_genes=False):
     iSpeciesToDo = range(max(speciesInfoObj.speciesToUse) + 1)
-    for iSp in iSpeciesToDo:
+
+    progressbar, task = util.get_progressbar(len(iSpeciesToDo))
+    progressbar.start()
+    update_cycle = 1 #10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000
+
+    for i, iSp in enumerate(iSpeciesToDo):
         fn_fasta = files.FileHandler.GetSpeciesUnassignedFastaFN(iSp) if q_unassigned_genes else files.FileHandler.GetSpeciesFastaFN(iSp)
         if options.search_program == "blast":
             command = " ".join(["makeblastdb", "-dbtype", "prot", "-in", fn_fasta, "-out", files.FileHandler.GetSpeciesDatabaseN(iSp)])
@@ -116,11 +121,15 @@ def CreateSearchDatabases(speciesInfoObj, options, prog_caller, q_unassigned_gen
                                                             options.gapopen,
                                                             options.gapextend,
                                                             options.method_threads)
-            util.PrintTime("Creating %s database %d of %d" % (options.search_program, iSp + 1, len(iSpeciesToDo)))
+            
+            # util.PrintTime("Creating %s database %d of %d" % (options.search_program, iSp + 1, len(iSpeciesToDo)))
             ret_code = parallel_task_manager.RunCommand(command, qPrintOnError=True, qPrintStderr=False)
             if ret_code != 0:
                 files.FileHandler.LogFailAndExit("ERROR: diamond makedb failed")
 
+        if (i + 1) % update_cycle == 0:
+            progressbar.update(task, advance=update_cycle)
+    progressbar.stop()
 
 def RunSearch_accelerate(options, 
                          speciessInfoObj, 

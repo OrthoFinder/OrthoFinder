@@ -56,7 +56,7 @@ def WriteGraph_perSpecies(args):
             graphFile.write("$\n")
         if iSpec == (seqsInfo.nSpecies - 1):
             graphFile.write(")\n")
-        util.PrintTime("Written final scores for species %d to graph file" % iSpec)
+        # util.PrintTime("Written final scores for species %d to graph file" % iSpec)
 
 
 def WriteGraph_perSpecies_homology(args):
@@ -396,6 +396,6 @@ def post_clustering_orthogroups(
                 resultsBaseFilename + ".orthoxml",
                 speciesInfoObj.speciesToUse,
             )
-        print("")
+        # print("")
         util.PrintTime("Done orthogroups")
         files.FileHandler.LogOGs()

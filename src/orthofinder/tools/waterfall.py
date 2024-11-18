@@ -180,7 +180,7 @@ class WaterfallMethod:
             matrices.DumpMatrixArray("B", Bi, iSpecies, d_pickle)
             BH = WaterfallMethod.GetBH_s(Bi, seqsInfo, iSpecies)
             matrices.DumpMatrixArray("BH", BH, iSpecies, d_pickle)
-            util.PrintTime("Initial processing of species %d complete" % iSpecies)
+            # util.PrintTime("Initial processing of species %d complete" % iSpecies)
 
 
     # @staticmethod
@@ -242,27 +242,6 @@ class WaterfallMethod:
                 result_queue.put((iSpecies, "success"))
             except Exception as e:
                 result_queue.put((iSpecies, e))
-
-
-        # while True:
-        #     try:
-        #         iSpecies = cmd_queue.get(True, 1)
-        #         WaterfallMethod.ProcessBlastHits(
-        #             seqsInfo,
-        #             blastDir_list,
-        #             Lengths,
-        #             iSpecies,
-        #             d_pickle=d_pickle,
-        #             qDoubleBlast=qDoubleBlast,
-        #             v2_scores=v2_scores,
-        #             q_allow_empty=q_allow_empty,
-        #         )
-        #     except queue.Empty:
-        #         return
-        #     except Exception:
-        #         i = seqsInfo.speciesToUse[iSpecies]
-        #         print("ERROR: Error processing files Blast%d_*" % i)
-        #         raise    
 
     @staticmethod
     def GetBH_s(pairwiseScoresMatrices, seqsInfo, iSpecies, tol=1e-3):

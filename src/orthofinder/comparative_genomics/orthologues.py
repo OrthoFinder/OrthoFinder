@@ -118,11 +118,19 @@ def WriteOrthologuesStats(ogSet, nOrtho_sp):
     speciesToUse = ogSet.speciesToUse
     speciesDict = ogSet.SpeciesDict()
     d = files.FileHandler.GetOGsStatsResultsDirectory()
+
+    # print(nOrtho_sp.n)
+    # print(nOrtho_sp.n_121)
+    # print(nOrtho_sp.n_12m)
+    # print( nOrtho_sp.n_m21)
+    # print(nOrtho_sp.n_m2m)
+    
     WriteOrthologuesMatrix(d + "OrthologuesStats_Totals.tsv", nOrtho_sp.n, speciesToUse, speciesDict)
     WriteOrthologuesMatrix(d + "OrthologuesStats_one-to-one.tsv", nOrtho_sp.n_121, speciesToUse, speciesDict)
     WriteOrthologuesMatrix(d + "OrthologuesStats_one-to-many.tsv", nOrtho_sp.n_12m, speciesToUse, speciesDict)
     WriteOrthologuesMatrix(d + "OrthologuesStats_many-to-one.tsv", nOrtho_sp.n_m21, speciesToUse, speciesDict)
     WriteOrthologuesMatrix(d + "OrthologuesStats_many-to-many.tsv", nOrtho_sp.n_m2m, speciesToUse, speciesDict)
+    
     # Duplications
     nodeCount = defaultdict(int)
     nodeCount_50 = defaultdict(int)

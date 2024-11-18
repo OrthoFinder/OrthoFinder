@@ -114,14 +114,16 @@ def ManageQueue(processes, result_queue, progress_bar, task, update_cycle):
                 proc.join()
                 processes.remove(proc)
                 
-                if not result_queue.empty():
+                try:
                     ijob, result = result_queue.get(True, 0.1)
                     if result != "success":
                         for p in processes:
                             p.terminate()
                         print(f"ERROR: Error processing job {ijob}")
                         util.Fail()
-                        return
+                except queue.Empty:
+                    if not processes:
+                        break
                 if (i + 1) % update_cycle == 0:
                     progress_bar.update(task, advance=update_cycle)
 
@@ -304,21 +306,10 @@ def Worker_RunMethod(Function, args_queue):
 #     ManageQueue(runningProcesses, args_queue)
 
 def RunMethodParallel(Function, args_queue,  nProcesses):
-    
-    # method_progress = progress.Progress(
-    #     progress.TextColumn("[progress.description]{task.description}"),
-    #     progress.BarColumn(bar_width=width // 2),
-    #     progress.SpinnerColumn(),
-    #     progress.MofNCompleteColumn(),
-    #     progress.TimeElapsedColumn(),
-    #     transient=False,
-    #     # progress.TextColumn("{task.completed}/{task.total}")
-    # )
-    # task = method_progress.add_task(
-    #     "[yellow]Processing...", total=args_queue.qsize()
-    # )
-    print(Function.__name__)
-    method_progress, task = util.get_progressbar(args_queue.qsize())
+    visible = True
+    if Function.__name__ == "Worker_SortFile":
+        visible = False
+    method_progress, task = util.get_progressbar(args_queue.qsize(), visible=visible)
     update_cycle = 1
 
     method_progress.start()
