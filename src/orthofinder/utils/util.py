@@ -37,6 +37,8 @@ import traceback
 
 try:
     from rich import print, progress
+    from rich.console import Console
+    from rich.theme import Theme
 except ImportError:
     ...
 try:
@@ -49,6 +51,22 @@ csv_write_mode = "wb" if PY2 else "wt"
 csv_append_mode = "ab" if PY2 else "at"
 csv_read_mode = "rb" if PY2 else "rt"
 
+
+class OrthoPrinter:
+    def __init__(self):
+        self.console = Console(theme=Theme({
+            "info": "bold blue",
+            "success": "bold green",
+            "error": "bold red",
+            "warning": "bold yellow",
+            "default": "bright_white"
+        }))
+
+    def print(self, *messages, style: str = "default", sep: str = " ", end: str = "\n"):
+        message = sep.join(map(str, messages))
+        self.console.print(message, style=style, end=end)
+
+printer = OrthoPrinter()
 
 def print_traceback(e):
     if PY2:
@@ -746,7 +764,7 @@ def compress_files(src_dir, output_fn):
                         except IOError as e:
                             print(f"ERROR reading file {entry.name}: {e}")
     except IOError as e:
-        print(f"ERROR writing to output file {output_fn}: {e}")
+        printer.print(f"ERROR writing to output file {output_fn}: {e}", style="error")
 
 
 def cleanup_path(path):

@@ -34,9 +34,10 @@ from concurrent.futures import ProcessPoolExecutor, wait, as_completed
 from .. import my_env
 from . import util
 try:
-    from rich import print, progress
+    from rich import print
 except ImportError:
     ...
+from .util import printer
 try:
     width = os.get_terminal_size().columns
 except OSError as e:
@@ -54,7 +55,7 @@ except ImportError:
 
 
 def PrintTime(message):
-    print((str(datetime.datetime.now()).rsplit(".", 1)[0] + " : " + message))
+    printer.print((str(datetime.datetime.now()).rsplit(".", 1)[0] + " : " + message), style="default")
     sys.stdout.flush()
 
 
@@ -119,7 +120,7 @@ def ManageQueue(processes, result_queue, progress_bar, task, update_cycle):
                     if result != "success":
                         for p in processes:
                             p.terminate()
-                        print(f"ERROR: Error processing job {ijob}")
+                        printer.print(f"ERROR: Error processing job {ijob}", style="error")
                         util.Fail()
                 except queue.Empty:
                     if not processes:
@@ -188,13 +189,13 @@ def CanRunCommand(
         and return_code_check
     ):
         if qPrint:
-            print(" - ok")
+            printer.print(" - ok", style="success")
         return True
     else:
         if qPrint:
-            print(" - failed")
+            printer.print(" - failed", style="error")
         if not return_code_check:
-            print("Returned a non-zero code: %d" % capture.returncode)
+            printer.print("Returned a non-zero code: %d" % capture.returncode, style="error")
         print("\nstdout:")
         for l in stdout:
             print(l)

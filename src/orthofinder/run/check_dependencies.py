@@ -29,13 +29,13 @@ def CanRunASTRAL():
         for _ in range(20):
             outfile.write("(((A:1,B:1):2,(C:1,D:1):2,E:3):4);i\n")
     fn_output = d_deps_test + "astral.output.nwk"
-    cmd = " ".join(["astral-pro", "-i", fn_test, "-o", fn_output, "-t", "2"])
+    cmd = " ".join(["astral-pro3", "-i", fn_test, "-o", fn_output, "-t", "2"])
     if parallel_task_manager.CanRunCommand(cmd, qAllowStderr=True, qRequireStdout=False, qCheckReturnCode=True):
         return True
     else:
-        print("ERROR: Cannot run astral-pro")
+        print("ERROR: Cannot run astral-pro3")
         program_caller.ProgramCaller.PrintDependencyCheckFailure(cmd)
-        print("Please check astral-pro is installed and that the executables are in the system path\n")
+        print("Please check astral-pro3 is installed and that the executables are in the system path\n")
         return False
 
 def CheckDependencies(options, user_specified_m, prog_caller, dirForTempFiles):

@@ -717,7 +717,8 @@ def CheckAndRootTree(treeFN, species_tree_rooted, GeneToSpecies):
     Root tree
     Returns None if this fails, i.e. checks: exists, has more than one gene, can be rooted
     """
-    if (not os.path.exists(treeFN)) or os.stat(treeFN).st_size == 0: return None, False
+    if (not os.path.exists(treeFN)) or os.stat(treeFN).st_size == 0:
+        return None, False
     qHaveSupport = False
     try:
         tree = tree_lib.Tree(treeFN, format=2)

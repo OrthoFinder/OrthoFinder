@@ -197,10 +197,16 @@ def create_profiles_database(din, wd_list, nSpAll, selection="kmeans", n_for_pro
     # print("WARNING: Check all gene names, can't start with '__'")
     # If there are subtrees then we need to convert their IDs in the profile file
     # back to internal IDs
+
     nToDo = len(ogs)
+    progressbar, task = util.get_progressbar(nToDo)
+    progressbar.start()
+    update_cycle = 1 #10 if total_tasks <= 200 else 100 if total_tasks <= 2000 else 1000
+
     for iog, og in enumerate(ogs):
-        if iog >= 0 and divmod(iog, 10 if nToDo <= 200 else 100 if nToDo <= 2000 else 1000)[1] == 0:
-            util.PrintTime("Done %d of %d" % (iog, nToDo))
+        # if iog >= 0 and divmod(iog, 10 if nToDo <= 200 else 100 if nToDo <= 2000 else 1000)[1] == 0:
+        #     util.PrintTime("Done %d of %d" % (iog, nToDo))
+
         og_id = "%07d" % iog
         q_subtrees = subtrees_dir and os.path.exists(pat_super % iog)
         fn_msa = wd + "Alignments_ids/OG%07d.fa" % iog
@@ -247,7 +253,11 @@ def create_profiles_database(din, wd_list, nSpAll, selection="kmeans", n_for_pro
             seq_write.extend(s)
             for ss in s:
                 seq_convert[ss] = og_id_full + "_" + ss
+
+        if (iog + 1) % update_cycle == 0:
+            progressbar.update(task, advance=update_cycle)
     print("")
+    progressbar.stop()
     fw.WriteSeqsToFasta_withNewAccessions(seq_write, fn_fasta, seq_convert)
     parallel_task_manager.RunCommand(" ".join(["diamond", "makedb", "--in", fn_fasta, "-d", fn_diamond_db]), qPrintOnError=True, qPrintStderr=False)
     return fn_diamond_db, q_hogs

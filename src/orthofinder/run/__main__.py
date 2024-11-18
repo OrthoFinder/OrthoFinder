@@ -94,10 +94,7 @@ from .. import orphan_genes_version, __version__, __location__
 from ..comparative_genomics import orthologues
 from . import helpinfo
 
-try:
-    from rich import print
-except ImportError:
-    ...
+from ..utils.util import printer
 
 configfile_location = os.path.join(__location__, "run")
 max_int = sys.maxsize
@@ -270,6 +267,11 @@ def BetweenCoreOrthogroupsWorkflow(
         rooted_species_tree_ids, qHaveSupport = trees2ologs_of.CheckAndRootTree(
             species_tree_unrooted_fn, core_rooted_species_tree, species_to_speices_map
         )
+
+        if rooted_species_tree_ids is None:
+            print("ERROR: Species tree inference failed. Please check for errors and check the species tree files: \n%s \n%s" % (species_tree_unrooted_fn, core_rooted_species_tree))
+            util.Fail()
+
         rooted_species_tree_fn = files.FileHandler.GetSpeciesTreeIDsRootedFN()
         rooted_species_tree_ids.write(outfile=rooted_species_tree_fn)
 
@@ -644,7 +646,7 @@ def main(args=None):
             os.path.normpath(files.FileHandler.GetResultsDirectory1()) + os.path.sep
         )
 
-        print("\nResults:\n    %s" % d_results)
+        printer.print("\nResults:\n    %s" % d_results, style="info")
         util.PrintCitation(d_results)
         files.FileHandler.WriteToLog("OrthoFinder run completed\n", True)
 
@@ -665,7 +667,7 @@ def main(args=None):
         end = time.perf_counter()
         time_elapsed = end - start
         print()
-        print(f"OrthoFinder finished in {time_elapsed:5f}s", end="\n" * 2)
+        printer.print(f"OrthoFinder finished in {time_elapsed:5f}s", end="\n" * 2, style="info")
         sys.exit()
 
 

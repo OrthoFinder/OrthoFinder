@@ -39,7 +39,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11", # tested
     "Programming Language :: Python :: 3.12", # tested
 ]
-dependencies = ["numpy", "scipy", "scikit-learn", "biopython"]
+dependencies = ["numpy", "scipy", "scikit-learn", "biopython", "rich"]
 
 [project.urls]
 repository = "https://github.com/davidemms/OrthoFinder"
@@ -53,7 +53,7 @@ dev = [
     "setuptools>=64",
     "setuptools_scm>=8",
 ]
-colors = ["rich"]
+# colors = ["rich"]
 
 [project.scripts]
 orthofinder = "orthofinder.run.__main__:main"
