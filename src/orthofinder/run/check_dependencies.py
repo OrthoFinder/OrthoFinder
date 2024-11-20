@@ -1,6 +1,7 @@
 from ..utils import util, program_caller, files, parallel_task_manager
 from ..tools import trees_msa
 import os
+import subprocess
 from .. import __location__, my_env
 
 def CanRunBLAST():
