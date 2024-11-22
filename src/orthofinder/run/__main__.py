@@ -240,6 +240,11 @@ def BetweenCoreOrthogroupsWorkflow(
             options.qAddSpeciesToIDs,
             options.qTrim,
             cmd_order=options.cmd_order,
+            method_threads=options.method_threads,
+            method_threads_large=options.method_threads_large,
+            method_threads_small=options.method_threads_small, 
+            threshold=options.threshold,
+            old_version=options.old_version,
             userSpeciesTree=None,
             qStopAfterSeqs=False,
             qStopAfterAlign=False,
@@ -367,6 +372,7 @@ def GetOrthologues_FromTrees(options):
         options.qAddSpeciesToIDs,
         options.qSplitParaClades,
         options.fewer_open_files,
+        old_version=options.old_version
     )
 
 

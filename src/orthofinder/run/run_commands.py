@@ -152,7 +152,6 @@ def RunSearch_accelerate(options,
             util.Fail()
         util.PrintTime("Done profiles search\n")
         return results_files
-    
     program_caller.RunParallelCommands(options.nBlast, 
                                         commands,     
                                         method_threads=options.method_threads, 

@@ -332,6 +332,7 @@ class TreesForOrthogroups(object):
                 threshold=None,
                 old_version=False,
                 ):
+
         print_on_error = True
         idDict.update(speciesIdDict) # same code will then also convert concatenated alignment for species tree
         # 0       
@@ -353,7 +354,6 @@ class TreesForOrthogroups(object):
         else:
             iOgsForSpeciesTree = []
         orig_alignCommands_and_filenames, orig_iogs_align = self.GetAlignmentCommandsAndNewFilenames(ogs, i_og_restart, method_threads=method_threads)
-        
 
         alignCommands_and_filenames = copy.deepcopy(orig_alignCommands_and_filenames)
         iogs_align = copy.deepcopy(orig_iogs_align)

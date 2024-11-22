@@ -30,7 +30,7 @@ diamond_cm_options = {
 class Options(object):  #
     def __init__(self):
         self.nBlast = nThreadsDefault
-        self.nProcessAlg = nThreadsDefault #None
+        self.nProcessAlg = None
         self.qFastAdd = False  # Add species in near-linear time
         self.qStartFromBlast = False  # remove, just store BLAST to do
         self.qStartFromFasta = False  # local to argument checking

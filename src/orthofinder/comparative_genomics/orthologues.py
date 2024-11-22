@@ -266,6 +266,7 @@ def ReconciliationAndOrthologues(
         q_split_para_clades=False,
         fewer_open_files=False,
         save_space=False,
+        old_version=False,
 ):
     """
     ogSet - info about the orthogroups, species etc.
@@ -325,7 +326,7 @@ def ReconciliationAndOrthologues(
         hog_writer = trees2ologs_of.HogWriter(species_tree_rooted_labelled, node_names, SequenceDict, speciesDict, ogSet.speciesToUse)
         nOrthologues_SpPair = trees2ologs_of.DoOrthologuesForOrthoFinder(ogSet, species_tree_rooted_labelled, trees2ologs_of.GeneToSpecies_dash, 
                                                                          stride_dups, qNoRecon, hog_writer, q_split_para_clades, nLowParallel,
-                                                                         fewer_open_files, save_space)
+                                                                         fewer_open_files, save_space, old_version=old_version)
         util.PrintTime("Done OF Orthologues")
         TwoAndThreeGeneHOGs(ogSet, species_tree_rooted_labelled, hog_writer)
         hog_writer.close_files()
@@ -346,6 +347,7 @@ def OrthologuesFromTrees(
         qAddSpeciesToIDs,
         q_split_para_clades,
         fewer_open_files,
+        old_version=False,
 ):
     """
     userSpeciesTree_fn - None if not supplied otherwise rooted tree using user species names (not orthofinder IDs)
@@ -365,7 +367,7 @@ def OrthologuesFromTrees(
     util.PrintUnderline("Running Orthologue Prediction", True)
     util.PrintUnderline("Reconciling gene and species trees") 
     ReconciliationAndOrthologues(recon_method, ogSet, nHighParallel, nLowParallel, q_split_para_clades=q_split_para_clades,
-                                 fewer_open_files=fewer_open_files)
+                                 fewer_open_files=fewer_open_files, old_version=old_version)
     util.PrintUnderline("Writing results files")
     util.PrintTime("Writing results files")
     files.FileHandler.CleanWorkingDir2()
@@ -428,11 +430,22 @@ def OrthologuesWorkflow(speciesToUse, nSpAll,
         return
     rooted_sp_tree, fn_rooted_sp_tree, q_multiple_roots, stride_dups = return_obj
 
-    InferOrthologs(ogSet, rooted_sp_tree, fn_rooted_sp_tree, q_multiple_roots, qSpeciesTreeSupports, stride_dups,
+    InferOrthologs(ogSet, 
+                   rooted_sp_tree, 
+                   fn_rooted_sp_tree, 
+                   q_multiple_roots, 
+                   qSpeciesTreeSupports, 
+                   stride_dups,
                    recon_method,
-                    nHighParallel, nLowParallel, fewer_open_files,
-                    userSpeciesTree, qPhyldog,
-                    q_split_para_clades, save_space, root_from_previous)
+                    nHighParallel, 
+                    nLowParallel, 
+                    fewer_open_files,
+                    userSpeciesTree, 
+                    qPhyldog,
+                    q_split_para_clades, 
+                    save_space, 
+                    root_from_previous,
+                    old_version=old_version)
 
     fastaWriter = trees_msa.FastaWriter(files.FileHandler.GetSpeciesSeqsDir(), speciesToUse)
     ogs = accelerate.read_hogs(files.FileHandler.GetResultsDirectory1(), "N0")
@@ -551,6 +564,7 @@ def InferOrthologs( ogSet, rooted_sp_tree, speciesTree_fn, qMultipleSpeciesTreeR
                     q_split_para_clades=False,
                     save_space=False,
                     root_from_previous=False,
+                    old_version=False,
                     ):
     """ C. Gene tree rooting & orthologs"""
 
@@ -564,7 +578,7 @@ def InferOrthologs( ogSet, rooted_sp_tree, speciesTree_fn, qMultipleSpeciesTreeR
     util.PrintTime("Starting Recon and orthologues")
     ReconciliationAndOrthologues(recon_method, ogSet, nHighParallel, nLowParallel, i_rooted_sp_tree if qMultipleSpeciesTreeRoots else None,
                                  stride_dups=stride_dups, q_split_para_clades=q_split_para_clades,
-                                 fewer_open_files=fewer_open_files, save_space=save_space)
+                                 fewer_open_files=fewer_open_files, save_space=save_space, old_version=old_version)
     # util.PrintTime("Done Recon")
 
     files.FileHandler.CleanWorkingDir2()
