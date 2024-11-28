@@ -1395,28 +1395,38 @@ def Worker_RunOrthologsMethod(tree_analyser, nspecies, args_queue, results_queue
 
 ## --------------------------------------
 
-def Worker_RunOrthologsMethod_New(tree_analyser, nspecies, args_queue, results_queue, fewer_open_files, n_ologs_cache=100):
+def Worker_RunOrthologsMethod_New(
+    tree_analyser, nspecies, args_queue, results_queue, fewer_open_files, n_ologs_cache=100
+):
     """
+    Worker function for parallel ortholog analysis.
+
     Args:
-        nspecies - the number in the analysis, after species have been removed
-    Must put an item in the results queue before exiting.
+        nspecies (int): Number of species in the analysis after filtering.
+        args_queue (Queue): Input queue containing tasks.
+        results_queue (Queue): Queue for reporting results.
+        fewer_open_files (bool): If True, fewer file handles are used.
+        n_ologs_cache (int): Cache size before flushing ortholog lines to files.
     """
     try:
         dim2 = 1 if fewer_open_files else nspecies
-        nOrthologues_SpPair = util.nOrtho_sp(nspecies) 
-        nCache = util.nOrtho_cache(nspecies) 
+        # nOrthologues_SpPair = util.nOrtho_sp(nspecies)
+        nCache = util.nOrtho_cache(nspecies)
         olog_lines_tot = [["" for j in range(dim2)] for i in range(nspecies)]
-        olog_sus_lines_tot = ["" for i in range(nspecies)]
+        olog_sus_lines_tot = ["" for _ in range(nspecies)]
+
         while True:
             try:
-                iog = args_queue.get(True, 1.)
+                iog = args_queue.get(True, 0.1)
+                if iog is None: 
+                    break
                 results = tree_analyser.AnalyseTree(iog)
                 if results is None:
+                    results_queue.put(False)  
                     continue
-                # if fewer_genes nOrtho still counts orthologs between all i,j species but olog_lines contains all the
-                # orthologs in olog_lines[i][0]
+
                 nOrtho, olog_lines, olog_sus_lines = results
-                nOrthologues_SpPair += nOrtho
+                # nOrthologues_SpPair += nOrtho
                 nCache += nOrtho
 
                 for i in range(nspecies):
@@ -1442,73 +1452,49 @@ def Worker_RunOrthologsMethod_New(tree_analyser, nspecies, args_queue, results_q
                             tree_analyser.lock_ologs[k_lock]
                         )
                         olog_lines_tot[i][j] = ""
-                results_queue.put(nOrtho) 
+
+                results_queue.put(nOrtho)
+
             except parallel_task_manager.queue.Empty:
-                for i in range(nspecies):
-                    if fewer_open_files:
-                        WriteOlogLinesToFile(
-                            tree_analyser.ologs_files_handles[i][0],
-                            olog_lines_tot[i][0],
-                            tree_analyser.lock_ologs[i]
-                        )
-                    else:
-                        for j in range(i + 1, nspecies):
-                            WriteOlogLinesToFile(
-                                tree_analyser.ologs_files_handles[i][j],
-                                olog_lines_tot[i][j],
-                                tree_analyser.lock_ologs[j]
-                            )
-                            WriteOlogLinesToFile(
-                                tree_analyser.ologs_files_handles[j][i],
-                                olog_lines_tot[j][i],
-                                tree_analyser.lock_ologs[j]
-                            )
-                    WriteOlogLinesToFile(
-                        tree_analyser.putative_xenolog_file_handles[i],
-                        olog_sus_lines_tot[i],
-                        tree_analyser.lock_suspect
-                    )
-                results_queue.put(nOrthologues_SpPair)
-                return
+                continue
 
             except Exception as e:
-                if isinstance(e, IOError) and "handle out of range in select" in str(e):
-                    print("ERROR in this version of Python multiprocessing library.")
-                    results_queue.put(False)  # Signal error
-                    return
-                print("WARNING: Unknown error")
-                print(e)
-                try:
-                    for i in range(nspecies):
-                        if fewer_open_files:
-                            WriteOlogLinesToFile(
-                                tree_analyser.ologs_files_handles[i][0],
-                                olog_lines_tot[i][0],
-                                tree_analyser.lock_ologs[i]
-                            )
-                        else:
-                            for j in range(i + 1, nspecies):
-                                WriteOlogLinesToFile(
-                                    tree_analyser.ologs_files_handles[i][j],
-                                    olog_lines_tot[i][j],
-                                    tree_analyser.lock_ologs[j]
-                                )
-                                WriteOlogLinesToFile(
-                                    tree_analyser.ologs_files_handles[j][i],
-                                    olog_lines_tot[j][i],
-                                    tree_analyser.lock_ologs[j]
-                                )
+                print(f"WARNING: Worker encountered an error: {e}")
+                results_queue.put(False)  # Signal error
+                break
+        try:
+            for i in range(nspecies):
+                if fewer_open_files:
+                    WriteOlogLinesToFile(
+                        tree_analyser.ologs_files_handles[i][0],
+                        olog_lines_tot[i][0],
+                        tree_analyser.lock_ologs[i]
+                    )
+                else:
+                    for j in range(i + 1, nspecies):
                         WriteOlogLinesToFile(
-                            tree_analyser.putative_xenolog_file_handles[i],
-                            olog_sus_lines_tot[i],
-                            tree_analyser.lock_suspect
+                            tree_analyser.ologs_files_handles[i][j],
+                            olog_lines_tot[i][j],
+                            tree_analyser.lock_ologs[j]
                         )
-                    results_queue.put(nOrthologues_SpPair)
-                except Exception as sub_e:
-                    print(f"Failed during error recovery: {sub_e}")
-    except Exception as e:
-        print(e)
-        print("WARNING: Unexpected error")
+                        WriteOlogLinesToFile(
+                            tree_analyser.ologs_files_handles[j][i],
+                            olog_lines_tot[j][i],
+                            tree_analyser.lock_ologs[j]
+                        )
+                WriteOlogLinesToFile(
+                    tree_analyser.putative_xenolog_file_handles[i],
+                    olog_sus_lines_tot[i],
+                    tree_analyser.lock_suspect
+                )
+            # results_queue.put(nOrthologues_SpPair)
+
+        except Exception as cleanup_error:
+            print(f"ERROR during cleanup: {cleanup_error}")
+            # results_queue.put(False)  # Signal error during cleanup
+
+    finally:
+        results_queue.put(None) 
 
 
 def RunOrthologsParallel(tree_analyser, nspecies, args_queue, nProcesses, fewer_open_files, old_version=False):
@@ -1516,7 +1502,6 @@ def RunOrthologsParallel(tree_analyser, nspecies, args_queue, nProcesses, fewer_
     Run the ortholog analysis in parallel using multiprocessing.
     Tracks progress dynamically using a progress bar.
     """
-
     if old_version:
         results_queue = mp.Queue()
         # Should use PTM?
@@ -1549,7 +1534,11 @@ def RunOrthologsParallel(tree_analyser, nspecies, args_queue, nProcesses, fewer_
         total_tasks = args_queue.qsize()
         progressbar, task = util.get_progressbar(total_tasks)
         progressbar.start()
-        update_cycle = 1 #10 if total_tasks <= 200 else 100 if total_tasks <= 2000 else 1000
+        update_cycle = 1 
+
+        # Add sentinels to the args_queue to signal workers to terminate
+        for _ in range(nProcesses):
+            args_queue.put(None)
 
         runningProcesses = [
             mp.Process(
@@ -1562,25 +1551,32 @@ def RunOrthologsParallel(tree_analyser, nspecies, args_queue, nProcesses, fewer_
 
         nOrthologues_SpPair = util.nOrtho_sp(nspecies)
         completed_tasks = 0
-        
-        while completed_tasks < total_tasks:
+        active_workers = nProcesses
+        while completed_tasks < total_tasks or active_workers > 0:
             try:
-                nOrtho = results_queue.get(True, 0.1) 
-                if nOrtho is False:
+                nOrtho = results_queue.get(True, 0.1)
+                
+                if nOrtho is None:
+                    active_workers -= 1
+                elif nOrtho is False:
                     print("ERROR in parallel process, exiting.")
                     for proc in runningProcesses:
                         proc.terminate()
                     util.Fail()
-                nOrthologues_SpPair += nOrtho
-                completed_tasks += 1
-                if (completed_tasks + 1) % update_cycle == 0:
-                    progressbar.update(task, advance=update_cycle)
+                else:
+                    nOrthologues_SpPair += nOrtho
+                    completed_tasks += 1
+                    if (completed_tasks + 1) % update_cycle == 0:
+                        progressbar.update(task, advance=update_cycle)
+
             except mp.queues.Empty:
                 if all(not proc.is_alive() for proc in runningProcesses):
                     print("All worker processes have terminated but not all tasks are completed.")
                     break
 
         for proc in runningProcesses:
+            if proc.is_alive():
+                proc.terminate()
             proc.join()
 
         progressbar.stop()
