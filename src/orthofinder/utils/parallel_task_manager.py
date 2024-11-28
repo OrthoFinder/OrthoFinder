@@ -306,28 +306,38 @@ def Worker_RunMethod(Function, args_queue):
 #         proc.start()
 #     ManageQueue(runningProcesses, args_queue)
 
-def RunMethodParallel(Function, args_queue,  nProcesses):
-    visible = True
-    if Function.__name__ == "Worker_SortFile":
-        visible = False
-    method_progress, task = util.get_progressbar(args_queue.qsize(), visible=visible)
-    update_cycle = 1
+def RunMethodParallel(Function, args_queue,  nProcesses, old_version=False):
 
-    method_progress.start()
-    result_queue = mp.Queue()
-    runningProcesses = []
+    if old_version:
+        runningProcesses = [
+            mp.Process(target=Worker_RunMethod, args=(Function, args_queue))
+            for i_ in range(nProcesses)
+        ]
+        for proc in runningProcesses:
+            proc.start()
+        ManageQueue(runningProcesses, args_queue)
+    else:
+        visible = True
+        if Function.__name__ == "Worker_SortFile":
+            visible = False
+        method_progress, task = util.get_progressbar(args_queue.qsize(), visible=visible)
+        update_cycle = 1
 
-    while not args_queue.empty():
-        args = args_queue.get()
-        proc = mp.Process(target=Function, args=(*args, result_queue))
-        runningProcesses.append(proc)
-        proc.start()
+        method_progress.start()
+        result_queue = mp.Queue()
+        runningProcesses = []
 
-        if len(runningProcesses) >= nProcesses:
-            ManageQueue(runningProcesses, result_queue, method_progress, task, update_cycle)
+        while not args_queue.empty():
+            args = args_queue.get()
+            proc = mp.Process(target=Function, args=(*args, result_queue))
+            runningProcesses.append(proc)
+            proc.start()
 
-    ManageQueue(runningProcesses, result_queue, method_progress, task, update_cycle)
-    method_progress.stop()
+            if len(runningProcesses) >= nProcesses:
+                ManageQueueNew(runningProcesses, result_queue, method_progress, task, update_cycle)
+
+        ManageQueueNew(runningProcesses, result_queue, method_progress, task, update_cycle)
+        method_progress.stop()
 
 def _I_Spawn_Processes(message_to_spawner, message_to_PTM):
     """

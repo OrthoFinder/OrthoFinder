@@ -1764,7 +1764,7 @@ def WriteOlogLinesToFile(fh, text, lock):
         lock.release()
         if debug: util.PrintTime("Released lock: %d" %  os.getpid())
 
-def SortParallelFiles(n_parallel, speciesToUse, speciesDict, fewer_open_files):
+def SortParallelFiles(n_parallel, speciesToUse, speciesDict, fewer_open_files, old_version):
     """
     Args:
         fewer_open_files - Orthologs have been written to one file per species, not one per species pair
@@ -1793,8 +1793,8 @@ def SortParallelFiles(n_parallel, speciesToUse, speciesDict, fewer_open_files):
     args_queue = mp.Queue()
     for x in fns_type:
         args_queue.put(x)
-
-    parallel_task_manager.RunMethodParallel(Worker_SortFile, args_queue, n_parallel)
+     
+    parallel_task_manager.RunMethodParallel(Worker_SortFile, args_queue, n_parallel, old_version)
 
 def SortFile(fn, f_type):
     """

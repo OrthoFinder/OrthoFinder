@@ -325,7 +325,7 @@ class TreesForOrthogroups(object):
                 speciesToUse, nProcesses, qStopAfterSeqs, 
                 qStopAfterAlignments, qDoSpeciesTree, qTrim, 
                 i_og_restart=0, 
-                cmd_order="ascending",
+                cmd_order="descending",
                 method_threads=None,
                 method_threads_large=None,
                 method_threads_small=None, 
