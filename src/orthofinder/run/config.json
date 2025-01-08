@@ -45,9 +45,9 @@
     "__comment": "In the command below it is run without the safe option first and then with.",
     "__comment": "If it is successful the first time then IQTREE will not re-run the tree inference, so this adds no cost.",
     "__comment": "If the Numerical underflow error occurs then the tree will be run a second time with the safe option selected.",
-    "iqtree": {
+    "iqtree2": {
         "program_type": "tree",
-        "cmd_line": "iqtree -s INPUT -pre PATH/IDENTIFIER -quiet ; iqtree -s INPUT -pre PATH/IDENTIFIER -quiet -safe",
+        "cmd_line": "iqtree2 -s INPUT -pre PATH/IDENTIFIER -quiet ; iqtree -s INPUT -pre PATH/IDENTIFIER -quiet -safe",
         "ouput_filename": "PATH/IDENTIFIER.treefile"
     },
     "diamond": {

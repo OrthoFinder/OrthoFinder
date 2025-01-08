@@ -799,8 +799,8 @@ def ProcessArgs(prog_caller, args):
 
     if options.qFastAdd and not q_selected_msa_options:
         print("INFO: For --assign defaulting to 'mafft --memsave' to reduce RAM usage\n")
-        options.msa_program = "mafft_memsave"
-        # options.msa_program = "famsa"
+        # options.msa_program = "mafft_memsave"
+        options.msa_program = "famsa"
 
     if options.qFastAdd and not q_selected_tree_options:
         print( "INFO: For --assign defaulting to 'FastTree -fastest' to reduce RAM usage\n")

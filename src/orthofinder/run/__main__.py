@@ -45,7 +45,6 @@ if __name__ == "__main__":
 from ..utils import (
     parallel_task_manager,
     blast_file_processor,
-    timeit,
     files,
     util,
     matrices,
@@ -376,7 +375,6 @@ def GetOrthologues_FromTrees(options):
     )
 
 
-# @timeit.timeit
 def main(args=None):
     start = time.perf_counter()
     try:
