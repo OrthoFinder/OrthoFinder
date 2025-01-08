@@ -65,48 +65,33 @@ def PrintNoNewLine(text):
 
 def ManageQueue(runningProcesses, cmd_queue):
     """Manage a set of runningProcesses working through cmd_queue.
-    If there is an error the exit all processes as quickly as possible and
+    If there is an error the exit all processes as quickly as possible and 
     exit via Fail() methods. Otherwise return when all work is complete
-    """
+    """            
     # set all completed processes to None
     qError = False
-    #    dones = [False for _ in runningProcesses]
+#    dones = [False for _ in runningProcesses]
     nProcesses = len(runningProcesses)
     nProcesses_list = list(range(nProcesses))
     while True:
-        # if runningProcesses.count(None) == len(runningProcesses):
-        #     break
-        if all(proc is None for proc in runningProcesses):
-            break
-        time.sleep(0.1)
-        #        for proc in runningProcesses:
+        if runningProcesses.count(None) == len(runningProcesses): break
+        time.sleep(.1)
+#        for proc in runningProcesses:
         for i in nProcesses_list:
             proc = runningProcesses[i]
-            if proc == None:
-                continue
+            if proc == None: continue
             if not proc.is_alive():
                 if proc.exitcode != 0:
                     qError = True
-
-                    while not cmd_queue.empty():
+                    while True:
                         try:
-                            cmd_queue.get_nowait()
+                            cmd_queue.get(True, .1)
                         except queue.Empty:
                             break
-
-                    for p in runningProcesses:
-                        if p is not None and p.is_alive():
-                            p.terminate()
-                    break
-
-                    # while True:
-                    #     try:
-                    #         cmd_queue.get(True, 0.1)
-                    #     except queue.Empty:
-                    #         break
                 runningProcesses[i] = None
     if qError:
         Fail()
+
 
 def ManageQueueNew(processes, result_queue, progress_bar, task, update_cycle):
     while processes:
