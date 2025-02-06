@@ -462,9 +462,15 @@ class __Files_new_dont_manually_create__(object):
         
     def GetResultsSeqsDir(self):
         return self.rd1 + "Orthogroup_Sequences/"
+    
+    def GetSeqsIDDir(self):
+        return self.wd_current + "Sequences_ids/"
         
     def GetResultsAlignDir(self):
         return self.rd1 + "MultipleSequenceAlignments/"
+    
+    def GetAlignIDDir(self):
+        return self.wd_current + "Alignments_ids/"
         
     def GetResultsTreesDir(self):
         # return self.rd1 + "Gene_Trees/"
@@ -501,9 +507,11 @@ class __Files_new_dont_manually_create__(object):
     def GetOGsTreeFN(self, iOG, qResults=False):
         if qResults:
             # return self.rd1 + "Gene_Trees/" + (self.baseOgFormat % iOG) + "_tree.txt"
-            return self.wd_trees + "Gene_Trees/" + (self.baseOgFormat % iOG) + "_tree.txt"
+            # return self.wd_trees + "Gene_Trees/" + (self.baseOgFormat % iOG) + "_tree.txt"
+            return self.wd_trees + "Gene_Trees/" + (self.baseOgFormat % iOG) + ".txt"
         else:
-            return self.wd_trees + "Trees_ids/" + (self.baseOgFormat % iOG) + "_tree_id.txt"   
+            # return self.wd_trees + "Trees_ids/" + (self.baseOgFormat % iOG) + "_tree_id.txt"   
+            return self.wd_trees + "Trees_ids/" + (self.baseOgFormat % iOG) + ".txt"   
         
     def GetSpeciesTreeConcatAlignFN(self, qResults=False):
         if qResults:
@@ -561,6 +569,10 @@ class __Files_new_dont_manually_create__(object):
             return self.rd1 + "Phylogenetic_Hierarchical_Orthogroups/%s.tsv" % sp_node_name
         else:
             return self.GetWorkingDirectory_Write() + "%s.tsv" % sp_node_name
+        
+    
+    def HierarchicalOrthogroupsFNN0(self):
+        return self.rd1 + "Phylogenetic_Hierarchical_Orthogroups/N0.tsv"
 
     """ ========================================================================================== """
             
@@ -585,7 +597,8 @@ class __Files_new_dont_manually_create__(object):
 
     def GetOGsReconTreeFN(self, iOG):
         # return self.rd1 + "Resolved_Gene_Trees/OG%07d_tree.txt" % iOG
-        return self.wd_trees + "Resolved_Gene_Trees/OG%07d_tree.txt" % iOG
+        # return self.wd_trees + "Resolved_Gene_Trees/OG%07d_tree.txt" % iOG
+        return self.wd_trees + "Resolved_Gene_Trees/OG%07d.txt" % iOG
             
     def GetPhyldogWorkingDirectory(self):
         d = self.wd_current + "phyldog/"

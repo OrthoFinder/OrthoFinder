@@ -225,3 +225,17 @@ def SpeciesNameDict(speciesIDsFN):
             short, full = line.split(": ")
             speciesNamesDict[int(short)] = full.rsplit(".", 1)[0]
     return speciesNamesDict
+
+
+def SpeciesSequenceNameDict(sequenceIDsFN):
+    try:
+        seqIDsEx = util.FirstWordExtractor(sequenceIDsFN)
+    except RuntimeError as error:
+        print(str(error))
+        if str(error).startswith("ERROR"): 
+            files.FileHandler.LogFailAndExit()
+        else:
+            print("Tried to use only the first part of the accession in order to list the sequences in each orthogroup")
+            print("more concisely but these were not unique. The full accession line will be used instead.\n")
+            seqIDsEx = util.FullAccession(sequenceIDsFN)
+    return seqIDsEx.GetIDToNameDict()

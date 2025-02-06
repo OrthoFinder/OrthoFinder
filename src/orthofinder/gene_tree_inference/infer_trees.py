@@ -10,30 +10,31 @@ def ConvertUserSpeciesTree(speciesTreeFN_in, speciesDict, speciesTreeFN_out):
         sp.name = revDict[sp.name]       
     t.write(outfile=speciesTreeFN_out)
 
-def InferGeneAndSpeciesTrees(ogSet,
-                       program_caller,
-                       msa_method,
-                       tree_method,
-                       nHighParallel,
-                       nLowParallel,
-                       qDoubleBlast,
-                       qAddSpeciesToIDs,
-                       qTrim,
-                       cmd_order="descending",
-                       method_threads=None,
-                       method_threads_large=None,
-                       method_threads_small=None, 
-                       threshold=None,
-                       old_version=False,
-                       userSpeciesTree = None,
-                       qStopAfterSeqs = False,
-                       qStopAfterAlign = False,
-                       qMSA = False,
-                       qPhyldog = False,
-                       results_name = "",
-                       root_from_previous = False,
-                       i_og_restart=0,
-):
+def InferGeneAndSpeciesTrees(
+        ogSet,
+        program_caller,
+        msa_method,
+        tree_method,
+        nHighParallel,
+        nLowParallel,
+        qDoubleBlast,
+        qAddSpeciesToIDs,
+        qTrim,
+        cmd_order="descending",
+        method_threads=None,
+        method_threads_large=None,
+        method_threads_small=None, 
+        threshold=None,
+        old_version=False,
+        userSpeciesTree = None,
+        qStopAfterSeqs = False,
+        qStopAfterAlign = False,
+        qMSA = False,
+        qPhyldog = False,
+        results_name = "",
+        root_from_previous = False,
+        i_og_restart=0,
+    ):
     """
     1. Setup:
         - ogSet, directories
@@ -76,23 +77,24 @@ def InferGeneAndSpeciesTrees(ogSet,
                                 qSupport=False, qFixNegatives=True)
         qDoMSASpeciesTree = (not qLessThanFourSpecies) and (not userSpeciesTree) and (not root_from_previous)
         util.PrintTime("Starting MSA/Trees")
-        seqs_alignments_dirs = treeGen.DoTrees(ogSet,
-                                               ogSet.Spec_SeqDict(), 
-                                               ogSet.SpeciesDict(), 
-                                               ogSet.speciesToUse, 
-                                               nHighParallel, 
-                                               qStopAfterSeqs, 
-                                               qStopAfterAlign or qPhyldog, 
-                                               qDoSpeciesTree=qDoMSASpeciesTree,
-                                               qTrim=qTrim,
-                                               i_og_restart=i_og_restart,
-                                               cmd_order=cmd_order,
-                                               method_threads=method_threads,
-                                               method_threads_large=method_threads_large,
-                                               method_threads_small=method_threads_small, 
-                                               threshold=threshold,
-                                               old_version=old_version
-                                               )
+        seqs_alignments_dirs = treeGen.DoTrees(
+            ogSet,
+            ogSet.Spec_SeqDict(), 
+            ogSet.SpeciesDict(), 
+            ogSet.speciesToUse, 
+            nHighParallel, 
+            qStopAfterSeqs, 
+            qStopAfterAlign or qPhyldog, 
+            qDoSpeciesTree=qDoMSASpeciesTree,
+            qTrim=qTrim,
+            i_og_restart=i_og_restart,
+            cmd_order=cmd_order,
+            method_threads=method_threads,
+            method_threads_large=method_threads_large,
+            method_threads_small=method_threads_small, 
+            threshold=threshold,
+            old_version=old_version
+        )
         util.PrintTime("Done MSA/Trees")
         if qDoMSASpeciesTree:
             spTreeFN_ids = files.FileHandler.GetSpeciesTreeUnrootedFN()

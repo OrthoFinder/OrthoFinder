@@ -111,13 +111,13 @@ def GetSequenceLengths(seqsInfo):
 
 
 def DoOrthogroups(
-    options,
-    speciesInfoObj,
-    seqsInfo,
-    speciesNamesDict,
-    speciesXML=None,
-    i_unassigned=None,
-):
+        options,
+        speciesInfoObj,
+        seqsInfo,
+        speciesNamesDict,
+        speciesXML=None,
+        i_unassigned=None,
+    ):
 
     # Run Algorithm, cluster and output cluster files with original accessions
     q_unassigned = i_unassigned is not None
@@ -325,14 +325,14 @@ def DoOrthogroups(
 
 
 def post_clustering_orthogroups(
-    clustersFilename_pairs,
-    speciesInfoObj,
-    seqsInfo,
-    speciesNamesDict,
-    options,
-    speciesXML,
-    q_incremental=False,
-):
+        clustersFilename_pairs,
+        speciesInfoObj,
+        seqsInfo,
+        speciesNamesDict,
+        options,
+        speciesXML,
+        q_incremental=False,
+    ):
     """
     Write OGs & statistics to results files, write Fasta files.
     Args:

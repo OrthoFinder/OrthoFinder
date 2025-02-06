@@ -41,7 +41,7 @@ except ImportError:
     import Queue as queue
 
 from ..tools import tree, wrapper_phyldog, stag, stride, trees_msa, dendroblast
-from ..tools import mcl as MCL
+from ..tools import mcl 
 from ..gene_tree_inference import trees2ologs_dlcpar, trees2ologs_of, infer_trees
 
 from ..utils import util, files, parallel_task_manager, program_caller
@@ -50,6 +50,7 @@ from . import stats
 from .. import nThreadsDefault as nThreads
 from .. import my_env
 
+from ..file_updates import file_updates
    
 
 # ==============================================================================================================================      
@@ -267,7 +268,8 @@ def ReconciliationAndOrthologues(
         fewer_open_files=False,
         save_space=False,
         old_version=False,
-):
+        print_info=True
+    ):
     """
     ogSet - info about the orthogroups, species etc.
     resultsDir - where the Orthologues top level results directory will go (should exist already)
@@ -300,14 +302,21 @@ def ReconciliationAndOrthologues(
         pickleDir = files.FileHandler.GetPickleDir()
         nOrthologues_SpPair = trees2ologs_dlcpar.create_orthologue_lists(ogSet, resultsDir_ologs, dlcparResultsDir, pickleDir)  
 
-    elif "phyldog" == recon_method:
+    elif "phyldog" == recon_method: # Should not be used, the function is broken
         util.PrintTime("Starting Orthologues from Phyldog")
-        nOrthologues_SpPair = trees2ologs_of.DoOrthologuesForOrthoFinder_Phyldog(ogSet, workingDir, trees2ologs_of.GeneToSpecies_dash,
-                                                                                 resultsDir_ologs, reconTreesRenamedDir)
+        nOrthologues_SpPair = \
+            trees2ologs_of.DoOrthologuesForOrthoFinder_Phyldog(
+                ogSet, 
+                workingDir, 
+                trees2ologs_of.GeneToSpecies_dash, 
+                resultsDir_ologs, 
+                reconTreesRenamedDir
+        )
         util.PrintTime("Done Orthologues from Phyldog")
     else:
         start = time.time()
-        util.PrintTime("Starting OF Orthologues")
+        if print_info:
+            util.PrintTime("Starting of Orthologues")
         qNoRecon = ("only_overlap" == recon_method)
         # The next function should not create the HOG writer and label the species tree. This should be done here and passed as arguments
         species_tree_rooted_labelled = tree.Tree(speciesTree_ids_fn)
@@ -323,11 +332,28 @@ def ReconciliationAndOrthologues(
         # HOG Writer
         speciesDict = ogSet.SpeciesDict()
         SequenceDict = ogSet.SequenceDict()
-        hog_writer = trees2ologs_of.HogWriter(species_tree_rooted_labelled, node_names, SequenceDict, speciesDict, ogSet.speciesToUse)
-        nOrthologues_SpPair = trees2ologs_of.DoOrthologuesForOrthoFinder(ogSet, species_tree_rooted_labelled, trees2ologs_of.GeneToSpecies_dash, 
-                                                                         stride_dups, qNoRecon, hog_writer, q_split_para_clades, nLowParallel,
-                                                                         fewer_open_files, save_space, old_version=old_version)
-        util.PrintTime("Done OF Orthologues")
+        hog_writer = trees2ologs_of.HogWriter(species_tree_rooted_labelled, 
+                                              node_names, 
+                                              SequenceDict, 
+                                              speciesDict, 
+                                              ogSet.speciesToUse)
+        nOrthologues_SpPair = \
+            trees2ologs_of.DoOrthologuesForOrthoFinder(
+                ogSet, 
+                species_tree_rooted_labelled, 
+                trees2ologs_of.GeneToSpecies_dash, 
+                stride_dups, 
+                qNoRecon, 
+                hog_writer, 
+                q_split_para_clades, 
+                nLowParallel,
+                fewer_open_files, 
+                save_space, 
+                old_version=old_version,
+                print_info=print_info
+        )
+        if print_info:
+            util.PrintTime("Done of Orthologues")
         TwoAndThreeGeneHOGs(ogSet, species_tree_rooted_labelled, hog_writer)
         hog_writer.close_files()
     nOrthologues_SpPair += TwoAndThreeGeneOrthogroups(ogSet, resultsDir_ologs, save_space=save_space, fewer_open_files=fewer_open_files)
@@ -354,7 +380,7 @@ def OrthologuesFromTrees(
         q_split_para_clades,
         fewer_open_files,
         old_version=False,
-):
+    ):
     """
     userSpeciesTree_fn - None if not supplied otherwise rooted tree using user species names (not orthofinder IDs)
     qUserSpTree - is the speciesTree_fn user-supplied
@@ -372,86 +398,165 @@ def OrthologuesFromTrees(
         infer_trees.ConvertUserSpeciesTree(userSpeciesTree_fn, speciesDict, speciesTreeFN_ids)
     util.PrintUnderline("Running Orthologue Prediction", True)
     util.PrintUnderline("Reconciling gene and species trees") 
-    ReconciliationAndOrthologues(recon_method, ogSet, nHighParallel, nLowParallel, q_split_para_clades=q_split_para_clades,
-                                 fewer_open_files=fewer_open_files, old_version=old_version)
+    ReconciliationAndOrthologues(
+        recon_method, 
+        ogSet, 
+        nHighParallel, 
+        nLowParallel, 
+        q_split_para_clades=q_split_para_clades,
+        fewer_open_files=fewer_open_files, 
+        old_version=old_version
+    )
     util.PrintUnderline("Writing results files")
     util.PrintTime("Writing results files")
     files.FileHandler.CleanWorkingDir2()
 
 
-def OrthologuesWorkflow(speciesToUse, nSpAll, 
-                       program_caller,
-                       msa_method,
-                       tree_method,
-                       recon_method,
-                       nHighParallel,
-                       nLowParallel,
-                       qDoubleBlast,
-                       qAddSpeciesToIDs,
-                       qTrim,
-                       fewer_open_files,  # Open one ortholog file per species when analysing trees
-                       cmd_order="ascending",
-                       method_threads=None,
-                       method_threads_large=None,
-                       method_threads_small=None, 
-                       threshold=None,
-                       old_version=False,
-                       userSpeciesTree = None,
-                       qStopAfterSeqs = False,
-                       qStopAfterAlign = False,
-                       qStopAfterTrees = False, 
-                       qMSA = False,
-                       qPhyldog = False,
-                       results_name = "",
-                       q_split_para_clades=False,
-                       save_space=False,
-                       root_from_previous=False,
-                       i_og_restart=0,
-):
-    ogSet = orthogroups_set.OrthoGroupsSet(files.FileHandler.GetWorkingDirectory1_Read(), speciesToUse, nSpAll,
-                           qAddSpeciesToIDs, idExtractor = util.FirstWordExtractor)
+def OrthologuesWorkflow(
+        seqsInfo, speciesNamesDict, speciesXML,
+        speciesInfoObj, options,
+        speciesToUse, 
+        nSpAll, 
+        program_caller,
+        msa_method,
+        tree_method,
+        recon_method,
+        nHighParallel,
+        nLowParallel,
+        qDoubleBlast,
+        qAddSpeciesToIDs,
+        qTrim,
+        fewer_open_files,  # Open one ortholog file per species when analysing trees
+        cmd_order="ascending",
+        method_threads=None,
+        method_threads_large=None,
+        method_threads_small=None, 
+        threshold=None,
+        old_version=False,
+        userSpeciesTree = None,
+        qStopAfterSeqs = False,
+        qStopAfterAlign = False,
+        qStopAfterTrees = False, 
+        qMSA = False,
+        qPhyldog = False,
+        results_name = "",
+        q_split_para_clades=False,
+        save_space=False,
+        root_from_previous=False,
+        i_og_restart=0,
+    ):
+    ogSet = orthogroups_set.OrthoGroupsSet(
+        files.FileHandler.GetWorkingDirectory1_Read(), 
+        speciesToUse, 
+        nSpAll,
+        qAddSpeciesToIDs, 
+        idExtractor = util.FirstWordExtractor
+    )
 
-    return_obj = infer_trees.InferGeneAndSpeciesTrees(ogSet,
-                       program_caller, msa_method, tree_method,
-                       nHighParallel, nLowParallel, qDoubleBlast, 
-                       qAddSpeciesToIDs, qTrim, 
-                       cmd_order,
-                       method_threads,
-                       method_threads_large,
-                       method_threads_small, 
-                       threshold,
-                       old_version,
-                       userSpeciesTree, qStopAfterSeqs, 
-                       qStopAfterAlign, qMSA, qPhyldog,
-                       results_name, root_from_previous, i_og_restart)
+    return_obj = infer_trees.InferGeneAndSpeciesTrees(
+        ogSet,
+        program_caller, 
+        msa_method, 
+        tree_method,
+        nHighParallel, 
+        nLowParallel, 
+        qDoubleBlast, 
+        qAddSpeciesToIDs, 
+        qTrim, 
+        cmd_order,
+        method_threads,
+        method_threads_large,
+        method_threads_small, 
+        threshold,
+        old_version,
+        userSpeciesTree, 
+        qStopAfterSeqs, 
+        qStopAfterAlign, 
+        qMSA, 
+        qPhyldog,
+        results_name, 
+        root_from_previous, 
+        i_og_restart
+    )
     if return_obj is None:
         return
     spTreeFN_ids, qSpeciesTreeSupports = return_obj
 
-    return_obj = RootSpeciesTree(ogSet, spTreeFN_ids, qSpeciesTreeSupports,
-                       nHighParallel, nLowParallel,
-                       userSpeciesTree, qStopAfterSeqs, qStopAfterAlign, qStopAfterTrees, qMSA, qPhyldog,
-                       results_name, q_split_para_clades, save_space, root_from_previous)
+    return_obj = RootSpeciesTree(
+        ogSet, 
+        spTreeFN_ids, 
+        qSpeciesTreeSupports,
+        nHighParallel, 
+        nLowParallel,
+        userSpeciesTree, 
+        qStopAfterSeqs, 
+        qStopAfterAlign, 
+        qStopAfterTrees, 
+        qMSA, 
+        qPhyldog,
+        results_name, 
+        q_split_para_clades, 
+        save_space, 
+        root_from_previous
+    )
     if return_obj is None:
         return
     rooted_sp_tree, fn_rooted_sp_tree, q_multiple_roots, stride_dups = return_obj
 
-    InferOrthologs(ogSet, 
-                   rooted_sp_tree, 
-                   fn_rooted_sp_tree, 
-                   q_multiple_roots, 
-                   qSpeciesTreeSupports, 
-                   stride_dups,
-                   recon_method,
-                    nHighParallel, 
-                    nLowParallel, 
-                    fewer_open_files,
-                    userSpeciesTree, 
-                    qPhyldog,
-                    q_split_para_clades, 
-                    save_space, 
-                    root_from_previous,
-                    old_version=old_version)
+    InferOrthologs(
+        ogSet, 
+        rooted_sp_tree, 
+        fn_rooted_sp_tree, 
+        q_multiple_roots, 
+        qSpeciesTreeSupports, 
+        stride_dups,
+        recon_method,
+        nHighParallel, 
+        nLowParallel, 
+        fewer_open_files,
+        userSpeciesTree, 
+        qPhyldog,
+        q_split_para_clades, 
+        save_space, 
+        root_from_previous,
+        old_version=old_version
+    )
+
+    ogSet = file_updates.update_output_files(
+        files.FileHandler.GetWorkingDirectory_Write(),
+        ogSet.SequenceDict(),
+        speciesInfoObj,
+        seqsInfo,
+        speciesNamesDict,
+        options,
+        speciesXML,
+        options.nProcessAlg,
+        q_incremental=True,
+        i_og_restart=i_og_restart,
+        exist_msa=options.qMSATrees
+    )
+
+    InferOrthologs(
+        ogSet, 
+        rooted_sp_tree, 
+        fn_rooted_sp_tree, 
+        q_multiple_roots, 
+        qSpeciesTreeSupports, 
+        stride_dups,
+        recon_method,
+        nHighParallel, 
+        nLowParallel, 
+        fewer_open_files,
+        userSpeciesTree, 
+        qPhyldog,
+        q_split_para_clades, 
+        save_space, 
+        root_from_previous,
+        old_version=old_version,
+        print_info=False
+    )
+    
+    os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
 
     fastaWriter = trees_msa.FastaWriter(files.FileHandler.GetSpeciesSeqsDir(), speciesToUse)
     ogs = accelerate.read_hogs(files.FileHandler.GetResultsDirectory1(), "N0")
@@ -461,20 +566,23 @@ def OrthologuesWorkflow(speciesToUse, nSpAll,
     stats.Stats(ogs, species_dict, speciesToUse, files.FileHandler.iResultsVersion, fastaWriter, ids_dict)
 
 
-def RootSpeciesTree(ogSet, spTreeFN_ids, qSpeciesTreeSupports,
-                             nHighParallel,
-                             nLowParallel,
-                             userSpeciesTree=None,
-                             qStopAfterSeqs=False,
-                             qStopAfterAlign=False,
-                             qStopAfterTrees=False,
-                             qMSA=False,
-                             qPhyldog=False,
-                             results_name="",
-                             q_split_para_clades=False,
-                             save_space=False,
-                             root_from_previous=False,
-                             ):
+def RootSpeciesTree(
+        ogSet, 
+        spTreeFN_ids, 
+        qSpeciesTreeSupports,
+        nHighParallel,
+        nLowParallel,
+        userSpeciesTree=None,
+        qStopAfterSeqs=False,
+        qStopAfterAlign=False,
+        qStopAfterTrees=False,
+        qMSA=False,
+        qPhyldog=False,
+        results_name="",
+        q_split_para_clades=False,
+        save_space=False,
+        root_from_previous=False,
+    ):
     """
     SpeciesTree
     spTreeFN_ids, or equivalently FileHandler.GetSpeciesTreeUnrootedFN() in all cases (user, inferred etc)
@@ -560,32 +668,61 @@ def RootSpeciesTree(ogSet, spTreeFN_ids, qSpeciesTreeSupports,
     return roots[0], rootedSpeciesTreeFN[0], qMultiple, stride_dups
 
 
-def InferOrthologs( ogSet, rooted_sp_tree, speciesTree_fn, qMultipleSpeciesTreeRoots, qSpeciesTreeSupports, stride_dups,
-                    recon_method,
-                    nHighParallel,
-                    nLowParallel,
-                    fewer_open_files,  # Open one ortholog file per species when analysing trees
-                    userSpeciesTree=None,
-                    qPhyldog=False,
-                    q_split_para_clades=False,
-                    save_space=False,
-                    root_from_previous=False,
-                    old_version=False,
-                    ):
+def InferOrthologs(
+        ogSet, 
+        rooted_sp_tree, 
+        speciesTree_fn, 
+        qMultipleSpeciesTreeRoots, 
+        qSpeciesTreeSupports, 
+        stride_dups,
+        recon_method,
+        nHighParallel,
+        nLowParallel,
+        fewer_open_files,  # Open one ortholog file per species when analysing trees
+        userSpeciesTree=None,
+        qPhyldog=False,
+        q_split_para_clades=False,
+        save_space=False,
+        root_from_previous=False,
+        old_version=False,
+        print_info=True,
+    ):
     """ C. Gene tree rooting & orthologs"""
 
     resultsSpeciesTrees = []
     i_rooted_sp_tree = 0
-    util.PrintUnderline("Reconciling gene trees and species tree")         
+    if print_info:
+        util.PrintUnderline("Reconciling gene trees and species tree")         
     resultsSpeciesTrees.append(files.FileHandler.GetSpeciesTreeResultsFN(0, True))
     if (not userSpeciesTree) and (not qPhyldog) and len(ogSet.seqsInfo.speciesToUse) != 2:
-        print(("Outgroup: " + (", ".join([ogSet.SpeciesDict()[s] for s in rooted_sp_tree]))))
-    util.RenameTreeTaxa(speciesTree_fn, resultsSpeciesTrees[-1], ogSet.SpeciesDict(), qSupport=qSpeciesTreeSupports, qFixNegatives=True)
-    util.PrintTime("Starting Recon and orthologues")
-    ReconciliationAndOrthologues(recon_method, ogSet, nHighParallel, nLowParallel, i_rooted_sp_tree if qMultipleSpeciesTreeRoots else None,
-                                 stride_dups=stride_dups, q_split_para_clades=q_split_para_clades,
-                                 fewer_open_files=fewer_open_files, save_space=save_space, old_version=old_version)
+        if print_info:
+            print(("Outgroup: " + (", ".join([ogSet.SpeciesDict()[s] for s in rooted_sp_tree]))))
+    util.RenameTreeTaxa(
+        speciesTree_fn, 
+        resultsSpeciesTrees[-1], 
+        ogSet.SpeciesDict(), 
+        qSupport=qSpeciesTreeSupports, 
+        qFixNegatives=True
+    )
+    if print_info:
+        util.PrintTime("Starting Recon and orthologues")
+
+    ReconciliationAndOrthologues(
+        recon_method, 
+        ogSet, 
+        nHighParallel, 
+        nLowParallel, 
+        i_rooted_sp_tree if qMultipleSpeciesTreeRoots else None,
+        stride_dups=stride_dups, 
+        q_split_para_clades=q_split_para_clades,
+        fewer_open_files=fewer_open_files, 
+        save_space=save_space, 
+        old_version=old_version,
+        print_info=print_info
+
+    )
     # util.PrintTime("Done Recon")
 
     files.FileHandler.CleanWorkingDir2()
-    util.PrintUnderline("Writing results files", True)
+    if print_info:
+        util.PrintUnderline("Writing results files", True)

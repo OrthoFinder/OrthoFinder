@@ -1,80 +1,55 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2014 David Emms
-#
-# This program (OrthoFinder) is distributed under the terms of the GNU General Public License v3
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#  
-#  When publishing work that uses OrthoFinder please cite:
-#      Emms, D.M. and Kelly, S. (2015) OrthoFinder: solving fundamental biases in whole genome comparisons dramatically 
-#      improves orthogroup inference accuracy, Genome Biology 16:157
-#
-# For any enquiries send an email to David Emms
-# david_emms@hotmail.com
-from __future__ import absolute_import
 import sys
-import csv
-from typing import List, Set
-
-from ..utils import parallel_task_manager, util, files
-
+import csv 
+from operator import itemgetter
 from collections import defaultdict, Counter
+
+import numpy as np
+from ..tools import mcl as MCL
+from ..utils import util, files, parallel_task_manager
+
 import xml.etree.ElementTree as ET              # Y
 from xml.etree.ElementTree import SubElement    # Y
 from xml.dom import minidom
 from .. import __version__
 
-def GetPredictedOGs(clustersFilename):
-    """
-    Returns:
-        ogs: List[Set[str]] - List of sets of genes ids (as strings)
-    """
-    predictedOGs = []
-    nOGsString = ""
-    qContainsProfiles = False
-    with open(clustersFilename, 'r') as clusterFile:
-        header = True
-        og = set()
-        for line in clusterFile:
-            if header:
-                if line.count("begin"):
-                    header = False
-            else:
-                if line.find(")") != -1:
-                    break
-                if line[-2] == "$":
-                    line = line[:-3]
-                if line[0] == " ":
-                    # continuation of group
-                    x = line.split()
-                    y = [x_ for x_ in x if not x_.startswith('Prof')]
-                    og = og.union(y)
-                else:
-                    # new OG
-                    if len(og) != 0:
-                        predictedOGs.append(og)
-                    nOGsString, line = line.split(" ", 1)
-                    x = line.split()
-                    y = [x_ for x_ in x if not x_.startswith('Prof')]
-                    if len(x) != len(y):
-                        qContainsProfiles = True
-                    og = set(y)
-        if len(og) > 0:
-            predictedOGs.append(og)
-    return predictedOGs
-    
+
+def update_ogs(input_path):
+    sorted_matrix, species_names = read_hogs_to_matrix(input_path)   
+    name_dictionary = {}     
+    new_og_list = []
+    # For each line in sorted HOG order replace HOG name with index OG name (based on length of enumerate so HOG.N0 + 0*x + number)
+    for pos, line in enumerate(sorted_matrix):
+        new_og_name = "OG%07d" % pos
+        key = line[2]
+        if key in name_dictionary:
+            additional = [new_og_name] + [line[1]] + [line[3]]           
+            new_value = name_dictionary[key]
+            new_value.append(additional)
+            name_dictionary.update({key: new_value})
+        else:
+            name_dictionary[key] = [[new_og_name] + [line[1]] + [line[3]]]
+
+        new_og_set = set(", ".join(line[4:]).replace("\n", "").split(", "))
+        new_og_list.append({gene for gene in new_og_set if len(gene) != 0})
+    return  new_og_list, name_dictionary, species_names 
+
+def read_hogs_to_matrix(input_path):
+    #holds lines to write to new output file
+    matrix = []
+    with open(input_path) as input_file:
+        for i, line in enumerate(input_file):
+            line_split = line.strip().split("\t")
+            if i == 0:
+                species_names = line_split[3:]
+                continue
+            # Count number of genes in each line as a count.
+            count = len(list(filter(None, (", ".join(line_split[3:]).split(", ")))))
+            # Add line with gene count to matrix variable.
+            matrix.append([count] + line_split)
+
+    sorted_matrix = sorted(matrix, key=itemgetter(0), reverse=True)
+    return sorted_matrix, species_names    
+
 def GetSingleID(speciesStartingIndices, seq, speciesToUse): 
     a, b = seq.split("_")
     iSpecies = int(a)
@@ -82,54 +57,145 @@ def GetSingleID(speciesStartingIndices, seq, speciesToUse):
     offset = speciesStartingIndices[speciesToUse.index(iSpecies)]
     return iSeq + offset  
 
-def GetIDPair(speciesStartingIndices, singleID, speciesToUse):   
-    for i, startingIndex in enumerate(speciesStartingIndices):
-        if startingIndex > singleID:
-            return "%d_%d" % (speciesToUse[i-1], singleID - speciesStartingIndices[i-1])
-    return "%d_%d" % (speciesToUse[-1], singleID - speciesStartingIndices[len(speciesStartingIndices)-1]) 
 
-def ConvertSingleIDsToIDPair(seqsInfo, clustersFilename, newFilename, q_unassigned=False):
-    with open(clustersFilename, 'r') as clusterFile, open(newFilename, "w") as output:
-        header = True
-        for line in clusterFile:
-            appendDollar = False
-            initialText = ""
-            idsString = ""
-            ids = []
-            if header:
-                output.write(line)
-                if line.count("begin"):
-                    header = False
+class Seq(object):
+    def __init__(self, seqInput):
+        """ Constructor takes sequence in any format and returns generators the 
+        Seq object accordingly. If performance is really important then can write 
+        individual an @classmethod to do that without the checks"""
+        if type(seqInput) is str:
+            a,b = seqInput.split("_")
+            self.iSp = int(a)
+            self.iSeq = int(b)
+        elif len(seqInput) == 2:
+            if seqInput[0] is str:
+                self.iSp, self.iSeq = list(map(int, seqInput))
             else:
-                if line.find(")") != -1:
-                    output.write(line)
-                    break
-                if q_unassigned and not line.startswith(" ") and len(line.split()) == 3:
-                    # This is a single gene, not necessarily from this MCL clustering but here implicitly
-                    continue
-                if line[-2] == "$":
-                    line = line[:-3]
-                    appendDollar = True
-                if line[0] != " ":
-                    initialText, line = line.split(None, 1)
-                # continuation of group
-                ids = line.split()
-                for id in ids:
-                    idsString += GetIDPair(seqsInfo.seqStartingIndices, int(id), seqsInfo.speciesToUse) + " "
-                output.write(initialText + "      " + idsString)
-                if appendDollar:
-                    output.write("$\n")
+                self.iSp= seqInput[0]
+                self.iSeq = seqInput[1]
+        else:
+            raise NotImplementedError
+    
+    def __eq__(self, other):
+        return (isinstance(other, self.__class__)
+            and self.__dict__ == other.__dict__)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)         
+        
+    def __repr__(self):
+        return self.ToString()
+    
+    def ToString(self):
+        return "%d_%d" % (self.iSp, self.iSeq)
+
+# ==============================================================================================================================
+        
+class OrthoGroupsSet(object):
+    def __init__(
+            self, 
+            orthofinderWorkingDir_list, 
+            speciesToUse, 
+            nSpAll, 
+            qAddSpeciesToIDs, 
+            idExtractor = util.FirstWordExtractor
+        ):
+        
+        self.speciesIDsEx = util.FullAccession(files.FileHandler.GetSpeciesIDsFN())
+        self._Spec_SeqIDs = None
+        self._extractor = idExtractor
+        self.seqIDsEx = None
+        self.ogs_all = None
+        self.iOgs4 = None
+        self.speciesToUse = speciesToUse     # list of ints
+        self.seqsInfo = util.GetSeqsInfo(orthofinderWorkingDir_list, self.speciesToUse, nSpAll)
+        self.id_to_og = None
+        self.qAddSpeciesToIDs = qAddSpeciesToIDs
+        self.cached_seq_ids_dict = None
+
+    def SequenceDict(self):
+        """returns Dict[str, str]"""
+        if self.cached_seq_ids_dict is not None:
+            return self.cached_seq_ids_dict
+        if self.seqIDsEx == None:
+            try:
+                self.seqIDsEx = self._extractor(files.FileHandler.GetSequenceIDsFN())
+            except RuntimeError as error:
+                print(str(error))
+                if str(error).startswith("ERROR"): 
+                    files.FileHandler.LogFailAndExit()
                 else:
-                    output.write("\n")
+                    print("Tried to use only the first part of the accession in order to list the sequences in each orthogroup")
+                    print("more concisely but these were not unique. The full accession line will be used instead.\n")
+                    self.seqIDsEx = util.FullAccession(files.FileHandler.GetSequenceIDsFN())
+        self.cached_seq_ids_dict = self.seqIDsEx.GetIDToNameDict()
+        return self.cached_seq_ids_dict
+        
+    def SpeciesDict(self):
+        """returns Dict[str, str]"""
+        d = self.speciesIDsEx.GetIDToNameDict()
+        return {k: v.rsplit(".", 1)[0] for k, v in d.items()}
+        
+    def Spec_SeqDict(self):
+        """returns Dict[str, str]"""
+        if self._Spec_SeqIDs != None:
+            return self._Spec_SeqIDs
+        seqs = self.SequenceDict()
+        seqs = {k:v for k,v in seqs.items() if int(k.split("_")[0]) in self.speciesToUse}
+        if not self.qAddSpeciesToIDs:
+            self._Spec_SeqIDs = seqs
+            return seqs
+        specs = self.SpeciesDict()
+        specs_ed = {k:v.replace(".", "_").replace(" ", "_") for k,v in specs.items()}
+        self._Spec_SeqIDs = {seqID:specs_ed[seqID.split("_")[0]] + "_" + name for seqID, name in seqs.items()}
+        return self._Spec_SeqIDs
 
+    def Get_iOGs4(self):
+        if self.iOgs4 is None:
+            ogs = self.OGsAll()
+            self.iOgs4 = [i for i, og in enumerate(ogs) if len(og) >= 4]
+        return self.iOgs4
 
-def write_updated_clusters_file(ogs: List[Set[str]], clustersFilename_pairs):
-    with open(clustersFilename_pairs, 'w') as outfile:
-        outfile.write("(mclmatrix")
-        outfile.write("begin\n")
-        for iog, og in enumerate(ogs):
-            outfile.write("%d      %s $\n" % (iog, " ".join(sorted(og))))
-        outfile.write(")\n")
+    def OGsAll(self):
+        if self.ogs_all is None:
+            ogs, _, _ = update_ogs(files.FileHandler.HierarchicalOrthogroupsFNN0())
+            self.ogs_all = [[Seq(g) for g in og] for og in ogs]
+        return self.ogs_all
+
+    # def OGs4AssumeOrdered(self):
+    #     ogs_all = self.OGsAll()
+    #     iogs4 = self.Get_iOGs4()
+    #     return [ogs_all[i] for i in iogs4]
+
+    def OrthogroupMatrix(self):
+        """ qReduce give a matrix with only as many columns as species for cases when
+        clustering has been performed on a subset of species"""
+        ogs = self.OGsAll()
+        iogs4 = self.Get_iOGs4()
+        ogs = [ogs[i] for i in iogs4]
+        iSpecies = sorted(set([gene.iSp for og in ogs for gene in og]))
+        speciesIndexDict = {iSp:iCol for iCol, iSp in enumerate(iSpecies)}
+        nSpecies = len(iSpecies)
+        nGroups = len(ogs)
+        # (i, j)-th entry of ogMatrix gives the number of genes from i in orthologous group j
+        ogMatrix = np.zeros((nGroups, nSpecies)) 
+        for i_og, og in enumerate(ogs):
+            for gene in og:
+                ogMatrix[i_og, speciesIndexDict[gene.iSp]] += 1
+        return ogMatrix, iogs4
+        
+    def ID_to_OG_Dict(self):
+        if self.id_to_og != None:
+            return self.id_to_og
+        # Maybe shouldn't include unclustered genes:
+        self.id_to_og = {g.ToString():iog for iog, og in enumerate(self.OGsAll()) for g in og}
+        return self.id_to_og
+
+    def AllUsedSequenceIDs(self):
+        ids_dict = self.SequenceDict()
+        species_to_use_strings = list(map(str, self.speciesToUse))
+        all_ids = [s for s in ids_dict.keys() if s.split("_")[0] in species_to_use_strings]
+        return all_ids
 
 
 class MCL:
@@ -138,7 +204,7 @@ class MCL:
         with open(outputFilename, 'w') as outputFile:
             for iOg, og in enumerate(predictedOGs):
                 outputFile.write("OG%07d: " % iOg)
-                accessions = sorted([idDict[seq] for seq in og])
+                accessions = sorted([idDict[seq] for seq in og if idDict.get(seq) is not None])
                 outputFile.write(" ".join(accessions))
                 outputFile.write("\n")
 
@@ -220,7 +286,6 @@ class MCL:
             ogs, 
             idsFilenames, 
             resultsBaseFilename, 
-            clustersFilename_pairs
         ):
         outputFN = resultsBaseFilename + ".txt"
         try:
@@ -237,7 +302,7 @@ class MCL:
         except RuntimeError as error:
             print(str(error))
             if str(error).startswith("ERROR"):
-                err_text = "ERROR: %s contains a duplicate ID. The IDs for the orthogroups in %s will not be replaced with the sequence accessions. If %s was prepared manually then please check the IDs are correct. " % (idsFilename, clustersFilename_pairs, idsFilename)
+                err_text = "ERROR: %s contains a duplicate ID. " % (idsFilename)
                 files.FileHandler.LogFailAndExit(err_text)
             else:
                 print("Tried to use only the first part of the accession in order to list the sequences in each orthogroup\nmore concisely but these were not unique. The full accession line will be used instead.\n")
@@ -249,7 +314,7 @@ class MCL:
                         fullDict.update(idDict)
                     MCL.CreateOGs(ogs, outputFN, fullDict)
                 except:
-                    err_text = "ERROR: %s contains a duplicate ID. The IDs for the orthogroups in %s will not be replaced with the sequence accessions. This is probably because the same accession was used more than once in your input FASTA files. However, if %s was prepared manually then you may need to check that file instead." % (idsFilename, clustersFilename_pairs, idsFilename)
+                    err_text = "ERROR: %s contains a duplicate ID. " % (idsFilename)
                     files.FileHandler.LogFailAndExit(err_text)
         return fullDict
 

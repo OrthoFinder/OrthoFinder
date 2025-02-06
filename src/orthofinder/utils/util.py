@@ -756,7 +756,8 @@ def compress_files(src_dir, output_fn):
             with os.scandir(src_dir) as it:
                 for entry in it:
                     if entry.is_file():
-                        fn = entry.name.partition("_")[0]
+                        # fn = entry.name.partition("_")[0]
+                        fn = entry.name.partition(".")[0]
                         try:
                             with open(entry.path, "r") as infile:
                                 og_tree = "".join(line.strip() for line in infile)
@@ -800,3 +801,4 @@ def get_progressbar(len_task, visible=True):
             "[yellow]Processing...", total=len_task, visible=visible,
         )
     return progressbar, task
+

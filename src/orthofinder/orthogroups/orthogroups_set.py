@@ -64,7 +64,15 @@ class Seq(object):
 # ==============================================================================================================================
         
 class OrthoGroupsSet(object):
-    def __init__(self, orthofinderWorkingDir_list, speciesToUse, nSpAll, qAddSpeciesToIDs, idExtractor = util.FirstWordExtractor):
+    def __init__(
+            self, 
+            orthofinderWorkingDir_list, 
+            speciesToUse, 
+            nSpAll, 
+            qAddSpeciesToIDs, 
+            idExtractor = util.FirstWordExtractor
+        ):
+        
         self.speciesIDsEx = util.FullAccession(files.FileHandler.GetSpeciesIDsFN())
         self._Spec_SeqIDs = None
         self._extractor = idExtractor

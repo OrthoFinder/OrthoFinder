@@ -1,42 +1,100 @@
 name: OrthoFinder
 on:
+  workflow_dispatch:
   push:
-    branches: [ "dev_master" ]
+    branches:
+      - "main"
+      - "dev-*"
+      - "feat/**"
+    paths-ignore:
+      - '.gitignore'
+      - 'README.md'
+      - 'LICENSE'
+      - 'DEVNOTES.md'
+      - 'CONTRIBUTING.md'
+      - 'CONDUCT.md'
   pull_request:
-    branches: [ "dev_master" ]
-permissions:
-  contents: read
-  issues: write
-  pull-requests: write
+    branches:
+      - "master"
+      - "dev_*"
+      - "feat/**"
+    types:
+      - opened
+    paths-ignore:
+      - ".github/workflows/*"
+
 jobs:
   build:
-    runs-on: ubuntu-latest
+    continue-on-error: true
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        operating-system: [ubuntu-latest]
+    runs-on: ${{ matrix.operating-system }}
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version:  ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pytest
-        if [ -f requirements_dev.txt ]; then pip install -r requirements_dev.txt; fi
-        
-    - name: Install OrthoFinder
-      run: |
-        pip install git+https://github.com/OrthoFinder/OrthoFinder.git@dev_master
+    - name: Get Code
+      uses: actions/checkout@v4
 
-    - name: Test screen print
+    - name: Load & Cache Dependencies
+      id: cache-dependencies
+      uses: ./.github/actions/cached-dependencies
+      with:
+        caching: 'true' # default
+
+    - name: Output information
       run: |
-        orthofinder
+        echo "Cache used? ${{ steps.cache-dependencies.outputs.used-cache}}"
+
+    - name: Test screen printout
+      run: python recur.py
+
+  test:
+    needs: build
+    continue-on-error: true
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        operating-system: [ubuntu-latest]
+    runs-on: ${{ matrix.operating-system }}
+
+    steps:
+    - name: Get Code
+      uses: actions/checkout@v4
+
+    - name: Load & Cache Dependencies
+      id: cache-dependencies
+      uses: ./.github/actions/cached-dependencies
+      with:
+        caching: 'true' # default
+
+    - name: Output information
+      run: |
+        echo "Cache used? ${{ steps.cache-dependencies.outputs.used-cache}}"
+
+    - name: Activate conda
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        auto-update-conda: true
+        python-version: ${{ matrix.python-version }}
+        use-mamba: true  # Optional for faster installs
+
+    - name: Install Conda Dependencies
+      run: |
+        conda install bioconda::diamond -y
+        conda install bioconda::mcl -y
+        conda install bioconda::famsa -y
+        conda install bioconda::fasttree -y
+        mcl --version
+        diamond --version  # Check if diamond is installed correctly
+        iqtree2 --version  # Check if iqtree2 is installed correctly
 
     - name: Test OrthoFinder on ExampleData
       run: |
-        orthofinder -f ExampleData -efn
+        python3 orthofinder.py -f ExampleData -efn
         
     # - name: Test with pytest
     #   run: |

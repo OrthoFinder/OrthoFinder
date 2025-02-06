@@ -185,9 +185,10 @@ class HogWriter(object):
             util.writerow(self.fhs[sp_node_name], ["%s.HOG%07d" % (sp_node_name, i_hog),  og_name, "-"] + row_genes)
             if sp_node_name == "N0":
                 row_genes_ids = [", ".join(genes_per_species_ids[isp]) for isp in self.iSps]
-                util.writerow(self.fhs[sp_node_name + ".ids"], ["%s.HOG%07d" % (sp_node_name, i_hog),  og_name, "-"] + row_genes_ids)
-
-
+                util.writerow(
+                    self.fhs[sp_node_name + ".ids"], 
+                    ["%s.HOG%07d" % (sp_node_name, i_hog),  og_name, "-"] + row_genes_ids
+                )
 
     def write_clade_v2(self, n, og_name, split_paralogous_clades_from_same_hog = False):
         """
@@ -1022,7 +1023,16 @@ def GetOrthologuesStandalone_Serial(trees_dir, species_tree_rooted_fn, GeneToSpe
 
 class OrthologsFiles(object):
     """wrapper to open all the orthologs files as once"""
-    def __init__(self, directory, speciesDict, iSpeciesToUse, nSpecies, sp_to_index, save_space, fewer_open_files=False):
+    def __init__(
+            self, 
+            directory, 
+            speciesDict, 
+            iSpeciesToUse, 
+            nSpecies, 
+            sp_to_index, 
+            save_space, 
+            fewer_open_files=False
+    ):
         self.d = directory
         self.speciesDict = speciesDict
         self.iSpeciesToUse = iSpeciesToUse
@@ -1114,18 +1124,20 @@ def WriteDuplications(dups_file_handle, og_name, duplications, spIDs, seqIDs, st
         gene_list1 = ", ".join([seqIDs[g] for g in genes1])
         util.writerow(dups_file_handle, [og_name, spIDs[sp_node_id] if q_terminal else sp_node_id, gene_node_name, frac, isSTRIDE, gene_list0, gene_list1]) 
 
-def DoOrthologuesForOrthoFinder(ogSet,
-                                species_tree_rooted_labelled,
-                                GeneToSpecies,
-                                stride_dups,
-                                qNoRecon,
-                                hog_writer,
-                                q_split_paralogous_clades,
-                                n_parallel,
-                                fewer_open_files,
-                                save_space,
-                                old_version=False,
-                                ):
+def DoOrthologuesForOrthoFinder(
+        ogSet,
+        species_tree_rooted_labelled,
+        GeneToSpecies,
+        stride_dups,
+        qNoRecon,
+        hog_writer,
+        q_split_paralogous_clades,
+        n_parallel,
+        fewer_open_files,
+        save_space,
+        old_version=False,
+        print_info=True,
+    ):
     try:
         # Create directory structure
         speciesDict = ogSet.SpeciesDict()
@@ -1156,14 +1168,38 @@ def DoOrthologuesForOrthoFinder(ogSet,
 
         # Infer orthologues and write them to file           
         with open(files.FileHandler.GetDuplicationsFN(), util.csv_write_mode) as outfile_dups, \
-                OrthologsFiles(dResultsOrthologues, speciesDict, ogSet.speciesToUse, nspecies, sp_to_index, save_space, fewer_open_files) as (ologs_file_handles, putative_xenolog_file_handles):
+                OrthologsFiles(
+                    dResultsOrthologues, 
+                    speciesDict, 
+                    ogSet.speciesToUse, 
+                    nspecies, 
+                    sp_to_index, 
+                    save_space, 
+                    fewer_open_files
+                ) as (ologs_file_handles, putative_xenolog_file_handles):
             util.writerow(outfile_dups, ["Orthogroup", "Species Tree Node", "Gene Tree Node", "Support", "Type",	"Genes 1", "Genes 2"])
             outfile_dups.flush()
             OrthologsFiles.flush_olog_files(ologs_file_handles, fewer_open_files)
-            ta = TreeAnalyser(len(iogs4), dResultsOrthologues, reconTreesRenamedDir, species_tree_rooted_labelled,
-                              ogSet.speciesToUse, GeneToSpecies, SequenceDict, speciesDict, spec_seq_dict, 
-                              neighbours, qNoRecon, outfile_dups, stride_dups, ologs_file_handles, 
-                              putative_xenolog_file_handles, hog_writer, q_split_paralogous_clades, fewer_open_files=fewer_open_files)
+            ta = TreeAnalyser(
+                len(iogs4), 
+                dResultsOrthologues, 
+                reconTreesRenamedDir, 
+                species_tree_rooted_labelled,
+                ogSet.speciesToUse, 
+                GeneToSpecies, 
+                SequenceDict, 
+                speciesDict, 
+                spec_seq_dict, 
+                neighbours, 
+                qNoRecon, 
+                outfile_dups, 
+                stride_dups, 
+                ologs_file_handles, 
+                putative_xenolog_file_handles, 
+                hog_writer, 
+                q_split_paralogous_clades, 
+                fewer_open_files=fewer_open_files
+            )
 
             if n_parallel == 1:
                 nOrthologues_SpPair = util.nOrtho_sp(nspecies)
@@ -1188,7 +1224,8 @@ def DoOrthologuesForOrthoFinder(ogSet,
                                     WriteOlogLinesToFile(ta.ologs_files_handles[i][j], olog_lines[i][j], dummy_lock)
                                     WriteOlogLinesToFile(ta.ologs_files_handles[j][i], olog_lines[j][i], dummy_lock)
                             WriteOlogLinesToFile(ta.putative_xenolog_file_handles[i], olog_sus_lines[i], dummy_lock)
-                util.PrintTime("Done writing orthologs")
+                if print_info:
+                    util.PrintTime("Done writing orthologs")
             else:
                 args_queue = mp.Queue()
                 for iog in iogs4:
@@ -1204,10 +1241,27 @@ def DoOrthologuesForOrthoFinder(ogSet,
 
 
 class TreeAnalyser(object):
-    def __init__(self, nOgs, dResultsOrthologues, reconTreesRenamedDir, species_tree_rooted_labelled, 
-                speciesToUse, GeneToSpecies, SequenceDict, speciesDict, spec_seq_dict, 
-                neighbours, qNoRecon, dups_file_handle, stride_dups, ologs_files_handles, 
-                putative_xenolog_file_handles, hog_writer, q_split_paralogous_clades, fewer_open_files=False):
+    def __init__(
+            self, 
+            nOgs, 
+            dResultsOrthologues, 
+            reconTreesRenamedDir, 
+            species_tree_rooted_labelled, 
+            speciesToUse, 
+            GeneToSpecies, 
+            SequenceDict, 
+            speciesDict, 
+            spec_seq_dict, 
+            neighbours, 
+            qNoRecon, 
+            dups_file_handle, 
+            stride_dups, 
+            ologs_files_handles, 
+            putative_xenolog_file_handles, 
+            hog_writer, 
+            q_split_paralogous_clades, 
+            fewer_open_files=False
+    ):
         self.nOgs = nOgs
         self.dResultsOrthologues = dResultsOrthologues
         self.reconTreesRenamedDir = reconTreesRenamedDir
@@ -1253,7 +1307,14 @@ class TreeAnalyser(object):
             # Write Duplications
             self.lock_dups.acquire()
             try:                                                        
-                WriteDuplications(self.dups_file_handle, og_name, dups, self.speciesDict, self.spec_seq_dict, self.stride_dups)
+                WriteDuplications(
+                    self.dups_file_handle, 
+                    og_name, 
+                    dups, 
+                    self.speciesDict, 
+                    self.spec_seq_dict, 
+                    self.stride_dups
+                )
                 self.dups_file_handle.flush()
             finally:
                 self.lock_dups.release()
@@ -1273,7 +1334,11 @@ class TreeAnalyser(object):
                                                        olog_sus_lines, fewer_open_files=self.fewer_open_files)
             GetHOGs_from_tree(iog, recon_tree, self.hog_writer, self.lock_hogs, self.q_split_paralogous_clades) 
             # don't relabel nodes, they've already been done
-            util.RenameTreeTaxa(recon_tree, self.reconTreesRenamedDir + "OG%07d_tree.txt" % iog, self.spec_seq_dict, qSupport=False, qFixNegatives=True)
+
+            # util.RenameTreeTaxa(recon_tree, self.reconTreesRenamedDir + "OG%07d_tree.txt" % iog, self.spec_seq_dict, qSupport=False, qFixNegatives=True)
+            util.RenameTreeTaxa(recon_tree, 
+                                self.reconTreesRenamedDir + "OG%07d.txt" % iog, 
+                                self.spec_seq_dict, qSupport=False, qFixNegatives=True)
             # recon_tree.delete_traverse()
             # if iog >= 0 and divmod(iog, 10 if self.nOgs <= 200 else 100 if self.nOgs <= 2000 else 1000)[1] == 0:
             # if iog > 0 and divmod(iog, 10 if self.nOgs <= 200 else 100 if self.nOgs <= 2000 else 1000)[1] == 0:
@@ -1902,7 +1967,16 @@ def DoOrthologuesForOrthoFinder_Phyldog(ogSet, workingDirectory, GeneToSpecies, 
             with open(d + '%s__v__%s.tsv' % (speciesDict[str(speciesIDs[index1])], speciesDict[str(speciesIDs[index2])]), util.csv_write_mode) as outfile:
                 writer1 = csv.writer(outfile, delimiter="\t")
                 writer1.writerow(("Orthogroup", speciesDict[str(speciesIDs[index1])], speciesDict[str(speciesIDs[index2])]))
-    with OrthologsFiles(dResultsOrthologues, speciesDict, ogSet.speciesToUse, nSpecies, sp_to_index, save_space=True) as ologs_files_handles, putative_xenolog_file_handles:
+    sp_to_index = {str(sp):i for i, sp in enumerate(ogSet.speciesToUse)}
+    
+    with OrthologsFiles(
+        dResultsOrthologues, 
+        speciesDict, 
+        ogSet.speciesToUse, 
+        nspecies, 
+        sp_to_index, 
+        save_space=True
+    ) as ologs_files_handles, putative_xenolog_file_handles:
         iogs4 = ogSet.Get_iOGs4()
         nOgs = len(ogSet.Get_iOGs4())
         nOrthologues_SpPair = util.nOrtho_sp(nspecies) 
@@ -1913,7 +1987,11 @@ def DoOrthologuesForOrthoFinder_Phyldog(ogSet, workingDirectory, GeneToSpecies, 
                 recon_tree = files.FileHandler.GetPhyldogOGResultsTreeFN(iog)
                 orthologues = GetOrthologues_from_phyldog_tree(iog, recon_tree, GeneToSpecies, dupsWriter=dupWriter, seqIDs=ogSet.Spec_SeqDict(), spIDs=ogSet.SpeciesDict())
                 allOrthologues = [(iog, orthologues)]
-                util.RenameTreeTaxa(recon_tree, reconTreesRenamedDir + "OG%07d_tree.txt" % iog, ogSet.Spec_SeqDict(), qSupport=False, qFixNegatives=True, label='n') 
+                # util.RenameTreeTaxa(recon_tree, reconTreesRenamedDir + "OG%07d_tree.txt" % iog, ogSet.Spec_SeqDict(), qSupport=False, qFixNegatives=True, label='n') 
+                util.RenameTreeTaxa(recon_tree, 
+                                    reconTreesRenamedDir + "OG%07d.txt" % iog, 
+                                    ogSet.Spec_SeqDict(), 
+                                    qSupport=False, qFixNegatives=True, label='n') 
                 if iog >= 0 and divmod(iog, 10 if nOgs <= 200 else 100 if nOgs <= 2000 else 1000)[1] == 0:
                     util.PrintTime("Done %d of %d" % (iog, nOgs))
                 nOrthologues_SpPair += GetLinesForOlogFiles(allOrthologues, speciesDict, ogSet.speciesToUse, SequenceDict, False, fewer_open_files=False)

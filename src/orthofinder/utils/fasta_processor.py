@@ -164,7 +164,6 @@ def ProcessesNewFasta(fastaDir, q_dna, speciesInfoObj_prev = None, speciesToUse_
             baseFilename, extension = os.path.splitext(fastaFilename)
             mLinesToCheck = 100
             qHasAA = False
-
             with open(fastaDir + os.sep + fastaFilename, 'r') as fastaFile:
                 for iLine, line in enumerate(fastaFile):
                     if line.isspace(): continue

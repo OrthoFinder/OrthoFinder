@@ -138,9 +138,17 @@ Main
 
 
 # 9
-def GetOrthologues(speciesInfoObj, options, prog_caller, i_og_restart=0):
+def GetOrthologues(
+        seqsInfo, speciesNamesDict, speciesXML,
+        speciesInfoObj, options, 
+        prog_caller, 
+        i_og_restart=0
+    ):
     util.PrintUnderline("Analysing Orthogroups", True)
     orthologues.OrthologuesWorkflow(
+        seqsInfo, speciesNamesDict, speciesXML,
+        speciesInfoObj, 
+        options,
         speciesInfoObj.speciesToUse,
         speciesInfoObj.nSpAll,
         prog_caller,
@@ -454,7 +462,12 @@ def main(args=None):
             )
             # 9.
             if not options.qStopAfterGroups:
-                GetOrthologues(speciesInfoObj, options, prog_caller)
+                GetOrthologues(
+                    seqsInfo, speciesNamesDict, speciesXML,
+                    speciesInfoObj, 
+                    options, 
+                    prog_caller,
+                )
 
         elif options.qStartFromFasta:
             # 3.
@@ -488,7 +501,12 @@ def main(args=None):
             )
             # 9.
             if not options.qStopAfterGroups:
-                GetOrthologues(speciesInfoObj, options, prog_caller)
+                GetOrthologues(
+                    seqsInfo, speciesNamesDict, speciesXML,
+                    speciesInfoObj, 
+                    options, 
+                    prog_caller,
+                )
 
         elif options.qStartFromBlast:
             # 0.
@@ -522,7 +540,12 @@ def main(args=None):
             )
             # 9
             if not options.qStopAfterGroups:
-                GetOrthologues(speciesInfoObj, options, prog_caller)
+                GetOrthologues(
+                    seqsInfo, speciesNamesDict, speciesXML,
+                    speciesInfoObj, 
+                    options, 
+                    prog_caller,
+                )
 
         elif options.qStartFromGroups:
             # 0.
@@ -532,8 +555,24 @@ def main(args=None):
             )
             files.FileHandler.LogSpecies()
             options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
-            # 9
-            GetOrthologues(speciesInfoObj, options, prog_caller)
+
+            ### 9
+            speciesXML = (
+                species_info.GetXMLSpeciesInfo(speciesInfoObj, options)
+                if options.speciesXMLInfoFN
+                else None
+            )
+            ### 8
+            speciesNamesDict = species_info.SpeciesNameDict(
+                files.FileHandler.GetSpeciesIDsFN()
+            )
+
+            GetOrthologues(
+                seqsInfo, speciesNamesDict, speciesXML,
+                speciesInfoObj, 
+                options, 
+                prog_caller,
+            )
 
         elif options.qStartFromTrees:
             speciesInfoObj, _ = species_info.ProcessPreviousFiles(
@@ -618,7 +657,13 @@ def main(args=None):
                         None, True
                     )
             if not options.qStopAfterGroups:
-                GetOrthologues(speciesInfoObj, options, prog_caller, i_og_restart)
+                GetOrthologues(
+                    seqsInfo, speciesNamesDict, speciesXML,
+                    speciesInfoObj, 
+                    options, 
+                    prog_caller, 
+                    i_og_restart
+                )
         else:
             raise NotImplementedError
             # ptm = parallel_task_manager.ParallelTaskManager_singleton()
@@ -628,6 +673,13 @@ def main(args=None):
             split_ortholog_files.split_ortholog_files(
                 files.FileHandler.GetOrthologuesDirectory()
             )
+
+        speciesNamesDict = species_info.SpeciesNameDict(
+                files.FileHandler.GetSpeciesIDsFN()
+        )
+        sequenceNamesDict =  species_info.SpeciesSequenceNameDict(
+             files.FileHandler.GetSequenceIDsFN()
+         )
 
         ### ------------- Compress the Gene_Trees --------------
         gene_tree_dir = files.FileHandler.GetOGsTreeDir(qResults=True)

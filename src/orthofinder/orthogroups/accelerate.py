@@ -33,9 +33,24 @@ def check_for_orthoxcelerate(input_dir, speciesInfoObj):
 def prepare_accelerate_database(input_dir, wd_list, nSpAll):
     if xcelerate_config.n_for_profiles is None:
         # create_shoot_db.create_full_database(input_dir, q_ids=True, subtrees_dir="")
-        fn_diamond_db, q_hogs = create_profiles_database(input_dir, wd_list, nSpAll, selection="all", q_ids=True, subtrees_dir="")
+        fn_diamond_db, q_hogs = create_profiles_database(
+            input_dir, 
+            wd_list, 
+            nSpAll, 
+            selection="all", 
+            q_ids=True, 
+            subtrees_dir=""
+        )
     else:
-        fn_diamond_db, q_hogs = create_profiles_database(input_dir, wd_list, nSpAll, selection="kmeans", q_ids=True, n_for_profile=xcelerate_config.n_for_profiles, subtrees_dir="")
+        fn_diamond_db, q_hogs = create_profiles_database(
+            input_dir, 
+            wd_list, 
+            nSpAll, 
+            selection="kmeans", 
+            q_ids=True, 
+            n_for_profile=xcelerate_config.n_for_profiles, 
+            subtrees_dir=""
+        )
     return fn_diamond_db, q_hogs
 
 
@@ -139,8 +154,16 @@ def write_all_orthogroups(ogs, ogs_new_species, ogs_clade_specific_lists):
     return clustersFilename_pairs
 
 
-def create_profiles_database(din, wd_list, nSpAll, selection="kmeans", n_for_profile=20, q_ids=True,
-                             subtrees_dir="", q_hogs=False):
+def create_profiles_database(
+        din, 
+        wd_list, 
+        nSpAll, 
+        selection="kmeans", 
+        n_for_profile=20, 
+        q_ids=True,
+        subtrees_dir="", 
+        q_hogs=False
+    ):
     """
     Create a fasta file with profile genes from each orthogroup
     Args:
