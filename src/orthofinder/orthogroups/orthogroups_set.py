@@ -78,6 +78,7 @@ class OrthoGroupsSet(object):
         self._extractor = idExtractor
         self.seqIDsEx = None
         self.ogs_all = None
+        self.ogs_single = None
         self.iOgs4 = None
         self.speciesToUse = speciesToUse     # list of ints
         self.seqsInfo = util.GetSeqsInfo(orthofinderWorkingDir_list, self.speciesToUse, nSpAll)
@@ -133,6 +134,12 @@ class OrthoGroupsSet(object):
             ogs = MCL.GetPredictedOGs(files.FileHandler.GetClustersFN())
             self.ogs_all = [[Seq(g) for g in og] for og in ogs]
         return self.ogs_all
+    
+    def OGsSingle(self):
+        if self.ogs_single is None:
+            ogs = MCL.GetPredictedOGs(files.FileHandler.GetClustersFN())
+            self.ogs_single = [og for og in ogs if len(og) == 1]
+        return self.ogs_single
 
     # def OGs4AssumeOrdered(self):
     #     ogs_all = self.OGsAll()

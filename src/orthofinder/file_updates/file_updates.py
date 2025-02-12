@@ -11,6 +11,7 @@ from ..tools import trees_msa
 def update_output_files(
         working_dir,
         id_sequence_dict,
+        single_ogs_list,
         speciesInfoObj,
         seqsInfo,
         speciesNamesDict,
@@ -39,6 +40,7 @@ def update_output_files(
     clear_dir(seq_dir)
 
     ogSet, treeGen, idDict, new_ogs, name_dictionary, species_names = post_hogs_processing(
+        single_ogs_list,
         speciesInfoObj,
         seqsInfo,
         speciesNamesDict,
@@ -200,6 +202,7 @@ def overwrite_gene_trees(
                 print(f"Error processing {entry.name}: {e}")
 
 def post_hogs_processing(
+        single_ogs_list,
         speciesInfoObj,
         seqsInfo,
         speciesNamesDict,
@@ -216,6 +219,11 @@ def post_hogs_processing(
         ogs.update_ogs(files.FileHandler.HierarchicalOrthogroupsFNN0())
     resultsBaseFilename = files.FileHandler.GetOrthogroupResultsFNBase()
     # util.PrintUnderline("Writing orthogroups to file")
+    new_ogs.extend(single_ogs_list)
+    with open(files.FileHandler.OGsAllIDFN(), "w") as outfile:
+        for og in new_ogs:
+            outfile.write(", ".join(og) + "\n")
+    
     idsDict = ogs.MCL.WriteOrthogroupFiles(
         new_ogs,
         [files.FileHandler.GetSequenceIDsFN()],
@@ -248,6 +256,7 @@ def post_hogs_processing(
     d_seqs = files.FileHandler.GetResultsSeqsDir()
     if not os.path.exists(d_seqs):
         os.mkdir(d_seqs)
+
     treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idsDict, False)
     idDict = ogSet.Spec_SeqDict()
     idDict.update(ogSet.SpeciesDict()) # same code will then also convert concatenated alignment for species tree
@@ -265,7 +274,7 @@ def post_hogs_processing(
                 speciesInfoObj.speciesToUse,
             )
         # print("")
-        util.PrintTime("Done orthogroups")
+        # util.PrintTime("Done orthogroups")
         files.FileHandler.LogOGs()
 
     return ogSet, treeGen, idDict, new_ogs, name_dictionary, species_names

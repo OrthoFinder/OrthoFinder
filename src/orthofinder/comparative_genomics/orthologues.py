@@ -525,13 +525,14 @@ def OrthologuesWorkflow(
     ogSet = file_updates.update_output_files(
         files.FileHandler.GetWorkingDirectory_Write(),
         ogSet.SequenceDict(),
+        ogSet.OGsSingle(),
         speciesInfoObj,
         seqsInfo,
         speciesNamesDict,
         options,
         speciesXML,
         options.nProcessAlg,
-        q_incremental=True,
+        q_incremental=False,
         i_og_restart=i_og_restart,
         exist_msa=options.qMSATrees
     )
@@ -557,6 +558,7 @@ def OrthologuesWorkflow(
     )
     
     os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
+    os.remove(files.FileHandler.OGsAllIDFN())
 
     fastaWriter = trees_msa.FastaWriter(files.FileHandler.GetSpeciesSeqsDir(), speciesToUse)
     ogs = accelerate.read_hogs(files.FileHandler.GetResultsDirectory1(), "N0")

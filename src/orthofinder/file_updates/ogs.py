@@ -158,7 +158,9 @@ class OrthoGroupsSet(object):
 
     def OGsAll(self):
         if self.ogs_all is None:
-            ogs, _, _ = update_ogs(files.FileHandler.HierarchicalOrthogroupsFNN0())
+            # ogs, _, _ = update_ogs(files.FileHandler.OGsAllIDFN())
+            with open(files.FileHandler.OGsAllIDFN()) as infile:
+                ogs = [og.strip().split(", ") for og in infile]
             self.ogs_all = [[Seq(g) for g in og] for og in ogs]
         return self.ogs_all
 
@@ -167,22 +169,22 @@ class OrthoGroupsSet(object):
     #     iogs4 = self.Get_iOGs4()
     #     return [ogs_all[i] for i in iogs4]
 
-    def OrthogroupMatrix(self):
-        """ qReduce give a matrix with only as many columns as species for cases when
-        clustering has been performed on a subset of species"""
-        ogs = self.OGsAll()
-        iogs4 = self.Get_iOGs4()
-        ogs = [ogs[i] for i in iogs4]
-        iSpecies = sorted(set([gene.iSp for og in ogs for gene in og]))
-        speciesIndexDict = {iSp:iCol for iCol, iSp in enumerate(iSpecies)}
-        nSpecies = len(iSpecies)
-        nGroups = len(ogs)
-        # (i, j)-th entry of ogMatrix gives the number of genes from i in orthologous group j
-        ogMatrix = np.zeros((nGroups, nSpecies)) 
-        for i_og, og in enumerate(ogs):
-            for gene in og:
-                ogMatrix[i_og, speciesIndexDict[gene.iSp]] += 1
-        return ogMatrix, iogs4
+    # def OrthogroupMatrix(self):
+    #     """ qReduce give a matrix with only as many columns as species for cases when
+    #     clustering has been performed on a subset of species"""
+    #     ogs = self.OGsAll()
+    #     iogs4 = self.Get_iOGs4()
+    #     ogs = [ogs[i] for i in iogs4]
+    #     iSpecies = sorted(set([gene.iSp for og in ogs for gene in og]))
+    #     speciesIndexDict = {iSp:iCol for iCol, iSp in enumerate(iSpecies)}
+    #     nSpecies = len(iSpecies)
+    #     nGroups = len(ogs)
+    #     # (i, j)-th entry of ogMatrix gives the number of genes from i in orthologous group j
+    #     ogMatrix = np.zeros((nGroups, nSpecies)) 
+    #     for i_og, og in enumerate(ogs):
+    #         for gene in og:
+    #             ogMatrix[i_og, speciesIndexDict[gene.iSp]] += 1
+    #     return ogMatrix, iogs4
         
     def ID_to_OG_Dict(self):
         if self.id_to_og != None:
@@ -335,7 +337,9 @@ class MCL:
         outputFilename = resultsBaseFilename + ".tsv"
         outputFilename_counts = resultsBaseFilename + ".GeneCount.tsv"
         singleGeneFilename = resultsBaseFilename + "_UnassignedGenes.tsv"
-        with open(outputFilename, util.csv_write_mode) as outputFile, open(singleGeneFilename, util.csv_write_mode) as singleGeneFile, open(outputFilename_counts, util.csv_write_mode) as outFile_counts:
+        with open(outputFilename, util.csv_write_mode) as outputFile, \
+            open(singleGeneFilename, util.csv_write_mode) as singleGeneFile, \
+                open(outputFilename_counts, util.csv_write_mode) as outFile_counts:
             fileWriter = csv.writer(outputFile, delimiter="\t")
             fileWriter_counts = csv.writer(outFile_counts, delimiter="\t")
             singleGeneWriter = csv.writer(singleGeneFile, delimiter="\t")
@@ -343,7 +347,6 @@ class MCL:
                 row = ["Orthogroup"] + [speciesNamesDict[index] for index in speciesToUse]
                 writer.writerow(row)
             fileWriter_counts.writerow(row + ['Total'])
-
             for iOg, (og, og_names) in enumerate(zip(ogs_ints, ogs_names)):
                 ogDict = defaultdict(list)
                 row = ["OG%07d" % iOg]

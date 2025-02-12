@@ -573,6 +573,9 @@ class __Files_new_dont_manually_create__(object):
     
     def HierarchicalOrthogroupsFNN0(self):
         return self.rd1 + "Phylogenetic_Hierarchical_Orthogroups/N0.tsv"
+    
+    def OGsAllIDFN(self):
+        return self.wd_current + "OGsAll.tsv"
 
     """ ========================================================================================== """
             
