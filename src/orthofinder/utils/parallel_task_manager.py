@@ -28,6 +28,7 @@ import sys
 import time
 import types
 import datetime
+import traceback
 import subprocess
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, wait, as_completed
@@ -275,6 +276,7 @@ def Worker_RunMethod(Function, args_queue):
             return
         except Exception as e:
             print("Error in function: " + str(Function))
+            print(traceback.format_exc(), flush=True)
             global q_print_first_traceback_1
             if not q_print_first_traceback_1:
                 util.print_traceback(e)

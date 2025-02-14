@@ -496,15 +496,15 @@ def HaveSupportValues(speciesTreeFN_ids):
 
 
 def RenameTreeTaxa(
-    treeFN_or_tree,
-    newTreeFilename,
-    idsMap,
-    qSupport,
-    qFixNegatives=False,
-    inFormat=None,
-    label=None,
-    qViaCopy=False,
-):
+        treeFN_or_tree,
+        newTreeFilename,
+        idsMap,
+        qSupport,
+        qFixNegatives=False,
+        inFormat=None,
+        label=None,
+        qViaCopy=False,
+    ):
     """
     qViaCopy - create a copy of the tree and edit this copy. I.e. don't make changes to the original
     """

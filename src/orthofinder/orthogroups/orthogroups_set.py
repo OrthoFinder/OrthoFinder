@@ -133,6 +133,7 @@ class OrthoGroupsSet(object):
         if self.ogs_all is None:
             ogs = MCL.GetPredictedOGs(files.FileHandler.GetClustersFN())
             self.ogs_all = [[Seq(g) for g in og] for og in ogs]
+            # self.ogs_all = sorted(self.ogs_all, key=len, reverse=True)
         return self.ogs_all
     
     def OGsSingle(self):

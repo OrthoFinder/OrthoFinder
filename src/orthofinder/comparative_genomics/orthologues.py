@@ -314,7 +314,6 @@ def ReconciliationAndOrthologues(
         )
         util.PrintTime("Done Orthologues from Phyldog")
     else:
-        start = time.time()
         if print_info:
             util.PrintTime("Starting of Orthologues")
         qNoRecon = ("only_overlap" == recon_method)
@@ -365,7 +364,6 @@ def ReconciliationAndOrthologues(
             fewer_open_files,
             old_version
             )
-    stop = time.time()
     # print("%fs for orthologs etc" % (stop-start))
     WriteOrthologuesStats(ogSet, nOrthologues_SpPair)
 #    print("Identified %d orthologues" % nOrthologues)
@@ -622,7 +620,13 @@ def RootSpeciesTree(
         util.PrintUnderline("Best outgroup(s) for species tree") 
         util.PrintTime("Starting STRIDE")
         roots, clusters_counter, rootedSpeciesTreeFN, nSupport, _, _, stride_dups = \
-            stride.GetRoot(spTreeFN_ids, files.FileHandler.GetOGsTreeDir(), stride.GeneToSpecies_dash, nHighParallel, qWriteRootedTree=True)
+            stride.GetRoot(
+                spTreeFN_ids, 
+                files.FileHandler.GetOGsTreeDir(), 
+                stride.GeneToSpecies_dash, 
+                nHighParallel, 
+                qWriteRootedTree=True
+            )
         util.PrintTime("Done STRIDE")
         nAll = sum(clusters_counter.values())
         nFP_mp = nAll - nSupport

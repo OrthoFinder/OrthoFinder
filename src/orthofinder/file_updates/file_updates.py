@@ -4,8 +4,7 @@ import tempfile
 import ete3
 import csv
 import shutil
-from ..utils import util, files
-from ..tools import trees_msa
+from ..utils import files
 
 
 def update_output_files(
@@ -39,7 +38,7 @@ def update_output_files(
     clear_dir(seq_id_dir)
     clear_dir(seq_dir)
 
-    ogSet, treeGen, idDict, new_ogs, name_dictionary, species_names = post_hogs_processing(
+    ogSet, treeGen, idDict, new_ogs, name_dictionary, species_names = ogs.post_hogs_processing(
         single_ogs_list,
         speciesInfoObj,
         seqsInfo,
@@ -134,7 +133,10 @@ def hogs_converter(hogs_n0_file, sequence_id_dict):
             mode='w', delete=False, newline='', dir=os.path.dirname(hogs_n0_file)
         ) as temp_file:
         reader = csv.DictReader(infile, delimiter='\t')
-        fieldnames = [fieldname.replace('.', '_') for fieldname in reader.fieldnames]
+        fieldnames = [
+            fieldname.split(".", 1)[0] 
+            for fieldname in reader.fieldnames
+        ]
         writer = csv.DictWriter(temp_file, fieldnames=fieldnames, delimiter='\t')
 
         writer.writeheader()
@@ -201,83 +203,6 @@ def overwrite_gene_trees(
             except Exception as e:
                 print(f"Error processing {entry.name}: {e}")
 
-def post_hogs_processing(
-        single_ogs_list,
-        speciesInfoObj,
-        seqsInfo,
-        speciesNamesDict,
-        options,
-        speciesXML,
-        q_incremental=False,
-    ):
-    """
-    Write OGs & statistics to results files, write Fasta files.
-    Args:
-        q_incremental - These are not the final orthogroups, don't write results
-    """
-    new_ogs, name_dictionary, species_names = \
-        ogs.update_ogs(files.FileHandler.HierarchicalOrthogroupsFNN0())
-    resultsBaseFilename = files.FileHandler.GetOrthogroupResultsFNBase()
-    # util.PrintUnderline("Writing orthogroups to file")
-    new_ogs.extend(single_ogs_list)
-    with open(files.FileHandler.OGsAllIDFN(), "w") as outfile:
-        for og in new_ogs:
-            outfile.write(", ".join(og) + "\n")
-    
-    idsDict = ogs.MCL.WriteOrthogroupFiles(
-        new_ogs,
-        [files.FileHandler.GetSequenceIDsFN()],
-        resultsBaseFilename,
-    )
-
-    if not q_incremental:
-        ogs.MCL.CreateOrthogroupTable(
-            new_ogs,
-            idsDict,
-            speciesNamesDict,
-            speciesInfoObj.speciesToUse,
-            resultsBaseFilename,
-        )
-
-    # Write Orthogroup FASTA files
-    ogSet = ogs.OrthoGroupsSet(
-        files.FileHandler.GetWorkingDirectory1_Read(), 
-        speciesInfoObj.speciesToUse,
-        speciesInfoObj.nSpAll,
-        options.qAddSpeciesToIDs,
-        idExtractor=util.FirstWordExtractor,
-    )
-
-    ## ------------------ Fix Orthogroup_Sequences and Sequences_ids --------------------
-    treeGen = trees_msa.TreesForOrthogroups(None, None, None)
-    fastaWriter = trees_msa.FastaWriter(
-        files.FileHandler.GetSpeciesSeqsDir(), speciesInfoObj.speciesToUse
-    )
-    d_seqs = files.FileHandler.GetResultsSeqsDir()
-    if not os.path.exists(d_seqs):
-        os.mkdir(d_seqs)
-
-    treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idsDict, False)
-    idDict = ogSet.Spec_SeqDict()
-    idDict.update(ogSet.SpeciesDict()) # same code will then also convert concatenated alignment for species tree
-    treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idDict, True)
-    
-    if not q_incremental:
-        # stats.Stats(ogs, speciesNamesDict, speciesInfoObj.speciesToUse, files.FileHandler.iResultsVersion)
-        if options.speciesXMLInfoFN:
-            ogs.MCL.WriteOrthoXML(
-                speciesXML,
-                new_ogs,
-                seqsInfo.nSeqsPerSpecies,
-                idsDict,
-                resultsBaseFilename + ".orthoxml",
-                speciesInfoObj.speciesToUse,
-            )
-        # print("")
-        # util.PrintTime("Done orthogroups")
-        files.FileHandler.LogOGs()
-
-    return ogSet, treeGen, idDict, new_ogs, name_dictionary, species_names
 
 def read_hog_n0_file(hog_n0_file):
     hog_n0 = []

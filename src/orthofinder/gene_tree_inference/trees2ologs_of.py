@@ -16,9 +16,9 @@ import glob
 import argparse
 import operator
 import itertools
-import time
+import traceback
 import multiprocessing as mp
-from collections import defaultdict, deque
+from collections import defaultdict
 import warnings
 from ..tools import tree as tree_lib
 from . import resolve
@@ -729,9 +729,11 @@ def CheckAndRootTree(treeFN, species_tree_rooted, GeneToSpecies):
             tree = tree_lib.Tree(treeFN)
         except:
             tree = tree_lib.Tree(treeFN, format=3)
-    if len(tree) == 1: return None, False
+    if len(tree) == 1: 
+        return None, False
     root = GetRoot(tree, species_tree_rooted, GeneToSpecies)
-    if root == None: return None, False
+    if root == None: 
+        return None, False
     # Pick the first root for now
     if root != tree:
         tree.set_outgroup(root)
@@ -758,8 +760,15 @@ def Orthologs_and_Suspect(ch, suspect_genes, misplaced_genes, SpeciesAndGene):
     return d[0], d[1], d_sus[0], d_sus[1]
 
 
-def GetOrthologues_from_tree(iog, tree, species_tree_rooted, GeneToSpecies, neighbours,
-                             q_get_dups=False, qNoRecon=False):
+def GetOrthologues_from_tree(
+        iog, 
+        tree, 
+        species_tree_rooted, 
+        GeneToSpecies, 
+        neighbours,
+        q_get_dups=False, 
+        qNoRecon=False
+    ):
     """ 
     Returns:
         orthologues 
@@ -792,6 +801,8 @@ def GetOrthologues_from_tree(iog, tree, species_tree_rooted, GeneToSpecies, neig
             iNode += 1
         sp_present = None
         ch = n.get_children()
+        ## Don't know sorting is needed
+        # ch = sorted(n.get_children(), key=lambda child: child.name) 
         if len(ch) == 2: 
             oSize, overlap, sp0, sp1 = OverlapSize(n, GeneToSpecies, suspect_genes)
             sp_present = sp0.union(sp1)
@@ -851,8 +862,16 @@ def GetOrthologues_from_tree(iog, tree, species_tree_rooted, GeneToSpecies, neig
                 # print(n.name + ": dup3")
     return orthologues, tree, suspect_genes, duplications
 
-def GetLinesForOlogFiles(orthologues_alltrees, speciesDict, iSpeciesToUse, sequenceDict, 
-                            qContainsSuspectOlogs, olog_lines, olog_sus_lines, fewer_open_files):
+def GetLinesForOlogFiles(
+        orthologues_alltrees, 
+        speciesDict, 
+        iSpeciesToUse, 
+        sequenceDict, 
+        qContainsSuspectOlogs, 
+        olog_lines, 
+        olog_sus_lines, 
+        fewer_open_files
+    ):
     """
     Prepare the lines of text for the pairwise ortholog files and the species-wise
     putative xenolog files
@@ -873,11 +892,16 @@ def GetLinesForOlogFiles(orthologues_alltrees, speciesDict, iSpeciesToUse, seque
         og = "OG%07d" % iog
         for leavesL, leavesR, leavesL_sus, leavesR_sus in orthologues_onetree:
             # suspect_genes are the genes which, for this level, the orthologues should be considered suspect as the gene appears misplaced (at this level)
-            for spL, genesL in leavesL.items():
+            
+            for spL, genesL in leavesL.items(): # this is the original one
+            # for spL in sorted(leavesL.keys()): # this is used to sorte the dict
+            #     genesL = sorted(leavesL[spL])  # this is used to sorte the dict
                 spL_ = spL + "_"
                 iL = sp_to_index[spL]
                 nL = len(genesL)
-                for spR, genesR in leavesR.items():
+                for spR, genesR in leavesR.items(): # this is the original one
+                # for spR in sorted(leavesR.keys()):   # this is used to sorte the dict
+                #     genesR = sorted(leavesR[spR])   # this is used to sorte the dict
                     if spL == spR:
                         continue
                     spR_ = spR + "_"
@@ -1461,8 +1485,13 @@ def Worker_RunOrthologsMethod(tree_analyser, nspecies, args_queue, results_queue
 ## --------------------------------------
 
 def Worker_RunOrthologsMethod_New(
-    tree_analyser, nspecies, args_queue, results_queue, fewer_open_files, n_ologs_cache=100
-):
+        tree_analyser, 
+        nspecies, 
+        args_queue, 
+        results_queue, 
+        fewer_open_files, 
+        n_ologs_cache=100
+    ):
     """
     Worker function for parallel ortholog analysis.
 
@@ -1561,8 +1590,14 @@ def Worker_RunOrthologsMethod_New(
     finally:
         results_queue.put(None) 
 
-
-def RunOrthologsParallel(tree_analyser, nspecies, args_queue, nProcesses, fewer_open_files, old_version=False):
+def RunOrthologsParallel(
+        tree_analyser, 
+        nspecies, 
+        args_queue, 
+        nProcesses, 
+        fewer_open_files, 
+        old_version=False
+    ):
     """
     Run the ortholog analysis in parallel using multiprocessing.
     Tracks progress dynamically using a progress bar.
@@ -1854,8 +1889,10 @@ def SortParallelFiles(n_parallel, speciesToUse, speciesDict, fewer_open_files, o
     args_queue = mp.Queue()
     for x in fns_type:
         args_queue.put(x)
-     
-    parallel_task_manager.RunMethodParallel(Worker_SortFile, args_queue, n_parallel, old_version)
+    if old_version:
+        parallel_task_manager.RunMethodParallel(SortFile, args_queue, n_parallel, old_version)
+    else:
+        parallel_task_manager.RunMethodParallel(Worker_SortFile, args_queue, n_parallel, old_version)
 
 def SortFile(fn, f_type):
     """
@@ -1905,6 +1942,8 @@ def Worker_SortFile(fn, f_type, result_queue):
             result_queue.put((fn, "success"))
         except Exception as e:
             result_queue.put((fn, e))
+            print(traceback.format_exc(), flush=True)
+
 
 def GetOrthologues_from_phyldog_tree(iog, treeFN, GeneToSpecies, qWrite=False, dupsWriter=None, seqIDs=None, spIDs=None):
     """ if dupsWriter != None then seqIDs and spIDs must also be provided"""

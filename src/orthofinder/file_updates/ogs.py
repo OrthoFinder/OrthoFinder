@@ -1,9 +1,10 @@
 import sys
+import os 
 import csv 
 from operator import itemgetter
 from collections import defaultdict, Counter
 
-import numpy as np
+from ..tools import trees_msa
 from ..tools import mcl as MCL
 from ..utils import util, files, parallel_task_manager
 
@@ -12,6 +13,84 @@ from xml.etree.ElementTree import SubElement    # Y
 from xml.dom import minidom
 from .. import __version__
 
+
+def post_hogs_processing(
+        single_ogs_list,
+        speciesInfoObj,
+        seqsInfo,
+        speciesNamesDict,
+        options,
+        speciesXML,
+        q_incremental=False,
+    ):
+    """
+    Write OGs & statistics to results files, write Fasta files.
+    Args:
+        q_incremental - These are not the final orthogroups, don't write results
+    """
+    new_ogs, name_dictionary, species_names = \
+        update_ogs(files.FileHandler.HierarchicalOrthogroupsFNN0())
+    resultsBaseFilename = files.FileHandler.GetOrthogroupResultsFNBase()
+    # util.PrintUnderline("Writing orthogroups to file")
+    new_ogs.extend(single_ogs_list)
+    with open(files.FileHandler.OGsAllIDFN(), "w") as outfile:
+        for og in new_ogs:
+            outfile.write(", ".join(og) + "\n")
+    
+    idsDict = MCL.WriteOrthogroupFiles(
+        new_ogs,
+        [files.FileHandler.GetSequenceIDsFN()],
+        resultsBaseFilename,
+    )
+
+    if not q_incremental:
+        MCL.CreateOrthogroupTable(
+            new_ogs,
+            idsDict,
+            speciesNamesDict,
+            speciesInfoObj.speciesToUse,
+            resultsBaseFilename,
+        )
+
+    # Write Orthogroup FASTA files
+    ogSet = OrthoGroupsSet(
+        files.FileHandler.GetWorkingDirectory1_Read(), 
+        speciesInfoObj.speciesToUse,
+        speciesInfoObj.nSpAll,
+        options.qAddSpeciesToIDs,
+        idExtractor=util.FirstWordExtractor,
+    )
+
+    ## ------------------ Fix Orthogroup_Sequences and Sequences_ids --------------------
+    treeGen = trees_msa.TreesForOrthogroups(None, None, None)
+    fastaWriter = trees_msa.FastaWriter(
+        files.FileHandler.GetSpeciesSeqsDir(), speciesInfoObj.speciesToUse
+    )
+    d_seqs = files.FileHandler.GetResultsSeqsDir()
+    if not os.path.exists(d_seqs):
+        os.mkdir(d_seqs)
+
+    treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idsDict, False)
+    idDict = ogSet.Spec_SeqDict()
+    idDict.update(ogSet.SpeciesDict()) # same code will then also convert concatenated alignment for species tree
+    treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idDict, True)
+    
+    if not q_incremental:
+        # stats.Stats(ogs, speciesNamesDict, speciesInfoObj.speciesToUse, files.FileHandler.iResultsVersion)
+        if options.speciesXMLInfoFN:
+            MCL.WriteOrthoXML(
+                speciesXML,
+                new_ogs,
+                seqsInfo.nSeqsPerSpecies,
+                idsDict,
+                resultsBaseFilename + ".orthoxml",
+                speciesInfoObj.speciesToUse,
+            )
+        # print("")
+        # util.PrintTime("Done orthogroups")
+        files.FileHandler.LogOGs()
+
+    return ogSet, treeGen, idDict, new_ogs, name_dictionary, species_names
 
 def update_ogs(input_path):
     sorted_matrix, species_names = read_hogs_to_matrix(input_path)   
@@ -158,33 +237,11 @@ class OrthoGroupsSet(object):
 
     def OGsAll(self):
         if self.ogs_all is None:
-            # ogs, _, _ = update_ogs(files.FileHandler.OGsAllIDFN())
             with open(files.FileHandler.OGsAllIDFN()) as infile:
                 ogs = [og.strip().split(", ") for og in infile]
             self.ogs_all = [[Seq(g) for g in og] for og in ogs]
+            # self.ogs_all = sorted(self.ogs_all, key=len, reverse=True)
         return self.ogs_all
-
-    # def OGs4AssumeOrdered(self):
-    #     ogs_all = self.OGsAll()
-    #     iogs4 = self.Get_iOGs4()
-    #     return [ogs_all[i] for i in iogs4]
-
-    # def OrthogroupMatrix(self):
-    #     """ qReduce give a matrix with only as many columns as species for cases when
-    #     clustering has been performed on a subset of species"""
-    #     ogs = self.OGsAll()
-    #     iogs4 = self.Get_iOGs4()
-    #     ogs = [ogs[i] for i in iogs4]
-    #     iSpecies = sorted(set([gene.iSp for og in ogs for gene in og]))
-    #     speciesIndexDict = {iSp:iCol for iCol, iSp in enumerate(iSpecies)}
-    #     nSpecies = len(iSpecies)
-    #     nGroups = len(ogs)
-    #     # (i, j)-th entry of ogMatrix gives the number of genes from i in orthologous group j
-    #     ogMatrix = np.zeros((nGroups, nSpecies)) 
-    #     for i_og, og in enumerate(ogs):
-    #         for gene in og:
-    #             ogMatrix[i_og, speciesIndexDict[gene.iSp]] += 1
-    #     return ogMatrix, iogs4
         
     def ID_to_OG_Dict(self):
         if self.id_to_og != None:
