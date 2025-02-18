@@ -197,9 +197,12 @@ def Stats(ogs, speciesNamesDict, iSpecies, iResultsVersion, fastaWriter, ids_dic
         writer_sum.writerow(["Number of orthogroups with all species present", nCompleteOGs])
         writer_sum.writerow(["Number of single-copy orthogroups", nSingleCopy])
         with open(filename_single_copy, 'w') as outfile_singlecopy:
-            outfile_singlecopy.write("\n".join(["N0.HOG%07d" % iogs_properOGs[i_] for i_ in singleCopyOGs]))
+            # outfile_singlecopy.write("\n".join(["N0.HOG%07d" % iogs_properOGs[i_] for i_ in singleCopyOGs]))
+            outfile_singlecopy.write("\n".join(["OG%07d" % iogs_properOGs[i_] for i_ in singleCopyOGs]))
         # Link single-copy orthologues
-        g_fmt = files.FileHandler.GetResultsSeqsDir_SingleCopy() +  "N0.HOG%07d.fa"
+        # g_fmt = files.FileHandler.GetResultsSeqsDir_SingleCopy() +  "N0.HOG%07d.fa"
+        g_fmt = files.FileHandler.GetResultsSeqsDir_SingleCopy() +  "OG%07d.fa"
+
         for i in singleCopyOGs:
             out_fn = g_fmt % iogs_properOGs[i]
             og = ["%d_%d" % tuple(g) for g in properOGs[i]]
