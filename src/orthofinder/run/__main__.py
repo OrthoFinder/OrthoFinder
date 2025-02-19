@@ -458,7 +458,12 @@ def main(args=None):
                 files.FileHandler.GetSpeciesIDsFN()
             )
             gathering.DoOrthogroups(
-                options, speciesInfoObj, seqsInfo, speciesNamesDict, speciesXML
+                options, 
+                speciesInfoObj, 
+                seqsInfo, 
+                speciesNamesDict, 
+                speciesXML,
+                add_unclustered_gene=options.add_unclustered_gene
             )
             # 9.
             if not options.qStopAfterGroups:
@@ -497,7 +502,12 @@ def main(args=None):
                 files.FileHandler.GetSpeciesIDsFN()
             )
             gathering.DoOrthogroups(
-                options, speciesInfoObj, seqsInfo, speciesNamesDict, speciesXML
+                options, 
+                speciesInfoObj, 
+                seqsInfo, 
+                speciesNamesDict, 
+                speciesXML,
+                i_unassigned=options.add_unclustered_gene
             )
             # 9.
             if not options.qStopAfterGroups:
@@ -536,7 +546,13 @@ def main(args=None):
                 files.FileHandler.GetSpeciesIDsFN()
             )
             gathering.DoOrthogroups(
-                options, speciesInfoObj, seqsInfo, speciesNamesDict, speciesXML
+                options, 
+                speciesInfoObj, 
+                seqsInfo, 
+                speciesNamesDict, 
+                speciesXML,
+                i_unassigned=options.add_unclustered_gene
+
             )
             # 9
             if not options.qStopAfterGroups:

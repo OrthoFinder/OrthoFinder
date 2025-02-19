@@ -117,6 +117,7 @@ def DoOrthogroups(
         speciesNamesDict,
         speciesXML=None,
         i_unassigned=None,
+        add_unclustered_gene=False,
     ):
 
     # Run Algorithm, cluster and output cluster files with original accessions
@@ -294,9 +295,14 @@ def DoOrthogroups(
             graphFilename, clustersFilename, options.nProcessAlg, options.mclInflation
         )
         # If processing unassigned, then ignore all 'unclustered' genes - they will include any genes not included in this search
+        # mcl.ConvertSingleIDsToIDPair(
+        #     seqsInfo, clustersFilename, clustersFilename_pairs, q_unassigned
+        # )
+
         mcl.ConvertSingleIDsToIDPair(
-            seqsInfo, clustersFilename, clustersFilename_pairs, q_unassigned
+            seqsInfo, clustersFilename, clustersFilename_pairs, add_unclustered_gene
         )
+
     elif options.gathering_version == (3, 2):
         graphFilename = waterfall.WaterfallMethod.WriteGraphParallel(
             WriteGraph_perSpecies_homology, seqsInfo, options.nProcessAlg, i_unassigned

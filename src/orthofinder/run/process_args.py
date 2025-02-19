@@ -75,6 +75,7 @@ class Options(object):  #
         self.method_threads_large = None
         self.method_threads_small = None
         self.old_version = False
+        self.add_unclustered_gene = False
 
     def what(self):
         for k, v in self.__dict__.items():
@@ -410,6 +411,9 @@ def ProcessArgs(prog_caller, args):
 
         elif arg == "--old-version":
             options.old_version = True
+
+        elif arg == "-aug" or arg == "--add-unclustered-gene":
+            options.add_unclustered_gene = True
 
         elif arg == "-1":
             options.qDoubleBlast = False
