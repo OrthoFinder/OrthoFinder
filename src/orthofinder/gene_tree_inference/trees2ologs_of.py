@@ -1504,7 +1504,7 @@ def Worker_RunOrthologsMethod_New(
     """
     try:
         dim2 = 1 if fewer_open_files else nspecies
-        # nOrthologues_SpPair = util.nOrtho_sp(nspecies)
+        nOrthologues_SpPair = util.nOrtho_sp(nspecies)
         nCache = util.nOrtho_cache(nspecies)
         olog_lines_tot = [["" for j in range(dim2)] for i in range(nspecies)]
         olog_sus_lines_tot = ["" for _ in range(nspecies)]
@@ -1520,7 +1520,7 @@ def Worker_RunOrthologsMethod_New(
                     continue
 
                 nOrtho, olog_lines, olog_sus_lines = results
-                # nOrthologues_SpPair += nOrtho
+                nOrthologues_SpPair += nOrtho
                 nCache += nOrtho
 
                 for i in range(nspecies):

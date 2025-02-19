@@ -554,18 +554,20 @@ def OrthologuesWorkflow(
         old_version=old_version,
         print_info=False
     )
-    
+
     os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
+    with open(files.FileHandler.OGsAllIDFN()) as infile:
+        ogs = [tuple(g for g in og.strip().split(", ") if len(g) != 0) for og in infile ]
+
     os.remove(files.FileHandler.OGsAllIDFN())
 
     fastaWriter = trees_msa.FastaWriter(files.FileHandler.GetSpeciesSeqsDir(), speciesToUse)
-    ogs = accelerate.read_hogs(files.FileHandler.GetResultsDirectory1(), "N0")
-    ogs = stats.add_unassigned_genes(ogs, ogSet.AllUsedSequenceIDs())
+    # ogs = accelerate.read_hogs(files.FileHandler.GetResultsDirectory1(), "N0")
+    # ogs = stats.add_unassigned_genes(ogs, ogSet.AllUsedSequenceIDs())
     species_dict = {int(k): v for k, v in ogSet.SpeciesDict().items()}
     ids_dict = ogSet.SequenceDict()
     stats.Stats(ogs, species_dict, speciesToUse, files.FileHandler.iResultsVersion, fastaWriter, ids_dict)
-
-
+    
 def RootSpeciesTree(
         ogSet, 
         spTreeFN_ids, 

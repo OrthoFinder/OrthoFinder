@@ -36,7 +36,7 @@ def post_hogs_processing(
     with open(files.FileHandler.OGsAllIDFN(), "w") as outfile:
         for og in new_ogs:
             outfile.write(", ".join(og) + "\n")
-    
+
     idsDict = MCL.WriteOrthogroupFiles(
         new_ogs,
         [files.FileHandler.GetSequenceIDsFN()],

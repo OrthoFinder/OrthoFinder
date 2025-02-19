@@ -109,7 +109,8 @@ def Stats(ogs, speciesNamesDict, iSpecies, iResultsVersion, fastaWriter, ids_dic
         "" if iResultsVersion == 0 else "_%d" % iResultsVersion) + ".tsv"
     filename_single_copy = files.FileHandler.GetOrthogroupResultsFNBase() + "_SingleCopyOrthologues.txt"
     percentFormat = "%0.1f"
-    with open(filename_sp, util.csv_write_mode) as outfile_species, open(filename_sum, util.csv_write_mode) as outfile_sum:
+    with open(filename_sp, util.csv_write_mode) as outfile_species, \
+        open(filename_sum, util.csv_write_mode) as outfile_sum:
         writer_sp = csv.writer(outfile_species, delimiter="\t")
         writer_sum = csv.writer(outfile_sum, delimiter="\t")
         # header
