@@ -463,7 +463,6 @@ def main(args=None):
                 seqsInfo, 
                 speciesNamesDict, 
                 speciesXML,
-                add_unclustered_gene=options.add_unclustered_gene
             )
             # 9.
             if not options.qStopAfterGroups:
@@ -507,7 +506,6 @@ def main(args=None):
                 seqsInfo, 
                 speciesNamesDict, 
                 speciesXML,
-                i_unassigned=options.add_unclustered_gene
             )
             # 9.
             if not options.qStopAfterGroups:
@@ -551,8 +549,6 @@ def main(args=None):
                 seqsInfo, 
                 speciesNamesDict, 
                 speciesXML,
-                i_unassigned=options.add_unclustered_gene
-
             )
             # 9
             if not options.qStopAfterGroups:
