@@ -397,7 +397,7 @@ def main(args=None):
         # printer.print("Results directory:", style="path")
         # printer.print(f"    [dark_cyan]{files.FileHandler.GetResultsDirectory1()}")
 
-        printer.print("Results :open_file_folder::")
+        printer.print("Results directory:")
         printer.print(f"    [dark_cyan]{files.FileHandler.GetResultsDirectory1()}")
 
         check_dependencies.CheckDependencies(
@@ -705,7 +705,7 @@ def main(args=None):
         )
 
         # printer.print("\nResults:\n    %s" % d_results, style="path")
-        printer.print("\nResults :open_file_folder::")
+        printer.print("\nResults directory:")
         printer.print(f"    [dark_cyan]{d_results}")
         util.PrintCitation(d_results)
         files.FileHandler.WriteToLog("OrthoFinder run completed\n", True)
