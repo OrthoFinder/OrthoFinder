@@ -29,7 +29,7 @@ import os
 import json
 import numpy as np
 import subprocess
-from .. import my_env
+# from .. import my_env
 import types
 import traceback
 
@@ -1496,7 +1496,7 @@ def Worker_RunCommands_And_Move(
 def RunCommand(command, qPrintOnError=False, qPrintStderr=True):
     """Run a single command"""
     popen = subprocess.Popen(
-        command, env=my_env, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        command, env=parallel_task_manager.my_env, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
     if qPrintOnError:
         stdout, stderr = popen.communicate()

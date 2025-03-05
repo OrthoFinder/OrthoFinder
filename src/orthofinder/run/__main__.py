@@ -67,12 +67,12 @@ from ..gene_tree_inference import trees2ologs_of, infer_trees
 from . import process_args, check_dependencies, run_commands, species_info
 from .. import orphan_genes_version, __version__, __location__
 from ..comparative_genomics import orthologues
-
 from ..utils.util import printer
 try:
     from rich import print
 except ImportError:
     ...
+
 
 configfile_location = os.path.join(__location__, "run")
 max_int = sys.maxsize

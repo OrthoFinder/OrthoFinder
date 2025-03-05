@@ -3,12 +3,18 @@ import subprocess
 import glob     
 import shutil
 from . import run_info
-from .. import my_env
+# from .. import my_env
 import os
 import time
 
 def RunBlastDBCommand(command):
-    capture = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=my_env, shell=True)
+    capture = subprocess.Popen(
+        command, 
+        stdout=subprocess.PIPE, 
+        stderr=subprocess.PIPE, 
+        env=parallel_task_manager.my_env, 
+        shell=True
+    )
     stdout, stderr = capture.communicate()
     try:
         stdout = stdout.decode()

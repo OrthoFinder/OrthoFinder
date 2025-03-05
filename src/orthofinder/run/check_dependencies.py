@@ -2,7 +2,7 @@ from ..utils import util, program_caller, files, parallel_task_manager
 from ..tools import trees_msa
 import os
 import subprocess
-from .. import __location__, my_env
+from .. import __location__
 from ..utils.util import printer
 
 def CanRunBLAST():
@@ -115,7 +115,13 @@ def CanRunOrthologueDependencies(
             printer.print("Please check DLCpar is installed and that the executables are in the system path.\n", style="error")
             return False
         if recon_method == "dlcpar_convergedsearch":
-            capture = subprocess.Popen("dlcpar_search --version", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=my_env)
+            capture = subprocess.Popen(
+                "dlcpar_search --version", 
+                shell=True, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE, 
+                env=parallel_task_manager.my_env
+            )
             stdout = [x for x in capture.stdout]
             try:
                 stdout = "".join([x.decode() for x in stdout])

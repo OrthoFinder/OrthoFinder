@@ -32,10 +32,6 @@ try:
 except ImportError:
     import pickle as pic
 
-try:
-    from rich import print
-except ImportError:
-    ...
 from .. import picProtocol
 
 def DumpMatrix(name, m, iSpecies, jSpecies, d_pickle):

@@ -31,8 +31,8 @@ import datetime
 import traceback
 import subprocess
 import multiprocessing as mp
-from concurrent.futures import ProcessPoolExecutor, wait, as_completed
-from .. import my_env
+from concurrent.futures import ProcessPoolExecutor, wait
+from .. import __location__
 from . import util
 try:
     from rich import print
@@ -53,6 +53,24 @@ except ImportError:
 # if sys.platform.startswith("linux"):
 #     with open(os.devnull, "w") as f:
 #         subprocess.call("taskset -p 0xffffffffffff %d" % os.getpid(), shell=True, stdout=f)
+
+
+os.environ["OPENBLAS_NUM_THREADS"] = "1"    # fix issue with numpy/openblas. Will mean that single threaded options aren't automatically parallelised 
+
+
+my_env = os.environ.copy()
+# use orthofinder supplied executables by preference
+my_env['PATH'] = os.path.join(__location__, 'bin:') + my_env['PATH']
+# Fix LD_LIBRARY_PATH when using pyinstaller 
+if getattr(sys, 'frozen', False):
+    if 'LD_LIBRARY_PATH_ORIG' in my_env:
+        my_env['LD_LIBRARY_PATH'] = my_env['LD_LIBRARY_PATH_ORIG']  
+    else:
+        my_env['LD_LIBRARY_PATH'] = ''  
+    if 'DYLD_LIBRARY_PATH_ORIG' in my_env:
+        my_env['DYLD_LIBRARY_PATH'] = my_env['DYLD_LIBRARY_PATH_ORIG']  
+    else:
+        my_env['DYLD_LIBRARY_PATH'] = ''
 
 
 def PrintTime(message):
