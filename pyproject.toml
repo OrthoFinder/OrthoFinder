@@ -39,7 +39,15 @@ classifiers = [
     "Programming Language :: Python :: 3.11", # tested
     "Programming Language :: Python :: 3.12", # tested
 ]
-dependencies = ["numpy", "scipy", "scikit-learn", "biopython", "rich"]
+dependencies = [
+    "numpy", 
+    "scipy", 
+    "scikit-learn", 
+    "biopython", 
+    "rich", 
+    "ete3", 
+    "six",
+]
 
 [project.urls]
 repository = "https://github.com/davidemms/OrthoFinder"

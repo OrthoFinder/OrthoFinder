@@ -3,3 +3,5 @@ scipy
 scikit-learn
 biopython
 rich
+ete3
+six
