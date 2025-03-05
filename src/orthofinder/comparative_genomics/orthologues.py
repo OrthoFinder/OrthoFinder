@@ -491,7 +491,7 @@ def OrthologuesWorkflow(
     if return_obj is None:
         return
     rooted_sp_tree, fn_rooted_sp_tree, q_multiple_roots, stride_dups = return_obj
-
+    
     InferOrthologs(
         ogSet, 
         rooted_sp_tree, 
@@ -557,8 +557,10 @@ def OrthologuesWorkflow(
     # ogs = stats.add_unassigned_genes(ogs, ogSet.AllUsedSequenceIDs())
     species_dict = {int(k): v for k, v in ogSet.SpeciesDict().items()}
     ids_dict = ogSet.SequenceDict()
+
     stats.Stats(ogs, species_dict, speciesToUse, files.FileHandler.iResultsVersion, fastaWriter, ids_dict)
-    
+
+
 def RootSpeciesTree(
         ogSet, 
         spTreeFN_ids, 
@@ -725,3 +727,4 @@ def InferOrthologs(
     files.FileHandler.CleanWorkingDir2()
     if print_info:
         util.PrintUnderline("Writing results files", True)
+        util.PrintTime("Start writing files")

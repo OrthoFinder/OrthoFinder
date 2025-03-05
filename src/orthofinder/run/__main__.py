@@ -160,7 +160,7 @@ def GetOrthologues(
         i_og_restart=i_og_restart,
         speciesXML=speciesXML,
     )
-    util.PrintTime("Done writing files")
+    # util.PrintTime("Done writing files")
 
 
 def BetweenCoreOrthogroupsWorkflow(

@@ -224,12 +224,14 @@ def Stats(ogs, speciesNamesDict, iSpecies, iResultsVersion, fastaWriter, ids_dic
         # Sizes
         Stats_SizeTable(writer_sum, writer_sp, properOGs, allGenesCounter, iSpecies, speciesPresence)
         Stats_SpeciesOverlaps(filename_overlap, speciesNamesDict, iSpecies, speciesPresence)
-
-    summaryText = """[dark_goldenrod]OrthoFinder[/dark_goldenrod] assigned %d genes (%0.1f%% of total) to %d orthogroups. 
-50%% of genes were in orthogroups with %d or more genes (G50 was %d) and were contained in the largest %d orthogroups (O50 was %d). 
-There were %d orthogroups with all species present and %d of these consisted entirely of single-copy genes.""" % (nAssigned, pAssigned, nOgs, G50, G50, O50, O50, nCompleteOGs, nSingleCopy)
+    
+    util.PrintTime("Done writing files")
+    print("\nSummary: ")
+    summaryText = """  [dark_goldenrod]OrthoFinder[/dark_goldenrod] assigned %d genes (%0.1f%% of total) to %d orthogroups. 
+  50%% of genes were in orthogroups with %d or more genes (G50 was %d) and were contained in the largest %d orthogroups (O50 was %d). 
+  There were %d orthogroups with all species present and %d of these consisted entirely of single-copy genes.""" % (nAssigned, pAssigned, nOgs, G50, G50, O50, O50, nCompleteOGs, nSingleCopy)
     if q_fast_add:
-        print("The majority of genes have been assigned to existing orthogroups, however, the remaining clade-specific genes not seen in the core species were also analysed with the following results:")
+        print("  The majority of genes have been assigned to existing orthogroups, however, the remaining clade-specific genes not seen in the core species were also analysed with the following results:")
     print(summaryText)
 
 

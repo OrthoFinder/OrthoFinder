@@ -1226,9 +1226,18 @@ def DoOrthologuesForOrthoFinder(
             )
 
             if n_parallel == 1:
+                total_tasks = len(iogs4)
+                progressbar, task = util.get_progressbar(total_tasks)
+                progressbar.start()
+                update_cycle = 1
+                completed_tasks = 0
                 nOrthologues_SpPair = util.nOrtho_sp(nspecies)
                 dummy_lock = mp.Lock()
                 for iog in iogs4:
+                    completed_tasks += 1
+                    if (completed_tasks + 1) % update_cycle == 0:
+                        progressbar.update(task, advance=update_cycle)
+
                     results = ta.AnalyseTree(iog) 
                     if results is None:
                         continue
@@ -1248,6 +1257,7 @@ def DoOrthologuesForOrthoFinder(
                                     WriteOlogLinesToFile(ta.ologs_files_handles[i][j], olog_lines[i][j], dummy_lock)
                                     WriteOlogLinesToFile(ta.ologs_files_handles[j][i], olog_lines[j][i], dummy_lock)
                             WriteOlogLinesToFile(ta.putative_xenolog_file_handles[i], olog_sus_lines[i], dummy_lock)
+                progressbar.stop()
                 if print_info:
                     util.PrintTime("Done writing orthologs")
             else:
