@@ -20,15 +20,15 @@ import traceback
 import multiprocessing as mp
 from collections import defaultdict
 import warnings
+try:
+    from rich import print
+except ImportError:
+    ...
 from ..tools import tree as tree_lib
 from . import resolve
 from ..utils import util, files, parallel_task_manager
-try: 
-    import queue
-except ImportError:
-    import Queue as queue
 
-import threading 
+
 PY2 = sys.version_info <= (3,)
 
 debug = False   # HOGs

@@ -70,6 +70,11 @@ import copy
 from collections import deque 
 import itertools
 import functools
+try:
+    from rich import print
+except ImportError:
+    ...
+
 from .newick import read_newick, write_newick
 
 TREEVIEW = False

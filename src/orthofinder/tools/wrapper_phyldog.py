@@ -11,9 +11,12 @@ import time
 import subprocess
 import fileinput
 from collections import defaultdict, Counter
-
+try:
+    from rich import print
+except ImportError:
+    ...
 from . import tree as tree_lib
-from ..utils import util, files, program_caller
+from ..utils import  program_caller
 
 def WriteGeneralOptions(filename, baseDir, qRunSingley, iogs4):
     x="""######## First, data files ########

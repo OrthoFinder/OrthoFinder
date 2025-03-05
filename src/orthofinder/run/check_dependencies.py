@@ -3,14 +3,15 @@ from ..tools import trees_msa
 import os
 import subprocess
 from .. import __location__, my_env
+from ..utils.util import printer
 
 def CanRunBLAST():
     if parallel_task_manager.CanRunCommand("makeblastdb -help") and parallel_task_manager.CanRunCommand("blastp -help"):
         return True
     else:
-        print("ERROR: Cannot run BLAST+")
+        printer.print("ERROR: Cannot run BLAST+", style="error")
         program_caller.ProgramCaller.PrintDependencyCheckFailure("makeblastdb -help\nblastp -help")
-        print("Please check BLAST+ is installed and that the executables are in the system path\n")
+        printer.print("Please check BLAST+ is installed and that the executables are in the system path\n", style="error")
         return False
 
 def CanRunMCL():
@@ -18,9 +19,9 @@ def CanRunMCL():
     if parallel_task_manager.CanRunCommand(command):
         return True
     else:
-        print("ERROR: Cannot run MCL with the command \"%s\"" % command)
+        printer.print("ERROR: Cannot run MCL with the command \"%s\"" % command, style="error")
         program_caller.ProgramCaller.PrintDependencyCheckFailure(command)
-        print("Please check MCL is installed and in the system path. See information above.\n")
+        printer.print("Please check MCL is installed and in the system path. See information above.\n", style="error")
         return False
 
 def CanRunASTRAL():
@@ -34,15 +35,15 @@ def CanRunASTRAL():
     if parallel_task_manager.CanRunCommand(cmd, qAllowStderr=True, qRequireStdout=False, qCheckReturnCode=True):
         return True
     else:
-        print("ERROR: Cannot run astral-pro")
+        printer.print("ERROR: Cannot run astral-pro", style="error")
         program_caller.ProgramCaller.PrintDependencyCheckFailure(cmd)
-        print("Please check astral-pro is installed and that the executables are in the system path\n")
+        printer.print("Please check astral-pro is installed and that the executables are in the system path\n", style="error")
         return False
 
 def CheckDependencies(options, user_specified_m, prog_caller, dirForTempFiles):
-    util.PrintUnderline("Checking required programs are installed")
+    util.PrintUnderline("Checking required programs are installed", True)
     if not user_specified_m:
-        print("Running with the recommended MSA tree inference by default. To revert to legacy method use '-M dendroblast'.\n")
+        printer.print('Running with the recommended MSA tree inference by default. To revert to legacy method use "-M dendroblast".\n')
     if options.qStartFromFasta or options.qFastAdd:
         if options.search_program == "blast":
             if not CanRunBLAST(): util.Fail()
@@ -55,9 +56,9 @@ def CheckDependencies(options, user_specified_m, prog_caller, dirForTempFiles):
                                                                         gapextend=options.gapextend
                                                                         )
             if not success:
-                print("\nERROR: Cannot run %s" % options.search_program)
+                printer.print("\nERROR: Cannot run %s" % options.search_program, style="error")
                 prog_caller.PrintDependencyCheckFailure(cmd)
-                print("Please check %s is installed and that the executables are in the system path\n" % options.search_program)
+                printer.print("Please check %s is installed and that the executables are in the system path\n" % options.search_program,  style="error")
                 util.Fail()
     if (options.qStartFromFasta or options.qStartFromBlast) and not CanRunMCL():
         util.Fail()
@@ -103,15 +104,15 @@ def CanRunOrthologueDependencies(
         if os.path.exists(outFN): os.remove(outFN)       
         cmd = "fastme -i %s -o %s" % (testFN, outFN)
         if not parallel_task_manager.CanRunCommand(cmd, qAllowStderr=False):
-            print("ERROR: Cannot run fastme")
+            printer.print("ERROR: Cannot run fastme", style="error")
             program_caller.PrintDependencyCheckFailure(cmd)
-            print("Please check FastME is installed and that the executables are in the system path.\n")
+            printer.print("Please check FastME is installed and that the executables are in the system path.\n", style="error")
             return False
     # DLCPar
     if ("dlcpar" in recon_method) and not (qStopAfterTrees or qStopAfterAlignments):
         if not parallel_task_manager.CanRunCommand("dlcpar_search --version", qAllowStderr=False):
-            print("ERROR: Cannot run dlcpar_search")
-            print("Please check DLCpar is installed and that the executables are in the system path.\n")
+            printer.print("ERROR: Cannot run dlcpar_search", style="error")
+            printer.print("Please check DLCpar is installed and that the executables are in the system path.\n", style="error")
             return False
         if recon_method == "dlcpar_convergedsearch":
             capture = subprocess.Popen("dlcpar_search --version", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=my_env)
@@ -139,7 +140,7 @@ def CanRunOrthologueDependencies(
                     pass
                     # need to check next level down
             if not versionOK:
-                print("ERROR: dlcpar_convergedsearch requires dlcpar_search version 1.0.1 or above")
+                printer.print("ERROR: dlcpar_convergedsearch requires dlcpar_search version 1.0.1 or above", style="error")
                 return False                   
     
     # FastTree & MAFFT
@@ -156,25 +157,25 @@ def CanRunOrthologueDependencies(
                                                            os.path.join(__location__, 'bin/mafft/bin/')
                     success, stdout, stderr, cmd = program_caller.TestMSAMethod(msa_method, d_deps_test)
             if not success:
-                print("ERROR: Cannot run MSA method '%s'" % msa_method)
+                printer.print("ERROR: Cannot run MSA method '%s'" % msa_method, style="error")
                 program_caller.PrintDependencyCheckFailure(cmd)
-                print("Please check program is installed. If it is user-configured please check the configuration in the "
-                      "orthofinder/config.json file\n")
+                printer.print("Please check program is installed. If it is user-configured please check the configuration in the "
+                      "orthofinder/config.json file\n", style="error")
                 return False
         if tree_method is not None:
             if qMSAGeneTrees and (not qStopAfterAlignments):
                 success, stdout, stderr, cmd = program_caller.TestTreeMethod(tree_method, d_deps_test)
                 if not success:
-                   print("ERROR: Cannot run tree method '%s'" % tree_method)
+                   printer.print("ERROR: Cannot run tree method '%s'" % tree_method, style="error")
                    program_caller.PrintDependencyCheckFailure(cmd)
-                   print("Please check program is installed. If it is user-configured please check the configuration in "
-                         "the orthofinder/config.json file\n")
+                   printer.print("Please check program is installed. If it is user-configured please check the configuration in "
+                         "the orthofinder/config.json file\n", style="error")
                    return False
             
     if qPhyldog:
         if not parallel_task_manager.CanRunCommand("mpirun -np 1 phyldog", qAllowStderr=False):
-            print("ERROR: Cannot run mpirun -np 1 phyldog")
-            print("Please check phyldog is installed and that the executable is in the system path\n")
+            printer.print("ERROR: Cannot run mpirun -np 1 phyldog", style="error")
+            printer.print("Please check phyldog is installed and that the executable is in the system path\n", style="error")
             return False
         
     return True    

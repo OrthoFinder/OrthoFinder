@@ -1,5 +1,6 @@
 import os
 from ..utils import util, files
+from ..utils.util import printer
 from ..comparative_genomics import orthologues
 from .. import __version__, g_mclInflation, nThreadsDefault
 from . import helpinfo, species_info
@@ -201,7 +202,7 @@ def ProcessArgs(prog_caller, args):
         util.Success()
 
     if args[0] == "-v" or args[0] == "--version":
-        print(f"orthofinder:v{__version__}")
+        printer.print(f"[dark_goldenrod]OrthoFinder[/dark_goldenrod]:v[deep_sky_blue2]{__version__}[/deep_sky_blue2]")
         util.Success()
 
     options = Options()
@@ -791,11 +792,11 @@ def ProcessArgs(prog_caller, args):
         util.Fail()
 
     print()
-    util.PrintTime("Starting OrthoFinder v%s" % __version__)
+    util.PrintTime(f"Starting [dark_goldenrod]OrthoFinder[/dark_goldenrod] v[deep_sky_blue2]{__version__}[/deep_sky_blue2]")
     print(
         "%d thread(s) for highly parallel tasks (BLAST searches etc.)" % options.nBlast
     )
-    print("%d thread(s) for OrthoFinder algorithm\n" % options.nProcessAlg)
+    print("%d thread(s) for [dark_goldenrod]OrthoFinder[/dark_goldenrod] algorithm\n" % options.nProcessAlg)
 
     if options.qFastAdd and not q_selected_msa_options:
         print("INFO: For --assign defaulting to 'mafft --memsave' to reduce RAM usage\n")

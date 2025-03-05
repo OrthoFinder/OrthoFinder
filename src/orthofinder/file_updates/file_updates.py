@@ -5,7 +5,7 @@ import ete3
 import csv
 import shutil
 from ..utils import files
-
+from ..utils.util import printer
 
 def update_output_files(
         working_dir,
@@ -172,7 +172,7 @@ def trees_converter(
                     outfile.write(modified_newick_str)
             
             except Exception as e:
-                print(f"Error processing {entry.name}: {e}")
+                printer.print(f"ERROR processing {entry.name}: {e}", style="error")
 
 def overwrite_gene_trees(
         resolved_trees_dir, 
@@ -201,7 +201,7 @@ def overwrite_gene_trees(
                     outfile.write(original_newick_str)
             
             except Exception as e:
-                print(f"Error processing {entry.name}: {e}")
+                printer.print(f"ERROR processing {entry.name}: {e}", style="error")
 
 
 def read_hog_n0_file(hog_n0_file):
@@ -242,4 +242,4 @@ def clear_dir(of3_dir):
                 elif entry.is_dir():
                     shutil.rmtree(entry.path) 
             except Exception as e:
-                print(f'Failed to delete {entry.path}. Reason: {e}')
+                printer.print(f'Failed to delete {entry.path}. Reason: {e}', style="error")

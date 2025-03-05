@@ -25,30 +25,20 @@
 # For any enquiries send an email to David Emms
 # david_emms@hotmail.comhor: david
 import os
-import sys
 import csv
-import time
 import shutil
-import numpy as np
-import subprocess
 from collections import Counter, defaultdict
-import itertools
 import multiprocessing as mp
-import warnings
-try: 
-    import queue
+try:
+    from rich import print
 except ImportError:
-    import Queue as queue
-
-from ..tools import tree, wrapper_phyldog, stag, stride, trees_msa, dendroblast
-from ..tools import mcl 
+    ...
+from ..tools import tree, stride, trees_msa, dendroblast
 from ..gene_tree_inference import trees2ologs_dlcpar, trees2ologs_of, infer_trees
 
-from ..utils import util, files, parallel_task_manager, program_caller
-from ..orthogroups import accelerate, orthogroups_set
+from ..utils import util, files
+from ..orthogroups import orthogroups_set
 from . import stats
-from .. import nThreadsDefault as nThreads
-from .. import my_env
 
 from ..file_updates import file_updates
    
@@ -312,10 +302,10 @@ def ReconciliationAndOrthologues(
                 resultsDir_ologs, 
                 reconTreesRenamedDir
         )
-        util.PrintTime("Done Orthologues from Phyldog")
+        util.PrintTime("Done orthologues from Phyldog")
     else:
         if print_info:
-            util.PrintTime("Starting of Orthologues")
+            util.PrintTime("Starting of orthologues")
         qNoRecon = ("only_overlap" == recon_method)
         # The next function should not create the HOG writer and label the species tree. This should be done here and passed as arguments
         species_tree_rooted_labelled = tree.Tree(speciesTree_ids_fn)
@@ -352,7 +342,7 @@ def ReconciliationAndOrthologues(
                 print_info=print_info
         )
         if print_info:
-            util.PrintTime("Done of Orthologues")
+            util.PrintTime("Done of orthologues")
         TwoAndThreeGeneHOGs(ogSet, species_tree_rooted_labelled, hog_writer)
         hog_writer.close_files()
     nOrthologues_SpPair += TwoAndThreeGeneOrthogroups(ogSet, resultsDir_ologs, save_space=save_space, fewer_open_files=fewer_open_files)
@@ -411,7 +401,7 @@ def OrthologuesFromTrees(
 
 
 def OrthologuesWorkflow(
-        seqsInfo, speciesNamesDict, speciesXML,
+        seqsInfo, speciesNamesDict, 
         speciesInfoObj, options,
         speciesToUse, 
         nSpAll, 
@@ -442,6 +432,7 @@ def OrthologuesWorkflow(
         save_space=False,
         root_from_previous=False,
         i_og_restart=0,
+        speciesXML=None,
     ):
     ogSet = orthogroups_set.OrthoGroupsSet(
         files.FileHandler.GetWorkingDirectory1_Read(), 
@@ -552,7 +543,7 @@ def OrthologuesWorkflow(
         save_space, 
         root_from_previous,
         old_version=old_version,
-        print_info=False
+        print_info=False,
     )
 
     os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
@@ -713,7 +704,7 @@ def InferOrthologs(
         qFixNegatives=True
     )
     if print_info:
-        util.PrintTime("Starting Recon and orthologues")
+        util.PrintTime("Starting reconciliation and orthologues")
 
     ReconciliationAndOrthologues(
         recon_method, 

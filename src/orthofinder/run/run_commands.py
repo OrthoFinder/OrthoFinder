@@ -46,10 +46,10 @@ def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller,
     elif species_clades is not None:
         util.PrintUnderline("Running %s searches for new non-core species clades" % name_to_print)
     else:
-        util.PrintUnderline("Running %s all-versus-all" % name_to_print)
+        util.PrintUnderline("Running %s all-versus-all" % name_to_print, True)
     tasksizes = None
     if species_clades is None:
-        print("running GetOrderedSearchCommands")
+        # print("running GetOrderedSearchCommands")
         commands, tasksizes = run_info.GetOrderedSearchCommands(seqsInfo, 
                                                      speciessInfoObj,
                                                      options,
@@ -57,7 +57,7 @@ def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller,
                                                      n_genes_per_species, 
                                                      q_new_species_unassigned_genes=q_new_species_unassigned_genes)
     else:
-        print("running GetOrderedSearchCommands_clades")
+        # print("running GetOrderedSearchCommands_clades")
         commands, tasksizes = run_info.GetOrderedSearchCommands_clades(seqsInfo, 
                                                             speciessInfoObj,
                                                             options,
@@ -69,7 +69,7 @@ def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller,
             print(command)
         util.Success()
     print("Using %d thread(s)" % options.nBlast)
-    util.PrintTime("This may take some time....")
+    util.PrintTime("This may take some time...")
     program_caller.RunParallelCommands(options.nBlast, commands,
                                        method_threads=options.method_threads, 
                                        method_threads_large=options.method_threads_large,

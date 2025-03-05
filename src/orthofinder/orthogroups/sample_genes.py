@@ -15,7 +15,10 @@ import sklearn
 from sklearn import cluster
 import numpy as np
 from Bio import AlignIO
-
+try:
+    from rich import print
+except ImportError:
+    ...
 from ..utils import util, fasta_processor
 
 use_n_auto = util.version_parse_simple(sklearn.__version__) >= util.version_parse_simple('1.2.0')

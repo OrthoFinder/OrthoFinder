@@ -29,7 +29,7 @@ import sys
 import numpy as np
 import datetime
 from collections import namedtuple
-from ..citation import citation, print_citation
+from ..citation import citation
 from ..tools import tree
 from . import parallel_task_manager
 import shutil
@@ -39,6 +39,7 @@ try:
     from rich import print, progress
     from rich.console import Console
     from rich.theme import Theme
+
 except ImportError:
     ...
 try:
@@ -54,13 +55,20 @@ csv_read_mode = "rb" if PY2 else "rt"
 
 class OrthoPrinter:
     def __init__(self):
-        self.console = Console(theme=Theme({
-            "info": "bold blue",
-            "success": "bold green",
-            "error": "bold red",
-            "warning": "bold yellow",
-            "default": "bright_white"
-        }))
+        self.console = Console(
+            theme=Theme({
+                "info": "deep_sky_blue2",
+                "path": "green4",
+                "orthofinder": "dark_goldenrod",
+                "other_methods": "dark_orange3", 
+                "version": "dark_cyan",
+                "success": "bold green",
+                "error": "bold red",
+                "warning": "bold yellow",
+                "default": "default on default" # bright_white
+            }), 
+            force_terminal=True
+        )
 
     def print(self, *messages, style: str = "default", sep: str = " ", end: str = "\n"):
         message = sep.join(map(str, messages))
@@ -579,15 +587,15 @@ def PrintCitation(d=None):
     if d is not None:
         WriteCitation(d)
     print()
-    print(print_citation)
-    # print ("\nCITATION:")
-    # print (" When publishing work that uses OrthoFinder please cite:")
-    # print (" Emms D.M. & Kelly S. (2019), Genome Biology 20:238\n")
+    # printer.print(print_citation)
+    printer.print("\nCITATION:")
+    printer.print(" When publishing work that uses [dark_goldenrod]OrthoFinder[/dark_goldenrod] please cite:")
+    printer.print(" Emms D.M. & Kelly S. (2019), Genome Biology 20:238\n")
 
-    # print (" If you use the species tree in your work then please also cite:")
-    # print (" Emms D.M. & Kelly S. (2017), MBE 34(12): 3267-3278")
-    # print (" Emms D.M. & Kelly S. (2018), bioRxiv https://doi.org/10.1101/267914")
-
+    printer.print(" If you use the species tree in your work then please also cite:")
+    printer.print(" Emms D.M. & Kelly S. (2017), MBE 34(12): 3267-3278")
+    printer.print(" Emms D.M. & Kelly S. (2018), bioRxiv ", end="")
+    printer.print("[dark_cyan][link=https://doi.org/10.1101/267914]https://doi.org/10.1101/267914[/link]")
 
 def PrintUnderline(text, qHeavy=False):
     print(("\n" + text))

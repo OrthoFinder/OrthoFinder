@@ -1,6 +1,9 @@
 from ..utils import util
 from .. import nThreadsDefault
-
+try:
+    from rich import print
+except ImportError:
+    ...
 
 def PrintHelp():
     print("Usage")    

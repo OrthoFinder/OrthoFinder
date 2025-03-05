@@ -46,7 +46,11 @@ except NameError:
 
 import re
 import os
-import base64 
+try:
+    from rich import print
+except ImportError:
+    ...
+
 
 __all__ = ["read_newick", "write_newick"]
 

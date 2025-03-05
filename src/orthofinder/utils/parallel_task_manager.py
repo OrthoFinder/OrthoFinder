@@ -61,7 +61,9 @@ def PrintTime(message):
 
 
 def PrintNoNewLine(text):
-    sys.stdout.write(text)
+    printer.print(text, end="")
+    sys.stdout.flush()
+    # sys.stdout.write(text)
 
 
 def ManageQueue(runningProcesses, cmd_queue):
@@ -158,7 +160,7 @@ def CanRunCommand(
     qCheckReturnCode=False,
 ):
     if qPrint:
-        PrintNoNewLine('Test can run "%s"' % command)  # print without newline
+        PrintNoNewLine(f'Test can run "[orange3]{command.split()[0]}[/orange3]"')  # print without newline
     capture = subprocess.Popen(
         command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=my_env
     )
@@ -175,11 +177,11 @@ def CanRunCommand(
         and return_code_check
     ):
         if qPrint:
-            printer.print(" - ok", style="success")
+            printer.print(" - [bold green]ok")
         return True
     else:
         if qPrint:
-            printer.print(" - failed", style="error")
+            printer.print(" - [bold red]failed")
         if not return_code_check:
             printer.print("Returned a non-zero code: %d" % capture.returncode, style="error")
         print("\nstdout:")

@@ -30,7 +30,11 @@ import sys
 import csv
 import glob
 #import shelve
-import datetime
+try:
+    from rich import print
+except ImportError:
+    ...
+
 import argparse
 import itertools
 import multiprocessing as mp

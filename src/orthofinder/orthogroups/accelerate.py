@@ -6,13 +6,17 @@ import string
 import random
 from collections import defaultdict
 from typing import Optional
-import multiprocessing as mp
+try:
+    from rich import print
+except ImportError:
+    ...
 import numpy as np
 
 from . import sample_genes
 from ..tools import mcl, tree
-from ..utils import util, files, parallel_task_manager, program_caller, fasta_processor
+from ..utils import util, files, parallel_task_manager, fasta_processor
 from . import orthogroups_set
+
 
 class XcelerateConfig(object):
     def __init__(self):
@@ -193,7 +197,9 @@ def create_profiles_database(
         fn_fasta = wd + fn_base + ".%s.%d_%s.fa" % (subtrees_label, n_for_profile, selection)
     fn_diamond_db = fn_fasta + ".dmnd"
     if os.path.exists(fn_diamond_db):
-        print("Profiles database already exists and will be reused: %s" % fn_diamond_db)
+        # print("Profiles database already exists and will be reused: %s" % fn_diamond_db)
+        print("Profiles database already exists and will be reused: ")
+        print(f"[dark_cyan]{fn_diamond_db}[dark_cyan]")
         return fn_diamond_db, q_hogs
     og_set = orthogroups_set.OrthoGroupsSet(wd_list, list(range(nSpAll)), nSpAll, True)
     ids = og_set.Spec_SeqDict()

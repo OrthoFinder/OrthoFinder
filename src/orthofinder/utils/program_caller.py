@@ -26,7 +26,6 @@
 # david_emms@hotmail.comhor: david
 import concurrent.futures
 import os
-import sys
 import json
 import numpy as np
 import subprocess
@@ -40,15 +39,7 @@ except ImportError:
     import Queue as queue
 
 from . import util, parallel_task_manager
-
-try:
-    from importlib import resources as impresources
-except ImportError:
-    # Try backported to PY<37 `importlib_resources`.
-    import importlib_resources as impresources
-
-from .. import test_sequences
-
+from .util import printer
 try:
     from rich import print
 except ImportError:
@@ -57,20 +48,49 @@ except ImportError:
 import multiprocessing as mp
 
 
-try:
-    longer_file = impresources.files(test_sequences) / "longer.txt"
-    shorter_file = impresources.files(test_sequences) / "shorter.txt"
-    with longer_file.open("rt") as f1, shorter_file.open(
-        "rt"
-    ) as f2:  # "rt" as text file with universal newlines
-        longer_sequence = f1.read()
-        shorter_sequence = f2.read()
-except AttributeError:
-    # Python < PY3.9, fall back to method deprecated in PY3.11.
-    longer_sequence = impresources.read_text(test_sequences, "longer.txt")
-    shorter_sequence = impresources.read_text(test_sequences, "shorter.txt")
-except FileNotFoundError as e:
-    print(f"File not found: {e.filename}")
+# try:
+#     longer_file = impresources.files(test_sequences) / "longer.txt"
+#     shorter_file = impresources.files(test_sequences) / "shorter.txt"
+#     with longer_file.open("rt") as f1, shorter_file.open(
+#         "rt"
+#     ) as f2:  # "rt" as text file with universal newlines
+#         longer_sequence = f1.read()
+#         shorter_sequence = f2.read()
+# except AttributeError:
+#     # Python < PY3.9, fall back to method deprecated in PY3.11.
+#     longer_sequence = impresources.read_text(test_sequences, "longer.txt")
+#     shorter_sequence = impresources.read_text(test_sequences, "shorter.txt")
+# except FileNotFoundError as e:
+#     print(f"File not found: {e.filename}")
+
+
+longer_sequence = \
+""">0_0
+MNINSPNDKEIALKSYTETFLDILRQELGDQMLYKNFFANFEIKDVSKIGHITIGTTNVTPNSQYVIRAY
+ESSIQKSLDETFERKCTFSFVLLDSAVKKKVKRERKEAAIENIELSNREVDKTKTFENYVEGNFNKEAIR
+IAKLIVEGEEDYNPIFIYGKSGIGKTHLLNAICNELLKKEVSVKYINANSFTRDISYFLQENDQRKLKQI
+RNHFDNADIVMFDDFQSYGIGNKKATIELIFNILDSRINQKRTTIICSDRPIYSLQNSFDARLISRLSMG
+LQLSIDEPQKADLLKILDYMIDINKMTPELWEDDAKNFIVKNYANSIRSLIGAVNRLRFYNSEIVKTNSR
+YTLAIVNSILKDIQQVKEKVTPDVIIEYVAKYYKLSRSEILGKSRRKDVVLARHIAIWIVKKQLDLSLEQ
+IGRFFGNRDHSTIINAVRKIEKETEQSDITFKRTISEISNEIFKKN
+>1_2
+MKTKLKRFLEEISVHFNEANSELLDAFVHSIDFVFEENDNIYIYFESPYFFNEFKNKLNHLINVENAVVF
+NDYLSLEWKKIIKENKRVNLLNKKEADTLKEKLATLKKQEKYKINPLSKGIKEKYNFGNYLVFEFNKEAV
+YLAKQIANKTTHSNWNPIIIEGKPGYGKSHLLQAIANERQKLFPEEKICVLSSDDFGSEFLKSVIAPDPT
+HIESFKSKYKDYDLLMIDDVQIISNRPKTNETFFTIFNSLVDQKKTIVITLDCKIEEIQDKLTARMISRF
+QKGINVRINQPNKNEIIQIFKQKFKENNLEKYMDDHVIEEISDFDEGDIRKIEGSVSTLVFMNQMYGSTK
+TKDQILKSFIEKVTNRKNLILSKDPKYVFDKIKYHFNVSEDVLKSSKRKKEIVQARHICMYVLKNVYNKN
+LSQIGKLLRKDHTTVRHGIDKVEEELENDPNLKSFLDLFKN"""
+
+shorter_sequence = \
+""">A
+MSKVIELKGIYAKYNKKSDYILEDLNLNVESGEFIAIIGPSGVGKSTLFKVIVNALEISKGSVRLFGQNI
+>B
+MLKLLSKFPLKVKLMALFAVILSTLHPFLSILIPTVTRQLITYLANSNINSEVSVYIFKSSWIIGSFSYA
+>C
+MQITVKDLVHTFLAKTPYELNAIDNINVTIKQGEFVGVIGQTGSGKTTFIEHLNALLLPSAGSVEWVFEN
+>D
+MIKVTDLMFKYPSAQANAIEKLNLEIESGKYVAILGHNGSGKSTFSKLLVALYKPADGKIELDGTTISKE"""
 
 
 class InvalidEntryException(Exception):
@@ -648,9 +668,10 @@ class ProgramCaller(object):
         return method_parameters.skip_check
 
     def _TestMethod(self, method_type, method_name, d_test, method_threads=None):
-        util.PrintNoNewLine('Test can run "%s"' % method_name)
+        util.PrintNoNewLine(f'Test can run "[orange3]{method_name.split()[0]}[/orange3]"')
+        # util.PrintNoNewLine('Test can run "%s"' % method_name)
         if self._ShouldSkipTest(method_type, method_name):
-            print(" - test has been manually over-ridden")
+            printer.print(" - test has been manually over-ridden", style="warning")
             return True
         infn = self._WriteTestSequence(d_test)
         propossed_outfn = infn + ".output.txt"
@@ -666,9 +687,9 @@ class ProgramCaller(object):
             os.path.exists(propossed_outfn) and os.stat(propossed_outfn).st_size > 0
         )
         if success:
-            print(" - ok")
+            printer.print(" - [bold green]ok")
         else:
-            print(" - failed")
+            printer.print(" - [bold red]failed")
             print("".join(stdout))
             print("".join(stderr))
         return success, stdout, stderr, cmd

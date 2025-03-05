@@ -26,7 +26,6 @@
 
 import re
 import os
-import sys
 import csv
 import glob
 import itertools
@@ -37,7 +36,10 @@ except ImportError:
     import pickle as pic
 from scipy import sparse
 from collections import defaultdict
-
+try:
+    from rich import print
+except ImportError:
+    ...
 from ..tools import tree
 from ..utils import util, files, program_caller
 

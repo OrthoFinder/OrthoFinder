@@ -6,7 +6,11 @@ Created on Thu Sep  8 11:00:11 2016
 """
 import numpy as np
 from scipy.special import beta
- 
+try:
+    from rich import print
+except ImportError:
+    ...
+
 """
 T - topology of the tree
 B - set of branches in the tree

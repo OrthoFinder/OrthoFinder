@@ -10,6 +10,10 @@ import glob
 import numpy as np
 import itertools
 import argparse
+try:
+    from rich import print
+except ImportError:
+    ...
 import multiprocessing as mp
 try: 
     import queue
@@ -17,7 +21,7 @@ except ImportError:
     import Queue as queue
 
 from ..tools import tree as tree_lib
-from ..utils import util, parallel_task_manager
+from ..utils import parallel_task_manager
     
 def DetachAndCleanup(top, n):
     """

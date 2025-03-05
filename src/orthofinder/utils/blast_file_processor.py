@@ -29,7 +29,10 @@ import sys
 import csv
 import gzip
 from scipy import sparse
-
+try:
+    from rich import print
+except ImportError:
+    ...
 from . import util
 
 PY2 = sys.version_info <= (3,)       

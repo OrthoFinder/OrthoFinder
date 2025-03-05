@@ -2,30 +2,14 @@ from __future__ import absolute_import
 
 import os
 import numpy as np
-import subprocess
-from scipy import sparse
-import random
-import time
-import warnings
-from collections import Counter, deque
-import numpy.core.numeric as numeric
-from scipy.optimize import curve_fit
-import multiprocessing as mp
-from concurrent.futures import ProcessPoolExecutor, as_completed
 
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+import numpy.core.numeric as numeric
+import multiprocessing as mp
 
 from ..tools import mcl, trees_msa, waterfall
 from . import orthogroups_set
-from ..utils import util, files, blast_file_processor, matrices, parallel_task_manager
+from ..utils import util, files, matrices, parallel_task_manager
 
-try:
-    from rich import print
-except ImportError:
-    ...
 
 def WriteGraph_perSpecies(args):
     seqsInfo, graphFN, iSpec, d_pickle = args

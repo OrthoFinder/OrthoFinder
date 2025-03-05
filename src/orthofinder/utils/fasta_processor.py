@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 import sys
 import gzip
-import string
 import os.path
 import glob
+try:
+    from rich import print
+except ImportError:
+    ...
 from . import util, files 
 
 

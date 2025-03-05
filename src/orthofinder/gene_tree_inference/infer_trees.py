@@ -1,3 +1,8 @@
+try:
+    from rich import print
+except ImportError:
+    ...
+
 from ..utils import util, files
 from ..tools import trees_msa, dendroblast, tree, wrapper_phyldog
 

@@ -32,13 +32,18 @@ Created on Thu Sep 25 13:15:22 2014
 """
 import os
 import glob
+import copy
 import numpy as np
 from collections import Counter, defaultdict
+try:
+    from rich import print
+except ImportError:
+    ...
 
 from ..utils import util, program_caller as pc
 from ..utils import files
 from ..tools import trim
-import copy
+
 
 class FastaWriter(object):
     def __init__(self, fastaFileDir_list, speciesToUse):
@@ -444,6 +449,7 @@ class TreesForOrthogroups(object):
         if qDoSpeciesTree:
             print(("Species tree: Using %d orthogroups with minimum of %0.1f%% of species having single-copy genes in any orthogroup" % (len(iOgsForSpeciesTree), 100.*fSingleCopy)))
             util.PrintUnderline("Inferring multiple sequence alignments for species tree") 
+            # util.PrintTime("This may take some time...")
             # Do required alignments and trees
             speciesTreeFN_ids = files.FileHandler.GetSpeciesTreeUnrootedFN()
             orig_commands_and_filenames = []
@@ -498,7 +504,7 @@ class TreesForOrthogroups(object):
             util.PrintUnderline("Inferring remaining multiple sequence alignments and gene trees") 
         else:
             util.PrintUnderline("Inferring multiple sequence alignments and gene trees")
-        
+        # util.PrintTime("This may take some time...")
         # Now continue as before
         iOgsForSpeciesTree = set(iOgsForSpeciesTree)
         iog_to_align_index = {iog: index for index, iog in enumerate(iogs_align)}

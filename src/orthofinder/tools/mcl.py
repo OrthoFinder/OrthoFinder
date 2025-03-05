@@ -27,6 +27,10 @@ from __future__ import absolute_import
 import sys
 import csv
 from typing import List, Set
+try:
+    from rich import print
+except ImportError:
+    ...
 
 from ..utils import parallel_task_manager, util, files
 

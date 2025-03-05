@@ -42,58 +42,37 @@ if __name__ == "__main__":
     #     # should be very small as we never try to create many processes
     #     mp.set_start_method('spawn')
 
-from ..utils import (
-    parallel_task_manager,
-    blast_file_processor,
-    files,
-    util,
-    matrices,
-    program_caller,
-    split_ortholog_files,
-    fasta_processor,
-)
-
 import os  # Y
 
 # os.environ["OPENBLAS_NUM_THREADS"] = "1"    # fix issue with numpy/openblas. Will mean that single threaded options aren't automatically parallelised
 
 import time
 import copy  # Y
-import subprocess  # Y
-import glob  # Y
-import shutil  # Y
 import time  # Y
-import itertools  # Y
-import datetime  # Y
-from collections import Counter  # Y
-from scipy.optimize import curve_fit  # install
-import numpy as np  # install
 import csv  # Y
-import scipy.sparse as sparse  # install
 import os.path  # Y
-import numpy.core.numeric as numeric  # install
-from collections import defaultdict  # Y
-import xml.etree.ElementTree as ET  # Y
-from xml.etree.ElementTree import SubElement  # Y
-from xml.dom import minidom  # Y
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue  # Y
-import warnings  # Y
-
+from ..utils import (
+    parallel_task_manager,
+    files,
+    util,
+    program_caller,
+    split_ortholog_files,
+    fasta_processor,
+)
 from ..orthogroups import gathering, orthogroups_set
 from ..orthogroups import accelerate as acc
 
-from ..tools import astral, tree, mcl, trees_msa
+from ..tools import astral, tree, mcl
 from ..gene_tree_inference import trees2ologs_of, infer_trees
 from . import process_args, check_dependencies, run_commands, species_info
 from .. import orphan_genes_version, __version__, __location__
 from ..comparative_genomics import orthologues
-from . import helpinfo
 
 from ..utils.util import printer
+try:
+    from rich import print
+except ImportError:
+    ...
 
 configfile_location = os.path.join(__location__, "run")
 max_int = sys.maxsize
@@ -139,14 +118,15 @@ Main
 
 # 9
 def GetOrthologues(
-        seqsInfo, speciesNamesDict, speciesXML,
+        seqsInfo, speciesNamesDict, 
         speciesInfoObj, options, 
         prog_caller, 
-        i_og_restart=0
+        i_og_restart=0,
+        speciesXML=None,
     ):
     util.PrintUnderline("Analysing Orthogroups", True)
     orthologues.OrthologuesWorkflow(
-        seqsInfo, speciesNamesDict, speciesXML,
+        seqsInfo, speciesNamesDict, 
         speciesInfoObj, 
         options,
         speciesInfoObj.speciesToUse,
@@ -178,8 +158,9 @@ def GetOrthologues(
         options.save_space,
         root_from_previous=False,
         i_og_restart=i_og_restart,
+        speciesXML=speciesXML,
     )
-    util.PrintTime("Done orthologues")
+    util.PrintTime("Done writing files")
 
 
 def BetweenCoreOrthogroupsWorkflow(
@@ -389,7 +370,7 @@ def main(args=None):
 
         if args is None:
             args = sys.argv[1:]
-
+        input_args = args.copy()
         # Create PTM right at start
         ptm = parallel_task_manager.ParallelTaskManager_singleton()
         prog_caller = GetProgramCaller()
@@ -402,7 +383,8 @@ def main(args=None):
             user_specified_M,
         ) = process_args.ProcessArgs(prog_caller, args)
 
-        print(("OrthoFinder version %s Copyright (C) 2014 David Emms\n" % __version__))
+        printer.print(f"[bold dark_goldenrod]OrthoFinder[/bold dark_goldenrod] version [deep_sky_blue2]{__version__}[/deep_sky_blue2]", end="")
+        printer.print(" Copyright (C) 2014 [bold dark_goldenrod]David Emms[/bold dark_goldenrod]\n")
 
         files.InitialiseFileHandler(
             options,
@@ -411,7 +393,12 @@ def main(args=None):
             resultsDir_nonDefault,
             pickleDir_nonDefault,
         )
-        print("Results directory: %s" % files.FileHandler.GetResultsDirectory1())
+        # print("Results directory: %s" % files.FileHandler.GetResultsDirectory1())
+        # printer.print("Results directory:", style="path")
+        # printer.print(f"    [dark_cyan]{files.FileHandler.GetResultsDirectory1()}")
+
+        printer.print("Results :open_file_folder::")
+        printer.print(f"    [dark_cyan]{files.FileHandler.GetResultsDirectory1()}")
 
         check_dependencies.CheckDependencies(
             options,
@@ -426,10 +413,12 @@ def main(args=None):
             speciesInfoObj, speciesToUse_names = species_info.ProcessPreviousFiles(
                 files.FileHandler.GetWorkingDirectory1_Read(), options.qDoubleBlast
             )
-            print(
-                "\nAdding new species in %s to existing analysis in %s"
-                % (fastaDir, continuationDir)
-            )
+            # print(
+            #     "\nAdding new species in %s to existing analysis in %s"
+            #     % (fastaDir, continuationDir)
+            # )
+            printer.print(f"\nAdding new species in [dark_cyan]{fastaDir}")
+            printer.print(f"to existing analysis in [dark_cyan]{continuationDir}")
             # 3.
             speciesInfoObj = fasta_processor.ProcessesNewFasta(
                 fastaDir, options.dna, speciesInfoObj, speciesToUse_names
@@ -467,10 +456,11 @@ def main(args=None):
             # 9.
             if not options.qStopAfterGroups:
                 GetOrthologues(
-                    seqsInfo, speciesNamesDict, speciesXML,
+                    seqsInfo, speciesNamesDict, 
                     speciesInfoObj, 
                     options, 
                     prog_caller,
+                    speciesXML=speciesXML,
                 )
 
         elif options.qStartFromFasta:
@@ -510,10 +500,11 @@ def main(args=None):
             # 9.
             if not options.qStopAfterGroups:
                 GetOrthologues(
-                    seqsInfo, speciesNamesDict, speciesXML,
+                    seqsInfo, speciesNamesDict, 
                     speciesInfoObj, 
                     options, 
                     prog_caller,
+                    speciesXML=speciesXML,
                 )
 
         elif options.qStartFromBlast:
@@ -553,10 +544,11 @@ def main(args=None):
             # 9
             if not options.qStopAfterGroups:
                 GetOrthologues(
-                    seqsInfo, speciesNamesDict, speciesXML,
+                    seqsInfo, speciesNamesDict, 
                     speciesInfoObj, 
                     options, 
                     prog_caller,
+                    speciesXML=speciesXML,
                 )
 
         elif options.qStartFromGroups:
@@ -580,10 +572,11 @@ def main(args=None):
             )
 
             GetOrthologues(
-                seqsInfo, speciesNamesDict, speciesXML,
+                seqsInfo, speciesNamesDict, 
                 speciesInfoObj, 
                 options, 
                 prog_caller,
+                speciesXML=speciesXML,
             )
 
         elif options.qStartFromTrees:
@@ -611,10 +604,13 @@ def main(args=None):
             fn_diamond_db, q_hogs = acc.prepare_accelerate_database(
                 continuationDir, wd_list, speciesInfoObj.nSpAll
             )
-            print(
-                "\nAdding new species in %s to existing analysis in %s"
-                % (fastaDir, continuationDir)
-            )
+            # print(
+            #     "\nAdding new species in %s to existing analysis in %s"
+            #     % (fastaDir, continuationDir)
+            # )
+            printer.print(f"\nAdding new species in [dark_cyan]{fastaDir}")
+            printer.print(f"to existing analysis in [dark_cyan]{continuationDir}")
+
             speciesInfoObj = fasta_processor.ProcessesNewFasta(
                 fastaDir, options.dna, speciesInfoObj, speciesToUse_names
             )
@@ -670,11 +666,12 @@ def main(args=None):
                     )
             if not options.qStopAfterGroups:
                 GetOrthologues(
-                    seqsInfo, speciesNamesDict, speciesXML,
+                    seqsInfo, speciesNamesDict, 
                     speciesInfoObj, 
                     options, 
                     prog_caller, 
-                    i_og_restart
+                    i_og_restart,
+                    speciesXML=None,
                 )
         else:
             raise NotImplementedError
@@ -685,13 +682,6 @@ def main(args=None):
             split_ortholog_files.split_ortholog_files(
                 files.FileHandler.GetOrthologuesDirectory()
             )
-
-        speciesNamesDict = species_info.SpeciesNameDict(
-                files.FileHandler.GetSpeciesIDsFN()
-        )
-        sequenceNamesDict =  species_info.SpeciesSequenceNameDict(
-             files.FileHandler.GetSequenceIDsFN()
-         )
 
         ### ------------- Compress the Gene_Trees --------------
         gene_tree_dir = files.FileHandler.GetOGsTreeDir(qResults=True)
@@ -714,7 +704,9 @@ def main(args=None):
             os.path.normpath(files.FileHandler.GetResultsDirectory1()) + os.path.sep
         )
 
-        printer.print("\nResults:\n    %s" % d_results, style="info")
+        # printer.print("\nResults:\n    %s" % d_results, style="path")
+        printer.print("\nResults :open_file_folder::")
+        printer.print(f"    [dark_cyan]{d_results}")
         util.PrintCitation(d_results)
         files.FileHandler.WriteToLog("OrthoFinder run completed\n", True)
 
@@ -726,7 +718,7 @@ def main(args=None):
         raise
 
     except KeyboardInterrupt:
-        print("\nProgram terminated by user.")
+        printer.print("\nProgram terminated by user.", style="error")
         sys.exit(1)
 
     finally:
@@ -735,7 +727,13 @@ def main(args=None):
         end = time.perf_counter()
         time_elapsed = end - start
         print()
-        printer.print(f"OrthoFinder finished in {time_elapsed:5f}s", end="\n" * 2, style="info")
+
+        if len(input_args) == 0 or input_args[0] in ["--help", "-h", "-v", "--version"]:
+            sys.exit()
+
+        # printer.print(f"OrthoFinder finished in {time_elapsed:5f}s", end="\n" * 2, style="info")
+        printer.print(f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] finished in ", end="")
+        printer.print(f"[green]{time_elapsed:5f}[/green]s", end="\n" * 2)
         sys.exit()
 
 

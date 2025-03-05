@@ -26,6 +26,10 @@
 # david_emms@hotmail.comhor: david
 
 import numpy as np
+try:
+    from rich import print
+except ImportError:
+    ...
 from ..tools import mcl as MCL
 from ..utils import util, files
 

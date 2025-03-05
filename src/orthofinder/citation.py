@@ -1,13 +1,13 @@
-# Print citation
-print_citation = """
-CITATION:
-When publishing work that uses OrthoFinder please cite:
-Emms D.M. & Kelly S. (2019), Genome Biology 20:238  
+# # Print citation
+# print_citation = """
+# CITATION:
+# When publishing work that uses OrthoFinder please cite:
+# Emms D.M. & Kelly S. (2019), Genome Biology 20:238  
 
-If you use the species tree in your work then please also cite:
-Emms D.M. & Kelly S. (2017), MBE 34(12): 3267-3278
-Emms D.M. & Kelly S. (2018), bioRxiv https://doi.org/10.1101/267914
-"""
+# If you use the species tree in your work then please also cite:
+# Emms D.M. & Kelly S. (2017), MBE 34(12): 3267-3278
+# Emms D.M. & Kelly S. (2018), bioRxiv https://doi.org/10.1101/267914
+# """
 
 # Citation
 citation = """
@@ -59,6 +59,14 @@ common options that can be selected by the user):
 MAFTT:
 Katoh K. & Standley D.M. MAFFT Multiple Sequence Alignment Software Version 7:
 Improvements in Performance and Usability (2013) Mol Biol Evol 30:4
+
+FAMSA:
+Deorowicz, S., Debudaj-Grabysz, A. & Gudyś, A. FAMSA: Fast and accurate multiple 
+sequence alignment of huge protein families. Sci Rep 6, 33964
+ 
+ASTRAL-Pro 2:
+Zhang C, Mirarab S. ASTRAL-Pro 2: ultrafast species tree reconstruction from 
+multi-copy gene family trees. Bioinformatics 38, 21
 
 FastTree:
 Price M.N., Dehal P.S., and Arkin A.P. FastTree 2 -- Approximately

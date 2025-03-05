@@ -8,6 +8,10 @@ try:
     import queue
 except ImportError:
     import Queue as queue
+try:
+    from rich import print
+except ImportError:
+    ...
 
 from . import stag, tree
 from ..utils import util, files, parallel_task_manager, program_caller

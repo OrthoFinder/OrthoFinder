@@ -8,7 +8,10 @@ import itertools
 import subprocess
 import numpy as np
 import scipy.sparse
-
+try:
+    from rich import print
+except ImportError:
+    ...
 
 class MSA(object):
     def __init__(self, fn):

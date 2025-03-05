@@ -4,7 +4,11 @@ import sys
 import glob
 import gzip
 import argparse
-
+try:
+    from rich import print
+except ImportError:
+    ...
+    
 PY2 = sys.version_info <= (3,)
 csv_write_mode = 'wb' if PY2 else 'wt'
 csv_read_mode = 'rb' if PY2 else 'rt'

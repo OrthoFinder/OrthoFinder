@@ -26,6 +26,10 @@ import time
 import glob
 import argparse
 from collections import Counter, defaultdict
+try:
+    from rich import print
+except ImportError:
+    ...
 
 from . import tree, newick
 

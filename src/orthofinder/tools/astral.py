@@ -8,7 +8,8 @@ from . import tree
 def create_input_file(d, output_fn, n_skip=50):
     with open(output_fn, 'w') as outfile:
         for fn in glob.glob(d + "/*txt"):
-            iog = int(os.path.basename(fn).split("_")[0][2:])
+            # iog = int(os.path.basename(fn).split("_")[0][2:])
+            iog = int(os.path.basename(fn).split(".")[0][2:])
             if iog < n_skip:
                 continue
             t = tree.Tree(fn)

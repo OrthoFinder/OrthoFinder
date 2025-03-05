@@ -42,7 +42,10 @@ import glob
 import time
 import shutil
 import datetime
-
+try:
+    from rich import print
+except ImportError:
+    ...
 from . import util
 from .. import __version__
 

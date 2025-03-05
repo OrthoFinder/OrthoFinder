@@ -24,11 +24,15 @@
 import os
 import sys
 import glob
-import datetime
+
 import argparse
 import subprocess
 import numpy as np
 from itertools import combinations
+try:
+    from rich import print
+except ImportError:
+    ...
 
 from . import tree, newick
 from ..utils import util, parallel_task_manager
