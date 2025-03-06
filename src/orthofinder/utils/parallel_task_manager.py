@@ -61,6 +61,7 @@ os.environ["OPENBLAS_NUM_THREADS"] = "1"    # fix issue with numpy/openblas. Wil
 my_env = os.environ.copy()
 # use orthofinder supplied executables by preference
 my_env['PATH'] = os.path.join(__location__, 'bin:') + my_env['PATH']
+
 # Fix LD_LIBRARY_PATH when using pyinstaller 
 if getattr(sys, 'frozen', False):
     if 'LD_LIBRARY_PATH_ORIG' in my_env:

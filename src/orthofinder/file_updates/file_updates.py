@@ -33,6 +33,11 @@ def update_output_files(
 
     seq_id_dir = files.FileHandler.GetSeqsIDDir()
     seq_dir = files.FileHandler.GetResultsSeqsDir()
+    
+
+    seq_id_dir2 = os.path.join(working_dir, "Sequences_ids2")
+    os.makedirs(seq_id_dir2, exist_ok=True)
+    shutil.copytree(seq_id_dir, seq_id_dir2, dirs_exist_ok=True)
 
     ## Clean dirs 
     clear_dir(seq_id_dir)
@@ -51,6 +56,9 @@ def update_output_files(
         val: key
         for key, val in idDict.items()
     }
+    
+    shutil.rmtree(seq_id_dir)
+    shutil.move(seq_id_dir2, seq_id_dir)
 
     # ## -------------------------- Fix Resolved Gene Trees -------------------------
     resolved_trees_working_dir = files.FileHandler.GetOGsReconTreeDir(qResults=True)
@@ -58,9 +66,9 @@ def update_output_files(
     resolved_trees_working_dir2 = os.path.join(working_dir,  "Resolved_Gene_Trees2")
     os.makedirs(resolved_trees_working_dir2, exist_ok=True)
     shutil.copytree(resolved_trees_working_dir, resolved_trees_working_dir2, dirs_exist_ok=True)
-
-    align_id_dir=None,
-    align_id_dir2=None,
+    
+    align_id_dir = None
+    align_id_dir2 = None
     if exist_msa:
         align_id_dir = files.FileHandler.GetAlignIDDir()
         align_id_dir2 = os.path.join(working_dir, "Alignments_ids2")
@@ -96,7 +104,8 @@ def update_output_files(
     )
     
     shutil.rmtree(resolved_trees_working_dir2)
-    shutil.rmtree(align_id_dir2)
+    shutil.rmtree(align_id_dir)
+    shutil.move(align_id_dir2, align_id_dir)
 
     # ## -------------------------- Fix Gene Trees -------------------------
     tree_id_dir = files.FileHandler.GetOGsTreeDir(qResults=False)
