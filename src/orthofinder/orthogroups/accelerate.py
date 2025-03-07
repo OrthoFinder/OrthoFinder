@@ -285,7 +285,6 @@ def create_profiles_database(
 
         if (iog + 1) % update_cycle == 0:
             progressbar.update(task, advance=update_cycle)
-    print("")
     progressbar.stop()
     fw.WriteSeqsToFasta_withNewAccessions(seq_write, fn_fasta, seq_convert)
     parallel_task_manager.RunCommand(" ".join(["diamond", "makedb", "--in", fn_fasta, "-d", fn_diamond_db]), qPrintOnError=True, qPrintStderr=False)

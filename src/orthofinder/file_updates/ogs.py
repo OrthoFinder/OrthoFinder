@@ -7,6 +7,7 @@ from collections import defaultdict, Counter
 from ..tools import trees_msa
 from ..tools import mcl as MCL
 from ..utils import util, files, parallel_task_manager
+from ..comparative_genomics import stats
 
 import xml.etree.ElementTree as ET              # Y
 from xml.etree.ElementTree import SubElement    # Y
@@ -15,7 +16,8 @@ from .. import __version__
 
 
 def post_hogs_processing(
-        single_ogs_list,
+        # single_ogs_list,
+        all_seq_ids,
         speciesInfoObj,
         seqsInfo,
         speciesNamesDict,
@@ -32,7 +34,11 @@ def post_hogs_processing(
         update_ogs(files.FileHandler.HierarchicalOrthogroupsFNN0())
     resultsBaseFilename = files.FileHandler.GetOrthogroupResultsFNBase()
     # util.PrintUnderline("Writing orthogroups to file")
+    all_assigned = set([g for og in new_ogs for g in og])
+    unassigned = set(all_seq_ids).difference(all_assigned)
+    single_ogs_list = [{g,} for g in unassigned]
     new_ogs.extend(single_ogs_list)
+
     with open(files.FileHandler.OGsAllIDFN(), "w") as outfile:
         for og in new_ogs:
             outfile.write(", ".join(og) + "\n")
@@ -70,10 +76,13 @@ def post_hogs_processing(
     if not os.path.exists(d_seqs):
         os.mkdir(d_seqs)
 
+    # Update Orthogroup_Sequneces
     treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idsDict, False)
     idDict = ogSet.Spec_SeqDict()
     idDict.update(ogSet.SpeciesDict()) # same code will then also convert concatenated alignment for species tree
-    treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idDict, True)
+    # Update Orthogroup_Sequneces and Sequences_ids
+    # treeGen.WriteFastaFiles(fastaWriter, ogSet.OGssAll(), idDict, True)
+    treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idDict, False) # Set to False, only update the Orthogroup_Sequneces 
     
     if not q_incremental:
         # stats.Stats(ogs, speciesNamesDict, speciesInfoObj.speciesToUse, files.FileHandler.iResultsVersion)
@@ -379,11 +388,61 @@ class MCL:
 
 
     @staticmethod
-    def CreateOrthogroupTable(ogs,
-                              idToNameDict,
-                              speciesNamesDict,
-                              speciesToUse,
-                              resultsBaseFilename):
+    def CreateOrthogroupTable(
+        ogs,
+        idToNameDict,
+        speciesNamesDict,
+        speciesToUse,
+        resultsBaseFilename
+    ):
+
+        nSpecies = len(speciesNamesDict)
+
+        ogs_names = [[idToNameDict[seq] for seq in og] for og in ogs]
+        ogs_ints = [[list(map(int, sequence.split("_"))) for sequence in og] for og in ogs]
+
+        # write out
+        outputFilename = resultsBaseFilename + ".tsv"
+        outputFilename_counts = resultsBaseFilename + ".GeneCount.tsv"
+        singleGeneFilename = resultsBaseFilename + "_UnassignedGenes.tsv"
+        with open(outputFilename, util.csv_write_mode) as outputFile, \
+            open(singleGeneFilename, util.csv_write_mode) as singleGeneFile, \
+                open(outputFilename_counts, util.csv_write_mode) as outFile_counts:
+            fileWriter = csv.writer(outputFile, delimiter="\t")
+            fileWriter_counts = csv.writer(outFile_counts, delimiter="\t")
+            singleGeneWriter = csv.writer(singleGeneFile, delimiter="\t")
+            for writer in [fileWriter, singleGeneWriter]:
+                row = ["Orthogroup"] + [speciesNamesDict[index] for index in speciesToUse]
+                writer.writerow(row)
+            fileWriter_counts.writerow(row + ['Total'])
+            for iOg, (og, og_names) in enumerate(zip(ogs_ints, ogs_names)):
+                ogDict = defaultdict(list)
+                row = ["OG%07d" % iOg]
+                thisOutputWriter = fileWriter
+                # separate it into sequences from each species
+                if len(og) == 1:
+                    row.extend(['' for x in range(nSpecies)])
+                    row[speciesToUse.index(og[0][0]) + 1] = og_names[0]
+                    thisOutputWriter = singleGeneWriter
+                else:
+                    for (iSpecies, iSequence), name in zip(og, og_names):
+                        ogDict[speciesToUse.index(iSpecies)].append(name)
+                    for iSpecies in range(nSpecies):
+                        row.append(", ".join(sorted(ogDict[iSpecies])))
+                    counts = Counter([iSpecies for iSpecies, _ in og])
+                    counts_row = [counts[iSpecies] for iSpecies in speciesToUse]
+                    fileWriter_counts.writerow(row[:1] + counts_row + [sum(counts_row)])
+                thisOutputWriter.writerow(row)
+
+
+    @staticmethod
+    def SingleGeneWriter(
+        ogs,
+        idToNameDict,
+        speciesNamesDict,
+        speciesToUse,
+        resultsBaseFilename
+    ):
 
         nSpecies = len(speciesNamesDict)
 

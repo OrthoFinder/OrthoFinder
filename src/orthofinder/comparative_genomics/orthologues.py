@@ -41,7 +41,7 @@ from ..orthogroups import orthogroups_set
 from . import stats
 
 from ..file_updates import file_updates
-   
+from ..orthogroups import accelerate
 
 # ==============================================================================================================================      
 # Main
@@ -510,11 +510,12 @@ def OrthologuesWorkflow(
         root_from_previous,
         old_version=old_version
     )
-
+    
     ogSet = file_updates.update_output_files(
         files.FileHandler.GetWorkingDirectory_Write(),
         ogSet.SequenceDict(),
-        ogSet.OGsSingle(),
+        # ogSet.OGsSingle(),
+        ogSet.AllUsedSequenceIDs(),
         speciesInfoObj,
         seqsInfo,
         speciesNamesDict,
@@ -546,17 +547,20 @@ def OrthologuesWorkflow(
         print_info=False,
     )
 
-    os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
-    with open(files.FileHandler.OGsAllIDFN()) as infile:
-        ogs = [tuple(g for g in og.strip().split(", ") if len(g) != 0) for og in infile ]
+    # os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
+    # with open(files.FileHandler.OGsAllIDFN()) as infile:
+    #     ogs = [tuple(g for g in og.strip().split(", ") if len(g) != 0) for og in infile ]
 
-    os.remove(files.FileHandler.OGsAllIDFN())
+    # os.remove(files.FileHandler.OGsAllIDFN())
 
     fastaWriter = trees_msa.FastaWriter(files.FileHandler.GetSpeciesSeqsDir(), speciesToUse)
-    # ogs = accelerate.read_hogs(files.FileHandler.GetResultsDirectory1(), "N0")
-    # ogs = stats.add_unassigned_genes(ogs, ogSet.AllUsedSequenceIDs())
+    ogs = accelerate.read_hogs(files.FileHandler.GetResultsDirectory1(), "N0")
+    ogs = stats.add_unassigned_genes(ogs, ogSet.AllUsedSequenceIDs())
     species_dict = {int(k): v for k, v in ogSet.SpeciesDict().items()}
     ids_dict = ogSet.SequenceDict()
+
+    os.remove(files.FileHandler.OGsAllIDFN())
+    os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
 
     stats.Stats(ogs, species_dict, speciesToUse, files.FileHandler.iResultsVersion, fastaWriter, ids_dict)
 

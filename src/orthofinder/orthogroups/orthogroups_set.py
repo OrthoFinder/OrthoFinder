@@ -140,6 +140,17 @@ class OrthoGroupsSet(object):
             # self.ogs_all = sorted(self.ogs_all, key=len, reverse=True)
         return self.ogs_all
     
+    # def OGsSingle(self):
+    #     if self.ogs_single is None:
+    #         ogs = MCL.GetPredictedOGs(files.FileHandler.GetClustersFN())
+    #         # self.ogs_single = [og for og in ogs if len(og) == 1]
+    #         all_assigned = {g for og in ogs if len(og) != 1 for g in og}
+    #         unassigned = set(self.AllUsedSequenceIDs()).difference(all_assigned)
+    #         self.ogs_single = [{g,} for g in unassigned]
+
+    #     return self.ogs_single
+
+    
     def OGsSingle(self):
         if self.ogs_single is None:
             ogs = MCL.GetPredictedOGs(files.FileHandler.GetClustersFN())

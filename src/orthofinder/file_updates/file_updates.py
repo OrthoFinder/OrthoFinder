@@ -10,7 +10,8 @@ from ..utils.util import printer
 def update_output_files(
         working_dir,
         id_sequence_dict,
-        single_ogs_list,
+        # single_ogs_list,
+        all_seq_ids,
         speciesInfoObj,
         seqsInfo,
         speciesNamesDict,
@@ -31,20 +32,20 @@ def update_output_files(
     hog_n0_file = files.FileHandler.HierarchicalOrthogroupsFNN0()
     hogs_converter(hog_n0_file, sequence_id_dict)
 
-    seq_id_dir = files.FileHandler.GetSeqsIDDir()
+    # seq_id_dir = files.FileHandler.GetSeqsIDDir()
     seq_dir = files.FileHandler.GetResultsSeqsDir()
     
-
-    seq_id_dir2 = os.path.join(working_dir, "Sequences_ids2")
-    os.makedirs(seq_id_dir2, exist_ok=True)
-    shutil.copytree(seq_id_dir, seq_id_dir2, dirs_exist_ok=True)
+    # seq_id_dir2 = os.path.join(working_dir, "Sequences_ids2")
+    # os.makedirs(seq_id_dir2, exist_ok=True)
+    # shutil.copytree(seq_id_dir, seq_id_dir2, dirs_exist_ok=True)
 
     ## Clean dirs 
-    clear_dir(seq_id_dir)
+    # clear_dir(seq_id_dir)
     clear_dir(seq_dir)
 
     ogSet, treeGen, idDict, new_ogs, name_dictionary, species_names = ogs.post_hogs_processing(
-        single_ogs_list,
+        # single_ogs_list,
+        all_seq_ids,
         speciesInfoObj,
         seqsInfo,
         speciesNamesDict,
@@ -56,9 +57,9 @@ def update_output_files(
         val: key
         for key, val in idDict.items()
     }
-    
-    shutil.rmtree(seq_id_dir)
-    shutil.move(seq_id_dir2, seq_id_dir)
+
+    # shutil.rmtree(seq_id_dir)
+    # shutil.move(seq_id_dir2, seq_id_dir)
 
     # ## -------------------------- Fix Resolved Gene Trees -------------------------
     resolved_trees_working_dir = files.FileHandler.GetOGsReconTreeDir(qResults=True)
