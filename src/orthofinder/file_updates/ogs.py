@@ -30,7 +30,7 @@ def post_hogs_processing(
     Args:
         q_incremental - These are not the final orthogroups, don't write results
     """
-    new_ogs, name_dictionary, species_names = \
+    new_ogs, name_dictionary = \
         update_ogs(files.FileHandler.HierarchicalOrthogroupsFNN0())
     resultsBaseFilename = files.FileHandler.GetOrthogroupResultsFNBase()
     # util.PrintUnderline("Writing orthogroups to file")
@@ -99,10 +99,10 @@ def post_hogs_processing(
         # util.PrintTime("Done orthogroups")
         files.FileHandler.LogOGs()
 
-    return ogSet, treeGen, idDict, new_ogs, name_dictionary, species_names
+    return ogSet, treeGen, idDict, new_ogs, name_dictionary
 
 def update_ogs(input_path):
-    sorted_matrix, species_names = read_hogs_to_matrix(input_path)   
+    sorted_matrix = read_hogs_to_matrix(input_path)   
     name_dictionary = {}     
     new_og_list = []
     # For each line in sorted HOG order replace HOG name with index OG name (based on length of enumerate so HOG.N0 + 0*x + number)
@@ -119,7 +119,7 @@ def update_ogs(input_path):
 
         new_og_set = set(", ".join(line[4:]).replace("\n", "").split(", "))
         new_og_list.append({gene for gene in new_og_set if len(gene) != 0})
-    return  new_og_list, name_dictionary, species_names 
+    return  new_og_list, name_dictionary
 
 def read_hogs_to_matrix(input_path):
     #holds lines to write to new output file
@@ -128,7 +128,7 @@ def read_hogs_to_matrix(input_path):
         for i, line in enumerate(input_file):
             line_split = line.strip().split("\t")
             if i == 0:
-                species_names = line_split[3:]
+                # species_names = line_split[3:]
                 continue
             # Count number of genes in each line as a count.
             count = len(list(filter(None, (", ".join(line_split[3:]).split(", ")))))
@@ -136,7 +136,7 @@ def read_hogs_to_matrix(input_path):
             matrix.append([count] + line_split)
 
     sorted_matrix = sorted(matrix, key=itemgetter(0), reverse=True)
-    return sorted_matrix, species_names    
+    return sorted_matrix  
 
 def GetSingleID(speciesStartingIndices, seq, speciesToUse): 
     a, b = seq.split("_")

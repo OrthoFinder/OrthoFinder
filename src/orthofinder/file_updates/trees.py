@@ -173,11 +173,11 @@ def post_ogs_processing(
         align_id_dir2=None,
     ):
 
-    read_queue = mp.Queue(maxsize=2 * nprocess)  
+    read_queue = mp.Queue(maxsize=4 * min(len(unique_ogs), nprocess))  
     process_queue = mp.Queue(maxsize=nprocess)  
 
     def start_reading():
-        with ThreadPoolExecutor(max_workers=2) as reader_executor:
+        with ThreadPoolExecutor(max_workers=min(len(unique_ogs), nprocess)) as reader_executor:
             reader_futures = [
                 reader_executor.submit(
                     read_tree_and_fasta, 

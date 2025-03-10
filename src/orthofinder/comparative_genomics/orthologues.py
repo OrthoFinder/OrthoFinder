@@ -511,10 +511,13 @@ def OrthologuesWorkflow(
         old_version=old_version
     )
     
+
+    util.PrintTime("Converting MSA/Trees")
     ogSet = file_updates.update_output_files(
         files.FileHandler.GetWorkingDirectory_Write(),
+        ogSet.SpeciesDict(),
         ogSet.SequenceDict(),
-        # ogSet.OGsSingle(),
+        ogSet.speciesToUse,
         ogSet.AllUsedSequenceIDs(),
         speciesInfoObj,
         seqsInfo,
@@ -731,4 +734,5 @@ def InferOrthologs(
     files.FileHandler.CleanWorkingDir2()
     if print_info:
         util.PrintUnderline("Writing results files", True)
-        util.PrintTime("Start writing files")
+        # util.PrintTime("Start writing files")
+        util.PrintTime("Start writing hierarchical orthogroups files")

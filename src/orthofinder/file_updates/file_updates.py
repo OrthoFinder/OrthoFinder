@@ -4,13 +4,14 @@ import tempfile
 import ete3
 import csv
 import shutil
-from ..utils import files
+from ..utils import files, util
 from ..utils.util import printer
 
 def update_output_files(
         working_dir,
+        sp_ids,
         id_sequence_dict,
-        # single_ogs_list,
+        species_to_use,
         all_seq_ids,
         speciesInfoObj,
         seqsInfo,
@@ -22,7 +23,10 @@ def update_output_files(
         i_og_restart=0,
         exist_msa=True,
     ):
-
+    
+    iSps = list(map(str, sorted(species_to_use)))   # list of strings
+    species_names = [sp_ids[i] for i in iSps]
+    
     sequence_id_dict = {
         val: key
         for key, val in id_sequence_dict.items()
@@ -30,7 +34,7 @@ def update_output_files(
 
     ## ------------------------ Fix OGs and OG Sequences -------------------------
     hog_n0_file = files.FileHandler.HierarchicalOrthogroupsFNN0()
-    hogs_converter(hog_n0_file, sequence_id_dict)
+    hogs_converter(hog_n0_file, sequence_id_dict, species_names)
 
     # seq_id_dir = files.FileHandler.GetSeqsIDDir()
     seq_dir = files.FileHandler.GetResultsSeqsDir()
@@ -43,7 +47,7 @@ def update_output_files(
     # clear_dir(seq_id_dir)
     clear_dir(seq_dir)
 
-    ogSet, treeGen, idDict, new_ogs, name_dictionary, species_names = ogs.post_hogs_processing(
+    ogSet, treeGen, idDict, new_ogs, name_dictionary = ogs.post_hogs_processing(
         # single_ogs_list,
         all_seq_ids,
         speciesInfoObj,
@@ -60,6 +64,8 @@ def update_output_files(
 
     # shutil.rmtree(seq_id_dir)
     # shutil.move(seq_id_dir2, seq_id_dir)
+
+    util.PrintTime("Updating MSA/Trees")
 
     # ## -------------------------- Fix Resolved Gene Trees -------------------------
     resolved_trees_working_dir = files.FileHandler.GetOGsReconTreeDir(qResults=True)
@@ -136,17 +142,18 @@ def update_output_files(
 
     return ogSet
 
-def hogs_converter(hogs_n0_file, sequence_id_dict):
+def hogs_converter(hogs_n0_file, sequence_id_dict, species_names):
 
     with open(hogs_n0_file, newline='') as infile, \
         tempfile.NamedTemporaryFile(
             mode='w', delete=False, newline='', dir=os.path.dirname(hogs_n0_file)
         ) as temp_file:
         reader = csv.DictReader(infile, delimiter='\t')
-        fieldnames = [
-            fieldname.split(".", 1)[0] 
-            for fieldname in reader.fieldnames
-        ]
+        # fieldnames = [
+        #     fieldname.split(".", 1)[0] 
+        #     for fieldname in reader.fieldnames
+        # ]
+        fieldnames = ["HOG", "OG", "Gene Tree Parent Clade"] + species_names
         writer = csv.DictWriter(temp_file, fieldnames=fieldnames, delimiter='\t')
 
         writer.writeheader()
