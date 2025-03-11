@@ -344,12 +344,6 @@ class MCL:
         print("Orthogroups have been written to orthoxml file:\n   %s" % orthoxmlFilename)
 
     @staticmethod
-    def RunMCL(graphFilename, clustersFilename, nProcesses, inflation):
-        command = " ".join(["mcl", graphFilename, "-I", str(inflation), "-o", clustersFilename, "-te", str(nProcesses), "-V", "all"])
-        parallel_task_manager.RunCommand(command, qPrintOnError=True)
-        util.PrintTime("Ran MCL")
-
-    @staticmethod
     def WriteOrthogroupFiles(
             ogs, 
             idsFilenames, 

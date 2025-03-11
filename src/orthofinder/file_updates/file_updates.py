@@ -91,7 +91,6 @@ def update_output_files(
     del old_hog_n0
     ## get list of unique OG
     unique_ogs = set(d['OG'] for d in hog_n0_over4genes)
-    
     simplified_name_dict = {
         entry[1]: entry[0] 
         for hog_list in name_dictionary.values()
@@ -226,7 +225,8 @@ def read_hog_n0_file(hog_n0_file):
     with open(hog_n0_file, newline = '') as csvfile:
         reader = csv.DictReader(csvfile, delimiter='\t')
         reader.fieldnames = [
-            fieldname.replace('.', '_') 
+            # fieldname.replace('.', '_') 
+            fieldname
             for fieldname in reader.fieldnames
         ]
         hog_n0 = [row for row in reader]

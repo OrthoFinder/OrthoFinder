@@ -89,7 +89,6 @@ def process_tree_id(hog_n0_over4genes, name_dict, species_names, read_queue, pro
         try:
             mini_hog = [row for row in hog_n0_over4genes if unique_og in row["OG"]]
             results = []
-
             for row in mini_hog:
                 hog_name = name_dict.get(row["HOG"], row["HOG"])
                 parent_node = row["Gene Tree Parent Clade"]
