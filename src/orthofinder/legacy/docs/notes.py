@@ -3,7 +3,7 @@ from ..utils import util
 
 def PrintNotes(arg):
     if arg == "-sm" or arg == "--scoring-matrix":
-        print(notes.diamond_cm_options_table)
+        print(diamond_cm_options_table)
 
 if __version__ == "3.0.1":
     print('\U0001F31F' + " NEW RELEASE NOTES " + '\U0001F31F')
