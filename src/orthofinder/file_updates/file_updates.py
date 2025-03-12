@@ -141,7 +141,7 @@ def update_output_files(
 
     return ogSet
 
-def hogs_converter(hogs_n0_file, sequence_id_dict, species_names):
+def hogs_converter(hogs_n0_file, sequence_id_dict, species_names, rm_N0_ids=True):
 
     with open(hogs_n0_file, newline='') as infile, \
         tempfile.NamedTemporaryFile(
@@ -166,7 +166,7 @@ def hogs_converter(hogs_n0_file, sequence_id_dict, species_names):
             })
     
     os.replace(temp_file.name, hogs_n0_file)
-    shutil.copy(hogs_n0_file, os.path.join(os.path.dirname(hogs_n0_file), "N0_ids.tsv"))
+    # shutil.copy(hogs_n0_file, os.path.join(os.path.dirname(hogs_n0_file), "N0_ids.tsv"))
 
 
 def trees_converter(

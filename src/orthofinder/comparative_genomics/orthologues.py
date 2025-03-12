@@ -511,44 +511,44 @@ def OrthologuesWorkflow(
         old_version=old_version
     )
     
+    if options.fix_files:
+        util.PrintTime("Converting MSA/Trees")
+        ogSet = file_updates.update_output_files(
+            files.FileHandler.GetWorkingDirectory_Write(),
+            ogSet.SpeciesDict(),
+            ogSet.SequenceDict(),
+            ogSet.speciesToUse,
+            ogSet.AllUsedSequenceIDs(),
+            speciesInfoObj,
+            seqsInfo,
+            speciesNamesDict,
+            options,
+            speciesXML,
+            options.nProcessAlg,
+            q_incremental=False,
+            i_og_restart=i_og_restart,
+            exist_msa=options.qMSATrees,
+        )
 
-    util.PrintTime("Converting MSA/Trees")
-    ogSet = file_updates.update_output_files(
-        files.FileHandler.GetWorkingDirectory_Write(),
-        ogSet.SpeciesDict(),
-        ogSet.SequenceDict(),
-        ogSet.speciesToUse,
-        ogSet.AllUsedSequenceIDs(),
-        speciesInfoObj,
-        seqsInfo,
-        speciesNamesDict,
-        options,
-        speciesXML,
-        options.nProcessAlg,
-        q_incremental=False,
-        i_og_restart=i_og_restart,
-        exist_msa=options.qMSATrees
-    )
-
-    InferOrthologs(
-        ogSet, 
-        rooted_sp_tree, 
-        fn_rooted_sp_tree, 
-        q_multiple_roots, 
-        qSpeciesTreeSupports, 
-        stride_dups,
-        recon_method,
-        nHighParallel, 
-        nLowParallel, 
-        fewer_open_files,
-        userSpeciesTree, 
-        qPhyldog,
-        q_split_para_clades, 
-        save_space, 
-        root_from_previous,
-        old_version=old_version,
-        print_info=False,
-    )
+        InferOrthologs(
+            ogSet, 
+            rooted_sp_tree, 
+            fn_rooted_sp_tree, 
+            q_multiple_roots, 
+            qSpeciesTreeSupports, 
+            stride_dups,
+            recon_method,
+            nHighParallel, 
+            nLowParallel, 
+            fewer_open_files,
+            userSpeciesTree, 
+            qPhyldog,
+            q_split_para_clades, 
+            save_space, 
+            root_from_previous,
+            old_version=old_version,
+            print_info=False,
+        )
 
     # os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
     # with open(files.FileHandler.OGsAllIDFN()) as infile:
@@ -562,8 +562,9 @@ def OrthologuesWorkflow(
     species_dict = {int(k): v for k, v in ogSet.SpeciesDict().items()}
     ids_dict = ogSet.SequenceDict()
 
-    os.remove(files.FileHandler.OGsAllIDFN())
-    # os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
+    if options.fix_files:
+        os.remove(files.FileHandler.OGsAllIDFN())
+        os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
 
     stats.Stats(ogs, species_dict, speciesToUse, files.FileHandler.iResultsVersion, fastaWriter, ids_dict)
 

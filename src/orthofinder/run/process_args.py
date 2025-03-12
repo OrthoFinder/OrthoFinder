@@ -76,6 +76,7 @@ class Options(object):  #
         self.method_threads_large = None
         self.method_threads_small = None
         self.old_version = False
+        self.fix_files = True
 
     def what(self):
         for k, v in self.__dict__.items():
@@ -449,6 +450,9 @@ def ProcessArgs(prog_caller, args):
 
         elif arg == "--save-space":
             options.save_space = True
+
+        elif arg == "--fix-files":
+            options.fix_files = False
 
         elif arg == "-x" or arg == "--orthoxml":
             if options.speciesXMLInfoFN:

@@ -25,6 +25,7 @@
 # david_emms@hotmail.com
 import os
 import sys
+import platform
 import time
 import types
 import datetime
@@ -55,12 +56,33 @@ except ImportError:
 #         subprocess.call("taskset -p 0xffffffffffff %d" % os.getpid(), shell=True, stdout=f)
 
 
-os.environ["OPENBLAS_NUM_THREADS"] = "1"    # fix issue with numpy/openblas. Will mean that single threaded options aren't automatically parallelised 
+def setup_environment():
 
+    os.environ["OPENBLAS_NUM_THREADS"] = "1"    # fix issue with numpy/openblas. Will mean that single threaded options aren't automatically parallelised 
 
-my_env = os.environ.copy()
-# use orthofinder supplied executables by preference
-my_env['PATH'] = os.path.join(__location__, 'bin:') + my_env['PATH']
+    my_env = os.environ.copy()
+    # use orthofinder supplied executables by preference
+    local_bin_dir = os.path.join(__location__, 'bin')
+    bin_dirs = [
+        "/opt/bin",
+        os.path.expanduser("~/bin"),
+        os.path.expanduser("~/.local/bin"),
+        os.path.expanduser("~/local/bin"),
+        "/usr/bin",
+        "/usr/local/bin",
+        local_bin_dir,
+    ]
+    for bin_dir in bin_dirs:
+        my_env['PATH'] = bin_dir + os.pathsep + my_env['PATH']
+
+    conda_prefix = my_env.get("CONDA_PREFIX")
+    if conda_prefix:
+        conda_bin = os.path.join(conda_prefix, "Scripts") if os.name == "nt" else os.path.join(conda_prefix, "bin")
+        my_env["PATH"] = conda_bin + os.pathsep + my_env["PATH"]
+    
+    return my_env
+
+my_env = setup_environment()
 
 # Fix LD_LIBRARY_PATH when using pyinstaller 
 if getattr(sys, 'frozen', False):
@@ -72,6 +94,16 @@ if getattr(sys, 'frozen', False):
         my_env['DYLD_LIBRARY_PATH'] = my_env['DYLD_LIBRARY_PATH_ORIG']  
     else:
         my_env['DYLD_LIBRARY_PATH'] = ''
+
+system = platform.system()
+try:
+    if system in ["Linux", "Darwin"]:
+        if mp.get_start_method(allow_none=True) != 'fork':
+            mp.set_start_method('fork')
+except RuntimeError as e:
+    print(f"Multiprocessing context setting error on {system}: {e}")
+    pass
+
 
 
 def PrintTime(message):
