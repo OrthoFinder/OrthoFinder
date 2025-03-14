@@ -60,8 +60,9 @@ When running OrthoFinder3 with installation, we recommend the user to run it ins
   Once you have installed OrthoFinder3, you can run the following commands to check the version, print out the help informatioin or test if it has been installed sucessfully.
 
     ```bash
-      python3 -m venv of3_env && . of3_env/bin/activate
-      pip install .
+      orthofinder --version # Check the version
+      orthofinder --help # Print out help informatioin
+      orthofinder -f ExampleData # Test the OrthoFinder on an example dataset shipped with OrthoFinder3
     ```
 
 > Run OrthoFinder3 without installation
@@ -86,10 +87,7 @@ Having done so, you then test and run OrthoFinder3 without actaully install the 
 
 
 
-    
-
-
-
+  
 
 
 The easiest way to install OrthoFinder3 is using [conda](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/).
@@ -100,15 +98,7 @@ orthofinder -h
 
 If you are on a mac that has an M1/M2/M3 chip, you might have to adjust your conda architecture. Instructions can be found [here](https://towardsdatascience.com/how-to-manage-conda-environments-on-an-apple-silicon-m1-mac-1e29cb3bad12).
 
-Alternatively, you can also download OrthoFinder3 directly from GitHub. 
 
-Via GitHub, you have the following options to download OrthoFinder to your local machine.
-- via `git`
-    
-  ```bash
-  git clone https://github.com/OrthoFinder/OrthoFinder.git
-  python OrthoFinder/orthofinder -h
-  ```
 
 A docker image will also available [here](###linktodocker###)
 
