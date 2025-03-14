@@ -18,8 +18,8 @@ from rich.text import Text
 # except OSError as e:
 #     width = 80
 
-# width = 22
-width = 16
+width = 22
+# width = 16
 def PrintHelp(prog_caller):
 
     console = Console()
@@ -149,21 +149,22 @@ def PrintHelp(prog_caller):
 
     # print(" --matrix <txt>          Scoring matrix allowed by DIAMOND")
 
-    # table_options.add_row(
-    #     "--matrix <[bright_magenta]txt[/bright_magenta]>",
-    #     'Scoring matrix allowed by [dark_cyan]diamond[/dark_cyan], supported for [dark_cyan]diamond[/dark_cyan] and [dark_cyan]diamond_ultra_sens[/dark_cyan]',
-    # )
-    # table_options.add_row(
-    #     "",
-    #     f"Options: {', '.join([*process_args.diamond_sm_options.keys()])}",
-    # )
+    table_options.add_row(
+        "--matrix <[bright_magenta]txt[/bright_magenta]>",
+        'Scoring matrix allowed by [dark_cyan]diamond[/dark_cyan], supported for [dark_cyan]diamond[/dark_cyan] and [dark_cyan]diamond_ultra_sens[/dark_cyan] '
+        "[Default = [dark_cyan]BLOSUM62[/dark_cyan]]",
+    )
+    table_options.add_row(
+        "",
+        f"Options: {', '.join([*process_args.diamond_sm_options.keys()])}",
+    )
 
     # print(" --custom-matrix <txt>   Custom scoring matrix")
 
-    # table_options.add_row(
-    #     "--custom-matrix <[bright_magenta]file[/bright_magenta]>",
-    #     'Custom scoring matrix, only supported for [dark_cyan]diamond_custom[/dark_cyan] and [dark_cyan]diamond_ultra_sens_custom[/dark_cyan]',
-    # )
+    table_options.add_row(
+        "--custom-matrix <[bright_magenta]file[/bright_magenta]>",
+        'Custom scoring matrix, only supported for [dark_cyan]diamond_custom[/dark_cyan] and [dark_cyan]diamond_ultra_sens_custom[/dark_cyan]',
+    )
 
 
     # print(" -1                      Only perform one-way sequence search")
@@ -202,14 +203,19 @@ def PrintHelp(prog_caller):
     #     " -efn                    Extend the output directory name with the name of the scoring matrix, gap penalties, search program, MSA program and tree program"
     # )
     
-    # table_options.add_row(
-    #     "-efn",
-    #     (
-    #         "Extend the output directory name with the name of the scoring matrix, "
-    #         "gap penalties, search program, MSA program and tree program"
-    #     ),
-    # )
-
+    table_options.add_row(
+        "-efn",
+        (
+            "Extend the output directory name with the name of the scoring matrix, "
+            "gap penalties, search program, MSA program and tree program"
+        ),
+    )
+    table_options.add_row(
+        "--scoring-matrix",
+        (
+            "Print out the usage of a different scoring matrix"
+        ),
+    )
     # print(
     #     " --save-space            Only create one compressed orthologs file per species"           ## is this an option? i thought it did this already?
     # )

@@ -728,7 +728,7 @@ def main(args=None):
         time_elapsed = end - start
         print()
 
-        if len(input_args) == 0 or input_args[0] in ["--help", "-h", "-v", "--version"]:
+        if len(input_args) == 0 or input_args[0] in ["--help", "-h", "-v", "--version", "-sm", "--scoring-matrix"]:
             sys.exit()
 
         # printer.print(f"OrthoFinder finished in {time_elapsed:5f}s", end="\n" * 2, style="info")
