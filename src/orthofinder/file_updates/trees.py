@@ -111,7 +111,7 @@ def process_tree_id(hog_n0_over4genes, name_dict, species_names, read_queue, pro
                 unmatched_leaves = set(expected_leaves) - set(current_leaves)
                 valid_leaves = set(expected_leaves) & set(current_leaves)
                 if unmatched_leaves:
-                    print(f"HOG name: {row["HOG"]}")
+                    print(f"HOG name: {row['HOG']}")
                     print(f"Number of current_leaves: {len(current_leaves)}")
                     print(f"Number of expected_leaves: {len(expected_leaves)}")
                     print(f"Number of overlaped leaves: {len(valid_leaves)}")

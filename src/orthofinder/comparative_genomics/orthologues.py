@@ -562,9 +562,9 @@ def OrthologuesWorkflow(
     species_dict = {int(k): v for k, v in ogSet.SpeciesDict().items()}
     ids_dict = ogSet.SequenceDict()
 
-    if options.fix_files:
-        os.remove(files.FileHandler.OGsAllIDFN())
-        os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
+    # if options.fix_files:
+    #     os.remove(files.FileHandler.OGsAllIDFN())
+    #     os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
 
     stats.Stats(ogs, species_dict, speciesToUse, files.FileHandler.iResultsVersion, fastaWriter, ids_dict)
 
