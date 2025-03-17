@@ -105,21 +105,21 @@ def process_tree_id(hog_n0_over4genes, name_dict, species_names, read_queue, pro
                 current_leaves = [leaf.name for leaf in subtree.get_leaves()]
                 expected_leaves = ', '.join([row[col] for col in species_names if row[col]]).split(', ')
                 
-                # if set(current_leaves) != set(expected_leaves):
-                #     subtree.prune(expected_leaves)
+                if set(current_leaves) != set(expected_leaves):
+                    subtree.prune(expected_leaves)
 
-                unmatched_leaves = set(expected_leaves) - set(current_leaves)
-                valid_leaves = set(expected_leaves) & set(current_leaves)
-                if unmatched_leaves:
-                    print(f"HOG name: {row['HOG']}")
-                    print(f"Number of current_leaves: {len(current_leaves)}")
-                    print(f"Number of expected_leaves: {len(expected_leaves)}")
-                    print(f"Number of overlaped leaves: {len(valid_leaves)}")
-                    print(f"WARNING: current_leaves do not contain the following expected leaves ({len(unmatched_leaves)}): ")
-                    print(unmatched_leaves)
+                # unmatched_leaves = set(expected_leaves) - set(current_leaves)
+                # valid_leaves = set(expected_leaves) & set(current_leaves)
+                # if unmatched_leaves:
+                #     print(f"HOG name: {row['HOG']}")
+                #     print(f"Number of current_leaves: {len(current_leaves)}")
+                #     print(f"Number of expected_leaves: {len(expected_leaves)}")
+                #     print(f"Number of overlaped leaves: {len(valid_leaves)}")
+                #     print(f"WARNING: current_leaves do not contain the following expected leaves ({len(unmatched_leaves)}): ")
+                #     print(unmatched_leaves)
 
-                if set(current_leaves) != set(valid_leaves):
-                    subtree.prune(valid_leaves)
+                # if set(current_leaves) != set(valid_leaves):
+                #     subtree.prune(valid_leaves)
 
                 pruned_alignments = None    
                 if gene_dict is not None:
