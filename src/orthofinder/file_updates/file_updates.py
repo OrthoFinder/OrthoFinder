@@ -4,13 +4,16 @@ import tempfile
 import ete3
 import csv
 import shutil
+from collections import defaultdict
+
+
 from ..utils import files, util
 from ..utils.util import printer
 
 def update_output_files(
         working_dir,
         sp_ids,
-        sequence_id_dict,
+        id_sequence_dict,
         species_to_use,
         all_seq_ids,
         speciesInfoObj,
@@ -24,6 +27,10 @@ def update_output_files(
         exist_msa=True,
     ):
     
+    sequence_id_dict = defaultdict(set)
+    for key, value in id_sequence_dict.items():
+        sequence_id_dict[value].add(key)
+
     iSps = list(map(str, sorted(species_to_use)))   # list of strings
     species_names = [sp_ids[i] for i in iSps]
 
@@ -157,22 +164,26 @@ def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_name
 
         writer.writeheader()
         for row in reader:
-            writer.writerow({
+            new_row = {
                 key: (
-                    ", ".join([
-                        next((k for k, v in sequence_id_dict.items() 
-                            if v == gene and k.split("_")[0] == species_id_dict[key]), "")
+                    ", ".join(
+                        next(iter(
+                            [s for s in sequence_id_dict.get(gene, set()) 
+                             if s.split("_")[0] == species_id_dict[key]]
+                        ), "")
                         for gene in str(val).split(", ")
-                    ])
+                    )
                     if (val is not None and "," in str(val))
                     else next(
-                        (k for k, v in sequence_id_dict.items() 
-                        if v == val and k.split("_")[0] == species_id_dict[key]), "")
-                )
-                if key not in {'OG', 'Gene Tree Parent Clade', 'HOG'} else val
+                        iter([s for s in sequence_id_dict.get(val, set()) 
+                              if s.split("_")[0] == species_id_dict[key]]), ""
+                    )
+                ) if key not in {'OG', 'Gene Tree Parent Clade', 'HOG'} else val
                 for key, val in row.items()
-            })
-  
+            }
+            writer.writerow(new_row)
+    
+
     os.replace(temp_file.name, hogs_n0_file)
     shutil.copy(hogs_n0_file, os.path.join(os.path.dirname(hogs_n0_file), "N0_ids.tsv"))
 
