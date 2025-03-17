@@ -166,7 +166,7 @@ def hogs_converter(hogs_n0_file, sequence_id_dict, species_names, rm_N0_ids=True
             })
     
     os.replace(temp_file.name, hogs_n0_file)
-    # shutil.copy(hogs_n0_file, os.path.join(os.path.dirname(hogs_n0_file), "N0_ids.tsv"))
+    shutil.copy(hogs_n0_file, os.path.join(os.path.dirname(hogs_n0_file), "N0_ids.tsv"))
 
 
 def trees_converter(

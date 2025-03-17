@@ -104,16 +104,29 @@ def process_tree_id(hog_n0_over4genes, name_dict, species_names, read_queue, pro
 
                 current_leaves = [leaf.name for leaf in subtree.get_leaves()]
                 expected_leaves = ', '.join([row[col] for col in species_names if row[col]]).split(', ')
+                
+                # if set(current_leaves) != set(expected_leaves):
+                #     subtree.prune(expected_leaves)
 
-                if set(current_leaves) != set(expected_leaves):
-                    subtree.prune(expected_leaves)
+                unmatched_leaves = set(expected_leaves) - set(current_leaves)
+                valid_leaves = set(expected_leaves) & set(current_leaves)
+                if unmatched_leaves:
+                    print(f"HOG name: {row["HOG"]}")
+                    print(f"Number of current_leaves: {len(current_leaves)}")
+                    print(f"Number of expected_leaves: {len(expected_leaves)}")
+                    print(f"Number of overlaped leaves: {len(valid_leaves)}")
+                    print(f"WARNING: current_leaves do not contain the following expected leaves ({len(unmatched_leaves)}): ")
+                    print(unmatched_leaves)
+
+                if set(current_leaves) != set(valid_leaves):
+                    subtree.prune(valid_leaves)
 
                 pruned_alignments = None    
                 if gene_dict is not None:
                     pruned_alignments = {
                             gene: gene_dict[gene] 
                             for gene in expected_leaves 
-                            if gene in gene_dict
+                            if gene in gene_dict 
                         }
 
                 results.append((hog_name, subtree, pruned_alignments))
@@ -121,7 +134,7 @@ def process_tree_id(hog_n0_over4genes, name_dict, species_names, read_queue, pro
             process_queue.put(results)
         except Exception as e:
             print(f"ERROR processing tree for {unique_og}: {e}")
-            print(traceback.format_exc(e))
+            print(traceback.format_exc())
 
 def write_tree_id(resolved_trees_working_dir, hog_name, subtree):
     try:
@@ -221,7 +234,7 @@ def post_ogs_processing(
                 writer_future.result()
             except Exception as e:
                 print(f"ERROR in writing task: {e}")
-                print(traceback.format_exc(e))
+                print(traceback.format_exc())
 
     with ThreadPoolExecutor(max_workers=3) as executor:
         executor.submit(start_reading)
