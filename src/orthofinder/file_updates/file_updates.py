@@ -10,7 +10,7 @@ from ..utils.util import printer
 def update_output_files(
         working_dir,
         sp_ids,
-        id_sequence_dict,
+        sequence_id_dict,
         species_to_use,
         all_seq_ids,
         speciesInfoObj,
@@ -26,15 +26,15 @@ def update_output_files(
     
     iSps = list(map(str, sorted(species_to_use)))   # list of strings
     species_names = [sp_ids[i] for i in iSps]
-    
-    sequence_id_dict = {
-        val: key
-        for key, val in id_sequence_dict.items()
+
+    species_id_dict = {
+        val: key 
+        for key, val in sp_ids.items()
     }
 
     ## ------------------------ Fix OGs and OG Sequences -------------------------
     hog_n0_file = files.FileHandler.HierarchicalOrthogroupsFNN0()
-    hogs_converter(hog_n0_file, sequence_id_dict, species_names)
+    hogs_converter(hog_n0_file, sequence_id_dict, species_id_dict, species_names)
 
     # seq_id_dir = files.FileHandler.GetSeqsIDDir()
     seq_dir = files.FileHandler.GetResultsSeqsDir()
@@ -141,7 +141,7 @@ def update_output_files(
 
     return ogSet
 
-def hogs_converter(hogs_n0_file, sequence_id_dict, species_names, rm_N0_ids=True):
+def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_names, rm_N0_ids=True):
 
     with open(hogs_n0_file, newline='') as infile, \
         tempfile.NamedTemporaryFile(
@@ -159,12 +159,20 @@ def hogs_converter(hogs_n0_file, sequence_id_dict, species_names, rm_N0_ids=True
         for row in reader:
             writer.writerow({
                 key: (
-                    ", ".join([sequence_id_dict.get(gene, gene) for gene in str(val).split(", ")]) 
-                    if val is not None and "," in str(val) else sequence_id_dict.get(str(val), str(val))
-                ) if key not in {'OG', 'Gene Tree Parent Clade', 'HOG'} else val
+                    ", ".join([
+                        next((k for k, v in sequence_id_dict.items() 
+                            if v == gene and k.split("_")[0] == species_id_dict[key]), "")
+                        for gene in str(val).split(", ")
+                    ])
+                    if (val is not None and "," in str(val))
+                    else next(
+                        (k for k, v in sequence_id_dict.items() 
+                        if v == val and k.split("_")[0] == species_id_dict[key]), "")
+                )
+                if key not in {'OG', 'Gene Tree Parent Clade', 'HOG'} else val
                 for key, val in row.items()
             })
-    
+  
     os.replace(temp_file.name, hogs_n0_file)
     shutil.copy(hogs_n0_file, os.path.join(os.path.dirname(hogs_n0_file), "N0_ids.tsv"))
 
