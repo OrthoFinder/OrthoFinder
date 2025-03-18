@@ -13,7 +13,7 @@
     "__comment": "METHODTHREAD: Number of threads used by different methods",
     "muscle": {
         "program_type": "msa",
-        "cmd_line": "muscle -in INPUT -out OUTPUT"
+        "cmd_line": "muscle -align INPUT -output OUTPUT"
     },
     "mafft_memsave": {
         "program_type": "msa",

@@ -641,7 +641,8 @@ def RootSpeciesTree(
             print(("Observed %d well-supported, non-terminal duplications. %d support the best root and %d contradict it." % (n_non_trivial, n_non_trivial-nFP_mp, nFP_mp)))
             print("Best outgroup for species tree:")  
         spDict = ogSet.SpeciesDict()
-        for r in roots: print(("  " + (", ".join([spDict[s] for s in r]))  ))
+        for r in roots: 
+            print(("  " + (", ".join([spDict[s] for s in r]))  ))
         qMultiple = len(roots) > 1
     shutil.copy(rootedSpeciesTreeFN[0], files.FileHandler.GetSpeciesTreeIDsRootedFN())
 

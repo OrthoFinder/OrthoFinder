@@ -373,15 +373,16 @@ def main(args=None):
         input_args = args.copy()
         # Create PTM right at start
         ptm = parallel_task_manager.ParallelTaskManager_singleton()
-        prog_caller = GetProgramCaller()
-        (
+        # prog_caller = GetProgramCaller()
+        (   
+            prog_caller, 
             options,
             fastaDir,
             continuationDir,
             resultsDir_nonDefault,
             pickleDir_nonDefault,
             user_specified_M,
-        ) = process_args.ProcessArgs(prog_caller, args)
+        ) = process_args.ProcessArgs(args)
 
         printer.print(f"[bold dark_goldenrod]OrthoFinder[/bold dark_goldenrod] version [deep_sky_blue2]{__version__}[/deep_sky_blue2]", end="")
         printer.print(" Copyright (C) 2014 [bold dark_goldenrod]David Emms[/bold dark_goldenrod]\n")

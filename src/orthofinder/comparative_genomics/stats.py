@@ -9,6 +9,10 @@ try:
     from rich import print
 except ImportError:
     ...
+
+from rich.table import Table
+from rich.console import Console
+
 from ..utils import util, files
 
 
@@ -226,13 +230,31 @@ def Stats(ogs, speciesNamesDict, iSpecies, iResultsVersion, fastaWriter, ids_dic
         Stats_SpeciesOverlaps(filename_overlap, speciesNamesDict, iSpecies, speciesPresence)
     
     util.PrintTime("Done writing files")
-    print("\nSummary: ")
-    summaryText = """  [dark_goldenrod]OrthoFinder[/dark_goldenrod] assigned %d genes (%0.1f%% of total) to %d orthogroups. 
-  50%% of genes were in orthogroups with %d or more genes (G50 was %d) and were contained in the largest %d orthogroups (O50 was %d). 
-  There were %d orthogroups with all species present and %d of these consisted entirely of single-copy genes.""" % (nAssigned, pAssigned, nOgs, G50, G50, O50, O50, nCompleteOGs, nSingleCopy)
+    print("\n[bold]Summary: [/bold]")
+    summaryText1 = f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] assigned [deep_sky_blue2]{nAssigned}[/deep_sky_blue2] genes (%{pAssigned:0.1f}% of total) to [deep_sky_blue2]{nOgs}[/deep_sky_blue2] orthogroups. "
+    summaryText2 = f"[deep_sky_blue2]50[/deep_sky_blue2]%% of genes were in orthogroups with [deep_sky_blue2]{G50}[/deep_sky_blue2] or more genes (G50 was [deep_sky_blue2]{G50}[/deep_sky_blue2]) and were contained in the largest [deep_sky_blue2]{O50}[/deep_sky_blue2] orthogroups (O50 was [deep_sky_blue2]{O50}[/deep_sky_blue2]). "
+    summaryText3 = f"There were [deep_sky_blue2]{nCompleteOGs}[/deep_sky_blue2] orthogroups with all species present and [deep_sky_blue2]{nSingleCopy}[/deep_sky_blue2] of these consisted entirely of single-copy genes."
+
+    console = Console()
+    table = Table(show_header=False, box=None, expand=False)
+    # table_options.add_column("Option", justify="left", width=width, no_wrap=False, overflow="fold")
+    table.add_column("Description", justify="left", overflow="fold")
+    table.add_row(summaryText1)
+    table.add_row(summaryText2)
+    table.add_row(summaryText3)
+    # console.print(table)
+
+#     summaryText = """  [dark_goldenrod]OrthoFinder[/dark_goldenrod] assigned %d genes (%0.1f%% of total) to %d orthogroups. 
+#   50%% of genes were in orthogroups with %d or more genes (G50 was %d) and were contained in the largest %d orthogroups (O50 was %d). 
+#   There were %d orthogroups with all species present and %d of these consisted entirely of single-copy genes.""" % (nAssigned, pAssigned, nOgs, G50, G50, O50, O50, nCompleteOGs, nSingleCopy)
+    
     if q_fast_add:
-        print("  The majority of genes have been assigned to existing orthogroups, however, the remaining clade-specific genes not seen in the core species were also analysed with the following results:")
-    print(summaryText)
+        # print("  The majority of genes have been assigned to existing orthogroups, however, the remaining clade-specific genes not seen in the core species were also analysed with the following results:")
+        table.add_row(
+            "  The majority of genes have been assigned to existing orthogroups, however, the remaining clade-specific genes not seen in the core species were also analysed with the following results:"
+        )
+    console.print(table)
+    # print(summaryText)
 
 
 def add_unassigned_genes(ogs, all_seq_ids):

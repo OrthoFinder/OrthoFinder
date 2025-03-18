@@ -13,7 +13,7 @@
     "__comment": "METHODTHREAD: Number of threads used by different methods",
     "muscle": {
         "program_type": "msa",
-        "cmd_line": "muscle -in INPUT -out OUTPUT"
+        "cmd_line": "muscle -align INPUT -output OUTPUT"
     },
     "mafft_memsave": {
         "program_type": "msa",
@@ -26,10 +26,6 @@
     "fasttree_fastest": {
         "program_type": "tree",
         "cmd_line": "FastTree -fastest INPUT > OUTPUT"
-    },
-    "veryfasttree": {
-        "program_type": "tree",
-        "cmd_line": "VeryFastTree -threads METHODTHREAD INPUT > OUTPUT"
     },
     "raxml": {
         "program_type": "tree",

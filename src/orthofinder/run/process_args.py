@@ -1,8 +1,8 @@
 import os
-from ..utils import util, files
+from ..utils import util, files, program_caller
 from ..utils.util import printer
 from ..comparative_genomics import orthologues
-from .. import __version__, g_mclInflation, nThreadsDefault
+from .. import __version__, g_mclInflation, nThreadsDefault, __location__
 from . import helpinfo, species_info
 import shutil
 from typing import Optional
@@ -13,6 +13,7 @@ try:
 except ImportError:
     ...
 
+configfile_location = os.path.join(__location__, "run")
 
 # Default DIAMOND custom scoring matricies and their corresponding gapopen and gapextend values
 diamond_sm_options = {
@@ -128,6 +129,7 @@ class Options(object):  #
         self.method_threads_small = None
         self.old_version = False
         self.fix_files = True
+        self.config = None
 
     def what(self):
         for k, v in self.__dict__.items():
@@ -146,6 +148,17 @@ def GetDirectoryArgument(arg, args):
         print("Specified directory doesn't exist: %s" % directory)
         util.Fail()
     return directory
+
+def GetFileArgument(arg: str) -> str:
+    file_path = os.path.abspath(arg)
+    directory = os.path.dirname(file_path)
+    if not os.path.exists(directory):
+        print("Directory points to the file doesn't exist: %s" % directory)
+        util.Fail()
+    if not os.path.isfile(file_path):
+        print("Specified file doesn't exist: %s" % file_path)
+        util.Fail()
+    return file_path
 
 
 def GetScoreMatrix(matrixid: str):
@@ -268,8 +281,19 @@ def GetGapOpen(
         print(f"The gapeopen penalty needs to be positive integers!")
         util.Fail()
 
+def GetProgramCaller():
+    config_file = os.path.join(configfile_location, "config.json")
+    pc = program_caller.ProgramCaller(
+        config_file if os.path.exists(config_file) else None
+    )
+    config_file_user = os.path.expanduser("~/config_orthofinder_user.json")
+    if os.path.exists(config_file_user):
+        pc_user = program_caller.ProgramCaller(config_file_user)
+        pc.Add(pc_user)
+    return pc
 
-def ProcessArgs(prog_caller, args):
+
+def ProcessArgs(args):
     """
     Workflow
     | 1. Fasta Files | 2.  Prepare files    | 3.   Blast    | 4. Orthogroups    | 5.   Gene Trees     | 6.   Reconciliations/Orthologues   |
@@ -315,7 +339,26 @@ def ProcessArgs(prog_caller, args):
     -ft: store orthologuesDir 
     + xml: speciesXMLInfoFN
     """
+    
+    config_file = os.path.join(configfile_location, "config.json")
+    prog_caller = program_caller.ProgramCaller(
+        config_file if os.path.exists(config_file) else None
+    )
+    config_file_user = os.path.expanduser("~/config_orthofinder_user.json")
+    if os.path.exists(config_file_user):
+        pc_user = program_caller.ProgramCaller(config_file_user)
+        prog_caller.Add(pc_user)
 
+    if "--config" in args:
+        config_index = args.index("--config")
+        config_file = args[config_index + 1]
+        config_path = GetFileArgument(config_file)
+        if os.path.exists(config_path):
+            pc_user = program_caller.ProgramCaller(config_path)
+            prog_caller.Add(pc_user)
+        args.remove("--config")
+        args.remove(config_file)
+        
     while len(args) > 0:
         arg = args.pop(0)
 
@@ -931,6 +974,7 @@ def ProcessArgs(prog_caller, args):
 
 
     return (
+        prog_caller, 
         options,
         fastaDir,
         continuationDir,
