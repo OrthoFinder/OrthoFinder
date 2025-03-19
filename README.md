@@ -1,6 +1,6 @@
 # OrthoFinder3
 
-<img src="assets/OF2_Workflow.png" alt="OF2_Workflow" width="750"/>
+<img src="assets/concept_figure.png" alt="OF3_Workflow" width="800"/>
 
 OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and analyzes these gene trees to identify the rooted species tree. The method subsequently identifies all gene duplication events in the complete set of gene trees, and analyzes this information in the context of the species tree to provide both gene tree and species tree-level analysis of gene duplication events. OrthoFinder further analyzes all of this phylogenetic information to identify the complete set of orthologs between all species and provide extensive comparative genomics statistics.
 
@@ -19,7 +19,7 @@ A single PDF with all documentation, tutorials, and this README is available [he
 
 ## Installation
 
-OrthoFinder3 provides a user-freindly way to use. It can be run with or without installation. Either way, the first step requires a user to download a copy of the package to their local machine. Whichever way a user choose to run OrthoFinder3, it is recommended that the software is ran inside a virtual environment or a name space in conda. 
+OrthoFinder3 provides a user-friendly way to use. It can be run with or without installation. Either way, the first step requires a user to download a copy of the package to their local machine. Whichever way a user choose to run OrthoFinder3, it is recommended that the software is ran inside a virtual environment or a name space in conda. 
 
 > Run OrthoFinder3 with installation
 
@@ -106,15 +106,8 @@ A docker image will also available [here](###linktodocker###)
 
 Add some info on how to manually install dependencies
 
+
 ## Simple Usage
-
-OrthoFinder requires one FASTA format file for each species being analysed. Each file should contain the complete set of protein sequences encoded by genes present in that species genome,  with a single representative protein sequence for each gene.
-
-OrthoFinder does not have the ability to distinguish proteins derived from transcript variants from proteins derived from separate genes. If your files have protein sequences derived from multiple transcript variants for each gene then we provide a script `primary_transcripts.py` to extract the longest variant per gene that should be run on your input files prior to running OrthoFinder;
-
-```bash
-for f in *fa ; do python primary_transcript.py $f ; done
-```
 
 Run OrthoFinder3 on FASTA format proteomes in `<dir>`
 
@@ -122,33 +115,40 @@ Run OrthoFinder3 on FASTA format proteomes in `<dir>`
 orthofinder [options] -f <dir> -M dendroblast
 ```
 
+OrthoFinder requires one FASTA file for each species. Each file should contain the complete set of protein sequences from that species' genome,  with a single representative sequence for each gene.
 
-## Advanced Usage
+If your files have multiple transcript variants for each gene, then we provide a script `primary_transcripts.py` to extract the longest variant per gene. This script should be run on your files prior to running OrthoFinder;
 
-If you have large numbers of species to analyse OrthoFinder has a scalable implementation that can be used to add new species to an already inferred set of orthogroups for a smaller, core group of species.
+```bash
+for f in *fa ; do python primary_transcript.py $f ; done
+```
 
+
+## Advanced Usage - Scalable to thousands of species
+
+If you are analysing >100 species, we reccommend that you use the scalable implementation. 
+
+First, run OrthoFinder on a subset of 64 species placed in the directory 'core'
+
+```python
+orthofinder [options] -f <core>
+```
+
+Then, add the additional species placed in the directory 'additional' to the results of the core run
+
+```python
+orthofinder [options] --assign <additional> --core <Results_Dir>
+```
+
+To choose which 64 species to include in the core, aim to capture a broad range of the evolutionary diversity.
+
+
+# this figure will be updated #
 <!-- ![OrthoFinder3 workflow](of3.png) -->
 <img src="assets/OF3_Workflow.png" alt="OrthoFinder3 workflow" width="750"/>
 
-We reccomend that if you are analysing >32 species, you use the this core/assign method. You will need to partition your input dataset into 16 “core” and the remainder “additional” species. 
+**Note that this alternative way of running OrthoFinder requires that the core species are run using the multiple sequence alignment option. You cannot add additional species to OrthoFinder results that were run with the `-M dendroblast` option, which was the default for OrthoFinder2**
 
-The core set of species should be the subset that maximally captures the evolutionary uniqueness of the species in the input dataset.
-
-You need to make a folder `core` with the core species, and a folder `additional`  with the additional species
-
-You can then run OrthoFinder3 on the core species
-
-```python
-orthofinder [options] -f <dir_core>
-```
-
-Next, you can add the additional species
-
-```python
-orthofinder [options] --assign <dir_additional> --core <dir_core>
-```
-
-**Note that this alternative way of running OrthoFinder requires that the core species set is run using the multiple sequence alignment option. You cannot add additional species to OrthoFinder results that were run with the `-M dendroblast` option, which was the default for OrthoFinder2**
 
 ## Command-line options
 
@@ -250,19 +250,13 @@ The current version of OrthoFinder has several major changes comapred to OrthoFi
 
 **New workflow for scalability**
 
-OrthoFinder now provides a ``--core --assign`` workflow to assign additional species to a previously computed OrthoFinder run. This workflow makes use of SHOOT to create profiles for the previously computed orthogroups, and new genes are assigned to these orthogroups without requiring a costly all-versus-all sequence search. Genes that cannot be assigned using the [SHOOT](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02652-8) approach are analysed on a clade-by-clade basis using a standard OrthoFinder workflow. 
+The ``--core --assign`` workflow uses [SHOOT](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02652-8) to create profiles for previously computed orthogroups, and adds new genes to these orthogroups without requiring a costly all-versus-all sequence search. Genes that cannot be assigned using the SHOOT approach are analysed using a standard OrthoFinder workflow. 
 
 **Phylogenetic Hierarchical Orthogroups**
 
-OrthoFinder3 uses phylogenetic trees to determine orthologs. This is in contrast to most other methods that use only sequence similarity to infer orthologs. We have now extended our phylogenetic approach to orthogroups. This means that the orthogroups are more accurate than before, and also that orthogroups are now provided for each node within the species tree.
-
-This change significantly increases the accuracy of the orthogroups identified by OrthoFinder. It also provides new functionality by enabling users to perform orthogroup-level analyses for any clade of species in the species tree. Orthogroups for every internal node in the species tree are provided in `/Comparative_Genomics_Statistics` (e.g. `N3.tsv` is the orthogroups for node N3 in the species tree).
+OrthoFinder3 has now extended its phylogenetic approach to orthogroups, allowing orthogroups to be defined for each node within the species tree. This significantly increases the accuracy of orthogroups, and enables users to perform orthogroup analyses for any clade of species in the species tree. 
 
 <img src="assets/hog.png" alt="HOGs" width="500"/>
-
-**Performance improvements**
-
-(4x quicker runtime, 2.5x lower RAM usage, 15% more accurate orthogroups)
 
 
 ## Citation
