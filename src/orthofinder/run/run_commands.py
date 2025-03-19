@@ -56,38 +56,43 @@ def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller,
     tasksizes = None
     if species_clades is None:
         # print("running GetOrderedSearchCommands")
-        commands, tasksizes = run_info.GetOrderedSearchCommands(seqsInfo, 
-                                                     speciessInfoObj,
-                                                     options,
-                                                     prog_caller, 
-                                                     n_genes_per_species, 
-                                                     q_new_species_unassigned_genes=q_new_species_unassigned_genes)
+        commands, tasksizes = run_info.GetOrderedSearchCommands(
+            seqsInfo, 
+            speciessInfoObj,
+            options,
+            prog_caller, 
+            n_genes_per_species, 
+            q_new_species_unassigned_genes=q_new_species_unassigned_genes
+        )
     else:
         # print("running GetOrderedSearchCommands_clades")
-        commands, tasksizes = run_info.GetOrderedSearchCommands_clades(seqsInfo, 
-                                                            speciessInfoObj,
-                                                            options,
-                                                            prog_caller, 
-                                                            n_genes_per_species, 
-                                                            species_clades)
+        commands, tasksizes = run_info.GetOrderedSearchCommands_clades(
+            seqsInfo, 
+            speciessInfoObj,
+            options,
+            prog_caller, 
+            n_genes_per_species, 
+            species_clades
+        )
     if options.qStopAfterPrepare:
         for command in commands:
             print(command)
         util.Success()
     print("Using %d thread(s)" % options.nBlast)
     util.PrintTime("This may take some time...")
-    program_caller.RunParallelCommands(options.nBlast, commands,
-                                       method_threads=options.method_threads, 
-                                       method_threads_large=options.method_threads_large,
-                                       method_threads_small=options.method_threads_small,
-                                       threshold=options.threshold,
-                                       cmd_order=options.cmd_order, 
-                                       tasksize=tasksizes,
-                                       qListOfList=False,
-                                       q_print_on_error=True, 
-                                       q_always_print_stderr=False,
-                                       old_version=options.old_version
-                                       )
+    program_caller.RunParallelCommands(
+        options.nBlast, commands,
+        method_threads=options.method_threads, 
+        method_threads_large=options.method_threads_large,
+        method_threads_small=options.method_threads_small,
+        threshold=options.threshold,
+        cmd_order=options.cmd_order, 
+        tasksize=tasksizes,
+        qListOfList=False,
+        q_print_on_error=True, 
+        q_always_print_stderr=False,
+        old_version=options.old_version
+    )
 
     # remove BLAST databases
     util.PrintTime("Done all-versus-all sequence search")

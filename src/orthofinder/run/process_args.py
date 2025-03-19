@@ -5,6 +5,7 @@ from ..comparative_genomics import orthologues
 from .. import __version__, g_mclInflation, nThreadsDefault, __location__
 from . import helpinfo, species_info
 import shutil
+import traceback
 from typing import Optional
 import time
 
@@ -130,6 +131,7 @@ class Options(object):  #
         self.old_version = False
         self.fix_files = True
         self.config = None
+        self.min_seq = 4
 
     def what(self):
         for k, v in self.__dict__.items():
@@ -308,6 +310,26 @@ def ProcessArgs(args):
     -op: 2           (only prepare, --only-prepare)
     -og: 4           (orthogroups, --only-groups)
     """
+
+    config_file = os.path.join(configfile_location, "config.json")
+    prog_caller = program_caller.ProgramCaller(
+        config_file if os.path.exists(config_file) else None
+    )
+    config_file_user = os.path.expanduser("~/config_orthofinder_user.json")
+    if os.path.exists(config_file_user):
+        pc_user = program_caller.ProgramCaller(config_file_user)
+        prog_caller.Add(pc_user)
+
+    if "--config" in args:
+        config_index = args.index("--config")
+        config_file = args[config_index + 1]
+        config_path = GetFileArgument(config_file)
+        if os.path.exists(config_path):
+            pc_user = program_caller.ProgramCaller(config_path)
+            prog_caller.Add(pc_user)
+        args.remove("--config")
+        args.remove(config_file)
+        
     if len(args) == 0 or args[0] == "--help" or args[0] == "help" or args[0] == "-h":
         helpinfo.PrintHelp(prog_caller)
         util.Success()
@@ -340,25 +362,7 @@ def ProcessArgs(args):
     + xml: speciesXMLInfoFN
     """
     
-    config_file = os.path.join(configfile_location, "config.json")
-    prog_caller = program_caller.ProgramCaller(
-        config_file if os.path.exists(config_file) else None
-    )
-    config_file_user = os.path.expanduser("~/config_orthofinder_user.json")
-    if os.path.exists(config_file_user):
-        pc_user = program_caller.ProgramCaller(config_file_user)
-        prog_caller.Add(pc_user)
 
-    if "--config" in args:
-        config_index = args.index("--config")
-        config_file = args[config_index + 1]
-        config_path = GetFileArgument(config_file)
-        if os.path.exists(config_path):
-            pc_user = program_caller.ProgramCaller(config_path)
-            prog_caller.Add(pc_user)
-        args.remove("--config")
-        args.remove(config_file)
-        
     while len(args) > 0:
         arg = args.pop(0)
 
@@ -537,6 +541,14 @@ def ProcessArgs(args):
                     "Incorrect argument for threshold: %s. Values must be between 0 and 100 inclusive.\n"
                     % arg
                 )
+                util.Fail()
+
+        elif arg == "-ms" or arg == "--min-seq":
+            try:
+                arg = int(args.pop(0))
+                options.min_seq = arg if arg >= 4 else 4 
+            except:
+                print(f"Incorrect argument {arg} for the minmum number of sequence. Values must be an integer equal to or greater than 4.")
                 util.Fail()
 
         elif arg == "-rmgt" or arg == "--rm-gene-trees":
@@ -971,7 +983,9 @@ def ProcessArgs(args):
         options.gapextend,
         scoring_matrix_info
     )
-
+   
+    if resultsDir_nonDefault is not None:
+        resultsDir_nonDefault = os.path.abspath(resultsDir_nonDefault) + os.path.sep
 
     return (
         prog_caller, 

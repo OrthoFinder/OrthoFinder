@@ -709,6 +709,9 @@ class ProgramCaller(object):
 
         path, basename = os.path.split(infilename)
         path_out, basename_out = os.path.split(outfilename)
+        infilename = os.path.abspath(infilename)
+        outfilename = os.path.abspath(outfilename)
+        path = os.path.abspath(path) + os.path.sep
         outstring = (
             instring.replace("INPUT", infilename)
             .replace("OUTPUT", outfilename)

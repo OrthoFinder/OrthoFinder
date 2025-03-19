@@ -155,7 +155,7 @@ def GetOrthologues(
         options.qPhyldog,
         options.name,
         options.qSplitParaClades,
-        options.save_space,
+        save_space=options.save_space,
         root_from_previous=False,
         i_og_restart=i_og_restart,
         speciesXML=speciesXML,
@@ -353,6 +353,7 @@ def BetweenCoreOrthogroupsWorkflow(
 
 def GetOrthologues_FromTrees(options):
     orthologues.OrthologuesFromTrees(
+        options.min_seq,
         options.recon_method,
         options.nBlast,
         options.nProcessAlg,
@@ -501,7 +502,8 @@ def main(args=None):
             # 9.
             if not options.qStopAfterGroups:
                 GetOrthologues(
-                    seqsInfo, speciesNamesDict, 
+                    seqsInfo, 
+                    speciesNamesDict, 
                     speciesInfoObj, 
                     options, 
                     prog_caller,
@@ -603,7 +605,7 @@ def main(args=None):
             util.PrintUnderline("Creating orthogroup profiles")
             wd_list = files.FileHandler.GetWorkingDirectory1_Read()
             fn_diamond_db, q_hogs = acc.prepare_accelerate_database(
-                continuationDir, wd_list, speciesInfoObj.nSpAll
+                options.min_seq, continuationDir, wd_list, speciesInfoObj.nSpAll
             )
             # print(
             #     "\nAdding new species in %s to existing analysis in %s"

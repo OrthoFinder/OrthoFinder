@@ -34,10 +34,11 @@ def check_for_orthoxcelerate(input_dir, speciesInfoObj):
     return True
 
 
-def prepare_accelerate_database(input_dir, wd_list, nSpAll):
+def prepare_accelerate_database(min_seq, input_dir, wd_list, nSpAll):
     if xcelerate_config.n_for_profiles is None:
         # create_shoot_db.create_full_database(input_dir, q_ids=True, subtrees_dir="")
         fn_diamond_db, q_hogs = create_profiles_database(
+            min_seq,
             input_dir, 
             wd_list, 
             nSpAll, 
@@ -47,6 +48,7 @@ def prepare_accelerate_database(input_dir, wd_list, nSpAll):
         )
     else:
         fn_diamond_db, q_hogs = create_profiles_database(
+            min_seq,
             input_dir, 
             wd_list, 
             nSpAll, 
@@ -159,6 +161,7 @@ def write_all_orthogroups(ogs, ogs_new_species, ogs_clade_specific_lists):
 
 
 def create_profiles_database(
+        min_seq,
         din, 
         wd_list, 
         nSpAll, 
@@ -201,7 +204,7 @@ def create_profiles_database(
         print("Profiles database already exists and will be reused: ")
         print(f"[dark_cyan]{fn_diamond_db}[dark_cyan]")
         return fn_diamond_db, q_hogs
-    og_set = orthogroups_set.OrthoGroupsSet(wd_list, list(range(nSpAll)), nSpAll, True)
+    og_set = orthogroups_set.OrthoGroupsSet(min_seq, wd_list, list(range(nSpAll)), nSpAll, True)
     ids = og_set.Spec_SeqDict()
     ids_rev = {v: k for k, v in ids.items()}
     if q_hogs:

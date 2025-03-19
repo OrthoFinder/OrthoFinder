@@ -29,7 +29,7 @@
     },
     "raxml": {
         "program_type": "tree",
-        "cmd_line": "raxmlHPC-AVX -m PROTGAMMALG -p 12345 -s INPUT -n IDENTIFIER -w PATH > /dev/null",
+        "cmd_line": "raxmlHPC -m PROTGAMMALG -p 12345 -s INPUT -n IDENTIFIER -w PATH > /dev/null",
         "ouput_filename": "PATH/RAxML_bestTree.IDENTIFIER"
     },
     "raxml-ng": {

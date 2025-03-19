@@ -343,6 +343,7 @@ def post_clustering_orthogroups(
 
     # Write Orthogroup FASTA files
     ogSet = orthogroups_set.OrthoGroupsSet(
+        options.min_seq,
         files.FileHandler.GetWorkingDirectory1_Read(),
         speciesInfoObj.speciesToUse,
         speciesInfoObj.nSpAll,

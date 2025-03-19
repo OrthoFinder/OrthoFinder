@@ -60,6 +60,7 @@ def post_hogs_processing(
 
     # Write Orthogroup FASTA files
     ogSet = OrthoGroupsSet(
+        options.min_seq,
         files.FileHandler.GetWorkingDirectory1_Read(), 
         speciesInfoObj.speciesToUse,
         speciesInfoObj.nSpAll,
@@ -182,6 +183,7 @@ class Seq(object):
 class OrthoGroupsSet(object):
     def __init__(
             self, 
+            min_seq,
             orthofinderWorkingDir_list, 
             speciesToUse, 
             nSpAll, 
@@ -200,6 +202,7 @@ class OrthoGroupsSet(object):
         self.id_to_og = None
         self.qAddSpeciesToIDs = qAddSpeciesToIDs
         self.cached_seq_ids_dict = None
+        self.min_seq = min_seq
 
     def SequenceDict(self):
         """returns Dict[str, str]"""
@@ -241,7 +244,7 @@ class OrthoGroupsSet(object):
     def Get_iOGs4(self):
         if self.iOgs4 is None:
             ogs = self.OGsAll()
-            self.iOgs4 = [i for i, og in enumerate(ogs) if len(og) >= 4]
+            self.iOgs4 = [i for i, og in enumerate(ogs) if len(og) >= self.min_seq]
         return self.iOgs4
 
     def OGsAll(self):

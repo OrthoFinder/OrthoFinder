@@ -2,10 +2,14 @@ from ..utils import util, files
 import itertools
 import os 
 
-def GetOrderedSearchCommands(seqsInfo, speciesInfoObj, 
-                             options, prog_caller, 
-                             n_genes_per_species=None, 
-                             q_new_species_unassigned_genes=False):
+def GetOrderedSearchCommands(
+        seqsInfo, 
+        speciesInfoObj, 
+        options, 
+        prog_caller, 
+        n_genes_per_species=None, 
+        q_new_species_unassigned_genes=False
+    ):
 
     """ Using the nSeq1 x nSeq2 as a rough estimate of the amount of work required for a given species-pair, returns the commands 
     ordered so that the commands predicted to take the longest come first. This allows the load to be balanced better when processing 
@@ -57,11 +61,13 @@ def GetOrderedSearchCommands(seqsInfo, speciesInfoObj,
     return commands, taskSizes
 
 
-def GetOrderedSearchCommands_clades(seqsInfo, 
-                                    speciesInfoObj, 
-                                    options, prog_caller,
-                                    n_genes_per_species, 
-                                    species_clades):
+def GetOrderedSearchCommands_clades(
+        seqsInfo, 
+        speciesInfoObj, 
+        options, prog_caller,
+        n_genes_per_species, 
+        species_clades
+    ):
     """
     Search all species
     """

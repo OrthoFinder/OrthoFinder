@@ -169,22 +169,22 @@ def PrintHelp(prog_caller):
 
     # print(" -1                      Only perform one-way sequence search")
 
-    table_options.add_row(
-        "[deep_sky_blue2]-1[/deep_sky_blue2]",
-        "Only perform one-way sequence search",
-    )
+    # table_options.add_row(
+    #     "[deep_sky_blue2]-1[/deep_sky_blue2]",
+    #     "Only perform one-way sequence search",
+    # )
 
 
     # print(" -x <file>               Info for outputting results in OrthoXML format")
-    table_options.add_row(
-        "-x <[bright_magenta]file[/bright_magenta]>",
-        "Info for outputting results in OrthoXML format",
-    )
+    # table_options.add_row(
+    #     "-x <[bright_magenta]file[/bright_magenta]>",
+    #     "Info for outputting results in OrthoXML format",
+    # )
     # print(" -p <dir>                Write the temporary pickle files to <dir>")
-    table_options.add_row(
-        "-p <[bright_magenta]dir[/bright_magenta]>",
-        "Write the temporary pickle files to <[bright_magenta]dir[/bright_magenta]>",
-    )
+    # table_options.add_row(
+    #     "-p <[bright_magenta]dir[/bright_magenta]>",
+    #     "Write the temporary pickle files to <[bright_magenta]dir[/bright_magenta]>",
+    # )
 
     # print(" -n <txt>                Name to append to the results directory")
 

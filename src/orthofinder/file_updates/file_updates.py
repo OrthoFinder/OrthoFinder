@@ -93,7 +93,7 @@ def update_output_files(
     clear_dir(align_id_dir)
 
     old_hog_n0 = read_hog_n0_file(hog_n0_file)
-    hog_n0_over4genes = hog_file_over4genes(old_hog_n0)
+    hog_n0_over4genes = hog_file_over4genes(old_hog_n0, options.min_seq)
 
     del old_hog_n0
     ## get list of unique OG
@@ -254,7 +254,7 @@ def read_hog_n0_file(hog_n0_file):
 
 
 ## Function to get rid of hierarchical orthogroups with < 4 genes
-def hog_file_over4genes(hog_n0):
+def hog_file_over4genes(hog_n0, min_seq):
 
     filtered_hog_n0 = []
     for row in hog_n0:
@@ -265,7 +265,7 @@ def hog_file_over4genes(hog_n0):
                 if key not in {'OG','Gene Tree Parent Clade', 'HOG'} and value
             ]).split(', ')
 
-            if len(genes) >= 4:
+            if len(genes) >= min_seq:
                 filtered_hog_n0.append(row)
 
     return filtered_hog_n0    

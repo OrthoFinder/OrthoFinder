@@ -229,7 +229,7 @@ def TwoAndThreeGeneOrthogroups(ogSet, resultsDir, save_space, fewer_open_files):
                 orthologues = [(d0, d1, d_empty, d_empty)]
             else: 
                 continue # no orthologues
-        elif n >= 4:
+        elif n >= ogSet.min_seq:
             continue
         all_orthologues.append((iog, orthologues))
     nspecies = len(ogSet.speciesToUse)
@@ -360,6 +360,7 @@ def ReconciliationAndOrthologues(
         
                 
 def OrthologuesFromTrees(
+        min_seq,
         recon_method,
         nHighParallel,
         nLowParallel,
@@ -376,8 +377,14 @@ def OrthologuesFromTrees(
     Just infer orthologues from trees, don't do any of the preceeding steps.
     """
     speciesToUse, nSpAll, _ = util.GetSpeciesToUse(files.FileHandler.GetSpeciesIDsFN())    
-    ogSet = orthogroups_set.OrthoGroupsSet(files.FileHandler.GetWorkingDirectory1_Read(), speciesToUse, nSpAll, qAddSpeciesToIDs,
-                           idExtractor = util.FirstWordExtractor)
+    ogSet = orthogroups_set.OrthoGroupsSet(
+        min_seq,
+        files.FileHandler.GetWorkingDirectory1_Read(), 
+        speciesToUse, 
+        nSpAll, 
+        qAddSpeciesToIDs,
+        idExtractor = util.FirstWordExtractor
+    )
     if userSpeciesTree_fn != None:
         speciesDict = files.FileHandler.GetSpeciesDict()
         speciesToUseNames = [speciesDict[str(iSp)] for iSp in ogSet.speciesToUse]
@@ -435,6 +442,7 @@ def OrthologuesWorkflow(
         speciesXML=None,
     ):
     ogSet = orthogroups_set.OrthoGroupsSet(
+        options.min_seq,
         files.FileHandler.GetWorkingDirectory1_Read(), 
         speciesToUse, 
         nSpAll,
@@ -506,8 +514,8 @@ def OrthologuesWorkflow(
         userSpeciesTree, 
         qPhyldog,
         q_split_para_clades, 
-        save_space, 
         root_from_previous,
+        save_space=False, 
         old_version=old_version
     )
     
@@ -544,8 +552,8 @@ def OrthologuesWorkflow(
             userSpeciesTree, 
             qPhyldog,
             q_split_para_clades, 
-            save_space, 
             root_from_previous,
+            save_space=options.save_space, 
             old_version=old_version,
             print_info=False,
         )
@@ -692,8 +700,8 @@ def InferOrthologs(
         userSpeciesTree=None,
         qPhyldog=False,
         q_split_para_clades=False,
-        save_space=False,
         root_from_previous=False,
+        save_space=False,
         old_version=False,
         print_info=True,
     ):

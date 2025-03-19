@@ -687,12 +687,12 @@ install_raxml: make_usr_bin
 		cd $$temp_dir/raxml-src && \
 		echo "Building RAxML from source..."; \
 		if [ "$(QUIET)" = "true" ]; then \
-			make -f Makefile.SSE3.gcc > /dev/null 2>&1 || { echo "Error: Failed to build RAxML."; rm -rf $$temp_dir; exit 1; }; \
+			make -f Makefile.gcc > /dev/null 2>&1 || { echo "Error: Failed to build RAxML."; rm -rf $$temp_dir; exit 1; }; \
 		else \
-			make -f Makefile.SSE3.gcc || { echo "Error: Failed to build RAxML."; rm -rf $$temp_dir; exit 1; }; \
+			make -f Makefile.gcc || { echo "Error: Failed to build RAxML."; rm -rf $$temp_dir; exit 1; }; \
 		fi; \
 		echo "Moving RAxML binaries to $(BINARY_INSTALL_DIR)..."; \
-		$(SUDO_PREFIX) mv raxmlHPC* $(BINARY_INSTALL_DIR)/raxml || { echo "Error: Failed to move RAxML binaries."; rm -rf $$temp_dir; exit 1; }; \
+		$(SUDO_PREFIX) mv raxmlHPC* $(BINARY_INSTALL_DIR)/ || { echo "Error: Failed to move RAxML binaries."; rm -rf $$temp_dir; exit 1; }; \
 		rm -rf $$temp_dir; \
 		echo "RAxML installation completed successfully."; \
 	else \
