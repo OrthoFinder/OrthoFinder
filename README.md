@@ -2,12 +2,12 @@
 
 <img src="assets/concept_figure.png" alt="OF3_Workflow" width="800"/>
 
-OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and analyzes these gene trees to identify the rooted species tree. The method subsequently identifies all gene duplication events in the complete set of gene trees, and analyzes this information in the context of the species tree to provide both gene tree and species tree-level analysis of gene duplication events. OrthoFinder further analyzes all of this phylogenetic information to identify the complete set of orthologs between all species and provide extensive comparative genomics statistics.
+OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and analyzes these gene trees to identify the rooted species tree. The method subsequently identifies all gene duplication events in the complete set of gene trees, and provides both gene tree and species tree-level analysis of gene duplications. OrthoFinder further analyzes all of this phylogenetic information to identify the complete set of orthologs between all species and provide extensive comparative genomics statistics.
 
 ## Table of contents
 - [Installation](#Installation)
 - [Simple Usage](#Simple-Usage)
-- [Advanced Usage](#Advanced-Usage)
+- [Advanced Usage - Scaling to Thousands of Species](#Advanced-Usage-Scaling-to-Thousands-of-Species)
 - [Command line Options](#Command-line-Options)
 - [Output files](#Output-files)
 - [Latest additions](#Latest-additions)
@@ -19,24 +19,14 @@ A single PDF with all documentation, tutorials, and this README is available [he
 
 ## Installation
 
-OrthoFinder3 provides a user-friendly way to use. It can be run with or without installation. Either way, the first step requires a user to download a copy of the package to their local machine. Whichever way a user choose to run OrthoFinder3, it is recommended that the software is ran inside a virtual environment or a name space in conda. 
-
-> Run OrthoFinder3 with installation
-
-When running OrthoFinder3 with installation, we recommend the user to run it inside a conda environment and miniconda is suffice. The installation instructions for miniconda can be found [here](https://www.anaconda.com/docs/getting-started/miniconda/install#macos-linux-installation).
-
-- Install OrthoFinder3 in conda
-
-  OrthoFinder3 is a listed software in bioconda. More information can be found [here](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/).
-
-  ```bash
+The easiest way to install OrthoFinder is using [conda](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/).
+```bash
     conda create -n of3_env python=3.10
     conda activate of3_env
     conda install orthofinder
-  ```
-- [Install OrthoFinder3 via src code](#install-via-src-code)
+```
 
-  Generally speaking, more steps is evolved in installing OrthoFinder3 via the src code. In the meantime, more OS related issues can occur when running orthofinder via src code. The main issue is the binaries shipped with OrthoFinder3 might not be comptable with your underlying OS. Therefore, this is not a recommended way to run OrthoFinder3. Nevertheless, for those Linux users who prefer running OrthoFinder3 in such way, you can running the following commands to install the software and run it on your local machine.
+Alternatively, you can install OrthoFinder using the src code 
 
   - Download via `git`
       
@@ -57,55 +47,29 @@ When running OrthoFinder3 with installation, we recommend the user to run it ins
       python3 -m venv of3_env && . of3_env/bin/activate
       pip install .
     ```
-  Once you have installed OrthoFinder3, you can run the following commands to check the version, print out the help informatioin or test if it has been installed sucessfully.
 
-    ```bash
-      orthofinder --version # Check the version
-      orthofinder --help # Print out help informatioin
-      orthofinder -f ExampleData # Test the OrthoFinder on an example dataset shipped with OrthoFinder3
-    ```
-
-> Run OrthoFinder3 without installation
-
-Running OrthoFinder3 without installation also requires the user to download a copy of the src code from GitHub. Flease follow the instruction in the <a name="install-via-src-code">Install OrthoFinder3 via src code</a> section. 
-
-Once you have package src code available you can running the following commands to installed the required Python depencies inside a virtual environment. 
+Alternatively, you can also run OrthoFinder without installation
+ 
+Download the package source code (see above), and then run the following commands to install the required Python dependencies inside a virtual environment. 
 
   ```bash
     python3 -m venv of3_env && . of3_env/bin/activate
     pip install -r requirements.txt
   ```
 
-Having done so, you then test and run OrthoFinder3 without actaully install the software. To test it, please run 
-
-  ```bash
-    python3 orthofinder.py --version # Check the version
-    python3 orthofinder.py --help # Print out help informatioin
-    python3 orthofinder.py -f ExampleData # Test the OrthoFinder on an example dataset shipped with OrthoFinder3
-  ```
-
-
-
-
-  
-
-
-The easiest way to install OrthoFinder3 is using [conda](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/).
-```bash
-conda install orthofinder
-orthofinder -h
-```
-
-If you are on a mac that has an M1/M2/M3 chip, you might have to adjust your conda architecture. Instructions can be found [here](https://towardsdatascience.com/how-to-manage-conda-environments-on-an-apple-silicon-m1-mac-1e29cb3bad12).
-
-
-
-A docker image will also available [here](###linktodocker###)
-
 **Installing dependencies**
 
-Add some info on how to manually install dependencies
+--- do we want to provide info on manually install dependencies / give a list of dependencies for default OrthoFinder? ---
+--- do we want to provide a docker image --- 
 
+
+ Once you have installed OrthoFinder3, you can run the following commands to check the version, print out the help informatioin or test if it has been installed sucessfully.
+
+    ```bash
+      orthofinder --version # Check the version
+      orthofinder --help # Print out help informatioin
+      orthofinder -f ExampleData # Test the OrthoFinder on an example dataset shipped with OrthoFinder3
+    ```
 
 ## Simple Usage
 
@@ -124,7 +88,7 @@ for f in *fa ; do python primary_transcript.py $f ; done
 ```
 
 
-## Advanced Usage - Scalable to thousands of species
+## Advanced Usage - Scaling to Thousands of Species
 
 If you are analysing >100 species, we reccommend that you use the scalable implementation. 
 
@@ -143,7 +107,7 @@ orthofinder [options] --assign <additional> --core <Results_Dir>
 To choose which 64 species to include in the core, aim to capture a broad range of the evolutionary diversity.
 
 
-# this figure will be updated #
+--- this figure will be updated ---
 <!-- ![OrthoFinder3 workflow](of3.png) -->
 <img src="assets/OF3_Workflow.png" alt="OrthoFinder3 workflow" width="750"/>
 
@@ -177,8 +141,6 @@ Command-line options for OrthoFinder
 **Output options**
 | Parameter   | Description                                                                 |
 |-----------  |-----------------------------------------------------------------------------|
-| `-x <file>`      | Info for outputting results in OrthoXML format.                             |
-| `-p <dir>`      | Write the temporary pickle files to `<dir>`.                                |
 | `-X`      | Don’t add species names to sequence IDs.                                    |
 | `-n <txt>`      | Name to append to the results directory.                                    |
 | `-o <txt>`      | Specify a non-default results directory.                                    |
@@ -187,8 +149,8 @@ Command-line options for OrthoFinder
 **Parallel processing options**
 | Parameter | Description                                 | Default |
 |-----------|---------------------------------------------|---------|
-| `-t`      | Number of parallel sequence search threads. | `11`    |
-| `-a`      | Number of parallel analysis threads.        | `1`     |
+| `-t`      | Number of parallel sequence search threads. | `All available`    |
+| `-a`      | Number of parallel analysis threads.        | `16 or t/8 (whichever lower)`     |
 
 **Workflow stopping options**
 | Parameter | Description                                                                 |
@@ -207,7 +169,7 @@ Command-line options for OrthoFinder
 | `--matrix`       | Scoring matrix allowed by DIAMOND.                                        |
 | `--custom-matrix`| Custom scoring matrix.                                                    |
 | `-z`             | Don’t trim MSAs (columns >= 90% gap, min. alignment length 500).          |
-| `--save-space`   | Only create one compressed orthologs file per species.                    |
+| `--save-space`   | Only create one compressed orthologs file per species (Default = "yes"                  |
 | `-y`             | Split paralogous clades below the root of a HOG into separate HOGs.        |
 | `-h`             | Print this help text.                                                     |
 | `-v`             | Print version.                                                     |
@@ -218,6 +180,13 @@ Command-line options for OrthoFinder
 A standard OrthoFinder run produces a set of files describing the orthogroups, orthologs, gene trees, resolve gene trees, the rooted species tree, gene duplication events, and comparative genomic statistics for the set of species being analysed. These files are located in an intuitive directory structure.
 
 Full details on the output files and directories can be found [here](https://sites.google.com/view/orthofinder3/guide-to-results-files). The directories that are useful for most users are;
+
+```/Orthogroups```
+- Orthogroups.tsv is the main orthogroup file. Each row contains the genes belonging to a single orthogroup. The genes from each orthogroup are organized into columns, one per species. 
+- Orthogroups.txt is a text file with each line showing the genes in a single orthogroup. It differs from Orthogroups.tsv in that it doesn’t show the species which each gene belongs to.
+- Orthogroups.GeneCount.tsv is a tab separated text file that contains counts of the number of genes for each species in each orthogroup.
+- Orthogroups_SingleCopyOrthologues.txt is a list of orthogroups that contain exactly one gene per species
+- Orthogrouops_UnassignedGenes.tsv is a tab separated text file that contains all of the genes that were not assigned to any orthogroup.
 
 ```/Phylogenetic_Hierarchical_Orthogroups```
 - Each file is a phylogenetic hierarchical orthogroup (HOG) for a different node of the species tree
