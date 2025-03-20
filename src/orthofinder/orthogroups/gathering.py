@@ -348,6 +348,7 @@ def post_clustering_orthogroups(
         speciesInfoObj.speciesToUse,
         speciesInfoObj.nSpAll,
         options.qAddSpeciesToIDs,
+        options.tree_program,
         idExtractor=util.FirstWordExtractor,
     )
     treeGen = trees_msa.TreesForOrthogroups(None, None, None)

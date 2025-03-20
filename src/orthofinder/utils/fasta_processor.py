@@ -103,7 +103,7 @@ def ProcessesNewFasta(fastaDir, q_dna, speciesInfoObj_prev = None, speciesToUse_
     """
     Process fasta files and return a Directory object with all paths completed.
     """
-    fastaExtensions = {"fa", "faa", "fasta", "fas", "pep"}
+    fastaExtensions = {"fa", "faa", "fasta", "fas", "pep", "fna"}
     # Check files present
     qOk = True
     if not os.path.exists(fastaDir):

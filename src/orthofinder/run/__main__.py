@@ -189,10 +189,12 @@ def BetweenCoreOrthogroupsWorkflow(
     )  # this updates ogs
 
     ogSet = orthogroups_set.OrthoGroupsSet(
+        options.min_seq,
         files.FileHandler.GetWorkingDirectory1_Read(),
         speciesInfoObj.speciesToUse,
         speciesInfoObj.nSpAll,
         options.qAddSpeciesToIDs,
+        options.tree_program,
         idExtractor=util.FirstWordExtractor,
     )
 
@@ -605,7 +607,11 @@ def main(args=None):
             util.PrintUnderline("Creating orthogroup profiles")
             wd_list = files.FileHandler.GetWorkingDirectory1_Read()
             fn_diamond_db, q_hogs = acc.prepare_accelerate_database(
-                options.min_seq, continuationDir, wd_list, speciesInfoObj.nSpAll
+                options.min_seq, 
+                continuationDir, 
+                wd_list, 
+                speciesInfoObj.nSpAll,
+                tree_program=options.tree_program
             )
             # print(
             #     "\nAdding new species in %s to existing analysis in %s"

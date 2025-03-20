@@ -65,6 +65,7 @@ def post_hogs_processing(
         speciesInfoObj.speciesToUse,
         speciesInfoObj.nSpAll,
         options.qAddSpeciesToIDs,
+        options.tree_program,
         idExtractor=util.FirstWordExtractor,
     )
 
@@ -188,6 +189,7 @@ class OrthoGroupsSet(object):
             speciesToUse, 
             nSpAll, 
             qAddSpeciesToIDs, 
+            tree_prgram = "fasttree",
             idExtractor = util.FirstWordExtractor
         ):
         
@@ -203,6 +205,7 @@ class OrthoGroupsSet(object):
         self.qAddSpeciesToIDs = qAddSpeciesToIDs
         self.cached_seq_ids_dict = None
         self.min_seq = min_seq
+        self.tree_program = tree_prgram
 
     def SequenceDict(self):
         """returns Dict[str, str]"""
@@ -251,7 +254,11 @@ class OrthoGroupsSet(object):
         if self.ogs_all is None:
             with open(files.FileHandler.OGsAllIDFN()) as infile:
                 ogs = [og.strip().split(", ") for og in infile]
-            self.ogs_all = [[Seq(g) for g in og] for og in ogs]
+            if self.tree_program == "raxml":
+                self.ogs_all = [[Seq(g) for g in og]  for og in ogs if len(og) >= self.min_seq]
+            else:
+                self.ogs_all = [[Seq(g) for g in og] for og in ogs]
+
             # self.ogs_all = sorted(self.ogs_all, key=len, reverse=True)
         return self.ogs_all
         

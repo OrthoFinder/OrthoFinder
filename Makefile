@@ -11,13 +11,13 @@ QUIET ?= true
 FORCE ?= false
 CONDA_PYTHON_VERSION ?= 3.10
 PYTHON_VERSION ?= python3
-ORTHOFINDER_ENV_DEFAULT := OF3_venv
+ORTHOFINDER_ENV_DEFAULT := of3_env
 ENV_NAME ?= $(ORTHOFINDER_ENV_DEFAULT)
 
 ORTHOFINDER_DEFAULT_VERSION := 3.0.1b1
 ORTHOFINDER_VERSION ?= $(ORTHOFINDER_DEFAULT_VERSION)
 
-DIAMOND_DEFAULT_VERSION := 2.1.10
+DIAMOND_DEFAULT_VERSION := 2.1.11
 DIAMOND_VERSION ?= $(DIAMOND_DEFAULT_VERSION)
 
 MCL_DEFAULT_VERSION := 22.282
@@ -32,13 +32,13 @@ FASTME_VERSION ?= $(FASTME_DEFAULT_VERSION)
 FASTTREE_DEFAULT_VERSION := 2.1.11
 FASTTREE_VERSION ?= $(FASTTREE_DEFAULT_VERSION)
 
-ASTER_DEFAULT_VERSION := 1.19-0
+ASTER_DEFAULT_VERSION := 1.19-1
 ASTER_VERSION ?= $(ASTER_DEFAULT_VERSION)
 
 MAFFT_DEFAULT_VERSION := 7.525
 MAFFT_VERSION ?= $(MAFFT_DEFAULT_VERSION)
 
-RAXML_DEFAULT_VERSION := 8.2.1
+RAXML_DEFAULT_VERSION := 8.2.13
 RAXML_VERSION ?= $(RAXML_DEFAULT_VERSION)
 
 RAXMLNG_DEFAULT_VERSION := 1.2.2
@@ -47,29 +47,36 @@ RAXMLNG_VERSION ?= $(RAXMLNG_DEFAULT_VERSION)
 MUSCLE_DEFAULT_VERSION := 5.3
 MUSCLE_VERSION ?= $(MUSCLE_DEFAULT_VERSION)
 
-IQTREE_DEFAULT_VERSION := 2.3.6
+IQTREE_DEFAULT_VERSION := 2.4.0
 IQTREE_VERSION ?= $(IQTREE_DEFAULT_VERSION)
+
+BLAST_DEFAULT_VERSION := 2.16.0
+BLAST_VERSION ?= $(BLAST_DEFAULT_VERSION)
 
 
 SYSTEM_WIDE ?= 0
 HOME_DIR := $(if $(HOME),$(HOME),$(shell echo ~))
 
-PROMPT_USER_INSTALL_DIR = \
-	@if [ -d "$(HOME_DIR)/local/bin" ]; then \
-		read -p "Directory $(HOME_DIR)/local/bin exists. Do you want to use it? (y/n) " choice; \
-		case $$choice in \
-			[yY]*) echo "$(HOME_DIR)/local/bin";; \
-			[nN]*) \
-				read -p "Enter a new directory name (relative to $(HOME_DIR)): " new_dir; \
-				USER_INSTALL_DIR=$(HOME_DIR)/$$new_dir; \
-				echo $$USER_INSTALL_DIR; \
-				mkdir -p $$USER_INSTALL_DIR || { echo "Error creating directory $$USER_INSTALL_DIR. Exiting."; exit 1; }; \
-				;; \
-			*) echo "Invalid choice. Exiting."; exit 1; \
-		esac; \
-	else \
-		echo "$(HOME_DIR)/local/bin"; \
-	fi
+USE_CONDA ?= true
+
+ifeq ($(USE_CONDA),false)
+	PROMPT_USER_INSTALL_DIR = \
+		@if [ -d "$(HOME_DIR)/local/bin" ]; then \
+			read -p "Directory $(HOME_DIR)/local/bin exists. Do you want to use it? (y/n) " choice; \
+			case $$choice in \
+				[yY]*) echo "$(HOME_DIR)/local/bin";; \
+				[nN]*) \
+					read -p "Enter a new directory name (relative to $(HOME_DIR)): " new_dir; \
+					USER_INSTALL_DIR=$(HOME_DIR)/$$new_dir; \
+					echo $$USER_INSTALL_DIR; \
+					mkdir -p $$USER_INSTALL_DIR || { echo "Error creating directory $$USER_INSTALL_DIR. Exiting."; exit 1; }; \
+					;; \
+				*) echo "Invalid choice. Exiting."; exit 1; \
+			esac; \
+		else \
+			echo "$(HOME_DIR)/local/bin"; \
+		fi
+endif
 
 USER_INSTALL_DIR := $(shell $(PROMPT_USER_INSTALL_DIR))
 SYSTEM_INSTALL_DIR := /usr/local/bin
@@ -116,8 +123,21 @@ MAFFT_REPO := https://gitlab.com/sysimm/mafft.git
 MAFFT_BINARY := $(BINARY_INSTALL_DIR)/mafft
 
 # URLs for RAXML repo
+RAXML_BINARY_VERSION ?= raxmlHPC
 RAXML_REPO := https://github.com/stamatak/standard-RAxML.git
-RAXML_BINARY := $(BINARY_INSTALL_DIR)/raxml
+RAXML_BINARY := $(BINARY_INSTALL_DIR)/$(RAXML_BINARY_VERSION)
+
+MAKEFILE_MAP = \
+	raxmlHPC:Makefile.gcc \
+	raxmlHPC-SSE3:Makefile.SSE3.gcc \
+	raxmlHPC-AVX2:Makefile.AVX.gcc \
+	raxmlHPC-PTHREADS:Makefile.PTHREADS.gcc \
+	raxmlHPC-PTHREADS-SSE3:Makefile.SSE3.PTHREADS.gcc \
+	raxmlHPC-PTHREADS-AVX2:Makefile.AVX.PTHREADS.gcc
+
+RAXML_MAKEFILE := $(word 2, $(subst :, ,$(filter $(RAXML_BINARY_VERSION):%,$(MAKEFILE_MAP))))
+
+RAXML_MAKEFILE ?= Makefile.gcc
 
 # URLs for RAXML-NG repo
 RAXMLNG_REPO := https://github.com/amkozlov/raxml-ng.git
@@ -165,7 +185,7 @@ check_conda:
 create_conda_env: check_conda
 	@echo "Checking if Conda environment $(ENV_NAME) exists..."; \
 	. $(shell conda info --base)/etc/profile.d/conda.sh && \
-	if conda env list | grep -q "^$(ENV_NAME)[[:space:]]" && [ "$(FORCE)" = "0" ]; then \
+	if conda env list | grep -q "^$(ENV_NAME)[[:space:]]" && [ "$(FORCE)" = "false" ] ; then \
 		echo "Conda environment $(ENV_NAME) already exists. Skipping creation."; \
 	else \
 		if conda env list | grep -q "^$(ENV_NAME)[[:space:]]"; then \
@@ -188,7 +208,7 @@ conda_install_diamond: create_conda_env
 		conda install bioconda::diamond=$(DIAMOND_VERSION) -y || { echo "Error: Failed to install DIAMOND. Exiting."; exit 1; }; \
 		echo "DIAMOND version $(DIAMOND_VERSION) installed successfully."
 	elif [ "$$diamond_exists" = "1" ]; then \
-		echo "DIAMOND already exist globally. Skipping installation."; \
+		echo "DIAMOND already exist globally: $$(command -v diamond). Skipping installation."; \
 	fi; \
 
 
@@ -203,7 +223,7 @@ conda_install_mcl: create_conda_env
 		conda install bioconda::mcl=$(MCL_VERSION) -y || { echo "Error: Failed to install MCL. Exiting."; exit 1; }; \
 		echo "MCL version $(MCL_VERSION) installed successfully."
 	elif [ "$$mcl_exists" = "1" ]; then \
-		echo "MCL already exist globally. Skipping installation."; \
+		echo "MCL already exist globally: $$(command -v mcl). Skipping installation."; \
 	fi; \
 
 conda_install_famsa: create_conda_env
@@ -217,7 +237,7 @@ conda_install_famsa: create_conda_env
 		conda install bioconda::famsa=$(FAMSA_VERSION) -y || { echo "Error: Failed to install FAMSA. Exiting."; exit 1; }; \
 		echo "FAMSA version $(FAMSA_VERSION) installed successfully."
 	elif [ "$$famsa_exists" = "1" ]; then \
-		echo "FAMSA already exist globally. Skipping installation."; \
+		echo "FAMSA already exist globally: $$(command -v famsa). Skipping installation."; \
 	fi; \
 
 conda_install_fasttree: create_conda_env
@@ -231,7 +251,7 @@ conda_install_fasttree: create_conda_env
 		conda install bioconda::fasttree=$(FASTTREE_VERSION) -y || { echo "Error: Failed to install FastTree. Exiting."; exit 1; }; \
 		echo "FastTree version $(FASTTREE_VERSION) installed successfully."
 	elif [ "$$fasttree_exists" = "1" ]; then \
-		echo "FastTree already exist globally. Skipping installation."; \
+		echo "FastTree already exist globally: $$(command -v fasttree). Skipping installation."; \
 	fi; \
 
 conda_install_fastme: create_conda_env
@@ -245,7 +265,7 @@ conda_install_fastme: create_conda_env
 		conda install bioconda::fastme=$(FASTME_VERSION) -y || { echo "Error: Failed to install FastME. Exiting."; exit 1; }; \
 		echo "FastME version $(FASTME_VERSION) installed successfully."
 	elif [ "$$fastme_exists" = "1" ]; then \
-		echo "FastME already exist globally. Skipping installation."; \
+		echo "FastME already exist globally: $$(command -v fastme). Skipping installation."; \
 	fi; \
 
 conda_install_aster: create_conda_env
@@ -259,7 +279,7 @@ conda_install_aster: create_conda_env
 		conda install aster=$(ASTER_VERSION) -y || { echo "Error: Failed to install ASTER. Exiting."; exit 1; }; \
 		echo "ASTER version $(ASTER_VERSION) installed successfully."
 	elif [ "$$astralpro_exists" = "1" ]; then \
-		echo "ASTRAL-Pro already exist globally. Skipping installation."; \
+		echo "ASTRAL-Pro already exist globally: $$(command -v astral-pro). Skipping installation."; \
 	fi; \
 
 conda_install_mafft: create_conda_env
@@ -273,7 +293,7 @@ conda_install_mafft: create_conda_env
 		conda install bioconda::mafft=$(MAFFT_VERSION) -y || { echo "Error: Failed to install MAFFT. Exiting."; exit 1; }; \
 		echo "MAFFT version $(MAFFT_VERSION) installed successfully."
 	elif [ "$$mafft_exists" = "1" ]; then \
-		echo "MAFFT already exist globally. Skipping installation."; \
+		echo "MAFFT already exist globally: $$(command -v mafft). Skipping installation."; \
 	fi; \
 
 
@@ -288,7 +308,7 @@ conda_install_iqtree2: create_conda_env
 		conda install bioconda::iqtree=$(IQTREE_VERSION) -y || { echo "Error: Failed to install IQ-TREE2. Exiting."; exit 1; }; \
 		echo "IQ-TREE2 version $(IQTREE_VERSION) installed successfully."
 	elif [ "$$iqtree2_exists" = "1" ]; then \
-		echo "IQ-TREE2 already exist globally. Skipping installation."; \
+		echo "IQ-TREE2 already exist globally: $$(command -v iqtree2). Skipping installation."; \
 	fi
 
 conda_install_raxml: create_conda_env
@@ -302,7 +322,7 @@ conda_install_raxml: create_conda_env
 		conda install bioconda::raxml=$(RAXML_VERSION) -y || { echo "Error: Failed to install RAxML. Exiting."; exit 1; }; \
 		echo "RAxML version $(RAXML_VERSION) installed successfully."
 	elif [ "$$raxml_exists" = "1" ]; then \
-		echo "RAxML already exist globally. Skipping installation."; \
+		echo "RAxML already exists globally at: $$(command -v raxml)". Skipping installation.; \
 	fi; \
 
 conda_install_raxmlng: create_conda_env
@@ -316,7 +336,7 @@ conda_install_raxmlng: create_conda_env
 		conda install bioconda::raxml-ng=$(RAXMLNG_VERSION) -y || { echo "Error: Failed to install RAXML-NG. Exiting."; exit 1; }; \
 		echo "RAXML-NG version $(RAXMLNG_VERSION) installed successfully."
 	elif [ "$$raxmlng_exists" = "1" ]; then \
-		echo "RAXML-NG already exist globally. Skipping installation."; \
+		echo "RAXML-NG already exist globally: $$(command -v raxml-ng). Skipping installation."; \
 	fi; \
 
 conda_install_muscle: create_conda_env
@@ -330,15 +350,32 @@ conda_install_muscle: create_conda_env
 		conda install bioconda::muscle=$(MUSCLE_VERSION) -y || { echo "Error: Failed to install MUSCLE. Exiting."; exit 1; }; \
 		echo "MUSCLE version $(MUSCLE_VERSION) installed successfully."
 	elif [ "$$muscle_exists" = "1" ]; then \
-		echo "MUSCLE already exist globally. Skipping installation."; \
+		echo "MUSCLE already exist globally: $$(command -v muscle). Skipping installation."; \
 	fi; \
+
+conda_install_blast: create_conda_env
+	@echo "Checking global paths for BLAST..."; \
+	blastn_exists=$$(command -v blastn > /dev/null && echo 1 || echo 0); \
+	blastp_exists=$$(command -v blastp > /dev/null && echo 1 || echo 0); \
+
+	if [ "$(FORCE)" = "true" ] || [ "$$blastn_exists" = "0" ] || [ "$$blastp_exists" = "0" ]; then \
+		echo "Installing BLAST version $(BLAST_VERSION) in $(ENV_NAME)..."; \
+		. $(shell conda info --base)/etc/profile.d/conda.sh && \
+		conda activate $(ENV_NAME) && \
+		conda install bioconda::blast=$(BLAST_VERSION) -y || { echo "Error: Failed to install BLAST. Exiting."; exit 1; }; \
+		echo "BLAST version $(BLAST_VERSION) installed successfully."
+	else \
+		echo "BLASTN already exist globally: $$(command -v blastn). Skipping installation."; \
+		echo "BLASTP already exist globally: $$(command -v blastp). Skipping installation."; \
+	fi; \
+
 
 conda_install_orthofinder: create_conda_env
 	@echo "Checking global paths for OrthoFinder..."; \
 	orthofinder_exists=$$(command -v orthofinder > /dev/null && echo 1 || echo 0); \
 
 	if [ "$$orthofinder_exists" = "1" ]; then \
-		echo " OrthoFinder already exist globally. Skipping installation."; \
+		echo " OrthoFinder already exist globally: $$(command -v orthofinder). Skipping installation."; \
 	elif [ "$(FORCE)" = "true" ] || [ "$$orthofinder_exists" = "0" ]; then \
 		echo "Installing  OrthoFinder version $(ORTHOFINDER_VERSION) in $(ENV_NAME)..."; \
 		. $(shell conda info --base)/etc/profile.d/conda.sh && \
@@ -353,7 +390,7 @@ conda_install_tools: conda_install_diamond conda_install_mcl conda_install_famsa
 conda_install: conda_install_orthofinder conda_install_tools
 	@echo "You have now installed OrthoFinder $(ORTHOFINDER_VERSION) and its dependencies in $(ENV_NAME)!"
 
-clean_conda_venv:
+clean_conda_env:
 	@echo "Checking if Conda environment $(ENV_NAME) exists..."; \
 	. $(shell conda info --base)/etc/profile.d/conda.sh && \
 	if conda env list | grep -q "^$(ENV_NAME)[[:space:]]"; then \
@@ -363,6 +400,7 @@ clean_conda_venv:
 	else \
 		echo "Conda environment $(ENV_NAME) does not exist. Skipping removal."; \
 	fi
+
 
 make_usr_bin:
 	@if [ ! -d "$(USER_INSTALL_DIR)" ]; then \
@@ -687,19 +725,18 @@ install_raxml: make_usr_bin
 		cd $$temp_dir/raxml-src && \
 		echo "Building RAxML from source..."; \
 		if [ "$(QUIET)" = "true" ]; then \
-			make -f Makefile.gcc > /dev/null 2>&1 || { echo "Error: Failed to build RAxML."; rm -rf $$temp_dir; exit 1; }; \
+			make -f $(RAXML_MAKEFILE) > /dev/null 2>&1 || { echo "Error: Failed to build RAxML."; rm -rf $$temp_dir; exit 1; }; \
 		else \
-			make -f Makefile.gcc || { echo "Error: Failed to build RAxML."; rm -rf $$temp_dir; exit 1; }; \
+			make -f $(RAXML_MAKEFILE) || { echo "Error: Failed to build RAxML."; rm -rf $$temp_dir; exit 1; }; \		
 		fi; \
 		echo "Moving RAxML binaries to $(BINARY_INSTALL_DIR)..."; \
 		$(SUDO_PREFIX) mv raxmlHPC* $(BINARY_INSTALL_DIR)/ || { echo "Error: Failed to move RAxML binaries."; rm -rf $$temp_dir; exit 1; }; \
 		rm -rf $$temp_dir; \
 		echo "RAxML installation completed successfully."; \
 	else \
-		raxml_path=$$(command -v raxmlHPC); \
+		raxml_path=$$(command -v $(RAXML_BINARY_VERSION)); \
 		echo "RAxML already exists at: $$raxml_path. Skipping installation."; \
 	fi
-
 
 install_raxmlng: make_usr_bin
 	@echo "Checking global paths for RAxML-NG..."; \

@@ -368,6 +368,7 @@ def OrthologuesFromTrees(
         qAddSpeciesToIDs,
         q_split_para_clades,
         fewer_open_files,
+        tree_program="fasttree",
         old_version=False,
     ):
     """
@@ -383,6 +384,7 @@ def OrthologuesFromTrees(
         speciesToUse, 
         nSpAll, 
         qAddSpeciesToIDs,
+        tree_program=tree_program,
         idExtractor = util.FirstWordExtractor
     )
     if userSpeciesTree_fn != None:
@@ -447,6 +449,7 @@ def OrthologuesWorkflow(
         speciesToUse, 
         nSpAll,
         qAddSpeciesToIDs, 
+        tree_program=options.tree_program,
         idExtractor = util.FirstWordExtractor
     )
 

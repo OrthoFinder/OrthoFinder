@@ -77,11 +77,6 @@ def PrintHelp(prog_caller):
     )
     # # print(" -a <int>                Number of parallel analysis threads")
 
-    # print(" -d                      Input is DNA sequences")                ### is this still an option??
-    table_options.add_row(
-        "-d",
-        "Input is DNA sequences"
-    )
     # print(
     #     ' -M <txt>                Method for gene tree inference. Options "dendroblast" & "msa"'
     # )
@@ -197,6 +192,11 @@ def PrintHelp(prog_caller):
     table_options.add_row(
         "-o <[bright_magenta]txt[/bright_magenta]>",
         "Non-default results directory",
+    )
+    # print(" -d                      Input is DNA sequences")                ### is this still an option??
+    table_options.add_row(
+        "-d",
+        "Input is DNA sequences."
     )
 
     # print(

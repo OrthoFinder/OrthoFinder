@@ -761,17 +761,21 @@ def file_open(filename_with_gz, mode, gz):
 def compress_files(src_dir, output_fn):
     try:
         with open(output_fn, "w") as writer:
+            filenames = []
             with os.scandir(src_dir) as it:
                 for entry in it:
                     if entry.is_file():
                         # fn = entry.name.partition("_")[0]
-                        fn = entry.name.partition(".")[0]
-                        try:
-                            with open(entry.path, "r") as infile:
-                                og_tree = "".join(line.strip() for line in infile)
-                            writer.write(f"{fn}: {og_tree}\n")
-                        except IOError as e:
-                            print(f"ERROR reading file {entry.name}: {e}")
+                        # fn = entry.name.partition(".")[0]
+                        filenames.append((entry.name.partition(".")[0], entry))
+            filenames = sorted(filenames)
+            for fn, entry in filenames:
+                try:
+                    with open(entry.path, "r") as infile:
+                        og_tree = "".join(line.strip() for line in infile)
+                    writer.write(f"{fn}: {og_tree}\n")
+                except IOError as e:
+                    print(f"ERROR reading file {entry.name}: {e}")
     except IOError as e:
         printer.print(f"ERROR writing to output file {output_fn}: {e}", style="error")
 

@@ -565,8 +565,6 @@ def ProcessArgs(args):
 
         elif arg == "-d" or arg == "--dna":
             options.dna = True
-            if not q_selected_search_option:
-                options.search_program = "blast_nucl"
 
         elif arg == "-X":
             options.qAddSpeciesToIDs = False
@@ -964,25 +962,26 @@ def ProcessArgs(args):
         print( "INFO: For --assign defaulting to 'FastTree -fastest' to reduce RAM usage\n")
         options.tree_program = "fasttree_fastest"
         # options.tree_program = "veryfasttree"
+    
+    if options.search_program == "diamond":
+        # check gapextend
+        options.gapextend = GetGapExtend(
+            options.score_matrix, 
+            options.gapextend, 
+            scoring_matrix_info
+        )
 
-    # check gapextend
-    options.gapextend = GetGapExtend(
-        options.score_matrix, 
-        options.gapextend, 
-        scoring_matrix_info
-    )
+        if options.score_matrix in diamond_sm_options and options.gapextend is None:
+            print("The gapopen penalty cannot be define before gapextend")
+            util.Fail()
 
-    if options.score_matrix in diamond_sm_options and options.gapextend is None:
-        print("The gapopen penalty cannot be define before gapextend")
-        util.Fail()
-
-    # check gapopen
-    options.gapopen = GetGapOpen(
-        options.score_matrix, 
-        options.gapopen, 
-        options.gapextend,
-        scoring_matrix_info
-    )
+        # check gapopen
+        options.gapopen = GetGapOpen(
+            options.score_matrix, 
+            options.gapopen, 
+            options.gapextend,
+            scoring_matrix_info
+        )
    
     if resultsDir_nonDefault is not None:
         resultsDir_nonDefault = os.path.abspath(resultsDir_nonDefault) + os.path.sep

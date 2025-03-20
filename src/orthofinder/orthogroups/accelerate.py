@@ -34,7 +34,7 @@ def check_for_orthoxcelerate(input_dir, speciesInfoObj):
     return True
 
 
-def prepare_accelerate_database(min_seq, input_dir, wd_list, nSpAll):
+def prepare_accelerate_database(min_seq, input_dir, wd_list, nSpAll, tree_program="fasttree"):
     if xcelerate_config.n_for_profiles is None:
         # create_shoot_db.create_full_database(input_dir, q_ids=True, subtrees_dir="")
         fn_diamond_db, q_hogs = create_profiles_database(
@@ -44,7 +44,8 @@ def prepare_accelerate_database(min_seq, input_dir, wd_list, nSpAll):
             nSpAll, 
             selection="all", 
             q_ids=True, 
-            subtrees_dir=""
+            subtrees_dir="",
+            tree_program=tree_program
         )
     else:
         fn_diamond_db, q_hogs = create_profiles_database(
@@ -55,7 +56,8 @@ def prepare_accelerate_database(min_seq, input_dir, wd_list, nSpAll):
             selection="kmeans", 
             q_ids=True, 
             n_for_profile=xcelerate_config.n_for_profiles, 
-            subtrees_dir=""
+            subtrees_dir="",
+            tree_program=tree_program
         )
     return fn_diamond_db, q_hogs
 
@@ -169,7 +171,8 @@ def create_profiles_database(
         n_for_profile=20, 
         q_ids=True,
         subtrees_dir="", 
-        q_hogs=False
+        q_hogs=False,
+        tree_program="fasttree"
     ):
     """
     Create a fasta file with profile genes from each orthogroup
@@ -204,7 +207,14 @@ def create_profiles_database(
         print("Profiles database already exists and will be reused: ")
         print(f"[dark_cyan]{fn_diamond_db}[dark_cyan]")
         return fn_diamond_db, q_hogs
-    og_set = orthogroups_set.OrthoGroupsSet(min_seq, wd_list, list(range(nSpAll)), nSpAll, True)
+    og_set = orthogroups_set.OrthoGroupsSet(
+        min_seq, 
+        wd_list, 
+        list(range(nSpAll)), 
+        nSpAll, 
+        True,
+        tree_program=tree_program
+    )
     ids = og_set.Spec_SeqDict()
     ids_rev = {v: k for k, v in ids.items()}
     if q_hogs:
