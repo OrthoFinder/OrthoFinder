@@ -166,7 +166,7 @@ Command-line options for OrthoFinder
 | Parameter        | Description                                                               |
 |------------------|---------------------------------------------------------------------------|
 | `-1`             | Only perform one-way sequence search.                                     |
-| `--matrix`       | Scoring matrix allowed by DIAMOND.                                        |
+| `--matrix`       | Scoring matrix allowed by DIAMOND. (BLOSUM62 (default), BLOSUM45, BLOSUM50, , BLOSUM80, BLOSUM90, PAM250, PAM70, PAM30)                                        |
 | `--custom-matrix`| Custom scoring matrix.                                                    |
 | `-z`             | Don’t trim MSAs (columns >= 90% gap, min. alignment length 500).          |
 | `--save-space`   | Only create one compressed orthologs file per species (Default = "yes"                  |
