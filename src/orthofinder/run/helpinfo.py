@@ -273,10 +273,10 @@ def PrintHelp(prog_caller):
         "Stop after preparing input files for BLAST",
     )
     # print(" -og                     Stop after inferring orthogroups")                              ### I think we only go as far as doing blast??
-    table_stoping.add_row(
-        "-og",
-        "Stop after inferring orthogroups",
-    )
+    # table_stoping.add_row(
+    #     "-og",
+    #     "Stop after inferring orthogroups",
+    # )
     #print(" -os                     Stop after writing sequence files for orthogroups")
     #print("                         (requires '-M msa')")
     #print(" -oa                     Stop after inferring alignments for orthogroups")

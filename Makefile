@@ -445,7 +445,6 @@ make_usr_bin:
 	fi
 
 
-
 install_diamond: make_usr_bin
 	@echo "Checking global paths for DIAMOND..."; \
 	diamond_exists=$$(command -v diamond > /dev/null && echo 1 || echo 0); \
