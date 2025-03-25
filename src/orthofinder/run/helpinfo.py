@@ -51,7 +51,6 @@ def PrintHelp(prog_caller):
     tree_ops = prog_caller.ListTreeMethods()
     tree_ops.remove("raxml-ng")
     search_ops = prog_caller.ListSearchMethods()
-    search_ops.remove("blast")
     search_ops.remove("diamond_custom")
     search_ops.remove("diamond_ultra_sens_custom")
 
@@ -100,7 +99,7 @@ def PrintHelp(prog_caller):
     )
     table_options.add_row(
         "",
-        "Options: " + ", ".join(["blast"] + search_ops)
+        "Options: " + ", ".join(search_ops)
     )
 
     # print(' -A <txt>                MSA program, requires "-M msa" [Default = FAMSA]')      ##edited famsa
