@@ -185,11 +185,12 @@ def post_ogs_processing(
         align_id_dir2=None,
     ):
 
-    read_queue = mp.Queue(maxsize=4 * min(len(unique_ogs), nprocess))  
-    process_queue = mp.Queue(maxsize=nprocess)  
+    parall_nprocess =  max((int(nprocess // 2), 1))
+    process_queue = mp.Queue(maxsize=parall_nprocess) 
+    read_queue = mp.Queue(maxsize=4 * min(len(unique_ogs), parall_nprocess))  
 
     def start_reading():
-        with ThreadPoolExecutor(max_workers=min(len(unique_ogs), nprocess)) as reader_executor:
+        with ThreadPoolExecutor(max_workers=min(len(unique_ogs), parall_nprocess)) as reader_executor:
             reader_futures = [
                 reader_executor.submit(
                     read_tree_and_fasta, 
@@ -206,12 +207,12 @@ def post_ogs_processing(
                     future.result()
                 except Exception as e:
                     print(f"ERROR in reading task: {e}")
-        for _ in range(nprocess):
+        for _ in range(parall_nprocess):
             read_queue.put(None)
 
     def start_processing():
         processor_workers = []
-        for _ in range(nprocess):
+        for _ in range(parall_nprocess):
             p = mp.Process(
                 target=process_tree_id, 
                 args=(hog_n0_over4genes, name_dict, species_names, read_queue, process_queue)

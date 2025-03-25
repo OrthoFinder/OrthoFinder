@@ -47,8 +47,13 @@ def PrintHelp(prog_caller):
     # table.add_column("", justify="left", overflow="fold")
 
     msa_ops = prog_caller.ListMSAMethods()
+    msa_ops.remove("mafft_memsave")
     tree_ops = prog_caller.ListTreeMethods()
+    tree_ops.remove("raxml-ng")
     search_ops = prog_caller.ListSearchMethods()
+    search_ops.remove("blast")
+    search_ops.remove("diamond_custom")
+    search_ops.remove("diamond_ultra_sens_custom")
 
     print("")
     print("[bold]SIMPLE USAGE:[/bold]")
@@ -130,7 +135,7 @@ def PrintHelp(prog_caller):
 
     table_options.add_row(
         "-s <[bright_magenta]file[/bright_magenta]>",
-        'Tree reconciliation method [Default = [dark_cyan]of_recon[/dark_cyan]]',
+        'User-specified rooted species tree',
     )
     # print(
     #     " -I <int>                MCL inflation parameter [Default = %0.1f]"
@@ -144,22 +149,22 @@ def PrintHelp(prog_caller):
 
     # print(" --matrix <txt>          Scoring matrix allowed by DIAMOND")
 
-    table_options.add_row(
-        "--matrix <[bright_magenta]txt[/bright_magenta]>",
-        'Scoring matrix allowed by [dark_cyan]diamond[/dark_cyan], supported for [dark_cyan]diamond[/dark_cyan] and [dark_cyan]diamond_ultra_sens[/dark_cyan] '
-        "[Default = [dark_cyan]BLOSUM62[/dark_cyan]]",
-    )
-    table_options.add_row(
-        "",
-        f"Options: {', '.join([*process_args.diamond_sm_options.keys()])}",
-    )
+    # table_options.add_row(
+    #     "--matrix <[bright_magenta]txt[/bright_magenta]>",
+    #     'Scoring matrix allowed by [dark_cyan]diamond[/dark_cyan], supported for [dark_cyan]diamond[/dark_cyan] and [dark_cyan]diamond_ultra_sens[/dark_cyan] '
+    #     "[Default = [dark_cyan]BLOSUM62[/dark_cyan]]",
+    # )
+    # table_options.add_row(
+    #     "",
+    #     f"Options: {', '.join([*process_args.diamond_sm_options.keys()])}",
+    # )
 
     # print(" --custom-matrix <txt>   Custom scoring matrix")
 
-    table_options.add_row(
-        "--custom-matrix <[bright_magenta]file[/bright_magenta]>",
-        'Custom scoring matrix, only supported for [dark_cyan]diamond_custom[/dark_cyan] and [dark_cyan]diamond_ultra_sens_custom[/dark_cyan]',
-    )
+    # table_options.add_row(
+    #     "--custom-matrix <[bright_magenta]file[/bright_magenta]>",
+    #     'Custom scoring matrix, only supported for [dark_cyan]diamond_custom[/dark_cyan] and [dark_cyan]diamond_ultra_sens_custom[/dark_cyan]',
+    # )
 
 
     # print(" -1                      Only perform one-way sequence search")
@@ -203,19 +208,19 @@ def PrintHelp(prog_caller):
     #     " -efn                    Extend the output directory name with the name of the scoring matrix, gap penalties, search program, MSA program and tree program"
     # )
     
-    table_options.add_row(
-        "-efn",
-        (
-            "Extend the output directory name with the name of the scoring matrix, "
-            "gap penalties, search program, MSA program and tree program"
-        ),
-    )
-    table_options.add_row(
-        "--scoring-matrix",
-        (
-            "Print out the usage of a different scoring matrix"
-        ),
-    )
+    # table_options.add_row(
+    #     "-efn",
+    #     (
+    #         "Extend the output directory name with the name of the scoring matrix, "
+    #         "gap penalties, search program, MSA program and tree program"
+    #     ),
+    # )
+    # table_options.add_row(
+    #     "--scoring-matrix",
+    #     (
+    #         "Print out the usage of a different scoring matrix"
+    #     ),
+    # )
     # print(
     #     " --save-space            Only create one compressed orthologs file per species"           ## is this an option? i thought it did this already?
     # )

@@ -15,9 +15,11 @@
         "program_type": "msa",
         "cmd_line": "muscle -align INPUT -output OUTPUT"
     },
-    "mafft_memsave": {
+    "mafft": {
         "program_type": "msa",
-        "cmd_line": "mafft --thread METHODTHREAD --anysymbol --memsave INPUT > OUTPUT"
+        "cmd_line": "mafft --localpair --maxiterate 1000 --anysymbol INPUT > OUTPUT",
+        "cmd_line_fast": "mafft --anysymbol INPUT > OUTPUT",
+        "n_seqs_use_fast": "500"
     },
     "famsa": {
         "program_type": "msa",
@@ -36,18 +38,13 @@
         "cmd_line": "raxmlHPC-AVX -m PROTGAMMALG -p 12345 -s INPUT -n IDENTIFIER -w PATH > /dev/null",
         "ouput_filename": "PATH/RAxML_bestTree.IDENTIFIER"
     },
-    "raxml-ng": {
-        "program_type": "tree",
-        "cmd_line": "raxml-ng --msa INPUT --model LG+G4 --seed 12345 --threads 1",
-        "ouput_filename": "INPUT.raxml.bestTree"
-    },
     "__comment": "IQTREE can fail with the error ERROR: Numerical underflow (lh-branch). Run again with the safe",
     "__comment": "In the command below it is run without the safe option first and then with.",
     "__comment": "If it is successful the first time then IQTREE will not re-run the tree inference, so this adds no cost.",
     "__comment": "If the Numerical underflow error occurs then the tree will be run a second time with the safe option selected.",
     "iqtree2": {
         "program_type": "tree",
-        "cmd_line": "iqtree2 -s INPUT -pre PATH/IDENTIFIER -quiet ; iqtree -s INPUT -pre PATH/IDENTIFIER -quiet -safe",
+        "cmd_line": "iqtree2 -s INPUT --prefix PATH/IDENTIFIER -quiet",
         "ouput_filename": "PATH/IDENTIFIER.treefile"
     },
     "diamond": {
@@ -60,17 +57,7 @@
         "db_cmd": "diamond makedb --threads METHODTHREAD --ignore-warnings --in INPUT -d OUTPUT",
         "search_cmd": "diamond blastp --threads METHODTHREAD --ignore-warnings -d DATABASE -q INPUT -o OUTPUT --matrix SCOREMATRIX --gapopen GAPOPEN --gapextend GAPEXTEND --ultra-sensitive -p 1 --quiet -e 0.001 --compress 1"
     },
-    "diamond_custom": {
-        "program_type": "search",
-        "db_cmd": "diamond makedb --threads METHODTHREAD --ignore-warnings --in INPUT -d OUTPUT",
-        "search_cmd": "diamond blastp --threads METHODTHREAD --ignore-warnings -d DATABASE -q INPUT -o OUTPUT --custom-matrix SCOREMATRIX  --gapopen GAPOPEN --gapextend GAPEXTEND --more-sensitive -p 1 --quiet -e 0.001 --compress 1"
-    },
-    "diamond_ultra_sens_custom": {
-        "program_type": "search",
-        "db_cmd": "diamond makedb --threads METHODTHREAD --ignore-warnings --in INPUT -d OUTPUT",
-        "search_cmd": "diamond blastp --threads METHODTHREAD --ignore-warnings -d DATABASE -q INPUT -o OUTPUT --custom-matrix SCOREMATRIX  --gapopen GAPOPEN --gapextend GAPEXTEND --ultra-sensitive -p 1 --quiet -e 0.001 --compress 1"
-    },
-    "blast_gz": {
+    "blastp": {
         "program_type": "search",
         "db_cmd": "makeblastdb -dbtype prot -in INPUT -out OUTPUT",
         "search_cmd": "blastp -outfmt 6 -evalue 0.001 -query INPUT -db DATABASE | gzip > OUTPUT.gz"
@@ -80,7 +67,7 @@
         "db_cmd": "mmseqs createdb INPUT OUTPUT.fa ; mmseqs createindex OUTPUT.fa /tmp",
         "search_cmd": "mmseqs search PATH/mmseqsDBBASENAME DATABASE.fa OUTPUT.db /tmp/tmpBASEOUTNAME  --threads 1 ; mmseqs convertalis --threads 1 PATH/mmseqsDBBASENAME DATABASE.fa OUTPUT.db OUTPUT"
     },
-    "blast_nucl": {
+    "blastn": {
         "program_type": "search",
         "db_cmd": "makeblastdb -dbtype nucl -in INPUT -out OUTPUT",
         "search_cmd": "blastn -outfmt 6 -evalue 0.001 -query INPUT -db DATABASE | gzip > OUTPUT.gz"

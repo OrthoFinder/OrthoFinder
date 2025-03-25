@@ -54,7 +54,7 @@ BLAST_DEFAULT_VERSION := 2.16.0
 BLAST_VERSION ?= $(BLAST_DEFAULT_VERSION)
 
 
-SYSTEM_WIDE ?= 0
+SYSTEM_WIDE ?= false
 HOME_DIR := $(if $(HOME),$(HOME),$(shell echo ~))
 
 USE_CONDA ?= true
@@ -82,7 +82,7 @@ USER_INSTALL_DIR := $(shell $(PROMPT_USER_INSTALL_DIR))
 SYSTEM_INSTALL_DIR := /usr/local/bin
 ORTHOFINDER_DIR := $(USER_INSTALL_DIR)
 
-ifeq ($(SYSTEM_WIDE),1)
+ifeq ($(SYSTEM_WIDE),true)
     BINARY_INSTALL_DIR := $(SYSTEM_INSTALL_DIR)
     SUDO_PREFIX := $(if $(shell [ "$(USER)" = "root" ] || echo 1),sudo)
 else
@@ -402,19 +402,49 @@ clean_conda_env:
 	fi
 
 
+# make_usr_bin:
+# 	@if [ ! -d "$(USER_INSTALL_DIR)" ]; then \
+# 		echo "Directory $(USER_INSTALL_DIR) does not exist. Creating it..."; \
+# 		mkdir -p $(USER_INSTALL_DIR); \
+# 	fi; \
+# 	echo "Checking if $(USER_INSTALL_DIR) is already in the PATH..."; \
+# 	if ! grep -qx 'export PATH="$(USER_INSTALL_DIR):$$PATH"' ~/.bashrc; then \
+# 		echo "Adding $(USER_INSTALL_DIR) to the PATH permanently."; \
+# 		echo 'export PATH="$(USER_INSTALL_DIR):$$PATH"' >> ~/.bashrc || { echo "Error: Failed to update PATH in ~/.bashrc. Exiting."; exit 1; }; \
+# 		echo "PATH update added to ~/.bashrc. Please restart your shell or run 'source ~/.bashrc' to apply changes."; \
+# 	else \
+# 		echo "$(USER_INSTALL_DIR) is already in the PATH. Skipping addition to ~/.bashrc."; \
+# 	fi
+
+
 make_usr_bin:
 	@if [ ! -d "$(USER_INSTALL_DIR)" ]; then \
 		echo "Directory $(USER_INSTALL_DIR) does not exist. Creating it..."; \
 		mkdir -p $(USER_INSTALL_DIR); \
 	fi; \
-	echo "Checking if $(USER_INSTALL_DIR) is already in the PATH..."; \
-	if ! grep -qx 'export PATH="$(USER_INSTALL_DIR):$$PATH"' ~/.bashrc; then \
-		echo "Adding $(USER_INSTALL_DIR) to the PATH permanently."; \
-		echo 'export PATH="$(USER_INSTALL_DIR):$$PATH"' >> ~/.bashrc || { echo "Error: Failed to update PATH in ~/.bashrc. Exiting."; exit 1; }; \
-		echo "PATH update added to ~/.bashrc. Please restart your shell or run 'source ~/.bashrc' to apply changes."; \
+	SHELL_NAME=$$(basename "$${SHELL}"); \
+	if [ "$${SHELL_NAME}" = "zsh" ]; then \
+		SHELL_RC="$${HOME}/.zshrc"; \
+	elif [ "$${SHELL_NAME}" = "bash" ]; then \
+		if [ "$$(uname)" = "Darwin" ]; then \
+			SHELL_RC="$${HOME}/.bash_profile"; \
+		else \
+			SHELL_RC="$${HOME}/.bashrc"; \
+		fi; \
 	else \
-		echo "$(USER_INSTALL_DIR) is already in the PATH. Skipping addition to ~/.bashrc."; \
+		SHELL_RC="$${HOME}/.profile"; \
+	fi; \
+	echo "Using shell configuration file: $${SHELL_RC}"; \
+	echo "Checking if $(USER_INSTALL_DIR) is already in the PATH..."; \
+	if ! grep -qx 'export PATH="$(USER_INSTALL_DIR):$$PATH"' $${SHELL_RC}; then \
+		echo "Adding $(USER_INSTALL_DIR) to the PATH permanently."; \
+		echo 'export PATH="$(USER_INSTALL_DIR):$$PATH"' >> $${SHELL_RC} || { echo "Error: Failed to update PATH in $${SHELL_RC}. Exiting."; exit 1; }; \
+		echo "PATH update added to $${SHELL_RC}. Please restart your shell or run 'source $${SHELL_RC}' to apply changes."; \
+	else \
+		echo "$(USER_INSTALL_DIR) is already in the PATH. Skipping addition to $${SHELL_RC}."; \
 	fi
+
+
 
 install_diamond: make_usr_bin
 	@echo "Checking global paths for DIAMOND..."; \
