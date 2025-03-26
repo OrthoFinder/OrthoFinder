@@ -1,24 +1,38 @@
 import os
 import traceback
 import multiprocessing as mp
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import ete3
 
-def extract_gene_name(leaf_name, species_names):
-    # Find the matching species name at the start of leaf_name
-    matching_species = next((species for species in species_names if leaf_name.startswith(species + "_")), None)
-    # If a matching species is found, extract the gene name
-    if matching_species:
-        # Remove the species prefix and underscore to get the gene name
-        gene_name = leaf_name[len(matching_species) + 1:]  # +1 to account for the underscore
-        return gene_name
-    else:
-        return None  # or handle as appropriate if no match is found
-    
-def get_file_path(unique_og, id_dir, extension=".fa"):
+
+def index_files(id_dir, extension=".fa"):
+    file_index = {}
+    if id_dir is None:
+        return file_index
     for entry in os.scandir(id_dir):
-        if entry.is_file() and entry.name == unique_og + extension:
-            return entry.path
+        if entry.is_file() and entry.name.endswith(extension):
+            key = entry.name[:-len(extension)]
+            file_index[key] = entry.path
+    return file_index
+
+# def read_fasta(file_path):
+#     genes_dict = {}
+#     with open(file_path, 'r') as fastaFile:
+#         accession = None
+#         sequence = []
+#         for line in fastaFile:
+#             line = line.rstrip()
+#             if line.startswith(">"):
+#                 if accession is not None:
+#                     genes_dict[accession] = "".join(sequence)
+#                 accession = line[1:]
+#                 sequence = []
+#             else:
+#                 sequence.append(line)
+#         if accession is not None:
+#             genes_dict[accession] = "".join(sequence)
+#     return genes_dict
+
 
 def read_fasta(file_path):
     genes_dict = {}
@@ -40,204 +54,143 @@ def read_fasta(file_path):
         genes_dict[accession] = sequence
     return genes_dict
 
+def process_unique_og(
+        unique_og, 
+        hog_entries, 
+        species_names, 
+        name_dict,
+        tree_file_index, 
+        fasta_file_index,
+    ):
 
-# Function to extract gene names from species_gene format
-def extract_gene_name(leaf_name, species_names):
-    # Find the matching species name at the start of leaf_name
-    matching_species = next((species for species in species_names if leaf_name.startswith(species + "_")), None)
-    # If a matching species is found, extract the gene name
-    if matching_species:
-        # Remove the species prefix and underscore to get the gene name
-        gene_name = leaf_name[len(matching_species) + 1:]  # +1 to account for the underscore
-        return gene_name
-    else:
-        return None  # or handle as appropriate if no match is found
-
-
-def read_tree_and_fasta(unique_og, resolved_trees_working_dir, id_dir, read_queue, tree_extension=".txt", fasta_extension=".fa"):
+    results = []
     try:
-        tree_id_path = get_file_path(unique_og, resolved_trees_working_dir, tree_extension)
         gene_tree = None
-        if tree_id_path:
-            with open(tree_id_path, "r") as file:
-                gene_tree = ete3.Tree(file.read().strip(), quoted_node_names=True, format=1)
+        if unique_og in tree_file_index:
+            with open(tree_file_index[unique_og], "r") as file:
+                tree_data = file.read().strip()
+                gene_tree = ete3.Tree(tree_data, quoted_node_names=True, format=1)
         else:
             print(f"WARNING: Tree file not found for {unique_og}")
+            return results 
         
         gene_dict = None
-        if id_dir is not None:
-            fasta_id_path = get_file_path(unique_og, id_dir, fasta_extension)
-            if fasta_id_path:
-                gene_dict = read_fasta(fasta_id_path)
+        if unique_og in fasta_file_index:
+            gene_dict = read_fasta(fasta_file_index[unique_og])
+        else:
+            print(f"WARNING: FASTA file not found for {unique_og}")
+        
+        for row in hog_entries:
+            hog_name = name_dict.get(row["HOG"], row["HOG"])
+            parent_node = row["Gene Tree Parent Clade"]
+
+            if parent_node == "n0":
+                subtree = gene_tree.copy()
             else:
-                print(f"WARNING: FASTA file not found for {unique_og}")
-
-        read_queue.put((unique_og, gene_tree, gene_dict))
-
-    except Exception as e:
-        print(f"ERROR reading data for {unique_og}: {e}")
-
-
-def process_tree_id(hog_n0_over4genes, name_dict, species_names, read_queue, process_queue):
-    while True:
-        task = read_queue.get()
-        if task is None: 
-            process_queue.put(None)
-            break
-
-        unique_og, gene_tree, gene_dict = task
-        try:
-            mini_hog = [row for row in hog_n0_over4genes if unique_og in row["OG"]]
-            results = []
-            for row in mini_hog:
-                hog_name = name_dict.get(row["HOG"], row["HOG"])
-                parent_node = row["Gene Tree Parent Clade"]
-
-                if parent_node == "n0":
-                    subtree = gene_tree.copy()
-                else:
-                    subtree = gene_tree.get_tree_root().search_nodes(name=parent_node)
-                    if not subtree:
-                        print(f"WARNING: Parent node '{parent_node}' not found for {unique_og}")
-                        continue
-                    subtree = subtree[0]
-
-                current_leaves = [leaf.name for leaf in subtree.get_leaves()]
-                expected_leaves = ', '.join([row[col] for col in species_names if row[col]]).split(', ')
-                
-                if set(current_leaves) != set(expected_leaves):
+                subtree_nodes = gene_tree.get_tree_root().search_nodes(name=parent_node)
+                if not subtree_nodes:
+                    print(f"WARNING: Parent node '{parent_node}' not found for {unique_og}")
+                    continue
+                subtree = subtree_nodes[0]
+            
+            current_leaves = [leaf.name for leaf in subtree.get_leaves()]
+            
+            expected_leaves = []
+            for col in species_names:
+                if row.get(col):
+                    expected_leaves.extend([x.strip() for x in row[col].split(',')])
+            
+            if set(current_leaves) != set(expected_leaves):
+                try:
                     subtree.prune(expected_leaves)
+                except Exception as e:
+                    print(f"WARNING: Could not prune subtree for {hog_name}: {e}")
+            
+            pruned_alignments = None
+            if gene_dict is not None:
+                pruned_alignments = {
+                    gene: gene_dict[gene]
+                    for gene in expected_leaves
+                    if gene in gene_dict
+                }
+            results.append((hog_name, subtree, pruned_alignments))
+    except Exception as e:
+        print(f"ERROR processing {unique_og}: {e}")
+        print(traceback.format_exc())
+    return results
 
-                # unmatched_leaves = set(expected_leaves) - set(current_leaves)
-                # valid_leaves = set(expected_leaves) & set(current_leaves)
-                # if unmatched_leaves:
-                #     print(f"HOG name: {row['HOG']}")
-                #     print(f"Number of current_leaves: {len(current_leaves)}")
-                #     print(f"Number of expected_leaves: {len(expected_leaves)}")
-                #     print(f"Number of overlaped leaves: {len(valid_leaves)}")
-                #     print(f"WARNING: current_leaves do not contain the following expected leaves ({len(unmatched_leaves)}): ")
-                #     print(unmatched_leaves)
 
-                # if set(current_leaves) != set(valid_leaves):
-                #     subtree.prune(valid_leaves)
-
-                pruned_alignments = None    
-                if gene_dict is not None:
-                    pruned_alignments = {
-                            gene: gene_dict[gene] 
-                            for gene in expected_leaves 
-                            if gene in gene_dict 
-                        }
-
-                results.append((hog_name, subtree, pruned_alignments))
-
-            process_queue.put(results)
-        except Exception as e:
-            print(f"ERROR processing tree for {unique_og}: {e}")
-            print(traceback.format_exc())
-
-def write_tree_id(resolved_trees_working_dir, hog_name, subtree):
+def write_tree(resolved_trees_working_dir, hog_name, subtree):
     try:
-        tree_id_path = os.path.join(resolved_trees_working_dir, hog_name + ".txt")
-        subtree.write(outfile=tree_id_path)
-
+        tree_path = os.path.join(resolved_trees_working_dir, hog_name + ".txt")
+        subtree.write(outfile=tree_path)
     except Exception as e:
         print(f"ERROR writing tree {hog_name}: {e}")
 
-def write_to_fasta(id_output_dir, hog_name, sequences):
-    pruned_seq_id_path = os.path.join(id_output_dir, hog_name + ".fa")
-    sorted_seqs = sorted([*sequences.keys()], key=lambda x: list(map(int, x.split("_"))))
-    with open(pruned_seq_id_path, 'w') as outFile:
-        for gene in sorted_seqs:
-            outFile.write(">%s\n" % gene)
-            outFile.write(sequences[gene])
-
-def write_to_files(
-        process_queue,
-        resolved_trees_working_dir, 
-        align_id_dir, 
-    ):
-    while True:
-        task = process_queue.get()
-        if task is None: 
-            break
-        
-        for hog_name, subtree, pruned_alignments in task:
-            try:
-                write_tree_id(resolved_trees_working_dir, hog_name, subtree)
-
-                if align_id_dir is not None:
-                    write_to_fasta(align_id_dir, hog_name, pruned_alignments)
-
-            except Exception as e:
-                print(f"ERROR writing tree or sequences for {hog_name}: {e}")
-
+def write_fasta(align_id_dir, hog_name, sequences):
+    try:
+        fasta_path = os.path.join(align_id_dir, hog_name + ".fa")
+        sorted_seqs = sorted(
+            sequences.keys(), 
+            key=lambda x: list(map(int, x.split("_"))) if "_" in x else x
+        )
+        with open(fasta_path, 'w') as outFile:
+            for gene in sorted_seqs:
+                outFile.write(f">{gene}\n")
+                outFile.write(sequences[gene])
+    except Exception as e:
+        print(f"ERROR writing FASTA for {hog_name}: {e}")
 
 def post_ogs_processing(
-        unique_ogs,
-        resolved_trees_working_dir, 
-        resolved_trees_working_dir2, 
-        hog_n0_over4genes, 
-        name_dict, 
-        species_names, 
-        nprocess,
-        align_id_dir=None,
-        align_id_dir2=None,
-    ):
+    unique_ogs,
+    resolved_trees_working_dir, 
+    resolved_trees_working_dir2, 
+    hog_n0_over4genes, 
+    name_dict, 
+    species_names, 
+    nprocess,
+    align_id_dir=None,
+    align_id_dir2=None,
+):
 
-    parall_nprocess =  max((int(nprocess // 2), 1))
-    process_queue = mp.Queue(maxsize=parall_nprocess) 
-    read_queue = mp.Queue(maxsize=4 * min(len(unique_ogs), parall_nprocess))  
+    tree_file_index = index_files(resolved_trees_working_dir2, ".txt")
+    fasta_file_index = index_files(align_id_dir2, ".fa") if align_id_dir2 is not None else {}
 
-    def start_reading():
-        with ThreadPoolExecutor(max_workers=min(len(unique_ogs), parall_nprocess)) as reader_executor:
-            reader_futures = [
-                reader_executor.submit(
-                    read_tree_and_fasta, 
-                    unique_og, 
-                    resolved_trees_working_dir2,
-                    align_id_dir2, 
-                    read_queue
-                )
-                for unique_og in unique_ogs
-            ]
+    hog_index = {
+        unique_og: 
+        [row for row in hog_n0_over4genes 
+        if unique_og in row["OG"]] 
+        for unique_og in unique_ogs
+    }
+    
+    results_by_hog = []
 
-            for future in as_completed(reader_futures):
-                try:
-                    future.result()
-                except Exception as e:
-                    print(f"ERROR in reading task: {e}")
-        for _ in range(parall_nprocess):
-            read_queue.put(None)
-
-    def start_processing():
-        processor_workers = []
-        for _ in range(parall_nprocess):
-            p = mp.Process(
-                target=process_tree_id, 
-                args=(hog_n0_over4genes, name_dict, species_names, read_queue, process_queue)
+    with ProcessPoolExecutor(max_workers=nprocess) as executor:
+        futures = {}
+        for unique_og in unique_ogs:
+            hog_entries = hog_index.get(unique_og, [])
+            if not hog_entries:
+                continue
+            future = executor.submit(
+                process_unique_og,
+                unique_og,
+                hog_entries,
+                species_names,
+                name_dict,
+                tree_file_index,
+                fasta_file_index
             )
-            p.start()
-            processor_workers.append(p)
-        for p in processor_workers:
-            p.join()
-        process_queue.put(None)
-
-    def start_writing():
-        with ThreadPoolExecutor(max_workers=1) as writer_executor:
-            writer_future = writer_executor.submit(
-                write_to_files, 
-                process_queue,
-                resolved_trees_working_dir,
-                align_id_dir, 
-            )
+            futures[future] = unique_og
+        
+        for future in as_completed(futures):
+            unique_og = futures[future]
             try:
-                writer_future.result()
+                res = future.result()
+                results_by_hog.extend(res)
             except Exception as e:
-                print(f"ERROR in writing task: {e}")
-                print(traceback.format_exc())
-
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        executor.submit(start_reading)
-        executor.submit(start_processing)
-        executor.submit(start_writing)
+                print(f"ERROR in processing {unique_og}: {e}")
+    
+    for hog_name, subtree, pruned_alignments in results_by_hog:
+        write_tree(resolved_trees_working_dir, hog_name, subtree)
+        if align_id_dir is not None and pruned_alignments is not None:
+            write_fasta(align_id_dir, hog_name, pruned_alignments)
