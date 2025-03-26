@@ -1,6 +1,5 @@
 import os
 import traceback
-import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import ete3
 
@@ -94,11 +93,10 @@ def process_unique_og(
                 subtree = subtree_nodes[0]
             
             current_leaves = [leaf.name for leaf in subtree.get_leaves()]
-            
-            expected_leaves = []
-            for col in species_names:
-                if row.get(col):
-                    expected_leaves.extend([x.strip() for x in row[col].split(',')])
+            expected_leaves = [
+                x.strip() for col in species_names if row.get(col) 
+                for x in row[col].split(',')
+            ]
             
             if set(current_leaves) != set(expected_leaves):
                 try:
@@ -164,7 +162,6 @@ def post_ogs_processing(
     }
     
     results_by_hog = []
-
     with ProcessPoolExecutor(max_workers=nprocess) as executor:
         futures = {}
         for unique_og in unique_ogs:

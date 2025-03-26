@@ -6,7 +6,6 @@ import csv
 import shutil
 from collections import defaultdict
 
-
 from ..utils import files, util
 from ..utils.util import printer
 
@@ -155,10 +154,7 @@ def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_name
             mode='w', delete=False, newline='', dir=os.path.dirname(hogs_n0_file)
         ) as temp_file:
         reader = csv.DictReader(infile, delimiter='\t')
-        # fieldnames = [
-        #     fieldname.split(".", 1)[0] 
-        #     for fieldname in reader.fieldnames
-        # ]
+
         fieldnames = ["HOG", "OG", "Gene Tree Parent Clade"] + species_names
         writer = csv.DictWriter(temp_file, fieldnames=fieldnames, delimiter='\t')
 
@@ -185,7 +181,7 @@ def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_name
     
 
     os.replace(temp_file.name, hogs_n0_file)
-    shutil.copy(hogs_n0_file, os.path.join(os.path.dirname(hogs_n0_file), "N0_ids.tsv"))
+    # shutil.copy(hogs_n0_file, os.path.join(os.path.dirname(hogs_n0_file), "N0_ids.tsv"))
 
 
 def trees_converter(
