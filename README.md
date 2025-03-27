@@ -127,7 +127,7 @@ Command-line options for OrthoFinder
 | Parameter | Description                               | Default   | Options                                                                                     |
 |-----------|-------------------------------------------|-----------|---------------------------------------------------------------------------------------------|
 | `-M`      | Method for gene tree inference.           | `msa`     | `dendroblast`, `msa`                                                                        |
-| `-S`      | Sequence search program                   | `diamond` | `blast`, `diamond`, `diamond_ultra_sens`, `diamond_custom`, `diamond_ultra_sens_custom`, `blast_gz`, `mmseqs`, `blast_nucl` |
+| `-S`      | Sequence search program                   | `diamond` | `blast`, `diamond`, `diamond_ultra_sens`, `blastp`, `mmseqs`, `blastn` |
 | `-A`      | MSA program, requires `-M msa`            | `famsa`   | `famsa`, `mafft`, `muscle`, `mafft_memsave`                                                          |
 | `-T`      | Tree inference method, requires `-M msa`  | `fasttree`| `fasttree`, `fasttree_fastest`, `raxml`, `raxml-ng`, `iqtree`                               |
 | `-I`      | MCL inflation parameter                   | `1.2`     | `1-10`                                                                                         |
@@ -144,7 +144,6 @@ Command-line options for OrthoFinder
 | `-X`      | Don’t add species names to sequence IDs.                                    |
 | `-n <txt>`      | Name to append to the results directory.                                    |
 | `-o <txt>`      | Specify a non-default results directory.                                    |
-| `-efn`    | Extend the output directory name with the name of the scoring matrix, gap penalties, search program, MSA program, and tree program. |
 
 **Parallel processing options**
 | Parameter | Description                                 | Default |
@@ -166,10 +165,7 @@ Command-line options for OrthoFinder
 | Parameter        | Description                                                               |
 |------------------|---------------------------------------------------------------------------|
 | `-1`             | Only perform one-way sequence search.                                     |
-| `--matrix`       | Scoring matrix allowed by DIAMOND. (BLOSUM62 (default), BLOSUM45, BLOSUM50, , BLOSUM80, BLOSUM90, PAM250, PAM70, PAM30)                                        |
-| `--custom-matrix`| Custom scoring matrix.                                                    |
 | `-z`             | Don’t trim MSAs (columns >= 90% gap, min. alignment length 500).          |
-| `--save-space`   | Only create one compressed orthologs file per species (Default = "yes"                  |
 | `-y`             | Split paralogous clades below the root of a HOG into separate HOGs.        |
 | `-h`             | Print this help text.                                                     |
 | `-v`             | Print version.                                                     |
