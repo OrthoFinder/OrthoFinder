@@ -1,7 +1,6 @@
 from . import ogs, trees
 import os
 import tempfile
-import ete3
 import csv
 import shutil
 from collections import defaultdict
@@ -67,15 +66,14 @@ def update_output_files(
         val: key
         for key, val in idDict.items()
     }
-
     # shutil.rmtree(seq_id_dir)
     # shutil.move(seq_id_dir2, seq_id_dir)
 
     util.PrintTime("Updating MSA/Trees")
 
-    # ## -------------------------- Fix Resolved Gene Trees -------------------------
+    # ## -------------------------- Fix Resolved Gene Trees and Gene Trees -------------------------
     resolved_trees_working_dir = files.FileHandler.GetOGsReconTreeDir(qResults=True)
-    trees_converter(resolved_trees_working_dir, spec_seq_id_dict)
+    # trees_converter(resolved_trees_working_dir, spec_seq_id_dict)
     resolved_trees_working_dir2 = os.path.join(working_dir,  "Resolved_Gene_Trees2")
     os.makedirs(resolved_trees_working_dir2, exist_ok=True)
     shutil.copytree(resolved_trees_working_dir, resolved_trees_working_dir2, dirs_exist_ok=True)
@@ -90,6 +88,13 @@ def update_output_files(
 
     clear_dir(resolved_trees_working_dir)
     clear_dir(align_id_dir)
+
+    tree_id_dir = files.FileHandler.GetOGsTreeDir(qResults=False)
+    tree_dir = files.FileHandler.GetOGsTreeDir(qResults=True)
+
+    ## Clean dirs 
+    clear_dir(tree_id_dir)
+    clear_dir(tree_dir)
 
     old_hog_n0 = read_hog_n0_file(hog_n0_file)
     hog_n0_over4genes = hog_file_over4genes(old_hog_n0, options.min_seq)
@@ -107,8 +112,12 @@ def update_output_files(
         unique_ogs,
         resolved_trees_working_dir, 
         resolved_trees_working_dir2, 
+        tree_id_dir,
+        tree_dir,
         hog_n0_over4genes, 
         simplified_name_dict, 
+        idDict,
+        spec_seq_id_dict,
         species_names, 
         nprocess,
         align_id_dir=align_id_dir,
@@ -119,20 +128,6 @@ def update_output_files(
     shutil.rmtree(align_id_dir)
     shutil.move(align_id_dir2, align_id_dir)
 
-    # ## -------------------------- Fix Gene Trees -------------------------
-    tree_id_dir = files.FileHandler.GetOGsTreeDir(qResults=False)
-    tree_dir = files.FileHandler.GetOGsTreeDir(qResults=True)
-
-    ## Clean dirs 
-    clear_dir(tree_id_dir)
-    clear_dir(tree_dir)
-
-    overwrite_gene_trees(
-        resolved_trees_working_dir, 
-        spec_seq_id_dict,
-        tree_id_dir,
-        tree_dir
-    )
     clear_dir(resolved_trees_working_dir)
 
     ## ----------------------- Fix MSA Alignments --------------------------
@@ -183,59 +178,6 @@ def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_name
     os.replace(temp_file.name, hogs_n0_file)
     # shutil.copy(hogs_n0_file, os.path.join(os.path.dirname(hogs_n0_file), "N0_ids.tsv"))
 
-
-def trees_converter(
-        resolved_trees_dir, 
-        spec_seq_id_dict,
-    ):
-    for entry in os.scandir(resolved_trees_dir):
-        if entry.is_file():
-            try:
-                with open(entry.path, "r") as infile:
-                    newick_str = infile.read().strip()
-                
-                tree = ete3.Tree(newick_str, quoted_node_names=True, format=1)
-                
-                for leaf in tree.iter_leaves():
-                    leaf.name = spec_seq_id_dict.get(leaf.name, leaf.name)
-                modified_newick_str = tree.write(quoted_node_names=True, format=1)
-    
-                with open(entry.path, "w") as outfile:
-                    outfile.write(modified_newick_str)
-            
-            except Exception as e:
-                printer.print(f"ERROR processing {entry.name}: {e}", style="error")
-
-def overwrite_gene_trees(
-        resolved_trees_dir, 
-        spec_seq_id_dict,
-        tree_id_dir,
-        tree_dir,
-    ):
-    for entry in os.scandir(resolved_trees_dir):
-        if entry.is_file():
-            try:
-                with open(entry.path, "r") as infile:
-                    newick_str = infile.read().strip()
-                
-                tree = ete3.Tree(newick_str, quoted_node_names=True, format=1)
-                original_newick_str = tree.write(format=5)
-                
-                for leaf in tree.iter_leaves():
-                    leaf.name = spec_seq_id_dict.get(leaf.name, leaf.name)
-                modified_newick_str = tree.write(format=5)
-
-                tree_id_file = os.path.join(tree_id_dir, entry.name)
-                tree_file = os.path.join(tree_dir, entry.name)
-    
-                with open(tree_id_file, "w") as outidfile, open(tree_file, "w") as outfile:
-                    outidfile.write(modified_newick_str)
-                    outfile.write(original_newick_str)
-            
-            except Exception as e:
-                printer.print(f"ERROR processing {entry.name}: {e}", style="error")
-
-
 def read_hog_n0_file(hog_n0_file):
     hog_n0 = []
     with open(hog_n0_file, newline = '') as csvfile:
@@ -276,3 +218,4 @@ def clear_dir(of3_dir):
                     shutil.rmtree(entry.path) 
             except Exception as e:
                 printer.print(f'Failed to delete {entry.path}. Reason: {e}', style="error")
+

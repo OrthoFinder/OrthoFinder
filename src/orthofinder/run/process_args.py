@@ -8,6 +8,8 @@ import shutil
 import traceback
 from typing import Optional
 import time
+from rich.console import Console
+from datetime import datetime
 
 try:
     from rich import print
@@ -138,6 +140,21 @@ class Options(object):  #
             if v == True:
                 print(k)
 
+
+def period_of_day(hour):
+    if hour < 12:
+        return "in the morning"
+    elif hour < 18:
+        return "in the afternoon"
+    else:
+        return "in the evening"
+
+def ordinal(n):
+    if 11 <= n % 100 <= 13:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return str(n) + suffix
 
 def GetDirectoryArgument(arg, args):
     if len(args) == 0:
@@ -550,7 +567,18 @@ def ProcessArgs(args):
             except:
                 print(f"Incorrect argument {arg} for the minmum number of sequence. Values must be an integer equal to or greater than 4.")
                 util.Fail()
-
+        
+        elif arg == "--friendly":
+            
+            console = Console()
+            now = datetime.now()
+            time_str = now.strftime("%H:%M")
+            period = period_of_day(now.hour)
+            formatted_date = f"{now.strftime('%A')} the {ordinal(now.day)} {now.strftime('%B, %Y')}"
+            console.print(f"Hey Yo! How's going Bro? It's {time_str} {period} {formatted_date}", style="orange3")
+            console.print("You know what you are using right now??", style="orange3")
+            console.print("The best software on this planet!!! :muscle::sunglasses:", style="orange3")
+           
         elif arg == "-rmgt" or arg == "--rm-gene-trees":
             options.rm_gene_trees = False
 

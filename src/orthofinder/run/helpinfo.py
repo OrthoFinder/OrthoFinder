@@ -223,10 +223,10 @@ def PrintHelp(prog_caller):
     # print(
     #     " --save-space            Only create one compressed orthologs file per species"           ## is this an option? i thought it did this already?
     # )
-    table_options.add_row(
-        "--save-space",
-        "Only create one compressed orthologs file per species",
-    )
+    # table_options.add_row(
+    #     "--save-space",
+    #     "Only create one compressed orthologs file per species",
+    # )
 
     # print(" -X                      Don't add species names to sequence IDs")
 

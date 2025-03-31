@@ -1,6 +1,6 @@
 import os
 import multiprocessing as mp
-import ete3
+from ..tools.tree import Tree
 
 def index_files(id_dir, extension=".fa"):
     file_index = {}
@@ -37,6 +37,28 @@ def write_tree(resolved_trees_working_dir, hog_name, subtree):
     except Exception as e:
         print(f"ERROR writing tree {hog_name}: {e}")
 
+
+def overwrite_gene_trees(
+        hog_name, 
+        subtree, 
+        spec_seq_id_dict,
+        tree_id_dir,
+        tree_dir,
+    ):
+
+    try:
+        tree_id_file = os.path.join(tree_id_dir, hog_name + ".txt")
+        tree_file = os.path.join(tree_dir, hog_name + ".txt")
+
+        subtree.write(outfile=tree_id_file, format=5)
+        
+        for leaf in subtree.iter_leaves():
+            leaf.name = spec_seq_id_dict.get(leaf.name, leaf.name)
+        subtree.write(outfile=tree_file, format=5)
+    
+    except Exception as e:
+        print(f"ERROR processing {hog_name}: {e}", style="error")
+
 def write_fasta(align_id_dir, hog_name, sequences):
     try:
         fasta_path = os.path.join(align_id_dir, hog_name + ".fa")
@@ -51,14 +73,18 @@ def write_fasta(align_id_dir, hog_name, sequences):
     except Exception as e:
         print(f"ERROR writing FASTA for {hog_name}: {e}")
 
-def read_files(unique_og, tree_file_index, fasta_file_index):
+def read_files(unique_og, idDict, tree_file_index, fasta_file_index):
     gene_tree = None
     gene_dict = None
     if unique_og in tree_file_index:
         try:
             with open(tree_file_index[unique_og], "r") as file:
                 tree_data = file.read().strip()
-                gene_tree = ete3.Tree(tree_data, quoted_node_names=True, format=1)
+                # gene_tree = ete3.Tree(tree_data, quoted_node_names=True, format=1)
+                gene_tree = Tree(tree_data, format=1)
+                for leaf in gene_tree.iter_leaves():
+                    leaf.name = idDict.get(leaf.name, leaf.name)
+    
         except Exception as e:
             print(f"ERROR reading tree for {unique_og}: {e}")
     else:
@@ -73,9 +99,9 @@ def read_files(unique_og, tree_file_index, fasta_file_index):
         print(f"WARNING: FASTA file not found for {unique_og}")
     return (unique_og, gene_tree, gene_dict)
 
-def read_task(read_queue, unique_ogs, tree_file_index, fasta_file_index):
+def read_task(read_queue, unique_ogs, idDict, tree_file_index, fasta_file_index):
     for unique_og in unique_ogs:
-        task = read_files(unique_og, tree_file_index, fasta_file_index)
+        task = read_files(unique_og, idDict, tree_file_index, fasta_file_index)
         read_queue.put(task)
 
 def process_task(read_queue, process_queue, hog_index, name_dict, species_names):
@@ -114,13 +140,26 @@ def process_task(read_queue, process_queue, hog_index, name_dict, species_names)
             results.append((hog_name, subtree, pruned_alignments))
         process_queue.put(results)
 
-def writer_task(process_queue, resolved_trees_working_dir, align_id_dir):
+def writer_task(
+        process_queue, 
+        resolved_trees_working_dir, 
+        spec_seq_id_dict,
+        tree_id_dir,
+        tree_dir,
+        align_id_dir):
     while True:
         task = process_queue.get()
         if task is None:
             break
         for hog_name, subtree, pruned_alignments in task:
             write_tree(resolved_trees_working_dir, hog_name, subtree)
+            overwrite_gene_trees(
+                hog_name, 
+                subtree, 
+                spec_seq_id_dict,
+                tree_id_dir,
+                tree_dir,
+            )
             if align_id_dir is not None and pruned_alignments is not None:
                 write_fasta(align_id_dir, hog_name, pruned_alignments)
 
@@ -128,8 +167,12 @@ def post_ogs_processing(
     unique_ogs,
     resolved_trees_working_dir,    
     resolved_trees_working_dir2,   
+    tree_id_dir,
+    tree_dir,
     hog_n0_over4genes, 
     name_dict, 
+    spec_seq_id_dict,
+    idDict,
     species_names, 
     nprocess,
     align_id_dir=None,            
@@ -143,10 +186,11 @@ def post_ogs_processing(
         for unique_og in unique_ogs
     }
 
+
     process_queue = mp.Queue()
     read_queue = mp.Queue()
 
-    file_reader = mp.Process(target=read_task, args=(read_queue, unique_ogs, tree_file_index, fasta_file_index))
+    file_reader = mp.Process(target=read_task, args=(read_queue, unique_ogs, idDict, tree_file_index, fasta_file_index))
     file_reader.start()
 
     file_processors = []
@@ -155,7 +199,17 @@ def post_ogs_processing(
         p.start()
         file_processors.append(p)
 
-    writer_process = mp.Process(target=writer_task, args=(process_queue, resolved_trees_working_dir, align_id_dir))
+    writer_process = mp.Process(
+        target=writer_task, 
+        args=(
+            process_queue, 
+            resolved_trees_working_dir,
+            spec_seq_id_dict,
+            tree_id_dir,
+            tree_dir, 
+            align_id_dir
+        )
+    )
     writer_process.start()
 
     file_reader.join()
