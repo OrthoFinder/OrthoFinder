@@ -30,22 +30,13 @@ def read_fasta(file_path):
         genes_dict[accession] = sequence
     return genes_dict
 
-def write_tree(resolved_trees_working_dir, hog_name, subtree):
-    try:
-        tree_path = os.path.join(resolved_trees_working_dir, hog_name + ".txt")
-        subtree.write(outfile=tree_path)
-    except Exception as e:
-        print(f"ERROR writing tree {hog_name}: {e}")
-
-
-def overwrite_gene_trees(
+def write_tree(
         hog_name, 
-        subtree, 
+        subtree,
         spec_seq_id_dict,
         tree_id_dir,
         tree_dir,
-    ):
-
+        ):
     try:
         tree_id_file = os.path.join(tree_id_dir, hog_name + ".txt")
         tree_file = os.path.join(tree_dir, hog_name + ".txt")
@@ -55,9 +46,9 @@ def overwrite_gene_trees(
         for leaf in subtree.iter_leaves():
             leaf.name = spec_seq_id_dict.get(leaf.name, leaf.name)
         subtree.write(outfile=tree_file, format=5)
-    
+
     except Exception as e:
-        print(f"ERROR processing {hog_name}: {e}", style="error")
+        print(f"ERROR writing tree {hog_name}: {e}")
 
 def write_fasta(align_id_dir, hog_name, sequences):
     try:
@@ -142,7 +133,6 @@ def process_task(read_queue, process_queue, hog_index, name_dict, species_names)
 
 def writer_task(
         process_queue, 
-        resolved_trees_working_dir, 
         spec_seq_id_dict,
         tree_id_dir,
         tree_dir,
@@ -152,14 +142,13 @@ def writer_task(
         if task is None:
             break
         for hog_name, subtree, pruned_alignments in task:
-            write_tree(resolved_trees_working_dir, hog_name, subtree)
-            overwrite_gene_trees(
+            write_tree(
                 hog_name, 
-                subtree, 
+                subtree,
                 spec_seq_id_dict,
                 tree_id_dir,
                 tree_dir,
-            )
+                )
             if align_id_dir is not None and pruned_alignments is not None:
                 write_fasta(align_id_dir, hog_name, pruned_alignments)
 
@@ -203,7 +192,6 @@ def post_ogs_processing(
         target=writer_task, 
         args=(
             process_queue, 
-            resolved_trees_working_dir,
             spec_seq_id_dict,
             tree_id_dir,
             tree_dir, 
