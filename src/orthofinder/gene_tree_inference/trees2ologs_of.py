@@ -447,6 +447,8 @@ class HogWriter(object):
                 fh = self.fhs[h]
                 for r in hog_rows:
                     hog_id = "%s.HOG%07d" % (h, self.get_hog_index(h))
+                    ## hog_tree_dir = files.FileHandler.GetHOGsTreeDir()
+                    ## hog_msa_dir = files.FileHandler.GetHOGMSADir()
                     util.writerow(fh, [hog_id, ] + r)
                 fh.flush()
         finally:

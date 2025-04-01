@@ -581,7 +581,19 @@ class __Files_new_dont_manually_create__(object):
         return self.wd_current + "OGsAll.tsv"
 
     """ ========================================================================================== """
-            
+    
+    def GetHOGsTreeDir(self):
+        hog_tree_dir = self.wd_current + "HOG_Trees"
+        if not os.path.exists(hog_tree_dir): 
+            os.mkdir(hog_tree_dir)
+        return hog_tree_dir
+
+    def GetHOGMSADir(self):
+        hog_msa_dir = self.wd_current + "HOG_Alignments"
+        if not os.path.exists(hog_msa_dir): 
+            os.mkdir(hog_msa_dir)
+        return hog_msa_dir
+
     def GetOGsTreeDir(self, qResults=False):
         if qResults:
             # return self.rd1 + "Gene_Trees/" 
