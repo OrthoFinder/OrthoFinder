@@ -433,7 +433,7 @@ class HogWriter(object):
         # raise Exception()
         return None
 
-    def WriteCachedHOGs(self, cached_hogs, lock_hogs):
+    def WriteCachedHOGs(self, cached_hogs, lock_hogs, exist_msa=True):
         """
         Args:
             cached_hogs - List[Tuple[str,List]], of hog names and rows of
@@ -447,8 +447,6 @@ class HogWriter(object):
                 fh = self.fhs[h]
                 for r in hog_rows:
                     hog_id = "%s.HOG%07d" % (h, self.get_hog_index(h))
-                    ## hog_tree_dir = files.FileHandler.GetHOGsTreeDir()
-                    ## hog_msa_dir = files.FileHandler.GetHOGMSADir()
                     util.writerow(fh, [hog_id, ] + r)
                 fh.flush()
         finally:
@@ -459,7 +457,7 @@ class HogWriter(object):
         return n.is_leaf() or n.dup
 
 
-def GetHOGs_from_tree(iog, tree, hog_writer, lock_hogs, q_split_paralogous_clades):
+def GetHOGs_from_tree(iog, tree, hog_writer, lock_hogs, q_split_paralogous_clades, exist_msa=True):
     og_name = "OG%07d" % iog
     if debug: print("\n===== %s =====" % og_name)
     try:
@@ -467,7 +465,7 @@ def GetHOGs_from_tree(iog, tree, hog_writer, lock_hogs, q_split_paralogous_clade
         cached_hogs = []
         for n in tree.traverse("preorder"):
             cached_hogs.extend(hog_writer.write_clade_v2(n, og_name, q_split_paralogous_clades))
-        hog_writer.WriteCachedHOGs(cached_hogs, lock_hogs)
+        hog_writer.WriteCachedHOGs(cached_hogs, lock_hogs, exist_msa=exist_msa)
     except:
         print("WARNING: HOG analysis for %s failed" % og_name)
         print("Please report to https://github.com/davidemms/OrthoFinder/issues including \
@@ -1163,6 +1161,7 @@ def DoOrthologuesForOrthoFinder(
         save_space,
         old_version=False,
         print_info=True,
+        exist_msa=True,
     ):
     try:
         # Create directory structure
@@ -1224,7 +1223,8 @@ def DoOrthologuesForOrthoFinder(
                 putative_xenolog_file_handles, 
                 hog_writer, 
                 q_split_paralogous_clades, 
-                fewer_open_files=fewer_open_files
+                fewer_open_files=fewer_open_files,
+                exist_msa=exist_msa,
             )
 
             if n_parallel == 1:
@@ -1296,7 +1296,8 @@ class TreeAnalyser(object):
             putative_xenolog_file_handles, 
             hog_writer, 
             q_split_paralogous_clades, 
-            fewer_open_files=False
+            fewer_open_files=False,
+            exist_msa=True,
     ):
         self.nOgs = nOgs
         self.dResultsOrthologues = dResultsOrthologues
@@ -1322,6 +1323,7 @@ class TreeAnalyser(object):
         self.lock_dups = mp.Lock()
         self.lock_suspect = mp.Lock()
         self.lock_hogs = mp.Lock()
+        self.exist_msa=exist_msa
 
     def AnalyseTree(self, iog):
         try:
@@ -1368,7 +1370,14 @@ class TreeAnalyser(object):
             nOrthologues_SpPair = GetLinesForOlogFiles([(iog, ologs)], self.speciesDict, self.speciesToUse,
                                                        self.SequenceDict, len(suspect_genes) > 0, olog_lines,
                                                        olog_sus_lines, fewer_open_files=self.fewer_open_files)
-            GetHOGs_from_tree(iog, recon_tree, self.hog_writer, self.lock_hogs, self.q_split_paralogous_clades) 
+            GetHOGs_from_tree(
+                iog, 
+                recon_tree, 
+                self.hog_writer, 
+                self.lock_hogs, 
+                self.q_split_paralogous_clades,
+                self.exist_msa,
+            ) 
             # don't relabel nodes, they've already been done
 
             # util.RenameTreeTaxa(recon_tree, self.reconTreesRenamedDir + "OG%07d_tree.txt" % iog, self.spec_seq_dict, qSupport=False, qFixNegatives=True)

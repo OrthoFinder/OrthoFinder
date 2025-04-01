@@ -258,7 +258,8 @@ def ReconciliationAndOrthologues(
         fewer_open_files=False,
         save_space=False,
         old_version=False,
-        print_info=True
+        print_info=True,
+        exist_msa=True,
     ):
     """
     ogSet - info about the orthogroups, species etc.
@@ -339,7 +340,8 @@ def ReconciliationAndOrthologues(
                 fewer_open_files, 
                 save_space, 
                 old_version=old_version,
-                print_info=print_info
+                print_info=print_info,
+                exist_msa=exist_msa,
         )
         if print_info:
             util.PrintTime("Done of orthologues")
@@ -502,7 +504,10 @@ def OrthologuesWorkflow(
     if return_obj is None:
         return
     rooted_sp_tree, fn_rooted_sp_tree, q_multiple_roots, stride_dups = return_obj
-    
+
+    hog_tree_dir = files.FileHandler.GetHOGsTreeDir()
+    hog_msa_dir = files.FileHandler.GetHOGMSADir()
+
     InferOrthologs(
         ogSet, 
         rooted_sp_tree, 
@@ -519,7 +524,8 @@ def OrthologuesWorkflow(
         q_split_para_clades, 
         root_from_previous,
         save_space=False, 
-        old_version=old_version
+        old_version=old_version,
+        exist_msa=options.qMSATrees,
     )
     
     if options.fix_files:
@@ -559,6 +565,7 @@ def OrthologuesWorkflow(
             save_space=options.save_space, 
             old_version=old_version,
             print_info=False,
+            exist_msa=options.qMSATrees,
         )
 
     fastaWriter = trees_msa.FastaWriter(files.FileHandler.GetSpeciesSeqsDir(), speciesToUse)
@@ -701,6 +708,7 @@ def InferOrthologs(
         save_space=False,
         old_version=False,
         print_info=True,
+        exist_msa=True,
     ):
     """ C. Gene tree rooting & orthologs"""
 
@@ -733,7 +741,8 @@ def InferOrthologs(
         fewer_open_files=fewer_open_files, 
         save_space=save_space, 
         old_version=old_version,
-        print_info=print_info
+        print_info=print_info,
+        exist_msa=exist_msa,
 
     )
     # util.PrintTime("Done Recon")
