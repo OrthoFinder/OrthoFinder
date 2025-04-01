@@ -73,11 +73,7 @@ def update_output_files(
 
     # ## -------------------------- Fix Resolved Gene Trees and Gene Trees -------------------------
     resolved_trees_working_dir = files.FileHandler.GetOGsReconTreeDir(qResults=True)
-    # trees_converter(resolved_trees_working_dir, spec_seq_id_dict)
-    resolved_trees_working_dir2 = os.path.join(working_dir,  "Resolved_Gene_Trees2")
-    os.makedirs(resolved_trees_working_dir2, exist_ok=True)
-    shutil.copytree(resolved_trees_working_dir, resolved_trees_working_dir2, dirs_exist_ok=True)
-    
+
     align_id_dir = None
     align_id_dir2 = None
     if exist_msa:
@@ -86,7 +82,6 @@ def update_output_files(
         os.makedirs(align_id_dir2, exist_ok=True)
         shutil.copytree(align_id_dir, align_id_dir2, dirs_exist_ok=True)
 
-    clear_dir(resolved_trees_working_dir)
     clear_dir(align_id_dir)
 
     tree_id_dir = files.FileHandler.GetOGsTreeDir(qResults=False)
@@ -111,7 +106,6 @@ def update_output_files(
     trees.post_ogs_processing(
         unique_ogs,
         resolved_trees_working_dir, 
-        resolved_trees_working_dir2, 
         tree_id_dir,
         tree_dir,
         hog_n0_over4genes, 
@@ -124,7 +118,6 @@ def update_output_files(
         align_id_dir2=align_id_dir2,
     )
     
-    shutil.rmtree(resolved_trees_working_dir2)
     shutil.rmtree(align_id_dir)
     shutil.move(align_id_dir2, align_id_dir)
 

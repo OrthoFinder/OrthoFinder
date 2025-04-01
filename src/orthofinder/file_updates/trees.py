@@ -155,7 +155,6 @@ def writer_task(
 def post_ogs_processing(
     unique_ogs,
     resolved_trees_working_dir,    
-    resolved_trees_working_dir2,   
     tree_id_dir,
     tree_dir,
     hog_n0_over4genes, 
@@ -167,7 +166,7 @@ def post_ogs_processing(
     align_id_dir=None,            
     align_id_dir2=None,          
 ):
-    tree_file_index = index_files(resolved_trees_working_dir2, ".txt")
+    tree_file_index = index_files(resolved_trees_working_dir, ".txt")
     fasta_file_index = index_files(align_id_dir2, ".fa") if align_id_dir2 is not None else {}
 
     hog_index = {
