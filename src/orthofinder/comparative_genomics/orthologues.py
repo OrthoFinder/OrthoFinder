@@ -260,6 +260,7 @@ def ReconciliationAndOrthologues(
         old_version=False,
         print_info=True,
         exist_msa=True,
+        write_hog_tree=True
     ):
     """
     ogSet - info about the orthogroups, species etc.
@@ -342,6 +343,7 @@ def ReconciliationAndOrthologues(
                 old_version=old_version,
                 print_info=print_info,
                 exist_msa=exist_msa,
+                write_hog_tree=write_hog_tree
         )
         if print_info:
             util.PrintTime("Done of orthologues")
@@ -372,6 +374,8 @@ def OrthologuesFromTrees(
         fewer_open_files,
         tree_program="fasttree",
         old_version=False,
+        exist_msa=True,
+        write_hog_tree=True,
     ):
     """
     userSpeciesTree_fn - None if not supplied otherwise rooted tree using user species names (not orthofinder IDs)
@@ -404,7 +408,9 @@ def OrthologuesFromTrees(
         nLowParallel, 
         q_split_para_clades=q_split_para_clades,
         fewer_open_files=fewer_open_files, 
-        old_version=old_version
+        old_version=old_version,
+        exist_msa=exist_msa,
+        write_hog_tree=write_hog_tree,
     )
     util.PrintUnderline("Writing results files")
     util.PrintTime("Writing results files")
@@ -526,6 +532,7 @@ def OrthologuesWorkflow(
         save_space=False, 
         old_version=old_version,
         exist_msa=options.qMSATrees,
+        write_hog_tree=True
     )
     
     if options.fix_files:
@@ -566,6 +573,7 @@ def OrthologuesWorkflow(
             old_version=old_version,
             print_info=False,
             exist_msa=options.qMSATrees,
+            write_hog_tree=False
         )
 
     fastaWriter = trees_msa.FastaWriter(files.FileHandler.GetSpeciesSeqsDir(), speciesToUse)
@@ -709,6 +717,7 @@ def InferOrthologs(
         old_version=False,
         print_info=True,
         exist_msa=True,
+        write_hog_tree=True
     ):
     """ C. Gene tree rooting & orthologs"""
 
@@ -743,6 +752,7 @@ def InferOrthologs(
         old_version=old_version,
         print_info=print_info,
         exist_msa=exist_msa,
+        write_hog_tree=write_hog_tree,
 
     )
     # util.PrintTime("Done Recon")

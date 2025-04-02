@@ -363,7 +363,8 @@ def GetOrthologues_FromTrees(options):
         options.qAddSpeciesToIDs,
         options.qSplitParaClades,
         options.fewer_open_files,
-        old_version=options.old_version
+        old_version=options.old_version,
+        exist_msa=options.qMSATrees,
     )
 
 

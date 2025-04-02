@@ -460,7 +460,7 @@ class HogWriter(object):
 
 
 
-    def WriteCachedHOGs(self, cached_hogs, lock_hogs, tree, exist_msa=True):
+    def WriteCachedHOGs(self, cached_hogs, lock_hogs, tree, exist_msa=True, write_hog_tree=True):
         """
         Args:
             cached_hogs - List[Tuple[str,List]], of hog names and rows of
@@ -500,7 +500,7 @@ class HogWriter(object):
                         ## Each label..in to_prune
                         ## Read in OG file - done before to save on opening times..
                         ## write out sequences... 
-                        if exist_msa==True:
+                        if exist_msa and write_hog_tree:
                             OG_file = r[0]    
                             fasta_path_readin = os.path.join(files.FileHandler.GetAlignIDDir(), OG_file + ".fa")
                             fasta_path_output = hog_tree_file = os.path.join(hog_msa_dir, hog_name_reformat + ".fa")       
@@ -542,7 +542,15 @@ class HogWriter(object):
         return n.is_leaf() or n.dup
 
 
-def GetHOGs_from_tree(iog, tree, hog_writer, lock_hogs, q_split_paralogous_clades, exist_msa=True):
+def GetHOGs_from_tree(
+        iog, 
+        tree, 
+        hog_writer, 
+        lock_hogs, 
+        q_split_paralogous_clades, 
+        exist_msa=True,
+        write_hog_tree=True
+    ):
     og_name = "OG%07d" % iog
     if debug: print("\n===== %s =====" % og_name)
     try:
@@ -550,7 +558,13 @@ def GetHOGs_from_tree(iog, tree, hog_writer, lock_hogs, q_split_paralogous_clade
         cached_hogs = []
         for n in tree.traverse("preorder"):
             cached_hogs.extend(hog_writer.write_clade_v2(n, og_name, q_split_paralogous_clades))
-        hog_writer.WriteCachedHOGs(cached_hogs, lock_hogs, tree, exist_msa=exist_msa)
+        hog_writer.WriteCachedHOGs(
+            cached_hogs, 
+            lock_hogs, 
+            tree, 
+            exist_msa=exist_msa,
+            write_hog_tree=write_hog_tree
+        )
     except:
         print("WARNING: HOG analysis for %s failed" % og_name)
         print("Please report to https://github.com/davidemms/OrthoFinder/issues including \
@@ -1247,6 +1261,7 @@ def DoOrthologuesForOrthoFinder(
         old_version=False,
         print_info=True,
         exist_msa=True,
+        write_hog_tree=True,
     ):
     try:
         # Create directory structure
@@ -1310,6 +1325,7 @@ def DoOrthologuesForOrthoFinder(
                 q_split_paralogous_clades, 
                 fewer_open_files=fewer_open_files,
                 exist_msa=exist_msa,
+                write_hog_tree=write_hog_tree
             )
 
             if n_parallel == 1:
@@ -1383,6 +1399,7 @@ class TreeAnalyser(object):
             q_split_paralogous_clades, 
             fewer_open_files=False,
             exist_msa=True,
+            write_hog_tree=True,
     ):
         self.nOgs = nOgs
         self.dResultsOrthologues = dResultsOrthologues
@@ -1409,6 +1426,7 @@ class TreeAnalyser(object):
         self.lock_suspect = mp.Lock()
         self.lock_hogs = mp.Lock()
         self.exist_msa=exist_msa
+        self.write_hog_tree=write_hog_tree
 
     def AnalyseTree(self, iog):
         try:
@@ -1465,14 +1483,17 @@ class TreeAnalyser(object):
                 self.lock_hogs, 
                 self.q_split_paralogous_clades,
                 self.exist_msa,
+                self.write_hog_tree,
             ) 
 
             # don't relabel nodes, they've already been done
 
             # util.RenameTreeTaxa(recon_tree, self.reconTreesRenamedDir + "OG%07d_tree.txt" % iog, self.spec_seq_dict, qSupport=False, qFixNegatives=True)
-            util.RenameTreeTaxa(recon_tree, 
-                                self.reconTreesRenamedDir + "OG%07d.txt" % iog, 
-                                self.spec_seq_dict, qSupport=False, qFixNegatives=True)
+            if self.write_hog_tree: # if hog_tree is the reconciled tree then this doesn't need to run again
+                util.RenameTreeTaxa(recon_tree, 
+                                    self.reconTreesRenamedDir + "OG%07d.txt" % iog, 
+                                    self.spec_seq_dict, qSupport=False, qFixNegatives=True)
+                    
             # recon_tree.delete_traverse()
             # if iog >= 0 and divmod(iog, 10 if self.nOgs <= 200 else 100 if self.nOgs <= 2000 else 1000)[1] == 0:
             # if iog > 0 and divmod(iog, 10 if self.nOgs <= 200 else 100 if self.nOgs <= 2000 else 1000)[1] == 0:
