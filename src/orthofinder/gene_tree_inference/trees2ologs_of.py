@@ -135,6 +135,7 @@ class HogWriter(object):
         sp_ids - dict of species ids
         species_to_use - list of ints
         """
+        self.sp_ids = sp_ids
         self.seq_ids = seq_ids
         d = os.path.dirname(files.FileHandler.GetHierarchicalOrthogroupsFN("N0"))
         if not os.path.exists(d):
@@ -143,6 +144,7 @@ class HogWriter(object):
         self.iSps = list(map(str, sorted(species_to_use)))   # list of strings
         self.i_sp_to_index = {int(isp):i_col for i_col, isp in enumerate(self.iSps)}
         self.iHOG = defaultdict(int)
+        self.lock_iHOG = mp.Lock()
         self.species_tree = species_tree
         species_names = [sp_ids[i] for i in self.iSps]
         for name in species_tree_node_names + ["N0.ids"]:
@@ -159,9 +161,10 @@ class HogWriter(object):
         self.comp_nodes = get_comparable_nodes(self.species_tree)
 
     def get_hog_index(self, hog_name):
-        i = self.iHOG[hog_name]
-        self.iHOG[hog_name] += 1
-        return i
+        with self.lock_iHOG:
+            i = self.iHOG[hog_name]
+            self.iHOG[hog_name] += 1
+            return i
 
     def write_hog_genes(self, genes, sp_node_name_list, og_name):
         """
@@ -433,11 +436,36 @@ class HogWriter(object):
         # raise Exception()
         return None
 
-    def WriteCachedHOGs(self, cached_hogs, lock_hogs, exist_msa=True):
+    # def WriteCachedHOGs(self, cached_hogs, lock_hogs, exist_msa=True):
+    #     """
+    #     Args:
+    #         cached_hogs - List[Tuple[str,List]], of hog names and rows of
+    #     """
+    #     d = defaultdict(list)
+    #     for h, row in cached_hogs:
+    #         d[h].append(row)
+    #     lock_hogs.acquire()
+    #     try:
+            
+    #         for h, hog_rows in d.items():
+    #             fh = self.fhs[h]
+    #             for r in hog_rows:
+    #                 hog_id = "%s.HOG%07d" % (h, self.get_hog_index(h))
+    #                 if "0000009" in  hog_id:
+    #                     print(h, [hog_id, ] + r)
+    #                 util.writerow(fh, [hog_id, ] + r)
+    #             fh.flush()
+    #     finally:
+    #         lock_hogs.release()
+
+
+
+    def WriteCachedHOGs(self, cached_hogs, lock_hogs, tree, exist_msa=True):
         """
         Args:
             cached_hogs - List[Tuple[str,List]], of hog names and rows of
         """
+    
         d = defaultdict(list)
         for h, row in cached_hogs:
             d[h].append(row)
@@ -448,9 +476,66 @@ class HogWriter(object):
                 for r in hog_rows:
                     hog_id = "%s.HOG%07d" % (h, self.get_hog_index(h))
                     util.writerow(fh, [hog_id, ] + r)
+                    if h == "N0.ids":
+                        too_prune = (','.join(filter(None, r[2:])).replace(" ","")).split(",")
+                        hog_tree = tree.copy()
+                        hog_tree.prune(too_prune)
+                        ### Could re-place this part by simply taking the next list element which contains the names then doing a string swap/dict on leaf iter..
+                        too_prune_gene_names = {}
+                        for leaf in hog_tree:
+                            species_name = self.sp_ids.get(leaf.name.split("_")[0])
+                            gene_name = self.seq_ids.get(leaf.name)
+                            leaf_name = "_".join([species_name,gene_name])
+                            too_prune_gene_names[leaf.name] = leaf.name
+                            leaf.add_features(name = leaf_name)
+                        OG_id = r[0]
+                        node_id = r[1]
+                        hog_name_reformat = "_".join([OG_id,node_id])
+                        hog_tree_dir = files.FileHandler.GetHOGsTreeDir()
+                        hog_msa_dir = files.FileHandler.GetHOGMSADir()
+                        hog_tree_file = os.path.join(hog_tree_dir, hog_name_reformat + ".nwk")
+                        hog_tree.write(outfile=hog_tree_file, format=5)                        
+
+                        ################ reformat MSA's
+                        ## Each label..in to_prune
+                        ## Read in OG file - done before to save on opening times..
+                        ## write out sequences... 
+                        if exist_msa==True:
+                            OG_file = r[0]    
+                            fasta_path_readin = os.path.join(files.FileHandler.GetAlignIDDir(), OG_file + ".fa")
+                            fasta_path_output = hog_tree_file = os.path.join(hog_msa_dir, hog_name_reformat + ".fa")       
+                            genes_dict = {}
+                            #
+                            ### get sequences from OG file
+                            accession = ""
+                            sequence = ""
+                            with open(fasta_path_readin, 'r') as fastaFile:
+                                for line in fastaFile:
+                                    if line[0] == ">":
+                                        genes_dict[accession] = sequence
+                                        sequence = ""
+                                        accession = line[1:].rstrip()
+                                    else:
+                                        sequence += line
+                                        genes_dict[accession] = sequence
+
+                            with open(fasta_path_output,"w") as outFasta:
+                                for gene in too_prune:
+                                    gene_name = too_prune_gene_names[gene]
+                                    sequence = genes_dict[gene]
+                                    outFasta.write(f">{gene_name}\n")
+                                    outFasta.write(sequence)
+
                 fh.flush()
+        except:
+            print(traceback.format_exc())
         finally:
             lock_hogs.release()
+
+    @staticmethod
+    def scl_fn(n):
+        return n.is_leaf() or n.dup
+
 
     @staticmethod
     def scl_fn(n):
@@ -465,12 +550,12 @@ def GetHOGs_from_tree(iog, tree, hog_writer, lock_hogs, q_split_paralogous_clade
         cached_hogs = []
         for n in tree.traverse("preorder"):
             cached_hogs.extend(hog_writer.write_clade_v2(n, og_name, q_split_paralogous_clades))
-        hog_writer.WriteCachedHOGs(cached_hogs, lock_hogs, exist_msa=exist_msa)
+        hog_writer.WriteCachedHOGs(cached_hogs, lock_hogs, tree, exist_msa=exist_msa)
     except:
         print("WARNING: HOG analysis for %s failed" % og_name)
         print("Please report to https://github.com/davidemms/OrthoFinder/issues including \
 SpeciesTree_rooted_ids.txt and Trees_ids/%s_tree_id.txt from WorkingDirectory/" % og_name)
-        print(cached_hogs)
+        # print(cached_hogs)
         raise
 
 
@@ -1339,9 +1424,11 @@ class TreeAnalyser(object):
             # Write rooted tree with accessions
             util.RenameTreeTaxa(rooted_tree_ids, files.FileHandler.GetOGsTreeFN(iog, True), 
                                 self.spec_seq_dict, qSupport=qHaveSupport, qFixNegatives=True, qViaCopy=True)
+            
             ologs, recon_tree, suspect_genes, dups = GetOrthologues_from_tree(iog, rooted_tree_ids, 
                                                         self.species_tree_rooted_labelled, self.GeneToSpecies, 
                                                         self.neighbours, q_get_dups=True, qNoRecon=self.qNoRecon)
+
             # Write Duplications
             self.lock_dups.acquire()
             try:                                                        
@@ -1370,6 +1457,7 @@ class TreeAnalyser(object):
             nOrthologues_SpPair = GetLinesForOlogFiles([(iog, ologs)], self.speciesDict, self.speciesToUse,
                                                        self.SequenceDict, len(suspect_genes) > 0, olog_lines,
                                                        olog_sus_lines, fewer_open_files=self.fewer_open_files)
+
             GetHOGs_from_tree(
                 iog, 
                 recon_tree, 
@@ -1378,6 +1466,7 @@ class TreeAnalyser(object):
                 self.q_split_paralogous_clades,
                 self.exist_msa,
             ) 
+
             # don't relabel nodes, they've already been done
 
             # util.RenameTreeTaxa(recon_tree, self.reconTreesRenamedDir + "OG%07d_tree.txt" % iog, self.spec_seq_dict, qSupport=False, qFixNegatives=True)
@@ -1505,6 +1594,7 @@ def Worker_RunOrthologsMethod(tree_analyser, nspecies, args_queue, results_queue
 
 ## --------------------------------------
 
+
 def Worker_RunOrthologsMethod_New(
         tree_analyser, 
         nspecies, 
@@ -1524,92 +1614,219 @@ def Worker_RunOrthologsMethod_New(
         n_ologs_cache (int): Cache size before flushing ortholog lines to files.
     """
     try:
+        # Choose dimension for the matrix of lines
         dim2 = 1 if fewer_open_files else nspecies
-        nOrthologues_SpPair = util.nOrtho_sp(nspecies)
+
+        # Local counters
+        nOrthologues_SpPair = util.nOrtho_sp(nspecies)  # local total
         nCache = util.nOrtho_cache(nspecies)
+
+        # Buffers to accumulate lines
         olog_lines_tot = [["" for j in range(dim2)] for i in range(nspecies)]
         olog_sus_lines_tot = ["" for _ in range(nspecies)]
 
         while True:
             try:
                 iog = args_queue.get(True, 0.1)
-                if iog is None: 
+                if iog is None:
+                    # Sentinel => stop the worker
                     break
+
                 results = tree_analyser.AnalyseTree(iog)
                 if results is None:
+                    # indicates a failed tree parse or missing file
                     results_queue.put(False)  
                     continue
 
+                # results => (nOrtho, olog_lines, olog_sus_lines)
                 nOrtho, olog_lines, olog_sus_lines = results
                 nOrthologues_SpPair += nOrtho
                 nCache += nOrtho
 
+                # Accumulate lines
                 for i in range(nspecies):
                     olog_sus_lines_tot[i] += olog_sus_lines[i]
                     for j in range(dim2):
                         olog_lines_tot[i][j] += olog_lines[i][j]
 
+                # Possibly flush partial lines if above threshold
                 I, J = nCache.get_i_j_to_write(n_ologs_cache, fewer_open_files)
                 if fewer_open_files:
+                    # each species has just one file
                     for i in I:
                         WriteOlogLinesToFile(
                             tree_analyser.ologs_files_handles[i][0],
                             olog_lines_tot[i][0],
-                            tree_analyser.lock_ologs[i]
+                            tree_analyser.lock_ologs[i]  # consistent lock usage
                         )
+                        # Clear buffer after flush
                         olog_lines_tot[i][0] = ""
                 else:
+                    # each pair (i, j) has its own file handle
                     for i, j in zip(I, J):
                         k_lock = max(i, j)
                         WriteOlogLinesToFile(
                             tree_analyser.ologs_files_handles[i][j],
                             olog_lines_tot[i][j],
-                            tree_analyser.lock_ologs[k_lock]
+                            tree_analyser.lock_ologs[k_lock]  # consistent lock usage
                         )
                         olog_lines_tot[i][j] = ""
 
                 results_queue.put(nOrtho)
 
             except parallel_task_manager.queue.Empty:
+                # No work right now; loop again
                 continue
-
             except Exception as e:
                 print(f"WARNING: Worker encountered an error: {e}")
                 results_queue.put(False)  # Signal error
                 break
+
+        #
+        # Final "cleanup" flush of anything left in memory
+        #
         try:
             for i in range(nspecies):
                 if fewer_open_files:
+                    # Single file handle per species
                     WriteOlogLinesToFile(
                         tree_analyser.ologs_files_handles[i][0],
                         olog_lines_tot[i][0],
                         tree_analyser.lock_ologs[i]
                     )
                 else:
-                    for j in range(i + 1, nspecies):
+                    # Pairwise file handles
+                    for j in range(nspecies):
+                        # flush everything [i][j] (including j < i)
+                        k_lock = max(i, j)
                         WriteOlogLinesToFile(
                             tree_analyser.ologs_files_handles[i][j],
                             olog_lines_tot[i][j],
-                            tree_analyser.lock_ologs[j]
+                            tree_analyser.lock_ologs[k_lock]
                         )
-                        WriteOlogLinesToFile(
-                            tree_analyser.ologs_files_handles[j][i],
-                            olog_lines_tot[j][i],
-                            tree_analyser.lock_ologs[j]
-                        )
+
+                # Flush suspect lines
                 WriteOlogLinesToFile(
                     tree_analyser.putative_xenolog_file_handles[i],
                     olog_sus_lines_tot[i],
                     tree_analyser.lock_suspect
                 )
-            # results_queue.put(nOrthologues_SpPair)
 
         except Exception as cleanup_error:
             print(f"ERROR during cleanup: {cleanup_error}")
-            # results_queue.put(False)  # Signal error during cleanup
+            # Usually put False to signal error if needed
+            # results_queue.put(False)
 
     finally:
-        results_queue.put(None) 
+        # Let the main process know this worker is done
+        results_queue.put(None)
+
+
+# def Worker_RunOrthologsMethod_New(
+#         tree_analyser, 
+#         nspecies, 
+#         args_queue, 
+#         results_queue, 
+#         fewer_open_files, 
+#         n_ologs_cache=100
+#     ):
+#     """
+#     Worker function for parallel ortholog analysis.
+
+#     Args:
+#         nspecies (int): Number of species in the analysis after filtering.
+#         args_queue (Queue): Input queue containing tasks.
+#         results_queue (Queue): Queue for reporting results.
+#         fewer_open_files (bool): If True, fewer file handles are used.
+#         n_ologs_cache (int): Cache size before flushing ortholog lines to files.
+#     """
+#     try:
+#         dim2 = 1 if fewer_open_files else nspecies
+#         nOrthologues_SpPair = util.nOrtho_sp(nspecies)
+#         nCache = util.nOrtho_cache(nspecies)
+#         olog_lines_tot = [["" for j in range(dim2)] for i in range(nspecies)]
+#         olog_sus_lines_tot = ["" for _ in range(nspecies)]
+
+#         while True:
+#             try:
+#                 iog = args_queue.get(True, 0.1)
+#                 if iog is None: 
+#                     break
+#                 results = tree_analyser.AnalyseTree(iog)
+#                 if results is None:
+#                     results_queue.put(False)  
+#                     continue
+
+#                 nOrtho, olog_lines, olog_sus_lines = results
+#                 nOrthologues_SpPair += nOrtho
+#                 nCache += nOrtho
+
+#                 for i in range(nspecies):
+#                     olog_sus_lines_tot[i] += olog_sus_lines[i]
+#                     for j in range(dim2):
+#                         olog_lines_tot[i][j] += olog_lines[i][j]
+
+#                 I, J = nCache.get_i_j_to_write(n_ologs_cache, fewer_open_files)
+#                 if fewer_open_files:
+#                     for i in I:
+#                         WriteOlogLinesToFile(
+#                             tree_analyser.ologs_files_handles[i][0],
+#                             olog_lines_tot[i][0],
+#                             tree_analyser.lock_ologs[i]
+#                         )
+#                         olog_lines_tot[i][0] = ""
+#                 else:
+#                     for i, j in zip(I, J):
+#                         k_lock = max(i, j)
+#                         WriteOlogLinesToFile(
+#                             tree_analyser.ologs_files_handles[i][j],
+#                             olog_lines_tot[i][j],
+#                             tree_analyser.lock_ologs[k_lock]
+#                         )
+#                         olog_lines_tot[i][j] = ""
+
+#                 results_queue.put(nOrtho)
+
+#             except parallel_task_manager.queue.Empty:
+#                 continue
+
+#             except Exception as e:
+#                 print(f"WARNING: Worker encountered an error: {e}")
+#                 results_queue.put(False)  # Signal error
+#                 break
+#         try:
+#             for i in range(nspecies):
+#                 if fewer_open_files:
+#                     WriteOlogLinesToFile(
+#                         tree_analyser.ologs_files_handles[i][0],
+#                         olog_lines_tot[i][0],
+#                         tree_analyser.lock_ologs[i]
+#                     )
+#                 else:
+#                     for j in range(i + 1, nspecies):
+#                         WriteOlogLinesToFile(
+#                             tree_analyser.ologs_files_handles[i][j],
+#                             olog_lines_tot[i][j],
+#                             tree_analyser.lock_ologs[j]
+#                         )
+#                         WriteOlogLinesToFile(
+#                             tree_analyser.ologs_files_handles[j][i],
+#                             olog_lines_tot[j][i],
+#                             tree_analyser.lock_ologs[j]
+#                         )
+#                 WriteOlogLinesToFile(
+#                     tree_analyser.putative_xenolog_file_handles[i],
+#                     olog_sus_lines_tot[i],
+#                     tree_analyser.lock_suspect
+#                 )
+#             # results_queue.put(nOrthologues_SpPair)
+
+#         except Exception as cleanup_error:
+#             print(f"ERROR during cleanup: {cleanup_error}")
+#             # results_queue.put(False)  # Signal error during cleanup
+
+#     finally:
+#         results_queue.put(None) 
 
 def RunOrthologsParallel(
         tree_analyser, 
@@ -1933,6 +2150,8 @@ def SortFile(fn, f_type):
             lines = []
             # remove incorrect HOG numbering
             for line in infile:
+                # if "N0.HOG0000009" in line:
+                #     print(line)
                 lines.append(line.split("\t", 1)[-1])
             if len(lines) == 0:
                 return

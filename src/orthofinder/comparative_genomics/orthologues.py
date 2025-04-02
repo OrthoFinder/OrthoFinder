@@ -547,26 +547,26 @@ def OrthologuesWorkflow(
             exist_msa=options.qMSATrees,
         )
 
-        InferOrthologs(
-            ogSet, 
-            rooted_sp_tree, 
-            fn_rooted_sp_tree, 
-            q_multiple_roots, 
-            qSpeciesTreeSupports, 
-            stride_dups,
-            recon_method,
-            nHighParallel, 
-            nLowParallel, 
-            fewer_open_files,
-            userSpeciesTree, 
-            qPhyldog,
-            q_split_para_clades, 
-            root_from_previous,
-            save_space=options.save_space, 
-            old_version=old_version,
-            print_info=False,
-            exist_msa=options.qMSATrees,
-        )
+        # InferOrthologs(
+        #     ogSet, 
+        #     rooted_sp_tree, 
+        #     fn_rooted_sp_tree, 
+        #     q_multiple_roots, 
+        #     qSpeciesTreeSupports, 
+        #     stride_dups,
+        #     recon_method,
+        #     nHighParallel, 
+        #     nLowParallel, 
+        #     fewer_open_files,
+        #     userSpeciesTree, 
+        #     qPhyldog,
+        #     q_split_para_clades, 
+        #     root_from_previous,
+        #     save_space=options.save_space, 
+        #     old_version=old_version,
+        #     print_info=False,
+        #     exist_msa=options.qMSATrees,
+        # )
 
     fastaWriter = trees_msa.FastaWriter(files.FileHandler.GetSpeciesSeqsDir(), speciesToUse)
     ogs = accelerate.read_hogs(files.FileHandler.GetResultsDirectory1(), "N0")

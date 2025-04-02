@@ -69,59 +69,59 @@ def update_output_files(
     # shutil.rmtree(seq_id_dir)
     # shutil.move(seq_id_dir2, seq_id_dir)
 
-    util.PrintTime("Updating MSA/Trees")
+    # util.PrintTime("Updating MSA/Trees")
 
     # ## -------------------------- Fix Resolved Gene Trees and Gene Trees -------------------------
-    resolved_trees_working_dir = files.FileHandler.GetOGsReconTreeDir(qResults=True)
+    # resolved_trees_working_dir = files.FileHandler.GetOGsReconTreeDir(qResults=True)
 
-    align_id_dir = None
-    align_id_dir2 = None
-    if exist_msa:
-        align_id_dir = files.FileHandler.GetAlignIDDir()
-        align_id_dir2 = os.path.join(working_dir, "Alignments_ids2")
-        os.makedirs(align_id_dir2, exist_ok=True)
-        shutil.copytree(align_id_dir, align_id_dir2, dirs_exist_ok=True)
+    # align_id_dir = None
+    # align_id_dir2 = None
+    # if exist_msa:
+    #     align_id_dir = files.FileHandler.GetAlignIDDir()
+    #     align_id_dir2 = os.path.join(working_dir, "Alignments_ids2")
+    #     os.makedirs(align_id_dir2, exist_ok=True)
+    #     shutil.copytree(align_id_dir, align_id_dir2, dirs_exist_ok=True)
 
-    clear_dir(align_id_dir)
+    # clear_dir(align_id_dir)
 
-    tree_id_dir = files.FileHandler.GetOGsTreeDir(qResults=False)
-    tree_dir = files.FileHandler.GetOGsTreeDir(qResults=True)
+    # tree_id_dir = files.FileHandler.GetOGsTreeDir(qResults=False)
+    # tree_dir = files.FileHandler.GetOGsTreeDir(qResults=True)
 
-    ## Clean dirs 
-    clear_dir(tree_id_dir)
-    clear_dir(tree_dir)
+    # ## Clean dirs 
+    # clear_dir(tree_id_dir)
+    # clear_dir(tree_dir)
 
-    old_hog_n0 = read_hog_n0_file(hog_n0_file)
-    hog_n0_over4genes = hog_file_over4genes(old_hog_n0, options.min_seq)
+    # old_hog_n0 = read_hog_n0_file(hog_n0_file)
+    # hog_n0_over4genes = hog_file_over4genes(old_hog_n0, options.min_seq)
 
-    del old_hog_n0
-    ## get list of unique OG
-    unique_ogs = set(d['OG'] for d in hog_n0_over4genes)
-    simplified_name_dict = {
-        entry[1]: entry[0] 
-        for hog_list in name_dictionary.values()
-        for entry in hog_list
-    }
+    # del old_hog_n0
+    # ## get list of unique OG
+    # unique_ogs = set(d['OG'] for d in hog_n0_over4genes)
+    # simplified_name_dict = {
+    #     entry[1]: entry[0] 
+    #     for hog_list in name_dictionary.values()
+    #     for entry in hog_list
+    # }
     
-    trees.post_ogs_processing(
-        unique_ogs,
-        resolved_trees_working_dir, 
-        tree_id_dir,
-        tree_dir,
-        hog_n0_over4genes, 
-        simplified_name_dict, 
-        idDict,
-        spec_seq_id_dict,
-        species_names, 
-        nprocess,
-        align_id_dir=align_id_dir,
-        align_id_dir2=align_id_dir2,
-    )
+    # trees.post_ogs_processing(
+    #     unique_ogs,
+    #     resolved_trees_working_dir, 
+    #     tree_id_dir,
+    #     tree_dir,
+    #     hog_n0_over4genes, 
+    #     simplified_name_dict, 
+    #     idDict,
+    #     spec_seq_id_dict,
+    #     species_names, 
+    #     nprocess,
+    #     align_id_dir=align_id_dir,
+    #     align_id_dir2=align_id_dir2,
+    # )
     
-    shutil.rmtree(align_id_dir)
-    shutil.move(align_id_dir2, align_id_dir)
+    # shutil.rmtree(align_id_dir)
+    # shutil.move(align_id_dir2, align_id_dir)
 
-    clear_dir(resolved_trees_working_dir)
+    # clear_dir(resolved_trees_working_dir)
 
     ## ----------------------- Fix MSA Alignments --------------------------
     if exist_msa:
