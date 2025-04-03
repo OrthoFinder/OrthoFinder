@@ -511,8 +511,11 @@ def OrthologuesWorkflow(
         return
     rooted_sp_tree, fn_rooted_sp_tree, q_multiple_roots, stride_dups = return_obj
 
-    hog_tree_dir = files.FileHandler.GetHOGsTreeDir()
-    hog_msa_dir = files.FileHandler.GetHOGMSADir()
+    # hog_tree_dir = files.FileHandler.GetHOGsTreeDir()
+    # hog_msa_dir = files.FileHandler.GetHOGMSADir()
+    # recon_tree_id_dir = files.FileHandler.GetResolvedTreeIDDir()
+    align_dir = files.FileHandler.GetResultsAlignDir()
+    util.clear_dir(align_dir)
 
     InferOrthologs(
         ogSet, 
@@ -585,6 +588,8 @@ def OrthologuesWorkflow(
     if options.fix_files:
         os.remove(files.FileHandler.OGsAllIDFN())
         os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
+        # shutil.rmtree(files.FileHandler.GetResolvedTreeIDDir())
+        # shutil.rmtree(files.FileHandler.GetHOGMSADir())
 
     stats.Stats(ogs, species_dict, speciesToUse, files.FileHandler.iResultsVersion, fastaWriter, ids_dict)
 

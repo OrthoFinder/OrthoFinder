@@ -50,7 +50,7 @@ def update_output_files(
 
     ## Clean dirs 
     # clear_dir(seq_id_dir)
-    clear_dir(seq_dir)
+    util.clear_dir(seq_dir)
 
     ogSet, treeGen, idDict, new_ogs, name_dictionary = ogs.post_hogs_processing(
         # single_ogs_list,
@@ -72,7 +72,20 @@ def update_output_files(
     # util.PrintTime("Updating MSA/Trees")
 
     # ## -------------------------- Fix Resolved Gene Trees and Gene Trees -------------------------
-    # resolved_trees_working_dir = files.FileHandler.GetOGsReconTreeDir(qResults=True)
+    resolved_trees_working_dir = files.FileHandler.GetOGsReconTreeDir(qResults=True)
+    update_filenames(resolved_trees_working_dir, name_dictionary)
+
+    resolved_trees_id_dir = files.FileHandler.GetResolvedTreeIDDir()
+    update_filenames(resolved_trees_id_dir, name_dictionary)
+
+    # hog_msa_dir = files.FileHandler.GetHOGMSADir()
+    # align_id_dir = files.FileHandler.GetAlignIDDir()
+
+    # shutil.move(align_id_dir, align_id_dir)
+    # update_filenames(align_id_dir, name_dictionary)
+   
+    align_dir = files.FileHandler.GetResultsAlignDir()
+    update_filenames(align_dir, name_dictionary)
 
     # align_id_dir = None
     # align_id_dir2 = None
@@ -124,14 +137,14 @@ def update_output_files(
     # clear_dir(resolved_trees_working_dir)
 
     ## ----------------------- Fix MSA Alignments --------------------------
-    if exist_msa:
-        align_dir = files.FileHandler.GetResultsAlignDir()
-        clear_dir(align_dir)
-        iogs_align = [i for i, og in enumerate(new_ogs) if len(og) >= 2 and i >= i_og_restart]
-        # ids -> accessions
-        alignmentFilesToUse = [treeGen.GetAlignmentFilename(i) for i in iogs_align]
-        accessionAlignmentFNs = [treeGen.GetAlignmentFilename(i, True) for i in iogs_align]
-        treeGen.RenameAlignmentTaxa(alignmentFilesToUse, accessionAlignmentFNs, idDict)
+    # if exist_msa:
+    #     align_dir = files.FileHandler.GetResultsAlignDir()
+    #     util.clear_dir(align_dir)
+    #     iogs_align = [i for i, og in enumerate(new_ogs) if len(og) >= 2 and i >= i_og_restart]
+    #     # ids -> accessions
+    #     alignmentFilesToUse = [treeGen.GetAlignmentFilename(i) for i in iogs_align]
+    #     accessionAlignmentFNs = [treeGen.GetAlignmentFilename(i, True) for i in iogs_align]
+    #     treeGen.RenameAlignmentTaxa(alignmentFilesToUse, accessionAlignmentFNs, idDict)
 
     return ogSet
 
@@ -201,14 +214,22 @@ def hog_file_over4genes(hog_n0, min_seq):
 
     return filtered_hog_n0    
 
-def clear_dir(of3_dir):
-    with os.scandir(of3_dir) as entries:
-        for entry in entries:
-            try:
-                if entry.is_file() or entry.is_symlink():
-                    os.unlink(entry.path) 
-                elif entry.is_dir():
-                    shutil.rmtree(entry.path) 
-            except Exception as e:
-                printer.print(f'Failed to delete {entry.path}. Reason: {e}', style="error")
+def update_filenames(file_dir, name_dictionary):
+
+    for entry in os.scandir(file_dir):
+        filename, extension = entry.name.rsplit(".", 1)
+        if "_" not in filename:
+            continue
+        old_name = filename.split("_")[0]
+        names = name_dictionary.get(old_name)
+        if names is None:
+            continue
+        for i in names:
+            if i[2] in filename:
+                new_filename = i[0] + "." + extension
+                os.rename(entry.path, os.path.join(file_dir, new_filename))
+                break
+
+
+
 

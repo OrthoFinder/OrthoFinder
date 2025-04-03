@@ -814,3 +814,14 @@ def get_progressbar(len_task, visible=True):
         )
     return progressbar, task
 
+def clear_dir(of3_dir):
+    with os.scandir(of3_dir) as entries:
+        for entry in entries:
+            try:
+                if entry.is_file() or entry.is_symlink():
+                    os.unlink(entry.path) 
+                elif entry.is_dir():
+                    shutil.rmtree(entry.path) 
+            except Exception as e:
+                printer.print(f'Failed to delete {entry.path}. Reason: {e}', style="error")
+

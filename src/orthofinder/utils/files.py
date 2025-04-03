@@ -488,6 +488,11 @@ class __Files_new_dont_manually_create__(object):
         d = self.rd1 + "Resolved_Gene_Trees/"
         if not os.path.exists(d): os.mkdir(d)
         return d
+
+    def GetResolvedTreeIDDir(self):
+        d = self.wd_current + "Resolved_Gene_Trees_ids/"
+        if not os.path.exists(d): os.mkdir(d)
+        return d
     
     def GetUserTreeFN(self):
         return self.GetUserTreeDir() + "Gene_Trees.txt"
