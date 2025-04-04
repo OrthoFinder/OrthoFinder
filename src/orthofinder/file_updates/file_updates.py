@@ -62,16 +62,17 @@ def update_output_files(
         speciesXML,
         q_incremental=q_incremental,
     )
-    spec_seq_id_dict = {
-        val: key
-        for key, val in idDict.items()
-    }
+    # spec_seq_id_dict = {
+    #     val: key
+    #     for key, val in idDict.items()
+    # }
     # shutil.rmtree(seq_id_dir)
     # shutil.move(seq_id_dir2, seq_id_dir)
 
     # util.PrintTime("Updating MSA/Trees")
 
     # ## -------------------------- Fix Resolved Gene Trees and Gene Trees -------------------------
+
     resolved_trees_working_dir = files.FileHandler.GetOGsReconTreeDir(qResults=True)
     update_filenames(resolved_trees_working_dir, name_dictionary)
 

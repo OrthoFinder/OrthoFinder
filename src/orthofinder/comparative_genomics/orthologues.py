@@ -260,7 +260,7 @@ def ReconciliationAndOrthologues(
         old_version=False,
         print_info=True,
         exist_msa=True,
-        write_hog_tree=True
+        write_hog_tree=True,
     ):
     """
     ogSet - info about the orthogroups, species etc.
@@ -323,11 +323,13 @@ def ReconciliationAndOrthologues(
         # HOG Writer
         speciesDict = ogSet.SpeciesDict()
         SequenceDict = ogSet.SequenceDict()
-        hog_writer = trees2ologs_of.HogWriter(species_tree_rooted_labelled, 
-                                              node_names, 
-                                              SequenceDict, 
-                                              speciesDict, 
-                                              ogSet.speciesToUse)
+        hog_writer = trees2ologs_of.HogWriter(
+            species_tree_rooted_labelled, 
+            node_names, 
+            SequenceDict, 
+            speciesDict, 
+            ogSet.speciesToUse,
+        )
         nOrthologues_SpPair = \
             trees2ologs_of.DoOrthologuesForOrthoFinder(
                 ogSet, 
@@ -343,7 +345,7 @@ def ReconciliationAndOrthologues(
                 old_version=old_version,
                 print_info=print_info,
                 exist_msa=exist_msa,
-                write_hog_tree=write_hog_tree
+                write_hog_tree=write_hog_tree,
         )
         if print_info:
             util.PrintTime("Done of orthologues")
@@ -356,8 +358,9 @@ def ReconciliationAndOrthologues(
             ogSet.speciesToUse, 
             speciesDict, 
             fewer_open_files,
-            old_version
-            )
+            write_hog_tree,
+            old_version,
+        )
     # print("%fs for orthologs etc" % (stop-start))
     WriteOrthologuesStats(ogSet, nOrthologues_SpPair)
 #    print("Identified %d orthologues" % nOrthologues)
@@ -418,8 +421,10 @@ def OrthologuesFromTrees(
 
 
 def OrthologuesWorkflow(
-        seqsInfo, speciesNamesDict, 
-        speciesInfoObj, options,
+        seqsInfo, 
+        speciesNamesDict, 
+        speciesInfoObj, 
+        options,
         speciesToUse, 
         nSpAll, 
         program_caller,
@@ -535,7 +540,7 @@ def OrthologuesWorkflow(
         save_space=False, 
         old_version=old_version,
         exist_msa=options.qMSATrees,
-        write_hog_tree=True
+        write_hog_tree=True,
     )
     
     if options.fix_files:
@@ -576,7 +581,7 @@ def OrthologuesWorkflow(
             old_version=old_version,
             print_info=False,
             exist_msa=options.qMSATrees,
-            write_hog_tree=False
+            write_hog_tree=False,
         )
 
     fastaWriter = trees_msa.FastaWriter(files.FileHandler.GetSpeciesSeqsDir(), speciesToUse)
@@ -588,7 +593,7 @@ def OrthologuesWorkflow(
     if options.fix_files:
         os.remove(files.FileHandler.OGsAllIDFN())
         os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
-        # shutil.rmtree(files.FileHandler.GetResolvedTreeIDDir())
+        shutil.rmtree(files.FileHandler.GetResolvedTreeIDDir())
         # shutil.rmtree(files.FileHandler.GetHOGMSADir())
 
     stats.Stats(ogs, species_dict, speciesToUse, files.FileHandler.iResultsVersion, fastaWriter, ids_dict)
@@ -722,7 +727,7 @@ def InferOrthologs(
         old_version=False,
         print_info=True,
         exist_msa=True,
-        write_hog_tree=True
+        write_hog_tree=True,
     ):
     """ C. Gene tree rooting & orthologs"""
 
@@ -758,7 +763,6 @@ def InferOrthologs(
         print_info=print_info,
         exist_msa=exist_msa,
         write_hog_tree=write_hog_tree,
-
     )
     # util.PrintTime("Done Recon")
 

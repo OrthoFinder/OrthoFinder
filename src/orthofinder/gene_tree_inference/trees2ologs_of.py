@@ -127,7 +127,13 @@ def MRCA_node(t_rooted, taxa):
     return (t_rooted & next(taxon for taxon in taxa)) if len(taxa) == 1 else t_rooted.get_common_ancestor(taxa)
 
 class HogWriter(object):
-    def __init__(self, species_tree, species_tree_node_names, seq_ids, sp_ids, species_to_use):
+    def __init__(
+            self, 
+            species_tree, 
+            species_tree_node_names, 
+            seq_ids, sp_ids, 
+            species_to_use,
+        ):
         """
         Prepare files, get ready to write.
         species_tree_node_names - list of species tree nodes
@@ -467,7 +473,7 @@ class HogWriter(object):
             tree, 
             recon_tree_dir,
             exist_msa=True, 
-            write_hog_tree=True
+            write_hog_tree=True,
         ):
         """
         Args:
@@ -486,75 +492,74 @@ class HogWriter(object):
                     util.writerow(fh, [hog_id, ] + r)
                     if h == "N0.ids" and write_hog_tree:
                         too_prune = (','.join(filter(None, r[2:])).replace(" ","")).split(",")
-                        hog_tree = tree.copy()
-                        hog_tree.prune(too_prune)
-                        hog_tree_id = hog_tree.copy() 
-                        ### Could re-place this part by simply taking the next list element which contains the names then doing a string swap/dict on leaf iter..
-                        too_prune_gene_names = {}
-                        for leaf in hog_tree:
-                            species_name = self.sp_ids.get(leaf.name.split("_")[0])
-                            gene_name = self.seq_ids.get(leaf.name)
-                            leaf_name = "_".join([species_name,gene_name])
-                            too_prune_gene_names[leaf.name] = leaf.name
-                            leaf.add_features(name = leaf_name)
-                        OG_id = r[0]
-                        node_id = r[1]
-                        hog_name_reformat = "_".join([OG_id,node_id])
-                        hog_tree_id_dir = files.FileHandler.GetResolvedTreeIDDir()
-                        # hog_tree_dir = files.FileHandler.GetHOGsTreeDir()
-                        # hog_msa_dir = files.FileHandler.GetHOGMSADir()
-                        hog_tree_file = os.path.join(recon_tree_dir, hog_name_reformat + ".txt")
-                        hog_tree.write(outfile=hog_tree_file, format=1)  
-                        hog_tree_id_path = os.path.join(
-                            hog_tree_id_dir,
-                            hog_name_reformat + ".txt"
-                        )
-                        hog_tree_id.write(outfile=hog_tree_id_path, format=5)                
+                        if len(too_prune) >= 4:
+                            hog_tree = tree.copy()
+                            hog_tree.prune(too_prune)
+                            hog_tree_id = hog_tree.copy() 
+                            ### Could re-place this part by simply taking the next list element which contains the names then doing a string swap/dict on leaf iter..
+                            too_prune_gene_names = {}
+                            for leaf in hog_tree:
+                                species_name = self.sp_ids.get(leaf.name.split("_")[0])
+                                gene_name = self.seq_ids.get(leaf.name)
+                                leaf_name = "_".join([species_name,gene_name])
+                                too_prune_gene_names[leaf.name] = leaf.name
+                                leaf.add_features(name = leaf_name)
+                            OG_id = r[0]
+                            node_id = r[1]
+                            hog_name_reformat = "_".join([OG_id,node_id])
+                            hog_tree_id_dir = files.FileHandler.GetResolvedTreeIDDir()
+                            # hog_tree_dir = files.FileHandler.GetHOGsTreeDir()
+                            # hog_msa_dir = files.FileHandler.GetHOGMSADir()
+                            hog_tree_file = os.path.join(recon_tree_dir, hog_name_reformat + ".txt")
+                            hog_tree.write(outfile=hog_tree_file, format=1)  
+                            hog_tree_id_path = os.path.join(
+                                hog_tree_id_dir,
+                                hog_name_reformat + ".txt"
+                            )
+                            hog_tree_id.write(outfile=hog_tree_id_path, format=5)                
 
-                        ################ reformat MSA's
-                        ## Each label..in to_prune
-                        ## Read in OG file - done before to save on opening times..
-                        ## write out sequences... 
-                        if exist_msa and write_hog_tree:
-                            OG_file = r[0]    
-                            fasta_path_readin = os.path.join(files.FileHandler.GetAlignIDDir(), OG_file + ".fa")
-                            # fasta_path_output = hog_tree_file = os.path.join(hog_msa_dir, hog_name_reformat + ".fa")       
-                            genes_dict = {}
-                            #
-                            ### get sequences from OG file
-                            accession = ""
-                            sequence = ""
-                            with open(fasta_path_readin, 'r') as fastaFile:
-                                for line in fastaFile:
-                                    if line[0] == ">":
-                                        genes_dict[accession] = sequence
-                                        sequence = ""
-                                        accession = line[1:].rstrip()
-                                    else:
-                                        sequence += line
-                                        genes_dict[accession] = sequence
-                            
-                            # with open(fasta_path_output,"w") as outFasta:
-                            #     for gene in too_prune:
-                            #         gene_name = too_prune_gene_names[gene]
-                            #         sequence = genes_dict[gene]
-                            #         outFasta.write(f">{gene_name}\n")
-                            #         outFasta.write(sequence)
+                            ################ reformat MSA's
+                            ## Each label..in to_prune
+                            ## Read in OG file - done before to save on opening times..
+                            ## write out sequences... 
+                            if exist_msa:
+                                OG_file = r[0]    
+                                fasta_path_readin = os.path.join(files.FileHandler.GetAlignIDDir(), OG_file + ".fa")
+                                # fasta_path_output = hog_tree_file = os.path.join(hog_msa_dir, hog_name_reformat + ".fa")       
+                                genes_dict = {}
+                                #
+                                ### get sequences from OG file
+                                accession = ""
+                                sequence = ""
+                                with open(fasta_path_readin, 'r') as fastaFile:
+                                    for line in fastaFile:
+                                        if line[0] == ">":
+                                            genes_dict[accession] = sequence
+                                            sequence = ""
+                                            accession = line[1:].rstrip()
+                                        else:
+                                            sequence += line
+                                            genes_dict[accession] = sequence
+                                
+                                # with open(fasta_path_output,"w") as outFasta:
+                                #     for gene in too_prune:
+                                #         gene_name = too_prune_gene_names[gene]
+                                #         sequence = genes_dict[gene]
+                                #         outFasta.write(f">{gene_name}\n")
+                                #         outFasta.write(sequence)
 
-                            align_dir = files.FileHandler.GetResultsAlignDir()
-                            align_output_file =  os.path.join(align_dir, hog_name_reformat + ".fa")  
-                            
-                            with open(align_output_file,"w") as outFasta:
-                                for gene in too_prune:
-                                    species_name = self.sp_ids.get(gene.split("_")[0])
-                                    gene_name = self.seq_ids.get(gene)
-                                    combined_gene_name = "_".join([species_name,gene_name])
-                                    sequence = genes_dict[gene]
-                                    outFasta.write(f">{combined_gene_name}\n")
-                                    outFasta.write(sequence)
+                                align_dir = files.FileHandler.GetResultsAlignDir()
+                                align_output_file =  os.path.join(align_dir, hog_name_reformat + ".fa")  
+                                
+                                with open(align_output_file,"w") as outFasta:
+                                    for gene in too_prune:
+                                        species_name = self.sp_ids.get(gene.split("_")[0])
+                                        gene_name = self.seq_ids.get(gene)
+                                        combined_gene_name = "_".join([species_name,gene_name])
+                                        sequence = genes_dict[gene]
+                                        outFasta.write(f">{combined_gene_name}\n")
+                                        outFasta.write(sequence)
  
- 
-
                 fh.flush()
         except:
             print(traceback.format_exc())
@@ -579,7 +584,7 @@ def GetHOGs_from_tree(
         q_split_paralogous_clades, 
         recon_tree_dir,
         exist_msa=True,
-        write_hog_tree=True
+        write_hog_tree=True,
     ):
     og_name = "OG%07d" % iog
     if debug: print("\n===== %s =====" % og_name)
@@ -594,7 +599,7 @@ def GetHOGs_from_tree(
             tree, 
             recon_tree_dir,
             exist_msa=exist_msa,
-            write_hog_tree=write_hog_tree
+            write_hog_tree=write_hog_tree,
         )
     except:
         print("WARNING: HOG analysis for %s failed" % og_name)
@@ -1356,7 +1361,7 @@ def DoOrthologuesForOrthoFinder(
                 q_split_paralogous_clades, 
                 fewer_open_files=fewer_open_files,
                 exist_msa=exist_msa,
-                write_hog_tree=write_hog_tree
+                write_hog_tree=write_hog_tree,
             )
 
             if n_parallel == 1:
@@ -1456,8 +1461,8 @@ class TreeAnalyser(object):
         self.lock_dups = mp.Lock()
         self.lock_suspect = mp.Lock()
         self.lock_hogs = mp.Lock()
-        self.exist_msa=exist_msa
-        self.write_hog_tree=write_hog_tree
+        self.exist_msa = exist_msa
+        self.write_hog_tree = write_hog_tree
 
     def AnalyseTree(self, iog):
         try:  
@@ -2199,7 +2204,14 @@ def WriteOlogLinesToFile(fh, text, lock):
         lock.release()
         if debug: util.PrintTime("Released lock: %d" %  os.getpid())
 
-def SortParallelFiles(n_parallel, speciesToUse, speciesDict, fewer_open_files, old_version):
+def SortParallelFiles(
+        n_parallel, 
+        speciesToUse, 
+        speciesDict, 
+        fewer_open_files, 
+        write_hog_tree,
+        old_version,
+    ):
     """
     Args:
         fewer_open_files - Orthologs have been written to one file per species, not one per species pair
@@ -2222,6 +2234,8 @@ def SortParallelFiles(n_parallel, speciesToUse, speciesDict, fewer_open_files, o
     fns_type.extend([(dXenologs + '%s.tsv' % sp1, "x") for sp1 in species])
     # HOGs
     fns_type.extend([(fn, "h") for fn in glob.glob(os.path.dirname(files.FileHandler.GetHierarchicalOrthogroupsFN("N0.tsv")) + "/*")])
+    if not write_hog_tree:
+        fns_type.append((files.FileHandler.GetWorkingDirectory_Write() + "N0.ids.tsv", "h"))
     # Duplications
     fns_type.append((files.FileHandler.GetDuplicationsFN(), "d"))
 
