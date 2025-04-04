@@ -4,6 +4,7 @@ import tempfile
 import csv
 import shutil
 from collections import defaultdict
+import traceback
 
 from ..utils import files, util
 from ..utils.util import printer
@@ -80,13 +81,16 @@ def update_output_files(
     update_filenames(resolved_trees_id_dir, name_dictionary)
 
     # hog_msa_dir = files.FileHandler.GetHOGMSADir()
-    # align_id_dir = files.FileHandler.GetAlignIDDir()
+    align_id_dir = files.FileHandler.GetAlignIDDir()
 
     # shutil.move(align_id_dir, align_id_dir)
     # update_filenames(align_id_dir, name_dictionary)
     if exist_msa:
         align_dir = files.FileHandler.GetResultsAlignDir()
         update_filenames(align_dir, name_dictionary)
+        CopyTinyAlignments(align_id_dir, align_dir, name_dictionary, idDict)
+
+
 
     # align_id_dir = None
     # align_id_dir2 = None
@@ -231,6 +235,57 @@ def update_filenames(file_dir, name_dictionary):
                 os.rename(entry.path, os.path.join(file_dir, new_filename))
                 break
 
+def CopyTinyAlignments(align_id_dir, align_dir, name_dictionary, idDict):
+    for entry in os.scandir(align_id_dir):
+        if entry.is_file():
+            if '.' not in entry.name:
+                continue
+            filename, extension = entry.name.rsplit(".", 1)
+            old_name = filename
+            entries = name_dictionary.get(old_name)
+            if entries is None: 
+                continue
+
+            for row in entries:
+                if len(row) >= 3 and row[2].strip() == '-':
+                    new_name = row[0] + "." + extension
+                    src_path = entry.path
+                    dst_path = os.path.join(align_dir, new_name)
+                    shutil.copy2(src_path, dst_path)
+                    genes_dict = read_fasta(dst_path)
+                    write_fasta(align_dir, row[0], genes_dict, idDict)
+
+def read_fasta(file_path):
+    genes_dict = {}
+    qFirst = True
+    accession = ""
+    sequence = ""
+    with open(file_path, 'r') as fastaFile:
+        for line in fastaFile:
+            if line[0] == ">":
+                if not qFirst:
+                    genes_dict[accession] = sequence
+                    sequence = ""
+                qFirst = False
+                accession = line[1:].rstrip()
+            else:
+                sequence += line
+        genes_dict[accession] = sequence
+    return genes_dict
 
 
-
+def write_fasta(align_dir, hog_name, genes_dict, idDict):
+    try:
+        fasta_path = os.path.join(align_dir, hog_name + ".fa")
+        sorted_seqs = sorted(
+            genes_dict.keys(), 
+            key=lambda x: list(map(int, x.split("_"))) if "_" in x else x
+        )
+        with open(fasta_path, 'w') as outFile:
+            for gene in sorted_seqs:
+                gene_name = idDict.get(gene)
+                outFile.write(f">{gene_name}\n")
+                outFile.write(genes_dict[gene])
+    except Exception as e:
+        print(traceback.format_exc())
+        print(f"ERROR writing FASTA for {hog_name}: {e}")
