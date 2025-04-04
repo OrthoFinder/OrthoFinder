@@ -240,20 +240,17 @@ def CopyTinyAlignments(align_id_dir, align_dir, name_dictionary, idDict):
         if entry.is_file():
             if '.' not in entry.name:
                 continue
-            filename, extension = entry.name.rsplit(".", 1)
-            old_name = filename
+            
+            old_name = entry.name.rsplit(".", 1)[0]
             entries = name_dictionary.get(old_name)
             if entries is None: 
                 continue
 
             for row in entries:
                 if len(row) >= 3 and row[2].strip() == '-':
-                    new_name = row[0] + "." + extension
-                    src_path = entry.path
-                    dst_path = os.path.join(align_dir, new_name)
-                    shutil.copy2(src_path, dst_path)
-                    genes_dict = read_fasta(dst_path)
+                    genes_dict = read_fasta(entry.path)
                     write_fasta(align_dir, row[0], genes_dict, idDict)
+                    break
 
 def read_fasta(file_path):
     genes_dict = {}
