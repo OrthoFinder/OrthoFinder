@@ -516,9 +516,13 @@ def OrthologuesWorkflow(
         return
     rooted_sp_tree, fn_rooted_sp_tree, q_multiple_roots, stride_dups = return_obj
 
-    if options.qMSATrees:
-        align_dir = files.FileHandler.GetResultsAlignDir()
-        util.clear_dir(align_dir)
+    write_hog_tree = False
+    if options.fix_files:
+        if options.qMSATrees:
+            align_dir = files.FileHandler.GetResultsAlignDir()
+            util.clear_dir(align_dir)
+        
+        write_hog_tree = True
 
     InferOrthologs(
         ogSet, 
@@ -538,7 +542,7 @@ def OrthologuesWorkflow(
         save_space=False, 
         old_version=old_version,
         exist_msa=options.qMSATrees,
-        write_hog_tree=True,
+        write_hog_tree=write_hog_tree,
     )
     
     if options.fix_files:
