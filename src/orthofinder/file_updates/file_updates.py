@@ -84,9 +84,9 @@ def update_output_files(
 
     # shutil.move(align_id_dir, align_id_dir)
     # update_filenames(align_id_dir, name_dictionary)
-   
-    align_dir = files.FileHandler.GetResultsAlignDir()
-    update_filenames(align_dir, name_dictionary)
+    if exist_msa:
+        align_dir = files.FileHandler.GetResultsAlignDir()
+        update_filenames(align_dir, name_dictionary)
 
     # align_id_dir = None
     # align_id_dir2 = None
