@@ -1503,15 +1503,16 @@ class TreeAnalyser(object):
                 return None
 
             # Write rooted tree with accessions
-            if self.write_hog_tree or not self.fix_files:    
-                util.RenameTreeTaxa(
-                    rooted_tree_ids, 
-                    files.FileHandler.GetOGsTreeFN(iog, True), 
-                    self.spec_seq_dict, 
-                    qSupport=qHaveSupport, 
-                    qFixNegatives=True, 
-                    qViaCopy=True
-                )
+            # Not needed anymore
+            # if self.write_hog_tree or not self.fix_files:  
+            #     util.RenameTreeTaxa(
+            #         rooted_tree_ids, 
+            #         files.FileHandler.GetOGsTreeFN(iog, True), 
+            #         self.spec_seq_dict, 
+            #         qSupport=qHaveSupport, 
+            #         qFixNegatives=True, 
+            #         qViaCopy=True
+            #     )
             
             ologs, recon_tree, suspect_genes, dups = \
                 GetOrthologues_from_tree(
@@ -1574,7 +1575,7 @@ class TreeAnalyser(object):
             # don't relabel nodes, they've already been done
             
             # util.RenameTreeTaxa(recon_tree, self.reconTreesRenamedDir + "OG%07d_tree.txt" % iog, self.spec_seq_dict, qSupport=False, qFixNegatives=True)
-            if self.fix_files:
+            if not self.fix_files:
                 util.RenameTreeTaxa(
                     recon_tree, 
                     self.reconTreesRenamedDir + "OG%07d.txt" % iog, 
