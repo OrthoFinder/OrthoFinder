@@ -365,6 +365,7 @@ def GetOrthologues_FromTrees(options):
         options.fewer_open_files,
         old_version=options.old_version,
         exist_msa=options.qMSATrees,
+        fix_files=options.fix_files
     )
 
 
