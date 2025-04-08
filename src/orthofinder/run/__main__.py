@@ -696,8 +696,8 @@ def main(args=None):
 
         ### ------------- Compress the Gene_Trees --------------
         gene_tree_dir = files.FileHandler.GetOGsTreeDir(qResults=True)
-        usr_gene_tree_fn = files.FileHandler.GetUserTreeFN()
-        util.compress_files(gene_tree_dir, usr_gene_tree_fn)
+        # usr_gene_tree_fn = files.FileHandler.GetUserTreeFN()
+        # util.compress_files(gene_tree_dir, usr_gene_tree_fn)
 
         ### ------------- Comprees the Resolved_Gene_Trees ------------
         resolved_gene_tree_dir = files.FileHandler.GetOGsReconTreeDir(qResults=True)

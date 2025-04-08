@@ -526,7 +526,7 @@ def OrthologuesWorkflow(
             align_dir = files.FileHandler.GetResultsAlignDir()
             util.clear_dir(align_dir)
         
-    #     write_hog_tree = True
+        write_hog_tree = True
 
     InferOrthologs(
         ogSet, 
@@ -601,7 +601,7 @@ def OrthologuesWorkflow(
     if options.fix_files:
         os.remove(files.FileHandler.OGsAllIDFN())
         os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
-        shutil.rmtree(files.FileHandler.GetResolvedTreeIDDir())
+        # shutil.rmtree(files.FileHandler.GetResolvedTreeIDDir())
         # shutil.rmtree(files.FileHandler.GetHOGMSADir())
 
     stats.Stats(ogs, species_dict, speciesToUse, files.FileHandler.iResultsVersion, fastaWriter, ids_dict)
