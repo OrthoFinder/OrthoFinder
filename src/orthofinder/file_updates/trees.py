@@ -33,19 +33,18 @@ def read_fasta(file_path):
 def write_tree(
         hog_name, 
         subtree,
-        spec_seq_id_dict,
-        tree_id_dir,
-        tree_dir,
+        # spec_seq_id_dict,
+        resolved_trees_id_dir,
         ):
     try:
-        tree_id_file = os.path.join(tree_id_dir, hog_name + ".txt")
-        tree_file = os.path.join(tree_dir, hog_name + ".txt")
+        tree_id_file = os.path.join(resolved_trees_id_dir, hog_name + ".txt")
+        # tree_file = os.path.join(tree_dir, hog_name + ".txt")
 
         subtree.write(outfile=tree_id_file, format=5)
         
-        for leaf in subtree.iter_leaves():
-            leaf.name = spec_seq_id_dict.get(leaf.name, leaf.name)
-        subtree.write(outfile=tree_file, format=5)
+        # for leaf in subtree.iter_leaves():
+        #     leaf.name = spec_seq_id_dict.get(leaf.name, leaf.name)
+        # subtree.write(outfile=tree_file, format=5)
 
     except Exception as e:
         print(f"ERROR writing tree {hog_name}: {e}")
@@ -133,7 +132,7 @@ def process_task(read_queue, process_queue, hog_index, name_dict, species_names)
 
 def writer_task(
         process_queue, 
-        spec_seq_id_dict,
+        # spec_seq_id_dict,
         tree_id_dir,
         tree_dir,
         align_id_dir):
@@ -145,7 +144,7 @@ def writer_task(
             write_tree(
                 hog_name, 
                 subtree,
-                spec_seq_id_dict,
+                # spec_seq_id_dict,
                 tree_id_dir,
                 tree_dir,
                 )
@@ -155,11 +154,10 @@ def writer_task(
 def post_ogs_processing(
     unique_ogs,
     resolved_trees_working_dir,    
-    tree_id_dir,
-    tree_dir,
+    resolved_trees_id_dir,
     hog_n0_over4genes, 
     name_dict, 
-    spec_seq_id_dict,
+    # spec_seq_id_dict,
     idDict,
     species_names, 
     nprocess,
@@ -191,9 +189,8 @@ def post_ogs_processing(
         target=writer_task, 
         args=(
             process_queue, 
-            spec_seq_id_dict,
-            tree_id_dir,
-            tree_dir, 
+            # spec_seq_id_dict,
+            resolved_trees_id_dir,
             align_id_dir
         )
     )

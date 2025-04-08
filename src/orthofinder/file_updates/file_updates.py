@@ -63,78 +63,74 @@ def update_output_files(
         speciesXML,
         q_incremental=q_incremental,
     )
-    # spec_seq_id_dict = {
-    #     val: key
-    #     for key, val in idDict.items()
-    # }
+    spec_seq_id_dict = {
+        val: key
+        for key, val in idDict.items()
+    }
     # shutil.rmtree(seq_id_dir)
     # shutil.move(seq_id_dir2, seq_id_dir)
 
     # util.PrintTime("Updating MSA/Trees")
 
     # ## -------------------------- Fix Resolved Gene Trees and Gene Trees -------------------------
-
     resolved_trees_working_dir = files.FileHandler.GetOGsReconTreeDir(qResults=True)
-    update_filenames(resolved_trees_working_dir, name_dictionary)
+    # update_filenames(resolved_trees_working_dir, name_dictionary)
 
     resolved_trees_id_dir = files.FileHandler.GetResolvedTreeIDDir()
-    update_filenames(resolved_trees_id_dir, name_dictionary)
+    # update_filenames(resolved_trees_id_dir, name_dictionary)
 
     # hog_msa_dir = files.FileHandler.GetHOGMSADir()
     align_id_dir = files.FileHandler.GetAlignIDDir()
 
     # shutil.move(align_id_dir, align_id_dir)
     # update_filenames(align_id_dir, name_dictionary)
-    if exist_msa:
-        align_dir = files.FileHandler.GetResultsAlignDir()
-        update_filenames(align_dir, name_dictionary)
-        CopyTinyAlignments(align_id_dir, align_dir, name_dictionary, idDict)
-
-
-
-    # align_id_dir = None
-    # align_id_dir2 = None
     # if exist_msa:
-    #     align_id_dir = files.FileHandler.GetAlignIDDir()
-    #     align_id_dir2 = os.path.join(working_dir, "Alignments_ids2")
-    #     os.makedirs(align_id_dir2, exist_ok=True)
-    #     shutil.copytree(align_id_dir, align_id_dir2, dirs_exist_ok=True)
+    #     align_dir = files.FileHandler.GetResultsAlignDir()
+    #     update_filenames(align_dir, name_dictionary)
+    #     CopyTinyAlignments(align_id_dir, align_dir, name_dictionary, idDict)
 
-    # clear_dir(align_id_dir)
+    align_id_dir = None
+    align_id_dir2 = None
+    if exist_msa:
+        align_id_dir = files.FileHandler.GetAlignIDDir()
+        align_id_dir2 = os.path.join(working_dir, "Alignments_ids2")
+        os.makedirs(align_id_dir2, exist_ok=True)
+        shutil.copytree(align_id_dir, align_id_dir2, dirs_exist_ok=True)
 
-    # tree_id_dir = files.FileHandler.GetOGsTreeDir(qResults=False)
-    # tree_dir = files.FileHandler.GetOGsTreeDir(qResults=True)
+    util.clear_dir(align_id_dir)
 
-    # ## Clean dirs 
-    # clear_dir(tree_id_dir)
-    # clear_dir(tree_dir)
+    tree_id_dir = files.FileHandler.GetOGsTreeDir(qResults=False)
+    tree_dir = files.FileHandler.GetOGsTreeDir(qResults=True)
 
-    # old_hog_n0 = read_hog_n0_file(hog_n0_file)
-    # hog_n0_over4genes = hog_file_over4genes(old_hog_n0, options.min_seq)
+    ## Clean dirs 
+    util.clear_dir(tree_id_dir)
+    util.clear_dir(tree_dir)
 
-    # del old_hog_n0
-    # ## get list of unique OG
-    # unique_ogs = set(d['OG'] for d in hog_n0_over4genes)
-    # simplified_name_dict = {
-    #     entry[1]: entry[0] 
-    #     for hog_list in name_dictionary.values()
-    #     for entry in hog_list
-    # }
+    old_hog_n0 = read_hog_n0_file(hog_n0_file)
+    hog_n0_over4genes = hog_file_over4genes(old_hog_n0, options.min_seq)
+
+    del old_hog_n0
+    ## get list of unique OG
+    unique_ogs = set(d['OG'] for d in hog_n0_over4genes)
+    simplified_name_dict = {
+        entry[1]: entry[0] 
+        for hog_list in name_dictionary.values()
+        for entry in hog_list
+    }
     
-    # trees.post_ogs_processing(
-    #     unique_ogs,
-    #     resolved_trees_working_dir, 
-    #     tree_id_dir,
-    #     tree_dir,
-    #     hog_n0_over4genes, 
-    #     simplified_name_dict, 
-    #     idDict,
-    #     spec_seq_id_dict,
-    #     species_names, 
-    #     nprocess,
-    #     align_id_dir=align_id_dir,
-    #     align_id_dir2=align_id_dir2,
-    # )
+    trees.post_ogs_processing(
+        unique_ogs,
+        resolved_trees_working_dir, 
+        resolved_trees_id_dir,
+        hog_n0_over4genes, 
+        simplified_name_dict, 
+        idDict,
+        # spec_seq_id_dict,
+        species_names, 
+        nprocess,
+        align_id_dir=align_id_dir,
+        align_id_dir2=align_id_dir2,
+    )
     
     # shutil.rmtree(align_id_dir)
     # shutil.move(align_id_dir2, align_id_dir)
@@ -231,6 +227,7 @@ def update_filenames(file_dir, name_dictionary):
             continue
         for i in names:
             if i[2] == node_name:
+                print(node_name, i)
                 new_filename = i[0] + "." + extension
                 os.rename(entry.path, os.path.join(file_dir, new_filename))
                 break
