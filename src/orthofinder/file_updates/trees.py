@@ -49,7 +49,7 @@ def write_tree(
     except Exception as e:
         print(f"ERROR writing tree {hog_name}: {e}")
 
-def write_fasta(align_id_dir, hog_name, sequences):
+def write_fasta(align_id_dir, hog_name, sequences, idDict):
     try:
         fasta_path = os.path.join(align_id_dir, hog_name + ".fa")
         sorted_seqs = sorted(
@@ -58,7 +58,8 @@ def write_fasta(align_id_dir, hog_name, sequences):
         )
         with open(fasta_path, 'w') as outFile:
             for gene in sorted_seqs:
-                outFile.write(f">{gene}\n")
+                gene_name = idDict.get(gene)
+                outFile.write(f">{gene_name}\n")
                 outFile.write(sequences[gene])
     except Exception as e:
         print(f"ERROR writing FASTA for {hog_name}: {e}")
@@ -133,9 +134,9 @@ def process_task(read_queue, process_queue, hog_index, name_dict, species_names)
 def writer_task(
         process_queue, 
         # spec_seq_id_dict,
-        tree_id_dir,
-        tree_dir,
-        align_id_dir):
+        idDict,
+        resolved_trees_id_dir,
+        align_dir):
     while True:
         task = process_queue.get()
         if task is None:
@@ -145,11 +146,10 @@ def writer_task(
                 hog_name, 
                 subtree,
                 # spec_seq_id_dict,
-                tree_id_dir,
-                tree_dir,
+                resolved_trees_id_dir
                 )
-            if align_id_dir is not None and pruned_alignments is not None:
-                write_fasta(align_id_dir, hog_name, pruned_alignments)
+            if align_dir is not None and pruned_alignments is not None:
+                write_fasta(align_dir, hog_name, pruned_alignments, idDict)
 
 def post_ogs_processing(
     unique_ogs,
@@ -162,10 +162,10 @@ def post_ogs_processing(
     species_names, 
     nprocess,
     align_id_dir=None,            
-    align_id_dir2=None,          
+    align_dir=None,          
 ):
     tree_file_index = index_files(resolved_trees_working_dir, ".txt")
-    fasta_file_index = index_files(align_id_dir2, ".fa") if align_id_dir2 is not None else {}
+    fasta_file_index = index_files(align_id_dir, ".fa") if align_id_dir is not None else {}
 
     hog_index = {
         unique_og: [row for row in hog_n0_over4genes if unique_og in row["OG"]]
@@ -190,8 +190,9 @@ def post_ogs_processing(
         args=(
             process_queue, 
             # spec_seq_id_dict,
+            idDict,
             resolved_trees_id_dir,
-            align_id_dir
+            align_dir
         )
     )
     writer_process.start()

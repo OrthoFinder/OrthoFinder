@@ -80,7 +80,7 @@ def update_output_files(
     # update_filenames(resolved_trees_id_dir, name_dictionary)
 
     # hog_msa_dir = files.FileHandler.GetHOGMSADir()
-    align_id_dir = files.FileHandler.GetAlignIDDir()
+    # align_id_dir = files.FileHandler.GetAlignIDDir()
 
     # shutil.move(align_id_dir, align_id_dir)
     # update_filenames(align_id_dir, name_dictionary)
@@ -88,23 +88,26 @@ def update_output_files(
     #     align_dir = files.FileHandler.GetResultsAlignDir()
     #     update_filenames(align_dir, name_dictionary)
     #     CopyTinyAlignments(align_id_dir, align_dir, name_dictionary, idDict)
-
-    align_id_dir = None
-    align_id_dir2 = None
-    if exist_msa:
-        align_id_dir = files.FileHandler.GetAlignIDDir()
-        align_id_dir2 = os.path.join(working_dir, "Alignments_ids2")
-        os.makedirs(align_id_dir2, exist_ok=True)
-        shutil.copytree(align_id_dir, align_id_dir2, dirs_exist_ok=True)
+    
+    align_dir = files.FileHandler.GetResultsAlignDir()
+    align_id_dir = files.FileHandler.GetAlignIDDir()
+    
+    # align_id_dir = None
+    # align_id_dir2 = None
+    # if exist_msa:
+    #     align_id_dir = files.FileHandler.GetAlignIDDir()
+    #     align_id_dir2 = os.path.join(working_dir, "Alignments_ids2")
+    #     os.makedirs(align_id_dir2, exist_ok=True)
+    #     shutil.copytree(align_id_dir, align_id_dir2, dirs_exist_ok=True)
 
     util.clear_dir(align_id_dir)
 
-    tree_id_dir = files.FileHandler.GetOGsTreeDir(qResults=False)
-    tree_dir = files.FileHandler.GetOGsTreeDir(qResults=True)
+    # tree_id_dir = files.FileHandler.GetOGsTreeDir(qResults=False)
+    # tree_dir = files.FileHandler.GetOGsTreeDir(qResults=True)
 
-    ## Clean dirs 
-    util.clear_dir(tree_id_dir)
-    util.clear_dir(tree_dir)
+    # ## Clean dirs 
+    # util.clear_dir(tree_id_dir)
+    # util.clear_dir(tree_dir)
 
     old_hog_n0 = read_hog_n0_file(hog_n0_file)
     hog_n0_over4genes = hog_file_over4genes(old_hog_n0, options.min_seq)
@@ -129,15 +132,19 @@ def update_output_files(
         species_names, 
         nprocess,
         align_id_dir=align_id_dir,
-        align_id_dir2=align_id_dir2,
+        align_dir=align_dir,
     )
     
     # shutil.rmtree(align_id_dir)
     # shutil.move(align_id_dir2, align_id_dir)
 
-    # clear_dir(resolved_trees_working_dir)
+    util.clear_dir(resolved_trees_working_dir)
 
     ## ----------------------- Fix MSA Alignments --------------------------
+    if exist_msa:
+        update_filenames(align_dir, name_dictionary)
+        CopyTinyAlignments(align_id_dir, align_dir, name_dictionary, idDict)
+
     # if exist_msa:
     #     align_dir = files.FileHandler.GetResultsAlignDir()
     #     util.clear_dir(align_dir)
