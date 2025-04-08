@@ -261,6 +261,7 @@ def ReconciliationAndOrthologues(
         print_info=True,
         exist_msa=True,
         write_hog_tree=True,
+        fix_files=True
     ):
     """
     ogSet - info about the orthogroups, species etc.
@@ -346,6 +347,7 @@ def ReconciliationAndOrthologues(
                 print_info=print_info,
                 exist_msa=exist_msa,
                 write_hog_tree=write_hog_tree,
+                fix_files=fix_files
         )
         if print_info:
             util.PrintTime("Done of orthologues")
@@ -379,6 +381,7 @@ def OrthologuesFromTrees(
         old_version=False,
         exist_msa=True,
         write_hog_tree=True,
+        fix_files=True
     ):
     """
     userSpeciesTree_fn - None if not supplied otherwise rooted tree using user species names (not orthofinder IDs)
@@ -414,6 +417,7 @@ def OrthologuesFromTrees(
         old_version=old_version,
         exist_msa=exist_msa,
         write_hog_tree=write_hog_tree,
+        fix_files=fix_files
     )
     util.PrintUnderline("Writing results files")
     util.PrintTime("Writing results files")
@@ -543,6 +547,7 @@ def OrthologuesWorkflow(
         old_version=old_version,
         exist_msa=options.qMSATrees,
         write_hog_tree=write_hog_tree,
+        fix_files=options.fix_files
     )
     
     if options.fix_files:
@@ -584,6 +589,7 @@ def OrthologuesWorkflow(
             print_info=False,
             exist_msa=options.qMSATrees,
             write_hog_tree=False,
+            fix_files=options.fix_files
         )
 
     fastaWriter = trees_msa.FastaWriter(files.FileHandler.GetSpeciesSeqsDir(), speciesToUse)
@@ -730,6 +736,7 @@ def InferOrthologs(
         print_info=True,
         exist_msa=True,
         write_hog_tree=True,
+        fix_files=True
     ):
     """ C. Gene tree rooting & orthologs"""
 
@@ -765,6 +772,7 @@ def InferOrthologs(
         print_info=print_info,
         exist_msa=exist_msa,
         write_hog_tree=write_hog_tree,
+        fix_files=fix_files
     )
     # util.PrintTime("Done Recon")
 

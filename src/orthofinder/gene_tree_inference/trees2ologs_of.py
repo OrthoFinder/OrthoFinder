@@ -1300,6 +1300,7 @@ def DoOrthologuesForOrthoFinder(
         print_info=True,
         exist_msa=True,
         write_hog_tree=True,
+        fix_files=True
     ):
     try:
         # Create directory structure
@@ -1364,6 +1365,7 @@ def DoOrthologuesForOrthoFinder(
                 fewer_open_files=fewer_open_files,
                 exist_msa=exist_msa,
                 write_hog_tree=write_hog_tree,
+                fix_files=fix_files
             )
 
             if n_parallel == 1:
@@ -1438,6 +1440,7 @@ class TreeAnalyser(object):
             fewer_open_files=False,
             exist_msa=True,
             write_hog_tree=True,
+            fix_files=True
     ):
         self.nOgs = nOgs
         self.dResultsOrthologues = dResultsOrthologues
@@ -1465,6 +1468,7 @@ class TreeAnalyser(object):
         self.lock_hogs = mp.Lock()
         self.exist_msa = exist_msa
         self.write_hog_tree = write_hog_tree
+        self.fix_files = fix_files
 
     def AnalyseTree(self, iog):
         try:  
@@ -1472,7 +1476,7 @@ class TreeAnalyser(object):
             n_species = len(self.speciesToUse)
             dim2 = 1 if self.fewer_open_files else self.nspecies
 
-            if self.write_hog_tree:     
+            if self.write_hog_tree or not self.fix_files:    
                 if not os.path.exists(files.FileHandler.GetOGsTreeFN(iog)):
                     return None
 
@@ -1499,7 +1503,7 @@ class TreeAnalyser(object):
                 return None
 
             # Write rooted tree with accessions
-            if self.write_hog_tree:
+            if self.write_hog_tree or not self.fix_files:    
                 util.RenameTreeTaxa(
                     rooted_tree_ids, 
                     files.FileHandler.GetOGsTreeFN(iog, True), 
