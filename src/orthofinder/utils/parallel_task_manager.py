@@ -65,11 +65,11 @@ def setup_environment():
     local_bin_dir = os.path.join(__location__, 'bin')
     bin_dirs = [
         "/opt/bin",
+        "/usr/bin",
+        "/usr/local/bin",
         os.path.expanduser("~/bin"),
         os.path.expanduser("~/.local/bin"),
         os.path.expanduser("~/local/bin"),
-        "/usr/bin",
-        "/usr/local/bin",
         local_bin_dir,
     ]
     for bin_dir in bin_dirs:

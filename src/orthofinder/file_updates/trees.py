@@ -1,8 +1,10 @@
 import os
-import multiprocessing as mp
-from ..tools.tree import Tree
 import io 
+import numpy as np
+import multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor
+
+from ..tools.tree import Tree
 
 
 def write_tree(hog_name, subtree, resolved_trees_id_dir):
@@ -157,9 +159,16 @@ def post_ogs_processing(
     align_dir=None,   
     min_seq=4       
 ):
-    n_reader_threads = min(max(nprocess, 1), 8)
-    n_processor_processes = max(nprocess // 2, 1)
-    n_writer_processes = min(max(nprocess // 2 - 1, 1), 4)
+
+    if nprocess >= 128:
+        n_reader_threads = min(max(nprocess // 4, 2), 32)
+        n_processor_processes = max(nprocess * 3 // 4, 1)
+        n_writer_processes = min(max(nprocess // 4, 4), 32)
+    else:
+        n_reader_threads = max(min(nprocess // 2, 16), 4)
+        n_processor_processes = max(nprocess // 2, 1)
+        n_writer_processes = min(int(np.ceil(np.abs(nprocess // 2 - 1))), max(4, nprocess // 4))
+   
     process_queue = mp.Queue()
     read_queue = mp.Queue()
 
