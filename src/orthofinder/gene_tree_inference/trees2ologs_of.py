@@ -446,10 +446,6 @@ class HogWriter(object):
             self, 
             cached_hogs, 
             lock_hogs, 
-            tree,
-            recon_tree_dir,
-            exist_msa=True, 
-            write_hog_tree=True,
         ):
         """
         Args:
@@ -496,21 +492,21 @@ class HogWriter(object):
     #                 hog_id = "%s.HOG%07d" % (h, self.get_hog_index(h))
     #                 util.writerow(fh, [hog_id, ] + r)
     #                 if h == "N0.ids" and write_hog_tree:
-    #                     too_prune = (','.join(filter(None, r[2:])).replace(" ","")).split(",")
+                        # too_prune = (','.join(filter(None, r[2:])).replace(" ","")).split(",")
                         
-    #                     hog_tree = tree.copy()
-    #                     hog_tree.prune(too_prune)
-    #                     hog_tree_id = hog_tree.copy() 
-    #                     ### Could re-place this part by simply taking the next list element which contains the names then doing a string swap/dict on leaf iter..
-    #                     too_prune_gene_names = {}
-    #                     for leaf in hog_tree:
-    #                         species_name = self.sp_ids.get(leaf.name.split("_")[0])
-    #                         gene_name = self.seq_ids.get(leaf.name)
-    #                         leaf_name = "_".join([species_name,gene_name])
-    #                         too_prune_gene_names[leaf.name] = leaf.name
-    #                         leaf.add_features(name = leaf_name)
-    #                     OG_id = r[0]
-    #                     node_id = r[1]
+                        # hog_tree = tree.copy()
+                        # hog_tree.prune(too_prune)
+                        # hog_tree_id = hog_tree.copy() 
+                        # ### Could re-place this part by simply taking the next list element which contains the names then doing a string swap/dict on leaf iter..
+                        # too_prune_gene_names = {}
+                        # for leaf in hog_tree:
+                        #     species_name = self.sp_ids.get(leaf.name.split("_")[0])
+                        #     gene_name = self.seq_ids.get(leaf.name)
+                        #     leaf_name = "_".join([species_name,gene_name])
+                        #     too_prune_gene_names[leaf.name] = leaf.name
+                        #     leaf.add_features(name = leaf_name)
+                        # OG_id = r[0]
+                        # node_id = r[1]
     #                     hog_name_reformat = "_".join([OG_id,node_id])
     #                     hog_tree_id_dir = files.FileHandler.GetResolvedTreeIDDir()
     #                     # hog_tree_dir = files.FileHandler.GetHOGsTreeDir()
@@ -559,13 +555,13 @@ class HogWriter(object):
     #                         align_output_file =  os.path.join(align_dir, hog_name_reformat + ".fa")  
                             
     #                         with open(align_output_file,"w") as outFasta:
-    #                             for gene in too_prune:
-    #                                 species_name = self.sp_ids.get(gene.split("_")[0])
-    #                                 gene_name = self.seq_ids.get(gene)
-    #                                 combined_gene_name = "_".join([species_name,gene_name])
-    #                                 sequence = genes_dict[gene]
-    #                                 outFasta.write(f">{combined_gene_name}\n")
-    #                                 outFasta.write(sequence)
+                                # for gene in too_prune:
+                                #     species_name = self.sp_ids.get(gene.split("_")[0])
+                                #     gene_name = self.seq_ids.get(gene)
+                                #     combined_gene_name = "_".join([species_name,gene_name])
+                                #     sequence = genes_dict[gene]
+                                #     outFasta.write(f">{combined_gene_name}\n")
+                                #     outFasta.write(sequence)
  
     #             fh.flush()
     #     except:
@@ -603,10 +599,10 @@ def GetHOGs_from_tree(
         hog_writer.WriteCachedHOGs(
             cached_hogs, 
             lock_hogs, 
-            tree, 
-            recon_tree_dir,
-            exist_msa=exist_msa,
-            write_hog_tree=write_hog_tree,
+            # tree, 
+            # recon_tree_dir,
+            # exist_msa=exist_msa,
+            # write_hog_tree=write_hog_tree,
         )
     except:
         print("WARNING: HOG analysis for %s failed" % og_name)
@@ -1481,7 +1477,7 @@ class TreeAnalyser(object):
             n_species = len(self.speciesToUse)
             dim2 = 1 if self.fewer_open_files else self.nspecies
 
-            if self.write_hog_tree or not self.fix_files:     
+            if self.write_hog_tree or not self.fix_files:   
                 if not os.path.exists(files.FileHandler.GetOGsTreeFN(iog)):
                     return None
 

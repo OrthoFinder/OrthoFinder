@@ -71,7 +71,7 @@ def update_output_files(
     # shutil.rmtree(seq_id_dir)
     # shutil.move(seq_id_dir2, seq_id_dir)
 
-    # util.PrintTime("Updating MSA/Trees")
+    util.PrintTime("Updating MSA/Trees")
 
     # ## -------------------------- Fix Resolved Gene Trees and Gene Trees -------------------------
     resolved_trees_working_dir = files.FileHandler.GetOGsReconTreeDir(qResults=True)
@@ -111,7 +111,7 @@ def update_output_files(
     # util.clear_dir(tree_dir)
 
     old_hog_n0 = read_hog_n0_file(hog_n0_file)
-    hog_n0_over4genes = hog_file_over4genes(old_hog_n0, options.min_seq)
+    hog_n0_over4genes = hog_file_over4genes(old_hog_n0, 2)
 
     del old_hog_n0
     ## get list of unique OG
@@ -122,18 +122,27 @@ def update_output_files(
         for entry in hog_list
     }
 
+
+    tree_file_index = index_files(resolved_trees_working_dir, ".txt")
+    fasta_file_index = index_files(align_id_dir, ".fa") if align_id_dir is not None else {}
+    hog_index = {
+        unique_og: [row for row in hog_n0_over4genes if unique_og in row["OG"]]
+        for unique_og in unique_ogs
+    }
+
     trees.post_ogs_processing(
         unique_ogs,
-        resolved_trees_working_dir, 
         resolved_trees_id_dir,
-        hog_n0_over4genes, 
+        hog_index, 
         simplified_name_dict, 
         idDict,
         spec_seq_id_dict,
         species_names, 
         nprocess,
-        align_id_dir=align_id_dir,
+        tree_file_index,
+        fasta_file_index,  
         align_dir=align_dir,
+        min_seq=options.min_seq
     )
     
     # shutil.rmtree(align_id_dir)
@@ -142,6 +151,7 @@ def update_output_files(
     util.clear_dir(resolved_trees_working_dir)
 
     ## ----------------------- Fix MSA Alignments --------------------------
+
     if exist_msa:
         # update_filenames(align_dir, name_dictionary)
         CopyTinyAlignments(align_id_dir, align_dir, name_dictionary, idDict)
@@ -154,7 +164,7 @@ def update_output_files(
     #     alignmentFilesToUse = [treeGen.GetAlignmentFilename(i) for i in iogs_align]
     #     accessionAlignmentFNs = [treeGen.GetAlignmentFilename(i, True) for i in iogs_align]
     #     treeGen.RenameAlignmentTaxa(alignmentFilesToUse, accessionAlignmentFNs, idDict)
-
+    util.PrintTime("Done updating MSA/Trees")
     return ogSet
 
 def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_names, rm_N0_ids=True):
@@ -252,41 +262,16 @@ def CopyTinyAlignments(align_id_dir, align_dir, name_dictionary, idDict):
 
             for row in entries:
                 if len(row) >= 3 and row[2].strip() == '-':
-                    genes_dict = read_fasta(entry.path)
-                    write_fasta(align_dir, row[0], genes_dict, idDict)
+                    genes_dict = trees.read_fasta(entry.path)
+                    trees.write_fasta(align_dir, row[0], genes_dict, idDict)
                     break
 
-def read_fasta(file_path):
-    genes_dict = {}
-    qFirst = True
-    accession = ""
-    sequence = ""
-    with open(file_path, 'r') as fastaFile:
-        for line in fastaFile:
-            if line[0] == ">":
-                if not qFirst:
-                    genes_dict[accession] = sequence
-                    sequence = ""
-                qFirst = False
-                accession = line[1:].rstrip()
-            else:
-                sequence += line
-        genes_dict[accession] = sequence
-    return genes_dict
-
-
-def write_fasta(align_dir, hog_name, genes_dict, idDict):
-    try:
-        fasta_path = os.path.join(align_dir, hog_name + ".fa")
-        sorted_seqs = sorted(
-            genes_dict.keys(), 
-            key=lambda x: list(map(int, x.split("_"))) if "_" in x else x
-        )
-        with open(fasta_path, 'w') as outFile:
-            for gene in sorted_seqs:
-                gene_name = idDict.get(gene)
-                outFile.write(f">{gene_name}\n")
-                outFile.write(genes_dict[gene])
-    except Exception as e:
-        print(traceback.format_exc())
-        print(f"ERROR writing FASTA for {hog_name}: {e}")
+def index_files(id_dir, extension=".fa"):
+    file_index = {}
+    if id_dir is None:
+        return file_index
+    for entry in os.scandir(id_dir):
+        if entry.is_file() and entry.name.endswith(extension) and entry.name.startswith("OG"):
+            key = entry.name[:-len(extension)]
+            file_index[key] = entry.path
+    return file_index

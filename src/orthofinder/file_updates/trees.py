@@ -1,16 +1,18 @@
 import os
 import multiprocessing as mp
 from ..tools.tree import Tree
+import io 
+from concurrent.futures import ThreadPoolExecutor
 
-def index_files(id_dir, extension=".fa"):
-    file_index = {}
-    if id_dir is None:
-        return file_index
-    for entry in os.scandir(id_dir):
-        if entry.is_file() and entry.name.endswith(extension):
-            key = entry.name[:-len(extension)]
-            file_index[key] = entry.path
-    return file_index
+
+def write_tree(hog_name, subtree, resolved_trees_id_dir):
+    try:
+        tree_id_file = os.path.join(resolved_trees_id_dir, hog_name + ".txt")
+        tree_string = subtree.write(outfile=None, format=5)
+        with open(tree_id_file, "wb", buffering=1024 * 1024) as f:
+            f.write(tree_string.encode("utf-8"))
+    except Exception as e:
+        print(f"ERROR writing tree {hog_name}: {e}")
 
 def read_fasta(file_path):
     genes_dict = {}
@@ -30,35 +32,23 @@ def read_fasta(file_path):
         genes_dict[accession] = sequence
     return genes_dict
 
-def write_tree(
-        hog_name, 
-        subtree,
-        resolved_trees_id_dir,
-        ):
+def write_fasta(align_dir, hog_name, sequences, idDict):
     try:
-        tree_id_file = os.path.join(resolved_trees_id_dir, hog_name + ".txt")
-        # tree_file = os.path.join(tree_dir, hog_name + ".txt")
-        subtree.write(outfile=tree_id_file, format=5)
-        
-        # for leaf in subtree.iter_leaves():
-        #     leaf.name = spec_seq_id_dict.get(leaf.name, leaf.name)
-        # subtree.write(outfile=tree_file, format=5)
-
-    except Exception as e:
-        print(f"ERROR writing tree {hog_name}: {e}")
-
-def write_fasta(align_id_dir, hog_name, sequences, idDict):
-    try:
-        fasta_path = os.path.join(align_id_dir, hog_name + ".fa")
+        fasta_path = os.path.join(align_dir, hog_name + ".fa")
         sorted_seqs = sorted(
-            sequences.keys(), 
+            sequences.keys(),
             key=lambda x: list(map(int, x.split("_"))) if "_" in x else x
         )
-        with open(fasta_path, 'w') as outFile:
-            for gene in sorted_seqs:
-                gene_name = idDict.get(gene)
-                outFile.write(f">{gene_name}\n")
-                outFile.write(sequences[gene])
+
+        buffer = io.StringIO()
+        for gene in sorted_seqs:
+            gene_name = idDict.get(gene)
+            buffer.write(f">{gene_name}\n")
+            buffer.write(sequences[gene])
+
+        with open(fasta_path, 'w', buffering=1024*1024) as outFile:  # 1 MB buffer
+            outFile.write(buffer.getvalue())
+
     except Exception as e:
         print(f"ERROR writing FASTA for {hog_name}: {e}")
 
@@ -88,12 +78,8 @@ def read_files(unique_og, spec_seq_id_dict, tree_file_index, fasta_file_index):
         print(f"WARNING: FASTA file not found for {unique_og}")
     return (unique_og, gene_tree, gene_dict)
 
-def read_task(read_queue, unique_ogs, spec_seq_id_dict, tree_file_index, fasta_file_index):
-    for unique_og in unique_ogs:
-        task = read_files(unique_og, spec_seq_id_dict, tree_file_index, fasta_file_index)
-        read_queue.put(task)
 
-def process_task(read_queue, process_queue, spec_seq_id_dict, hog_index, name_dict, species_names):
+def process_task(read_queue, process_queue, hog_index, name_dict, species_names):
     while True:
         task = read_queue.get()
         if task is None:
@@ -130,6 +116,7 @@ def process_task(read_queue, process_queue, spec_seq_id_dict, hog_index, name_di
 
 def writer_task(
         process_queue, 
+        min_seq,
         idDict,
         resolved_trees_id_dir,
         align_dir):
@@ -138,70 +125,78 @@ def writer_task(
         if task is None:
             break
         for hog_name, subtree, pruned_alignments in task:
-            write_tree(
-                hog_name, 
-                subtree,
-                resolved_trees_id_dir
+            if len(pruned_alignments) >= min_seq:
+                write_tree(
+                    hog_name, 
+                    subtree,
+                    resolved_trees_id_dir
                 )
             if align_dir is not None and pruned_alignments is not None:
                 write_fasta(align_dir, hog_name, pruned_alignments, idDict)
 
+def threaded_reader(read_queue, unique_ogs, spec_seq_id_dict, tree_file_index, fasta_file_index, n_threads=4):
+    def worker(unique_og):
+        task = read_files(unique_og, spec_seq_id_dict, tree_file_index, fasta_file_index)
+        read_queue.put(task)
+
+    with ThreadPoolExecutor(max_workers=n_threads) as executor:
+        executor.map(worker, unique_ogs)
+
+
 def post_ogs_processing(
-    unique_ogs,
-    resolved_trees_working_dir,    
+    unique_ogs,  
     resolved_trees_id_dir,
-    hog_n0_over4genes, 
+    hog_index, 
     name_dict, 
     idDict,
     spec_seq_id_dict,
     species_names, 
     nprocess,
-    align_id_dir=None,            
-    align_dir=None,          
+    tree_file_index,
+    fasta_file_index,            
+    align_dir=None,   
+    min_seq=4       
 ):
-    tree_file_index = index_files(resolved_trees_working_dir, ".txt")
-    fasta_file_index = index_files(align_id_dir, ".fa") if align_id_dir is not None else {}
-    hog_index = {
-        unique_og: [row for row in hog_n0_over4genes if unique_og in row["OG"]]
-        for unique_og in unique_ogs
-    }
-
+    n_reader_threads = min(max(nprocess, 1), 8)
+    n_processor_processes = max(nprocess // 2, 1)
+    n_writer_processes = min(max(nprocess // 2 - 1, 1), 4)
     process_queue = mp.Queue()
     read_queue = mp.Queue()
 
     file_reader = mp.Process(
-        target=read_task, 
-        args=(read_queue, unique_ogs, spec_seq_id_dict, tree_file_index, fasta_file_index)
+        target=threaded_reader,
+        args=(read_queue, unique_ogs, spec_seq_id_dict, tree_file_index, fasta_file_index, n_reader_threads)  
     )
     file_reader.start()
 
     file_processors = []
-    for _ in range(nprocess):
+    for _ in range(n_processor_processes):
         p = mp.Process(
             target=process_task, 
-            args=(read_queue, process_queue, spec_seq_id_dict, hog_index, name_dict, species_names)
+            args=(read_queue, process_queue, hog_index, name_dict, species_names)
         )
         p.start()
         file_processors.append(p)
 
-    writer_process = mp.Process(
-        target=writer_task, 
-        args=(
-            process_queue, 
-            idDict,
-            resolved_trees_id_dir,
-            align_dir
+    writer_processes = []
+    for _ in range(n_writer_processes):
+        writer_process = mp.Process(
+            target=writer_task,
+            args=(process_queue, min_seq, idDict, resolved_trees_id_dir, align_dir)
         )
-    )
-    writer_process.start()
+        writer_process.start()
+        writer_processes.append(writer_process)
 
     file_reader.join()
 
-    for _ in range(nprocess):
+    for _ in range(n_processor_processes):
         read_queue.put(None)
 
     for p in file_processors:
         p.join()
 
-    process_queue.put(None)
-    writer_process.join()
+    for _ in range(n_writer_processes):
+        process_queue.put(None)
+
+    for p in writer_processes:
+        p.join()
