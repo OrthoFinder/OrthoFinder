@@ -10,7 +10,6 @@ from ..utils import files, util
 from ..utils.util import printer
 
 def update_output_files(
-        working_dir,
         sp_ids,
         id_sequence_dict,
         species_to_use,
@@ -25,7 +24,7 @@ def update_output_files(
         i_og_restart=0,
         exist_msa=True,
     ):
-    
+    #quit()
     sequence_id_dict = defaultdict(set)
     for key, value in id_sequence_dict.items():
         sequence_id_dict[value].add(key)
@@ -42,19 +41,10 @@ def update_output_files(
     hog_n0_file = files.FileHandler.HierarchicalOrthogroupsFNN0()
     hogs_converter(hog_n0_file, sequence_id_dict, species_id_dict, species_names)
 
-    # seq_id_dir = files.FileHandler.GetSeqsIDDir()
     seq_dir = files.FileHandler.GetResultsSeqsDir()
-    
-    # seq_id_dir2 = os.path.join(working_dir, "Sequences_ids2")
-    # os.makedirs(seq_id_dir2, exist_ok=True)
-    # shutil.copytree(seq_id_dir, seq_id_dir2, dirs_exist_ok=True)
-
-    ## Clean dirs 
-    # clear_dir(seq_id_dir)
     util.clear_dir(seq_dir)
 
-    ogSet, treeGen, idDict, new_ogs, name_dictionary = ogs.post_hogs_processing(
-        # single_ogs_list,
+    ogSet,  idDict, name_dictionary = ogs.post_hogs_processing(
         all_seq_ids,
         speciesInfoObj,
         seqsInfo,
@@ -68,48 +58,15 @@ def update_output_files(
         for key, val in idDict.items()
     }
 
-    # shutil.rmtree(seq_id_dir)
-    # shutil.move(seq_id_dir2, seq_id_dir)
-
     util.PrintTime("Updating MSA/Trees")
 
     # ## -------------------------- Fix Resolved Gene Trees and Gene Trees -------------------------
     resolved_trees_working_dir = files.FileHandler.GetOGsReconTreeDir(qResults=True)
-    # update_filenames(resolved_trees_working_dir, name_dictionary)
-
     resolved_trees_id_dir = files.FileHandler.GetResolvedTreeIDDir()
-    # update_filenames(resolved_trees_id_dir, name_dictionary)
-
-    # hog_msa_dir = files.FileHandler.GetHOGMSADir()
-    # align_id_dir = files.FileHandler.GetAlignIDDir()
-
-    # shutil.move(align_id_dir, align_id_dir)
-    # update_filenames(align_id_dir, name_dictionary)
-    # if exist_msa:
-    #     align_dir = files.FileHandler.GetResultsAlignDir()
-    #     update_filenames(align_dir, name_dictionary)
-    #     CopyTinyAlignments(align_id_dir, align_dir, name_dictionary, idDict)
     
     align_dir = files.FileHandler.GetResultsAlignDir()
     align_id_dir = files.FileHandler.GetAlignIDDir()
     
-    # align_id_dir = None
-    # align_id_dir2 = None
-    # if exist_msa:
-    #     align_id_dir = files.FileHandler.GetAlignIDDir()
-    #     align_id_dir2 = os.path.join(working_dir, "Alignments_ids2")
-    #     os.makedirs(align_id_dir2, exist_ok=True)
-    #     shutil.copytree(align_id_dir, align_id_dir2, dirs_exist_ok=True)
-
-    # util.clear_dir(align_id_dir)
-
-    # tree_id_dir = files.FileHandler.GetOGsTreeDir(qResults=False)
-    # tree_dir = files.FileHandler.GetOGsTreeDir(qResults=True)
-
-    # ## Clean dirs 
-    # util.clear_dir(tree_id_dir)
-    # util.clear_dir(tree_dir)
-
     old_hog_n0 = read_hog_n0_file(hog_n0_file)
     hog_n0_over4genes = hog_file_over4genes(old_hog_n0, 2)
 
@@ -144,27 +101,14 @@ def update_output_files(
         align_dir=align_dir,
         min_seq=options.min_seq
     )
-    
-    # shutil.rmtree(align_id_dir)
-    # shutil.move(align_id_dir2, align_id_dir)
 
     util.clear_dir(resolved_trees_working_dir)
 
     ## ----------------------- Fix MSA Alignments --------------------------
 
     if exist_msa:
-        # update_filenames(align_dir, name_dictionary)
         CopyTinyAlignments(align_id_dir, align_dir, name_dictionary, idDict)
 
-    # if exist_msa:
-    #     align_dir = files.FileHandler.GetResultsAlignDir()
-    #     util.clear_dir(align_dir)
-    #     iogs_align = [i for i, og in enumerate(new_ogs) if len(og) >= 2 and i >= i_og_restart]
-    #     # ids -> accessions
-    #     alignmentFilesToUse = [treeGen.GetAlignmentFilename(i) for i in iogs_align]
-    #     accessionAlignmentFNs = [treeGen.GetAlignmentFilename(i, True) for i in iogs_align]
-    #     treeGen.RenameAlignmentTaxa(alignmentFilesToUse, accessionAlignmentFNs, idDict)
-    util.PrintTime("Done updating MSA/Trees")
     return ogSet
 
 def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_names, rm_N0_ids=True):

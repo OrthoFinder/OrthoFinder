@@ -617,6 +617,11 @@ class __Files_new_dont_manually_create__(object):
             return d
         else:
             raise NotImplemented() 
+    
+    def GetWDOGsReconTreeDir(self):
+        d = self.wd_trees + "Resolved_Gene_Trees_1/" 
+        if not os.path.exists(d): os.mkdir(d)
+        return d
 
     def GetOGsReconTreeFN(self, iOG):
         # return self.rd1 + "Resolved_Gene_Trees/OG%07d_tree.txt" % iOG

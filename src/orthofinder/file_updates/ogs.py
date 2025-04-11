@@ -16,7 +16,6 @@ from .. import __version__
 
 
 def post_hogs_processing(
-        # single_ogs_list,
         all_seq_ids,
         speciesInfoObj,
         seqsInfo,
@@ -101,7 +100,7 @@ def post_hogs_processing(
         # util.PrintTime("Done orthogroups")
         files.FileHandler.LogOGs()
 
-    return ogSet, treeGen, idDict, new_ogs, name_dictionary
+    return ogSet, idDict, name_dictionary
 
 def update_ogs(input_path):
     sorted_matrix = read_hogs_to_matrix(input_path)   

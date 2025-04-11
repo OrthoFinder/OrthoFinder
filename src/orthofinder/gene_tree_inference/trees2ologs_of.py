@@ -131,7 +131,8 @@ class HogWriter(object):
             self, 
             species_tree, 
             species_tree_node_names, 
-            seq_ids, sp_ids, 
+            seq_ids, 
+            sp_ids, 
             species_to_use,
         ):
         """
@@ -585,9 +586,6 @@ def GetHOGs_from_tree(
         hog_writer, 
         lock_hogs, 
         q_split_paralogous_clades, 
-        recon_tree_dir,
-        exist_msa=True,
-        write_hog_tree=True,
     ):
     og_name = "OG%07d" % iog
     if debug: print("\n===== %s =====" % og_name)
@@ -599,10 +597,6 @@ def GetHOGs_from_tree(
         hog_writer.WriteCachedHOGs(
             cached_hogs, 
             lock_hogs, 
-            # tree, 
-            # recon_tree_dir,
-            # exist_msa=exist_msa,
-            # write_hog_tree=write_hog_tree,
         )
     except:
         print("WARNING: HOG analysis for %s failed" % og_name)
@@ -1477,7 +1471,7 @@ class TreeAnalyser(object):
             n_species = len(self.speciesToUse)
             dim2 = 1 if self.fewer_open_files else self.nspecies
 
-            if self.write_hog_tree or not self.fix_files:   
+            if self.write_hog_tree or not self.fix_files: 
                 if not os.path.exists(files.FileHandler.GetOGsTreeFN(iog)):
                     return None
 
@@ -1567,9 +1561,6 @@ class TreeAnalyser(object):
                 self.hog_writer, 
                 self.lock_hogs, 
                 self.q_split_paralogous_clades,
-                self.reconTreesRenamedDir,
-                exist_msa=self.exist_msa,
-                write_hog_tree=self.write_hog_tree,
             ) 
 
             # don't relabel nodes, they've already been done
@@ -1583,7 +1574,7 @@ class TreeAnalyser(object):
                 qSupport=False, 
                 qFixNegatives=True
             )
-                    
+                        
             # recon_tree.delete_traverse()
             # if iog >= 0 and divmod(iog, 10 if self.nOgs <= 200 else 100 if self.nOgs <= 2000 else 1000)[1] == 0:
             # if iog > 0 and divmod(iog, 10 if self.nOgs <= 200 else 100 if self.nOgs <= 2000 else 1000)[1] == 0:
@@ -1725,14 +1716,10 @@ def Worker_RunOrthologsMethod(tree_analyser, nspecies, args_queue, results_queue
 #         n_ologs_cache (int): Cache size before flushing ortholog lines to files.
 #     """
 #     try:
-#         # Choose dimension for the matrix of lines
 #         dim2 = 1 if fewer_open_files else nspecies
-
-#         # Local counters
 #         nOrthologues_SpPair = util.nOrtho_sp(nspecies)  # local total
 #         nCache = util.nOrtho_cache(nspecies)
 
-#         # Buffers to accumulate lines
 #         olog_lines_tot = [["" for j in range(dim2)] for i in range(nspecies)]
 #         olog_sus_lines_tot = ["" for _ in range(nspecies)]
 
@@ -1740,7 +1727,6 @@ def Worker_RunOrthologsMethod(tree_analyser, nspecies, args_queue, results_queue
 #             try:
 #                 iog = args_queue.get(True, 0.1)
 #                 if iog is None:
-#                     # Sentinel => stop the worker
 #                     break
 
 #                 results = tree_analyser.AnalyseTree(iog)
@@ -1754,13 +1740,11 @@ def Worker_RunOrthologsMethod(tree_analyser, nspecies, args_queue, results_queue
 #                 nOrthologues_SpPair += nOrtho
 #                 nCache += nOrtho
 
-#                 # Accumulate lines
 #                 for i in range(nspecies):
 #                     olog_sus_lines_tot[i] += olog_sus_lines[i]
 #                     for j in range(dim2):
 #                         olog_lines_tot[i][j] += olog_lines[i][j]
 
-#                 # Possibly flush partial lines if above threshold
 #                 I, J = nCache.get_i_j_to_write(n_ologs_cache, fewer_open_files)
 #                 if fewer_open_files:
 #                     # each species has just one file
@@ -1770,10 +1754,8 @@ def Worker_RunOrthologsMethod(tree_analyser, nspecies, args_queue, results_queue
 #                             olog_lines_tot[i][0],
 #                             tree_analyser.lock_ologs[i]  # consistent lock usage
 #                         )
-#                         # Clear buffer after flush
 #                         olog_lines_tot[i][0] = ""
 #                 else:
-#                     # each pair (i, j) has its own file handle
 #                     for i, j in zip(I, J):
 #                         k_lock = max(i, j)
 #                         WriteOlogLinesToFile(
@@ -1786,29 +1768,21 @@ def Worker_RunOrthologsMethod(tree_analyser, nspecies, args_queue, results_queue
 #                 results_queue.put(nOrtho)
 
 #             except parallel_task_manager.queue.Empty:
-#                 # No work right now; loop again
 #                 continue
 #             except Exception as e:
 #                 print(f"WARNING: Worker encountered an error: {e}")
-#                 results_queue.put(False)  # Signal error
+#                 results_queue.put(False)  
 #                 break
-
-#         #
-#         # Final "cleanup" flush of anything left in memory
-#         #
 #         try:
 #             for i in range(nspecies):
 #                 if fewer_open_files:
-#                     # Single file handle per species
 #                     WriteOlogLinesToFile(
 #                         tree_analyser.ologs_files_handles[i][0],
 #                         olog_lines_tot[i][0],
 #                         tree_analyser.lock_ologs[i]
 #                     )
 #                 else:
-#                     # Pairwise file handles
 #                     for j in range(nspecies):
-#                         # flush everything [i][j] (including j < i)
 #                         k_lock = max(i, j)
 #                         WriteOlogLinesToFile(
 #                             tree_analyser.ologs_files_handles[i][j],
@@ -1816,7 +1790,6 @@ def Worker_RunOrthologsMethod(tree_analyser, nspecies, args_queue, results_queue
 #                             tree_analyser.lock_ologs[k_lock]
 #                         )
 
-#                 # Flush suspect lines
 #                 WriteOlogLinesToFile(
 #                     tree_analyser.putative_xenolog_file_handles[i],
 #                     olog_sus_lines_tot[i],
@@ -1825,11 +1798,8 @@ def Worker_RunOrthologsMethod(tree_analyser, nspecies, args_queue, results_queue
 
 #         except Exception as cleanup_error:
 #             print(f"ERROR during cleanup: {cleanup_error}")
-#             # Usually put False to signal error if needed
-#             # results_queue.put(False)
 
 #     finally:
-#         # Let the main process know this worker is done
 #         results_queue.put(None)
 
 

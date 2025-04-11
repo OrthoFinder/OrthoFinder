@@ -822,6 +822,7 @@ def clear_dir(of3_dir):
                     os.unlink(entry.path) 
                 elif entry.is_dir():
                     shutil.rmtree(entry.path) 
+                    
             except Exception as e:
                 printer.print(f'Failed to delete {entry.path}. Reason: {e}', style="error")
 

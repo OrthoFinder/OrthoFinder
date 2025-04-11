@@ -276,6 +276,7 @@ def ReconciliationAndOrthologues(
     workingDir = files.FileHandler.GetWorkingDirectory_Write()    # workingDir - Orthologues working dir
     resultsDir_ologs = files.FileHandler.GetOrthologuesDirectory()
     reconTreesRenamedDir = files.FileHandler.GetOGsReconTreeDir(True)
+
     if "dlcpar" in recon_method:
         qDeepSearch = (recon_method == "dlcpar_convergedsearch")
         util.PrintTime("Starting DLCpar")
@@ -553,7 +554,6 @@ def OrthologuesWorkflow(
     if options.fix_files:
         util.PrintTime("Converting MSA/Trees")
         ogSet = file_updates.update_output_files(
-            files.FileHandler.GetWorkingDirectory_Write(),
             ogSet.SpeciesDict(),
             ogSet.SequenceDict(),
             ogSet.speciesToUse,
@@ -568,6 +568,8 @@ def OrthologuesWorkflow(
             i_og_restart=i_og_restart,
             exist_msa=options.qMSATrees,
         )
+
+        util.PrintTime("Done updating MSA/Trees")
 
         InferOrthologs(
             ogSet, 
