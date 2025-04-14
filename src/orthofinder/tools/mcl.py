@@ -259,11 +259,13 @@ class MCL:
 
 
     @staticmethod
-    def CreateOrthogroupTable(ogs,
-                              idToNameDict,
-                              speciesNamesDict,
-                              speciesToUse,
-                              resultsBaseFilename):
+    def CreateOrthogroupTable(
+        ogs,
+        idToNameDict,
+        speciesNamesDict,
+        speciesToUse,
+        resultsBaseFilename
+    ):
 
         nSpecies = len(speciesNamesDict)
 

@@ -790,16 +790,16 @@ def ProcessArgs(args):
             options.qStopAfterPrepare = True
 
         elif arg == "-og" or arg == "--only-groups":
-            options.qStopAfterGroups = True
+            options.qStopAfterGroups = False
 
         elif arg == "-os" or arg == "--only-seqs":
-            options.qStopAfterSeqs = True
+            options.qStopAfterSeqs = False
 
         elif arg == "-oa" or arg == "--only-alignments":
-            options.qStopAfterAlignments = True
+            options.qStopAfterAlignments = False
 
         elif arg == "-ot" or arg == "--only-trees":
-            options.qStopAfterTrees = True
+            options.qStopAfterTrees = False
 
         elif arg == "-h" or arg == "--help":
             helpinfo.PrintHelp(prog_caller)

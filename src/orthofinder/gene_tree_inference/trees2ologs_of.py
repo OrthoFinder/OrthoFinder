@@ -1304,21 +1304,25 @@ def DoOrthologuesForOrthoFinder(
         # Write directory and file structure
         nspecies = len(ogSet.speciesToUse)      
         dResultsOrthologues = files.FileHandler.GetOrthologuesDirectory()
-        for index1 in xrange(nspecies):
-            if fewer_open_files or save_space:  # current thinking (2023.03) is that fewer_open_files will always be true anyway
-                filename = dResultsOrthologues + '%s.tsv' % speciesDict[str(ogSet.speciesToUse[index1])]
-                with util.file_open(filename, util.csv_write_mode, gz=save_space) as outfile:
-                    writer1 = csv.writer(outfile, delimiter="\t")
-                    writer1.writerow(("Orthogroup", "Species", speciesDict[str(ogSet.speciesToUse[index1])], "Orthologs"))
-            else:
-                d = dResultsOrthologues + "Orthologues_" + speciesDict[str(ogSet.speciesToUse[index1])] + "/"
-                if not os.path.exists(d): os.mkdir(d)
-                for index2 in xrange(nspecies):
-                    if index2 == index1: continue
-                    with open(d + '%s__v__%s.tsv' % (speciesDict[str(ogSet.speciesToUse[index1])], speciesDict[str(ogSet.speciesToUse[index2])]), util.csv_write_mode) as outfile:
+
+        if not write_hog_tree or not fix_files:
+            for index1 in xrange(nspecies):
+                if fewer_open_files or save_space:  # current thinking (2023.03) is that fewer_open_files will always be true anyway
+                    filename = dResultsOrthologues + '%s.tsv' % speciesDict[str(ogSet.speciesToUse[index1])]
+                    with util.file_open(filename, util.csv_write_mode, gz=save_space) as outfile:
                         writer1 = csv.writer(outfile, delimiter="\t")
-                        writer1.writerow(("Orthogroup", speciesDict[str(ogSet.speciesToUse[index1])], speciesDict[str(ogSet.speciesToUse[index2])]))
-        InitialiseSuspectGenesDirs(nspecies, ogSet.speciesToUse, speciesDict)
+                        writer1.writerow(("Orthogroup", "Species", speciesDict[str(ogSet.speciesToUse[index1])], "Orthologs"))
+                else:
+                    d = dResultsOrthologues + "Orthologues_" + speciesDict[str(ogSet.speciesToUse[index1])] + "/"
+                    if not os.path.exists(d): os.mkdir(d)
+                    for index2 in xrange(nspecies):
+                        if index2 == index1: continue
+                        with open(d + '%s__v__%s.tsv' % (speciesDict[str(ogSet.speciesToUse[index1])], speciesDict[str(ogSet.speciesToUse[index2])]), util.csv_write_mode) as outfile:
+                            writer1 = csv.writer(outfile, delimiter="\t")
+                            writer1.writerow(("Orthogroup", speciesDict[str(ogSet.speciesToUse[index1])], speciesDict[str(ogSet.speciesToUse[index2])]))
+        
+            InitialiseSuspectGenesDirs(nspecies, ogSet.speciesToUse, speciesDict)
+            
         neighbours = GetSpeciesNeighbours(species_tree_rooted_labelled)
         iogs4 = ogSet.Get_iOGs4()
         reconTreesRenamedDir = files.FileHandler.GetOGsReconTreeDir(True)
@@ -1336,9 +1340,15 @@ def DoOrthologuesForOrthoFinder(
                     save_space, 
                     fewer_open_files
                 ) as (ologs_file_handles, putative_xenolog_file_handles):
-            util.writerow(outfile_dups, ["Orthogroup", "Species Tree Node", "Gene Tree Node", "Support", "Type",	"Genes 1", "Genes 2"])
-            outfile_dups.flush()
-            OrthologsFiles.flush_olog_files(ologs_file_handles, fewer_open_files)
+            
+            if not write_hog_tree or not fix_files:
+                util.writerow(
+                    outfile_dups, 
+                    ["Orthogroup", "Species Tree Node", "Gene Tree Node", "Support", "Type", "Genes 1", "Genes 2"]
+                )
+                outfile_dups.flush()
+                OrthologsFiles.flush_olog_files(ologs_file_handles, fewer_open_files)
+
             ta = TreeAnalyser(
                 len(iogs4), 
                 dResultsOrthologues, 
@@ -1386,15 +1396,39 @@ def DoOrthologuesForOrthoFinder(
                     if fewer_open_files:
                         for i in range(nspecies):
                             if len(olog_lines[i][0]) > 0:
-                                WriteOlogLinesToFile(ta.ologs_files_handles[i][0], olog_lines[i][0], dummy_lock)
+                                WriteOlogLinesToFile(
+                                    ta.ologs_files_handles[i][0], 
+                                    olog_lines[i][0], 
+                                    dummy_lock,
+                                    write_hog_tree=write_hog_tree,
+                                    fix_files=fix_files,
+                                )
                     else:
                         for i in range(nspecies):
                             for j in range(i+1, nspecies):
                                 if len(olog_lines[i][j]) > 0:
                                     # j is the largest (and intentionally changing quickest, which I think is best for the lock)
-                                    WriteOlogLinesToFile(ta.ologs_files_handles[i][j], olog_lines[i][j], dummy_lock)
-                                    WriteOlogLinesToFile(ta.ologs_files_handles[j][i], olog_lines[j][i], dummy_lock)
-                            WriteOlogLinesToFile(ta.putative_xenolog_file_handles[i], olog_sus_lines[i], dummy_lock)
+                                    WriteOlogLinesToFile(
+                                        ta.ologs_files_handles[i][j], 
+                                        olog_lines[i][j], 
+                                        dummy_lock,
+                                        write_hog_tree=write_hog_tree,
+                                        fix_files=fix_files,
+                                    )
+                                    WriteOlogLinesToFile(
+                                        ta.ologs_files_handles[j][i], 
+                                        olog_lines[j][i], 
+                                        dummy_lock,
+                                        write_hog_tree=write_hog_tree,
+                                        fix_files=fix_files,
+                                    )
+                            WriteOlogLinesToFile(
+                                ta.putative_xenolog_file_handles[i], 
+                                olog_sus_lines[i], 
+                                dummy_lock,
+                                write_hog_tree=write_hog_tree,
+                                fix_files=fix_files,
+                            )
                 progressbar.stop()
                 if print_info:
                     util.PrintTime("Done writing orthologs")
@@ -1402,7 +1436,17 @@ def DoOrthologuesForOrthoFinder(
                 args_queue = mp.Queue()
                 for iog in iogs4:
                     args_queue.put(iog)
-                nOrthologues_SpPair = RunOrthologsParallel(ta, len(ogSet.speciesToUse), args_queue, n_parallel, fewer_open_files=fewer_open_files, old_version=old_version)
+                nOrthologues_SpPair = RunOrthologsParallel(
+                    ta, 
+                    len(ogSet.speciesToUse), 
+                    args_queue, 
+                    n_parallel, 
+                    fewer_open_files, 
+                    n_ologs_cache=100,
+                    old_version=old_version,
+                    write_hog_tree=write_hog_tree,
+                    fix_files=fix_files
+                )
     except IOError as e:
         if str(e).startswith("[Errno 24] Too many open files"):
             util.number_open_files_exception_advice(len(ogSet.speciesToUse), True)
@@ -1518,28 +1562,30 @@ class TreeAnalyser(object):
                     q_get_dups=True, 
                     qNoRecon=self.qNoRecon
             )
-
-            # Write Duplications
-            self.lock_dups.acquire()
-            try:                                                        
-                WriteDuplications(
-                    self.dups_file_handle, 
-                    og_name, 
-                    dups, 
-                    self.speciesDict, 
-                    self.spec_seq_dict, 
-                    self.stride_dups
-                )
-                self.dups_file_handle.flush()
-            finally:
-                self.lock_dups.release()
-            # Write Suspect Genes
-            if len(suspect_genes) > 0:
-                self.lock_suspect.acquire()
-                try:
-                    WriteSuspectGenes(n_species, self.speciesToUse, suspect_genes, self.speciesDict, self.SequenceDict)
+            
+            if not self.write_hog_tree or not self.fix_files: 
+                # Write Duplications
+                self.lock_dups.acquire()
+                try:                                                        
+                    WriteDuplications(
+                        self.dups_file_handle, 
+                        og_name, 
+                        dups, 
+                        self.speciesDict, 
+                        self.spec_seq_dict, 
+                        self.stride_dups
+                    )
+                    self.dups_file_handle.flush()
                 finally:
-                    self.lock_suspect.release()
+                    self.lock_dups.release()
+
+                # Write Suspect Genes
+                if len(suspect_genes) > 0:
+                    self.lock_suspect.acquire()
+                    try:
+                        WriteSuspectGenes(n_species, self.speciesToUse, suspect_genes, self.speciesDict, self.SequenceDict)
+                    finally:
+                        self.lock_suspect.release()
 
             # Get Orthologues
             olog_lines = [["" for j in xrange(dim2)] for i in xrange(self.nspecies)]
@@ -1588,7 +1634,16 @@ class TreeAnalyser(object):
             olog_sus_lines = ["" for i in xrange(self.nspecies)]
             return util.nOrtho_sp(n_species), olog_lines, olog_sus_lines
 
-def Worker_RunOrthologsMethod(tree_analyser, nspecies, args_queue, results_queue, fewer_open_files, n_ologs_cache=100):
+def Worker_RunOrthologsMethod(
+        tree_analyser, 
+        nspecies, 
+        args_queue, 
+        results_queue, 
+        fewer_open_files, 
+        n_ologs_cache=100,
+        write_hog_tree=False,
+        fix_files=False
+    ):
     """
     Args:
         nspecies - the number in the analysis, after species have been removed
@@ -1619,23 +1674,59 @@ def Worker_RunOrthologsMethod(tree_analyser, nspecies, args_queue, results_queue
                 I,J = nCache.get_i_j_to_write(n_ologs_cache, fewer_open_files)
                 if fewer_open_files:
                     for i in I:
-                        WriteOlogLinesToFile(tree_analyser.ologs_files_handles[i][0], olog_lines_tot[i][0], tree_analyser.lock_ologs[i])
+                        WriteOlogLinesToFile(
+                            tree_analyser.ologs_files_handles[i][0], 
+                            olog_lines_tot[i][0], 
+                            tree_analyser.lock_ologs[i],
+                            write_hog_tree=write_hog_tree,
+                            fix_files=fix_files
+                        )
                         olog_lines_tot[i][0] = ""
                 else:
                     for i, j in zip(I,J):
                         k_lock = max(i,j)
-                        WriteOlogLinesToFile(tree_analyser.ologs_files_handles[i][j], olog_lines_tot[i][j], tree_analyser.lock_ologs[k_lock])
+                        WriteOlogLinesToFile(
+                            tree_analyser.ologs_files_handles[i][j], 
+                            olog_lines_tot[i][j], 
+                            tree_analyser.lock_ologs[k_lock],
+                            write_hog_tree=write_hog_tree,
+                            fix_files=fix_files
+                        )
                         olog_lines_tot[i][j] = ""
             except parallel_task_manager.queue.Empty:
                 for i in range(nspecies):
                     if fewer_open_files:
-                        WriteOlogLinesToFile(tree_analyser.ologs_files_handles[i][0], olog_lines_tot[i][0], tree_analyser.lock_ologs[i])
+                        WriteOlogLinesToFile(
+                            tree_analyser.ologs_files_handles[i][0], 
+                            olog_lines_tot[i][0], 
+                            tree_analyser.lock_ologs[i],
+                            write_hog_tree=write_hog_tree,
+                            fix_files=fix_files
+                        )
                     else:
                         for j in range(i+1, nspecies):
                             # j is the largest (and intentionally changing quickest, which I think is best for the lock)
-                            WriteOlogLinesToFile(tree_analyser.ologs_files_handles[i][j], olog_lines_tot[i][j], tree_analyser.lock_ologs[j])
-                            WriteOlogLinesToFile(tree_analyser.ologs_files_handles[j][i], olog_lines_tot[j][i], tree_analyser.lock_ologs[j])
-                    WriteOlogLinesToFile(tree_analyser.putative_xenolog_file_handles[i], olog_sus_lines_tot[i], tree_analyser.lock_suspect)
+                            WriteOlogLinesToFile(
+                                tree_analyser.ologs_files_handles[i][j], 
+                                olog_lines_tot[i][j], 
+                                tree_analyser.lock_ologs[j],
+                                write_hog_tree=write_hog_tree,
+                                fix_files=fix_files
+                            )
+                            WriteOlogLinesToFile(
+                                tree_analyser.ologs_files_handles[j][i], 
+                                olog_lines_tot[j][i], 
+                                tree_analyser.lock_ologs[j],
+                                write_hog_tree=write_hog_tree,
+                                fix_files=fix_files
+                            )
+                    WriteOlogLinesToFile(
+                        tree_analyser.putative_xenolog_file_handles[i], 
+                        olog_sus_lines_tot[i], 
+                        tree_analyser.lock_suspect,
+                        write_hog_tree=write_hog_tree,
+                        fix_files=fix_files
+                    )
                 results_queue.put(nOrthologues_SpPair)
                 return
             except Exception as e:
@@ -1650,13 +1741,37 @@ def Worker_RunOrthologsMethod(tree_analyser, nspecies, args_queue, results_queue
                     print("Current orthogroup OG%07d" % iog)
                     for i in range(nspecies):
                         if fewer_open_files:
-                            WriteOlogLinesToFile(tree_analyser.ologs_files_handles[i][0], olog_lines_tot[i][0], tree_analyser.lock_ologs[i])
+                            WriteOlogLinesToFile(
+                                tree_analyser.ologs_files_handles[i][0], 
+                                olog_lines_tot[i][0], 
+                                tree_analyser.lock_ologs[i],
+                                write_hog_tree=write_hog_tree,
+                                fix_files=fix_files
+                            )
                         else:
                             for j in range(i+1, nspecies):
                                 # j is the largest (and intentionally changing quickest, which I think is best for the lock)
-                                WriteOlogLinesToFile(tree_analyser.ologs_files_handles[i][j], olog_lines_tot[i][j], tree_analyser.lock_ologs[j])
-                                WriteOlogLinesToFile(tree_analyser.ologs_files_handles[j][i], olog_lines_tot[j][i], tree_analyser.lock_ologs[j])
-                        WriteOlogLinesToFile(tree_analyser.putative_xenolog_file_handles[i], olog_sus_lines_tot[i], tree_analyser.lock_suspect)
+                                WriteOlogLinesToFile(
+                                    tree_analyser.ologs_files_handles[i][j], 
+                                    olog_lines_tot[i][j], 
+                                    tree_analyser.lock_ologs[j],
+                                    write_hog_tree=write_hog_tree,
+                                    fix_files=fix_files
+                                )
+                                WriteOlogLinesToFile(
+                                    tree_analyser.ologs_files_handles[j][i], 
+                                    olog_lines_tot[j][i], 
+                                    tree_analyser.lock_ologs[j],
+                                    write_hog_tree=write_hog_tree,
+                                    fix_files=fix_files
+                                )
+                        WriteOlogLinesToFile(
+                            tree_analyser.putative_xenolog_file_handles[i], 
+                            olog_sus_lines_tot[i], 
+                            tree_analyser.lock_suspect,
+                            write_hog_tree=write_hog_tree,
+                            fix_files=fix_files
+                        )
                     results_queue.put(nOrthologues_SpPair)
                 except:
                     pass
@@ -1809,7 +1924,9 @@ def Worker_RunOrthologsMethod_New(
         args_queue, 
         results_queue, 
         fewer_open_files, 
-        n_ologs_cache=100
+        n_ologs_cache=100,
+        write_hog_tree=False,
+        fix_files=False
     ):
     """
     Worker function for parallel ortholog analysis.
@@ -1853,7 +1970,9 @@ def Worker_RunOrthologsMethod_New(
                         WriteOlogLinesToFile(
                             tree_analyser.ologs_files_handles[i][0],
                             olog_lines_tot[i][0],
-                            tree_analyser.lock_ologs[i]
+                            tree_analyser.lock_ologs[i],
+                            write_hog_tree=write_hog_tree,
+                            fix_files=fix_files
                         )
                         olog_lines_tot[i][0] = ""
                 else:
@@ -1862,7 +1981,9 @@ def Worker_RunOrthologsMethod_New(
                         WriteOlogLinesToFile(
                             tree_analyser.ologs_files_handles[i][j],
                             olog_lines_tot[i][j],
-                            tree_analyser.lock_ologs[k_lock]
+                            tree_analyser.lock_ologs[k_lock],
+                            write_hog_tree=write_hog_tree,
+                            fix_files=fix_files
                         )
                         olog_lines_tot[i][j] = ""
 
@@ -1881,24 +2002,32 @@ def Worker_RunOrthologsMethod_New(
                     WriteOlogLinesToFile(
                         tree_analyser.ologs_files_handles[i][0],
                         olog_lines_tot[i][0],
-                        tree_analyser.lock_ologs[i]
+                        tree_analyser.lock_ologs[i],
+                        write_hog_tree=write_hog_tree,
+                        fix_files=fix_files
                     )
                 else:
                     for j in range(i + 1, nspecies):
                         WriteOlogLinesToFile(
                             tree_analyser.ologs_files_handles[i][j],
                             olog_lines_tot[i][j],
-                            tree_analyser.lock_ologs[j]
+                            tree_analyser.lock_ologs[j],
+                            write_hog_tree=write_hog_tree,
+                            fix_files=fix_files
                         )
                         WriteOlogLinesToFile(
                             tree_analyser.ologs_files_handles[j][i],
                             olog_lines_tot[j][i],
-                            tree_analyser.lock_ologs[j]
+                            tree_analyser.lock_ologs[j],
+                            write_hog_tree=write_hog_tree,
+                            fix_files=fix_files
                         )
                 WriteOlogLinesToFile(
                     tree_analyser.putative_xenolog_file_handles[i],
                     olog_sus_lines_tot[i],
-                    tree_analyser.lock_suspect
+                    tree_analyser.lock_suspect,
+                    write_hog_tree=write_hog_tree,
+                    fix_files=fix_files
                 )
             # results_queue.put(nOrthologues_SpPair)
 
@@ -1915,7 +2044,10 @@ def RunOrthologsParallel(
         args_queue, 
         nProcesses, 
         fewer_open_files, 
-        old_version=False
+        n_ologs_cache=100,
+        old_version=False,
+        write_hog_tree=False,
+        fix_files=False
     ):
     """
     Run the ortholog analysis in parallel using multiprocessing.
@@ -1930,7 +2062,22 @@ def RunOrthologsParallel(
         # is to work out a different way to take care of the parallel file writing.
         # args_list = [(tree_analyser, nspecies, args_queue, results_queue, fewer_open_files) for i_ in range(nProcesses)]
         # parallel_task_manager.RunParallelMethods(Worker_RunOrthologsMethod, args_list, nProcesses)
-        runningProcesses = [mp.Process(target=Worker_RunOrthologsMethod, args=(tree_analyser, nspecies, args_queue, results_queue, fewer_open_files)) for i_ in range(nProcesses)]
+        runningProcesses = [
+            mp.Process(
+                target=Worker_RunOrthologsMethod, 
+                args=(
+                    tree_analyser, 
+                    nspecies, 
+                    args_queue, 
+                    results_queue, 
+                    fewer_open_files,
+                    n_ologs_cache,
+                    write_hog_tree,
+                    fix_files
+                )
+            ) 
+            for i_ in range(nProcesses)
+        ]
         for proc in runningProcesses:
             proc.start()
         nOrthologues_SpPair = util.nOrtho_sp(nspecies)
@@ -1963,7 +2110,16 @@ def RunOrthologsParallel(
         runningProcesses = [
             mp.Process(
                 target=Worker_RunOrthologsMethod_New,
-                args=(tree_analyser, nspecies, args_queue, results_queue, fewer_open_files)
+                args=(
+                    tree_analyser, 
+                    nspecies, 
+                    args_queue, 
+                    results_queue, 
+                    fewer_open_files,
+                    n_ologs_cache,
+                    write_hog_tree,
+                    fix_files
+                )
             ) for _ in range(nProcesses)
         ]
         for proc in runningProcesses:
@@ -2168,18 +2324,19 @@ def RunOrthologsParallel(
 
 ### ------------------------------------------------
 
-def WriteOlogLinesToFile(fh, text, lock):
-    if len(text) == 0:
-        return
-    if debug: util.PrintTime("Waiting: %d" % os.getpid())
-    lock.acquire()
-    try:
-        if debug: util.PrintTime("Acquired lock: %d" % os.getpid())
-        fh.write(text)
-        fh.flush()
-    finally:
-        lock.release()
-        if debug: util.PrintTime("Released lock: %d" %  os.getpid())
+def WriteOlogLinesToFile(fh, text, lock, write_hog_tree=False, fix_files=False):
+    if not write_hog_tree or not fix_files: 
+        if len(text) == 0:
+            return
+        if debug: util.PrintTime("Waiting: %d" % os.getpid())
+        lock.acquire()
+        try:
+            if debug: util.PrintTime("Acquired lock: %d" % os.getpid())
+            fh.write(text)
+            fh.flush()
+        finally:
+            lock.release()
+            if debug: util.PrintTime("Released lock: %d" %  os.getpid())
 
 def SortParallelFiles(
         n_parallel, 
@@ -2187,6 +2344,7 @@ def SortParallelFiles(
         speciesDict, 
         fewer_open_files, 
         write_hog_tree,
+        fix_files,
         old_version,
     ):
     """
@@ -2198,23 +2356,27 @@ def SortParallelFiles(
     - Duplications
     - HOGs
     """
-    species = [speciesDict[str(sp1)] for sp1 in speciesToUse]
-    # Orthologs
-    dResultsOrthologues = files.FileHandler.GetOrthologuesDirectory()
-    if fewer_open_files:
-        fns_type = [(dResultsOrthologues + '%s.tsv' % sp1, "o") for sp1 in species]
-    else:
-        ds = [dResultsOrthologues + "Orthologues_" + sp1 + "/" for sp1 in species]
-        fns_type = [(d + '%s__v__%s.tsv' % (sp1, sp2), "o") for sp1, d in zip(species, ds) for sp2 in species if sp1 != sp2]
-    # Xenologs 
-    dXenologs = files.FileHandler.GetPutativeXenelogsDir()
-    fns_type.extend([(dXenologs + '%s.tsv' % sp1, "x") for sp1 in species])
+   
     # HOGs
     fns_type.extend([(fn, "h") for fn in glob.glob(os.path.dirname(files.FileHandler.GetHierarchicalOrthogroupsFN("N0.tsv")) + "/*")])
     if not write_hog_tree:
         fns_type.append((files.FileHandler.GetWorkingDirectory_Write() + "N0.ids.tsv", "h"))
-    # Duplications
-    fns_type.append((files.FileHandler.GetDuplicationsFN(), "d"))
+    
+    if not write_hog_tree or not fix_files:
+        species = [speciesDict[str(sp1)] for sp1 in speciesToUse]
+        # Orthologs
+        dResultsOrthologues = files.FileHandler.GetOrthologuesDirectory()
+        if fewer_open_files:
+            fns_type = [(dResultsOrthologues + '%s.tsv' % sp1, "o") for sp1 in species]
+        else:
+            ds = [dResultsOrthologues + "Orthologues_" + sp1 + "/" for sp1 in species]
+            fns_type = [(d + '%s__v__%s.tsv' % (sp1, sp2), "o") for sp1, d in zip(species, ds) for sp2 in species if sp1 != sp2]
+        # Xenologs 
+        dXenologs = files.FileHandler.GetPutativeXenelogsDir()
+        fns_type.extend([(dXenologs + '%s.tsv' % sp1, "x") for sp1 in species])
+
+        # Duplications
+        fns_type.append((files.FileHandler.GetDuplicationsFN(), "d"))
 
     args_queue = mp.Queue()
     for x in fns_type:

@@ -73,17 +73,20 @@ def post_hogs_processing(
     fastaWriter = trees_msa.FastaWriter(
         files.FileHandler.GetSpeciesSeqsDir(), speciesInfoObj.speciesToUse
     )
+
     d_seqs = files.FileHandler.GetResultsSeqsDir()
     if not os.path.exists(d_seqs):
         os.mkdir(d_seqs)
 
     # Update Orthogroup_Sequneces
-    treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idsDict, False)
+    treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idsDict, qID=False, qResults=True)
+
     idDict = ogSet.Spec_SeqDict()
     idDict.update(ogSet.SpeciesDict()) # same code will then also convert concatenated alignment for species tree
+
     # Update Orthogroup_Sequneces and Sequences_ids
     # treeGen.WriteFastaFiles(fastaWriter, ogSet.OGssAll(), idDict, True)
-    treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idDict, False) # Set to False, only update the Orthogroup_Sequneces 
+    # treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idDict, False) # Set to False, only update the Orthogroup_Sequneces 
     
     if not q_incremental:
         # stats.Stats(ogs, speciesNamesDict, speciesInfoObj.speciesToUse, files.FileHandler.iResultsVersion)

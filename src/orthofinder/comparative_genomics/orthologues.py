@@ -184,7 +184,14 @@ def TwoAndThreeGeneHOGs(ogSet, st_rooted_labelled, hog_writer):
         genes = [g.ToString() for g in og] # Inefficient as will convert back again, but trivial cost I think
         hog_writer.write_hog_genes(genes, hogs_to_write, og_name)
 
-def TwoAndThreeGeneOrthogroups(ogSet, resultsDir, save_space, fewer_open_files):
+def TwoAndThreeGeneOrthogroups(
+        ogSet, 
+        resultsDir, 
+        save_space, 
+        fewer_open_files,
+        write_hog_tree=False,
+        fix_files=False
+    ):
     speciesDict = ogSet.SpeciesDict()
     sequenceDict = ogSet.SequenceDict()
     ogs = ogSet.OGsAll()
@@ -244,7 +251,13 @@ def TwoAndThreeGeneOrthogroups(ogSet, resultsDir, save_space, fewer_open_files):
         lock_dummy = mp.Lock()
         for i in range(nspecies):
             for j in range(nspecies):
-                trees2ologs_of.WriteOlogLinesToFile(olog_files_handles[i][j], olog_lines_tot[i][j], lock_dummy)
+                trees2ologs_of.WriteOlogLinesToFile(
+                    olog_files_handles[i][j], 
+                    olog_lines_tot[i][j], 
+                    lock_dummy,
+                    write_hog_tree=write_hog_tree,
+                    fix_files=fix_files
+                )
     return nOrthologues_SpPair
     
 def ReconciliationAndOrthologues(
@@ -354,7 +367,17 @@ def ReconciliationAndOrthologues(
             util.PrintTime("Done of orthologues")
         TwoAndThreeGeneHOGs(ogSet, species_tree_rooted_labelled, hog_writer)
         hog_writer.close_files()
-    nOrthologues_SpPair += TwoAndThreeGeneOrthogroups(ogSet, resultsDir_ologs, save_space=save_space, fewer_open_files=fewer_open_files)
+
+    if not write_hog_tree or not fix_files:
+        nOrthologues_SpPair += TwoAndThreeGeneOrthogroups(
+            ogSet, 
+            resultsDir_ologs, 
+            save_space, 
+            fewer_open_files,
+            write_hog_tree=write_hog_tree,
+            fix_files=fix_files
+        )
+    
     if nLowParallel > 1 and "phyldog" != recon_method and "dlcpar" not in recon_method:
         trees2ologs_of.SortParallelFiles(
             nLowParallel, 
@@ -362,11 +385,14 @@ def ReconciliationAndOrthologues(
             speciesDict, 
             fewer_open_files,
             write_hog_tree,
+            fix_files,
             old_version,
         )
-    # print("%fs for orthologs etc" % (stop-start))
-    WriteOrthologuesStats(ogSet, nOrthologues_SpPair)
-#    print("Identified %d orthologues" % nOrthologues)
+
+    if not write_hog_tree or not fix_files:
+        # print("%fs for orthologs etc" % (stop-start))
+        WriteOrthologuesStats(ogSet, nOrthologues_SpPair)
+    #    print("Identified %d orthologues" % nOrthologues)
         
                 
 def OrthologuesFromTrees(
@@ -494,7 +520,8 @@ def OrthologuesWorkflow(
         qPhyldog,
         results_name, 
         root_from_previous, 
-        i_og_restart
+        i_og_restart,
+        options.fix_files
     )
     if return_obj is None:
         return
@@ -523,10 +550,9 @@ def OrthologuesWorkflow(
 
     write_hog_tree = False
     if options.fix_files:
-        if options.qMSATrees:
-            align_dir = files.FileHandler.GetResultsAlignDir()
-            util.clear_dir(align_dir)
-        
+        # if options.qMSATrees:
+        #     align_dir = files.FileHandler.GetResultsAlignDir()
+            # util.clear_dir(align_dir)
         write_hog_tree = True
 
     InferOrthologs(
@@ -603,8 +629,7 @@ def OrthologuesWorkflow(
     if options.fix_files:
         os.remove(files.FileHandler.OGsAllIDFN())
         os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
-        # shutil.rmtree(files.FileHandler.GetResolvedTreeIDDir())
-        # shutil.rmtree(files.FileHandler.GetHOGMSADir())
+        shutil.rmtree(files.FileHandler.GetResolvedTreeIDDir())
 
     stats.Stats(ogs, species_dict, speciesToUse, files.FileHandler.iResultsVersion, fastaWriter, ids_dict)
 

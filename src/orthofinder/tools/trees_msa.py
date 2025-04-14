@@ -290,12 +290,23 @@ class TreesForOrthogroups(object):
     def GetTreeFilename(self, iOG, qResults=False):
         return files.FileHandler.GetOGsTreeFN(iOG, qResults)
         
-    def WriteFastaFiles(self, fastaWriter, ogs, idDict, qBoth):
+    # def WriteFastaFiles(self, fastaWriter, ogs, idDict, qBoth):
+    #     # The results ones are now written by default after orthogroups, check they're not already there
+    #     for iOg, og in enumerate(ogs):
+    #         if not os.path.exists(self.GetFastaFilename(iOg, True)):
+    #             fastaWriter.WriteSeqsToFasta_withNewAccessions(og, self.GetFastaFilename(iOg, True), idDict)
+    #     if qBoth: 
+    #         for iOg, og in enumerate(ogs):
+    #             if not os.path.exists(self.GetFastaFilename(iOg)):
+    #                 fastaWriter.WriteSeqsToFasta(og, self.GetFastaFilename(iOg))
+
+    def WriteFastaFiles(self, fastaWriter, ogs, idDict, qID=True, qResults=False):
         # The results ones are now written by default after orthogroups, check they're not already there
-        for iOg, og in enumerate(ogs):
-            if not os.path.exists(self.GetFastaFilename(iOg, True)):
-                fastaWriter.WriteSeqsToFasta_withNewAccessions(og, self.GetFastaFilename(iOg, True), idDict)
-        if qBoth: 
+        if qResults:
+            for iOg, og in enumerate(ogs):
+                if not os.path.exists(self.GetFastaFilename(iOg, True)):
+                    fastaWriter.WriteSeqsToFasta_withNewAccessions(og, self.GetFastaFilename(iOg, True), idDict)
+        if qID: 
             for iOg, og in enumerate(ogs):
                 if not os.path.exists(self.GetFastaFilename(iOg)):
                     fastaWriter.WriteSeqsToFasta(og, self.GetFastaFilename(iOg))
@@ -325,6 +336,7 @@ class TreesForOrthogroups(object):
                         outfile.write(">" + idsDict[line[1:].rstrip()] + "\n")
                     else:
                         outfile.write(line)
+
           
     def DoTrees(
             self, 
@@ -344,6 +356,7 @@ class TreesForOrthogroups(object):
             method_threads_small=None, 
             threshold=None,
             old_version=False,
+            fix_files=True
         ):
 
         print_on_error = True
@@ -358,8 +371,9 @@ class TreesForOrthogroups(object):
         # 1.
         fastaWriter = FastaWriter(files.FileHandler.GetSpeciesSeqsDir(), speciesToUse)
         ogs = ogSet.OGsAll()
-
-        self.WriteFastaFiles(fastaWriter, ogs, idDict, True)
+        
+        ## -------- Writing to WD/Sequence_ids is not is orthogroups/gathering.py ---------------
+        # self.WriteFastaFiles(fastaWriter, ogs, idDict, True)
 
         if qStopAfterSeqs: return resultsDirsFullPath
 
@@ -418,6 +432,8 @@ class TreesForOrthogroups(object):
                 dSpeciesTree = os.path.split(files.FileHandler.GetSpeciesTreeResultsFN(0, True))[0] + "/"
                 with open(dSpeciesTree + "Orthogroups_for_concatenated_alignment.txt", 'w') as outfile:
                     for iog in iOgsForSpeciesTree: outfile.write("OG%07d\n" % iog)
+            
+            # ------------------ this section is not needed at this stage for the new procedure -------------
             # ids -> accessions
             alignmentFilesToUse = [self.GetAlignmentFilename(i) for i, in orig_iogs_align]
             accessionAlignmentFNs = [self.GetAlignmentFilename(i, True) for i, in orig_iogs_align]
@@ -425,6 +441,7 @@ class TreesForOrthogroups(object):
                 alignmentFilesToUse.append(concatenated_algn_fn)
                 accessionAlignmentFNs.append(files.FileHandler.GetSpeciesTreeConcatAlignFN(True))
             self.RenameAlignmentTaxa(alignmentFilesToUse, accessionAlignmentFNs, idDict)
+            
             return resultsDirsFullPath[:2]
         
         # Otherwise, alignments and trees
@@ -543,17 +560,39 @@ class TreesForOrthogroups(object):
                                                  old_version=old_version
                                                  )
         
-        # Convert ids to accessions for MSA
-        accessionAlignmentFNs = [self.GetAlignmentFilename(i, True) for i in iogs_align]
+        # # Convert ids to accessions for MSA
+        # accessionAlignmentFNs = [self.GetAlignmentFilename(i, True) for i in iogs_align]
+        # # Add concatenated Alignment
+        # if qDoSpeciesTree:
+        #     alignmentFilesToUse.append(concatenated_algn_fn)
+        #     accessionAlignmentFNs.append(files.FileHandler.GetSpeciesTreeConcatAlignFN(True))
+
+        #     qHaveSupport = util.HaveSupportValues(speciesTreeFN_ids)
+        #     if os.path.exists(speciesTreeFN_ids):
+        #         util.RenameTreeTaxa(speciesTreeFN_ids, files.FileHandler.GetSpeciesTreeUnrootedFN(True), idDict, qSupport=qHaveSupport, qFixNegatives=True)
+        #     else:
+        #         text = "ERROR: Species tree inference failed"
+        #         files.FileHandler.LogFailAndExit(text)
+
+
         # Add concatenated Alignment
         if qDoSpeciesTree:
-            alignmentFilesToUse.append(concatenated_algn_fn)
-            accessionAlignmentFNs.append(files.FileHandler.GetSpeciesTreeConcatAlignFN(True))
             qHaveSupport = util.HaveSupportValues(speciesTreeFN_ids)
             if os.path.exists(speciesTreeFN_ids):
                 util.RenameTreeTaxa(speciesTreeFN_ids, files.FileHandler.GetSpeciesTreeUnrootedFN(True), idDict, qSupport=qHaveSupport, qFixNegatives=True)
             else:
                 text = "ERROR: Species tree inference failed"
                 files.FileHandler.LogFailAndExit(text)
-        self.RenameAlignmentTaxa(alignmentFilesToUse, accessionAlignmentFNs, idDict)
+
+         # ------------------ this section is not needed at this stage for the new procedure -------------
+        if not fix_files:
+            # Convert ids to accessions for MSA
+            accessionAlignmentFNs = [self.GetAlignmentFilename(i, True) for i in iogs_align]
+            # Add concatenated Alignment
+            if qDoSpeciesTree:
+                alignmentFilesToUse.append(concatenated_algn_fn)
+                accessionAlignmentFNs.append(files.FileHandler.GetSpeciesTreeConcatAlignFN(True))
+
+            self.RenameAlignmentTaxa(alignmentFilesToUse, accessionAlignmentFNs, idDict)
+
         return resultsDirsFullPath[:2]

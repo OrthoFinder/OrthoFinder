@@ -325,6 +325,8 @@ def post_clustering_orthogroups(
     """
     ogs = mcl.GetPredictedOGs(clustersFilename_pairs)
     resultsBaseFilename = files.FileHandler.GetOrthogroupResultsFNBase()
+
+
     util.PrintUnderline("Writing orthogroups to file")
     idsDict = mcl.MCL.WriteOrthogroupFiles(
         ogs,
@@ -332,14 +334,16 @@ def post_clustering_orthogroups(
         resultsBaseFilename,
         clustersFilename_pairs,
     )
-    if not q_incremental:
-        mcl.MCL.CreateOrthogroupTable(
-            ogs,
-            idsDict,
-            speciesNamesDict,
-            speciesInfoObj.speciesToUse,
-            resultsBaseFilename,
-        )
+
+    ## --------- this doesn't need to run at this point with the new process --------
+    # if not q_incremental:
+    #     mcl.MCL.CreateOrthogroupTable(
+    #         ogs,
+    #         idsDict,
+    #         speciesNamesDict,
+    #         speciesInfoObj.speciesToUse,
+    #         resultsBaseFilename,
+    #     )
 
     # Write Orthogroup FASTA files
     ogSet = orthogroups_set.OrthoGroupsSet(
@@ -351,14 +355,31 @@ def post_clustering_orthogroups(
         options.tree_program,
         idExtractor=util.FirstWordExtractor,
     )
+
+
     treeGen = trees_msa.TreesForOrthogroups(None, None, None)
     fastaWriter = trees_msa.FastaWriter(
         files.FileHandler.GetSpeciesSeqsDir(), speciesInfoObj.speciesToUse
     )
-    d_seqs = files.FileHandler.GetResultsSeqsDir()
-    if not os.path.exists(d_seqs):
-        os.mkdir(d_seqs)
-    treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idsDict, False)
+
+    # d_seqs = files.FileHandler.GetResultsSeqsDir()
+    # if not os.path.exists(d_seqs):
+    #     os.mkdir(d_seqs)
+
+    # treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idsDict, False)
+
+    d_seqs_id = files.FileHandler.GetSeqsIDDir()
+    if not os.path.exists(d_seqs_id):
+        os.mkdir(d_seqs_id)
+
+    qResults=False
+    if not options.fix_files:
+        d_seqs = files.FileHandler.GetResultsSeqsDir()
+        if not os.path.exists(d_seqs):
+            os.mkdir(d_seqs)
+        qResults = True 
+
+    treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idsDict, qID=True, qResults=qResults)
 
     if not q_incremental:
         # stats.Stats(ogs, speciesNamesDict, speciesInfoObj.speciesToUse, files.FileHandler.iResultsVersion)
