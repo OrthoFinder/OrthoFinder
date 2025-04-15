@@ -624,7 +624,7 @@ def ProcessArgs(args):
         elif arg == "--save-space":
             options.save_space = True
 
-        elif arg == "--fix-files":
+        elif arg == "--no-fix-files":
             options.fix_files = False
 
         elif arg == "-x" or arg == "--orthoxml":

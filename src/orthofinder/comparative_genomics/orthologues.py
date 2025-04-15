@@ -327,7 +327,7 @@ def ReconciliationAndOrthologues(
         # The next function should not create the HOG writer and label the species tree. This should be done here and passed as arguments
         species_tree_rooted_labelled = tree.Tree(speciesTree_ids_fn)
         # Label nodes of species tree
-        species_tree_rooted_labelled.name = "N0"    
+        species_tree_rooted_labelled.name = "N0"   
         iNode = 1
         node_names = [species_tree_rooted_labelled.name]
         for n in species_tree_rooted_labelled.traverse():
@@ -576,7 +576,7 @@ def OrthologuesWorkflow(
         write_hog_tree=write_hog_tree,
         fix_files=options.fix_files
     )
-    
+
     if options.fix_files:
         util.PrintTime("Converting MSA/Trees")
         ogSet = file_updates.update_output_files(
