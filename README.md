@@ -13,7 +13,7 @@ OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and a
 - [Latest additions](#Latest-additions)
 - [Citation](#Citation)
 
-A single PDF with all documentation and tutorial is available [here](https://github.com/lauriebelch/OrthoDocs/blob/main/of3_v2.pdf)
+A single PDF with all documentation and tutorial is available [here](https://github.com/OrthoFinder/OrthoFinder/blob/update_readme/assets/of3_v2.pdf)
 
 ## Installation
 
@@ -39,8 +39,7 @@ Alternatively, you can install OrthoFinder using the source code
     pip install 
 ```
 
- Once you have installed OrthoFinder3, you can print the help information and version, and test it on example data.
- (we need to tell conda users where to get example data)
+ Once you have installed OrthoFinder3, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/tree/master/ExampleData).
 
 ```bash
     orthofinder --help # Print out help informatioin
