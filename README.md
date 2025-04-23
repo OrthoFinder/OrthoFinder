@@ -86,7 +86,7 @@ orthofinder [options] --assign <additional> --core <Results_Dir>
 
 To choose which 64 species to include in the core, aim to capture a broad range of the evolutionary diversity of your species.
 
-<img src="assets/scoreassignfigure.jpg" alt="OF3_Workflow" width="750"/>
+<img src="assets/coreassignfigure.jpg" alt="OF3_Workflow" width="750"/>
 
 **Note that this alternative way of running OrthoFinder requires that the core species are run using the multiple sequence alignment option. You cannot add additional species to OrthoFinder results that were run with the `-M dendroblast` option, which was the default for OrthoFinder2**
 
