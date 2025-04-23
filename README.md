@@ -14,7 +14,6 @@ OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and a
 - [Citation](#Citation)
 
 A single PDF with all documentation and tutorial is available [here](https://github.com/lauriebelch/OrthoDocs/blob/main/of3_v2.pdf)
-(update link with final version - available on this repo)
 
 ## Installation
 
@@ -87,10 +86,7 @@ orthofinder [options] --assign <additional> --core <Results_Dir>
 
 To choose which 64 species to include in the core, aim to capture a broad range of the evolutionary diversity of your species.
 
-
---- this figure will be updated ---
-<!-- ![OrthoFinder3 workflow](of3.png) -->
-<img src="assets/OF3_Workflow.png" alt="OrthoFinder3 workflow" width="750"/>
+<img src="coreassignfigure.png" alt="OF3_Workflow" width="750"/>
 
 **Note that this alternative way of running OrthoFinder requires that the core species are run using the multiple sequence alignment option. You cannot add additional species to OrthoFinder results that were run with the `-M dendroblast` option, which was the default for OrthoFinder2**
 
