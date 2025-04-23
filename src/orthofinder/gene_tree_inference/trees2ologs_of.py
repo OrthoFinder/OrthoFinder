@@ -1373,8 +1373,9 @@ def DoOrthologuesForOrthoFinder(
                 fix_files=fix_files
             )
 
+            total_tasks = len(iogs4)
+
             if n_parallel == 1:
-                total_tasks = len(iogs4)
                 progressbar, task = util.get_progressbar(total_tasks)
                 progressbar.start()
                 update_cycle = 1
@@ -1440,7 +1441,8 @@ def DoOrthologuesForOrthoFinder(
                     ta, 
                     len(ogSet.speciesToUse), 
                     args_queue, 
-                    n_parallel, 
+                    n_parallel,
+                    total_tasks,  
                     fewer_open_files, 
                     n_ologs_cache=100,
                     old_version=old_version,
@@ -2042,7 +2044,8 @@ def RunOrthologsParallel(
         tree_analyser, 
         nspecies, 
         args_queue, 
-        nProcesses, 
+        nProcesses,
+        total_tasks, 
         fewer_open_files, 
         n_ologs_cache=100,
         old_version=False,
@@ -2098,7 +2101,6 @@ def RunOrthologsParallel(
         return nOrthologues_SpPair
     else:
         results_queue = mp.Queue()
-        total_tasks = args_queue.qsize()
         progressbar, task = util.get_progressbar(total_tasks)
         progressbar.start()
         update_cycle = 1 
