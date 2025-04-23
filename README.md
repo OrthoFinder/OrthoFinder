@@ -26,42 +26,28 @@ The easiest way to install OrthoFinder is using [conda](https://www.machinelearn
     conda install orthofinder
 ```
 
-Alternatively, you can install OrthoFinder using the src code 
-
-  - Download via `git`
+Alternatively, you can install OrthoFinder using the source code 
       
-    ```bash
-      git clone https://github.com/OrthoFinder/OrthoFinder.git
-      cd OrthoFinder
-    ```
+```bash
+    # download via git
+    git clone https://github.com/OrthoFinder/OrthoFinder.git
+    # or download the zipfile
+    wget https://github.com/OrthoFinder/OrthoFinder/archive/refs/heads/master.zip
 
-  - Download zipfile or tar.gz file
-    ```bash
-      wget https://github.com/OrthoFinder/OrthoFinder/archive/refs/heads/master.zip
-      ## link need to be updated later
-      cd OrthoFinder
-    ```
-
-  - Install OrthoFinder 
-    ```bash
-      python3 -m venv of3_env && . of3_env/bin/activate
-      pip install .
-    ```
-
-**Installing dependencies**
-
---- do we want to provide info on manually install dependencies / give a list of dependencies for default OrthoFinder? ---
---- do we want to provide a docker image --- 
-
+    # Install
+    cd OrthoFinder
+    python3 -m venv of3_env && . of3_env/bin/activate
+    pip install 
+```
 
  Once you have installed OrthoFinder3, you can print the help information and version, and test it on example data.
  (we need to tell conda users where to get example data)
 
-    ```bash
-      orthofinder --help # Print out help informatioin
-      orthofinder --version # Check the version
-      orthofinder -f ExampleData # Test OrthoFinder on an example dataset
-    ```
+```bash
+    orthofinder --help # Print out help informatioin
+    orthofinder --version # Check the version
+    orthofinder -f ExampleData # Test OrthoFinder on an example dataset
+```
 
 ## Simple Usage
 
