@@ -37,7 +37,7 @@ conda remove -n of3_env --all
 ```bash
 python3 -m venv of3_env 
 . of3_env/bin/activate
-pip install git+https://github.com/OrthoFinder/RECUR.git
+pip install git+https://github.com/OrthoFinder/OrthoFinder.git
 ```
 
 - Download the source code and install locally
