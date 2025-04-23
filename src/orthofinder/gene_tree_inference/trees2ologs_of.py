@@ -1146,10 +1146,12 @@ def GetOrthologuesStandalone_Parallel(trees_dir, species_tree_rooted_fn, GeneToS
     species_tree_rooted = tree_lib.Tree(species_tree_rooted_fn)
     neighbours = GetSpeciesNeighbours(species_tree_rooted)
     args_queue = mp.Queue()
+    task_size = 0
     for treeFn in glob.glob(trees_dir + ("*" if qSingleTree else "/*")): 
         args_queue.put((0, treeFn, species_tree_rooted, GeneToSpecies, neighbours))
+        task_size += 1
     # Now need to root the tree first
-    parallel_task_manager.RunMethodParallel(RootAndGetOrthologues_from_tree, args_queue, 16)
+    parallel_task_manager.RunMethodParallel(RootAndGetOrthologues_from_tree, args_queue, 16, task_size)
 
 def RootTreeStandalone_Serial(trees_dir, species_tree_rooted_fn, GeneToSpecies, output_dir, qSingleTree):
     species_tree_rooted = tree_lib.Tree(species_tree_rooted_fn)
@@ -2380,13 +2382,14 @@ def SortParallelFiles(
         # Duplications
         fns_type.append((files.FileHandler.GetDuplicationsFN(), "d"))
 
+    task_size = len(fns_type)
     args_queue = mp.Queue()
     for x in fns_type:
         args_queue.put(x)
     if old_version:
-        parallel_task_manager.RunMethodParallel(SortFile, args_queue, n_parallel, old_version)
+        parallel_task_manager.RunMethodParallel(SortFile, args_queue, n_parallel, task_size, old_version)
     else:
-        parallel_task_manager.RunMethodParallel(Worker_SortFile, args_queue, n_parallel, old_version)
+        parallel_task_manager.RunMethodParallel(Worker_SortFile, args_queue, n_parallel, task_size, old_version)
 
 def SortFile(fn, f_type):
     """

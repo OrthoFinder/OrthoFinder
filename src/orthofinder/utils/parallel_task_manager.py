@@ -346,7 +346,7 @@ def Worker_RunMethod(Function, args_queue):
 #         proc.start()
 #     ManageQueue(runningProcesses, args_queue)
 
-def RunMethodParallel(Function, args_queue,  nProcesses, old_version=False):
+def RunMethodParallel(Function, args_queue,  nProcesses, task_size, old_version=False):
 
     if old_version:
         runningProcesses = [
@@ -360,7 +360,7 @@ def RunMethodParallel(Function, args_queue,  nProcesses, old_version=False):
         visible = True
         if Function.__name__ == "Worker_SortFile":
             visible = False
-        method_progress, task = util.get_progressbar(args_queue.qsize(), visible=visible)
+        method_progress, task = util.get_progressbar(task_size, visible=visible)
         update_cycle = 1
 
         method_progress.start()
