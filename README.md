@@ -26,12 +26,17 @@ conda create -n of3_env python=3.10
 conda activate of3_env
 conda install orthofinder
 ```
-To clean up the namespace, please run 
+Once you've finished your analysis and want to exit the current environment, simply run:
+```bash
+conda deactivate
+```
+If you'd like to completely remove the environment where OrthoFinder was installed, you can do so with:
 
 ```bash
 conda deactivate
 conda remove -n of3_env --all
 ```
+The first command deactivates the environment, and the second one permanently deletes it. If you want to use OrthoFinder again in the future, you'll need to recreate the environment and reinstall the package.
 
 - Install directly from GitHub
 ```bash
@@ -59,19 +64,21 @@ pip install .
 ```
 Whether you've installed OrthoFinder directly from GitHub or downloaded and set it up locally, the OrthoFinder package will only be available within the `of3_env` virtual environment. Regardless of how you install it, it's strongly recommended to run OrthoFinder inside a virtual environment to avoid potential conflicts with Python dependencies.
 
-To uninstall orthofinder inside the virtual environment, please run 
+To deactivate the virtual environment, run:
 ```bash
-pip uninstall orthofinder
+deactivate
 ```
 
-To remove the virtual environment, simply run 
+To completely remove the virtual environment where OrthoFinder is installed, use:
+
 ```bash
 deactivate
 cd ..
 rm -rf OrthoFinder
 ```
+Please note that this will delete both the environment and all files related to OrthoFinder. If you plan to use OrthoFinder again in the future, you’ll need to recreate the environment and reinstall the package.
 
-Once you have installed OrthoFinder3, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/tree/master/ExampleData).
+Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/tree/master/ExampleData).
 
 ```bash
 orthofinder --help # Print out help informatioin
