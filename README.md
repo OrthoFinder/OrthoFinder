@@ -17,35 +17,26 @@ A single PDF with all documentation and tutorial is available [here](https://git
 
 ## Installation
 
-- Install in conda (Recommended)
+### Install in conda (recommended) 
 
-OrthoFinder relies on several external tools to function effectively, and conda offers a user-friendly environment for installing and managing such software. Therefore, the easiest way to install OrthoFinder is through [conda](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/).
+The easiest way to install OrthoFinder is using [conda](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/).
 
 ```bash
 conda create -n of3_env python=3.10
 conda activate of3_env
 conda install orthofinder
 ```
-Once you've finished your analysis and want to exit the current environment, simply run:
-```bash
-conda deactivate
-```
-If you'd like to completely remove the environment where OrthoFinder was installed, you can do so with:
 
-```bash
-conda deactivate
-conda remove -n of3_env --all
-```
-The first command deactivates the environment, and the second one permanently deletes it. If you want to use OrthoFinder again in the future, you'll need to recreate the environment and reinstall the package.
+Alternatively, you could install via github, or download the source code and install locally.
 
-- Install directly from GitHub
+### Install via github
 ```bash
 python3 -m venv of3_env 
 . of3_env/bin/activate
 pip install git+https://github.com/OrthoFinder/OrthoFinder.git
 ```
 
-- Download the source code and install locally
+### Install locally from source code
 
 The following commands provide three ways to download the source code of OrthoFinder locally into a directory named `OrthoFinder`.
 ```bash
@@ -56,27 +47,22 @@ mkdir OrthoFinder && wget -qO- https://github.com/OrthoFinder/OrthoFinder/archiv
 # or download the tar.gz and unzip it into OrthoFinder
 mkdir OrthoFinder && wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.0.1/orthofinder-3.0.1.tar.gz | tar -xz --strip-components=1 -C OrthoFinder
 ```
-Once you have downloaded source code, you can run the following commands to install OrthoFinder inside the of3_env virtural environment.
+
+Next, you can run the following commands to install OrthoFinder inside the of3_env virtural environment.
 ```bash
 cd OrthoFinder
 python3 -m venv of3_env && . of3_env/bin/activate
 pip install .
 ```
-Whether you've installed OrthoFinder directly from GitHub or downloaded and set it up locally, the OrthoFinder package will only be available within the `of3_env` virtual environment. Regardless of how you install it, it's strongly recommended to run OrthoFinder inside a virtual environment to avoid potential conflicts with Python dependencies.
 
-To deactivate the virtual environment, run:
+Whether you've installed OrthoFinder directly from GitHub or downloaded and set it up locally, the OrthoFinder package will only be available within the `of3_env` virtual environment. This avoids potential conflicts with Python dependencies.
+
+To deactivate the virtual environment when you are finished, run:
 ```bash
 deactivate
 ```
 
-To completely remove the virtual environment where OrthoFinder is installed, use:
-
-```bash
-deactivate
-cd ..
-rm -rf OrthoFinder
-```
-Please note that this will delete both the environment and all files related to OrthoFinder. If you plan to use OrthoFinder again in the future, you’ll need to recreate the environment and reinstall the package.
+### Test your installation
 
 Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/tree/master/ExampleData).
 
@@ -86,12 +72,17 @@ orthofinder --version # Check the version
 orthofinder -f ExampleData # Test OrthoFinder on an example dataset
 ```
 
-If you downloaded the source code, and your current workding directory is inside the source code directory, i.e., `OrthoFinder`, you can also use OrthoFinder without installing it, e.g.,
-
+### Uninstalling
+To uninstall on conda:
 ```bash
-python3 orthofinder.py --help # Print out help informatioin
-python3 orthofinder.py --version # Check the version
-python3 orthofinder.py -f ExampleData # Test OrthoFinder on an example dataset
+conda deactivate
+conda remove -n of3_env --all
+```
+To remove the virtual environment where OrthoFinder is installed:
+```bash
+deactivate
+cd ..
+rm -rf OrthoFinder
 ```
 
 ## Simple Usage
