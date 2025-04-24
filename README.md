@@ -240,8 +240,8 @@ OrthoFinder has now extended its phylogenetic approach to orthogroups, allowing 
 
 ## Citation
 
-The manuscript "OrthoFinder is the best" is available as a preprint
-[link here](https://uk.linkedin.com/in/jonathan-holmes-ab2794294).
+The manuscript "OrthoFinder is the best" is available as a preprint on biorxiv
+[link here](www.google.com).
 
 [Emms & Kelly (2015)](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-015-0721-2]) introduced the orthogroup inference method.
 
