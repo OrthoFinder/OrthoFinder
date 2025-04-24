@@ -1,154 +1,133 @@
-# OrthoFinder3
-
-<img src="assets/OF2_Workflow.png" alt="OF2_Workflow" width="750"/>
-
-OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and analyzes these gene trees to identify the rooted species tree. The method subsequently identifies all gene duplication events in the complete set of gene trees, and analyzes this information in the context of the species tree to provide both gene tree and species tree-level analysis of gene duplication events. OrthoFinder further analyzes all of this phylogenetic information to identify the complete set of orthologs between all species and provide extensive comparative genomics statistics.
+# OrthoFinder
+<p align="center">
+  <img src="assets/images/concept_figure.png" alt="concept_figure" width="800"/>
+</p>
+OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and analyzes the gene trees to identify the rooted species tree. The method subsequently identifies all gene duplication events in the complete set of gene trees, and analyses them at both gene tree and species tree level. OrthoFinder further analyzes all of this phylogenetic information to identify the complete set of orthologs between all species, and provide extensive comparative genomics statistics.
 
 ## Table of contents
 - [Installation](#Installation)
 - [Simple Usage](#Simple-Usage)
-- [Advanced Usage](#Advanced-Usage)
+- [Advanced Usage - Scaling to Thousands of Species](#Advanced-Usage-Scaling-to-Thousands-of-Species)
 - [Command line Options](#Command-line-Options)
 - [Output files](#Output-files)
 - [Latest additions](#Latest-additions)
 - [Citation](#Citation)
 
-Tutorials and further documentation can be found on our [website](https://sites.google.com/view/orthofinder3)
-
-A single PDF with all documentation, tutorials, and this README is available [here](https://github.com/lauriebelch/OrthoDocs/blob/main/of3_v2.pdf)
+A single PDF with all documentation and tutorial is available [here](https://github.com/OrthoFinder/OrthoFinder/blob/update_readme/assets/docs/of3_v2.pdf)
 
 ## Installation
 
-OrthoFinder3 provides a user-freindly way to use. It can be run with or without installation. Either way, the first step requires a user to download a copy of the package to their local machine. Whichever way a user choose to run OrthoFinder3, it is recommended that the software is ran inside a virtual environment or a name space in conda. 
+### Install in conda (recommended) 
 
-> Run OrthoFinder3 with installation
+The easiest way to install OrthoFinder is using [conda](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/).
 
-When running OrthoFinder3 with installation, we recommend the user to run it inside a conda environment and miniconda is suffice. The installation instructions for miniconda can be found [here](https://www.anaconda.com/docs/getting-started/miniconda/install#macos-linux-installation).
-
-- Install OrthoFinder3 in conda
-
-  OrthoFinder3 is a listed software in bioconda. More information can be found [here](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/).
-
-  ```bash
-    conda create -n of3_env python=3.10
-    conda activate of3_env
-    conda install orthofinder
-  ```
-- [Install OrthoFinder3 via src code](#install-via-src-code)
-
-  Generally speaking, more steps is evolved in installing OrthoFinder3 via the src code. In the meantime, more OS related issues can occur when running orthofinder via src code. The main issue is the binaries shipped with OrthoFinder3 might not be comptable with your underlying OS. Therefore, this is not a recommended way to run OrthoFinder3. Nevertheless, for those Linux users who prefer running OrthoFinder3 in such way, you can running the following commands to install the software and run it on your local machine.
-
-  - Download via `git`
-      
-    ```bash
-      git clone https://github.com/OrthoFinder/OrthoFinder.git
-      cd OrthoFinder
-    ```
-
-  - Download zipfile or tar.gz file
-    ```bash
-      wget https://github.com/OrthoFinder/OrthoFinder/archive/refs/heads/master.zip
-      ## link need to be updated later
-      cd OrthoFinder
-    ```
-
-  - Install OrthoFinder 
-    ```bash
-      python3 -m venv of3_env && . of3_env/bin/activate
-      pip install .
-    ```
-  Once you have installed OrthoFinder3, you can run the following commands to check the version, print out the help informatioin or test if it has been installed sucessfully.
-
-    ```bash
-      orthofinder --version # Check the version
-      orthofinder --help # Print out help informatioin
-      orthofinder -f ExampleData # Test the OrthoFinder on an example dataset shipped with OrthoFinder3
-    ```
-
-> Run OrthoFinder3 without installation
-
-Running OrthoFinder3 without installation also requires the user to download a copy of the src code from GitHub. Flease follow the instruction in the <a name="install-via-src-code">Install OrthoFinder3 via src code</a> section. 
-
-Once you have package src code available you can running the following commands to installed the required Python depencies inside a virtual environment. 
-
-  ```bash
-    python3 -m venv of3_env && . of3_env/bin/activate
-    pip install -r requirements.txt
-  ```
-
-Having done so, you then test and run OrthoFinder3 without actaully install the software. To test it, please run 
-
-  ```bash
-    python3 orthofinder.py --version # Check the version
-    python3 orthofinder.py --help # Print out help informatioin
-    python3 orthofinder.py -f ExampleData # Test the OrthoFinder on an example dataset shipped with OrthoFinder3
-  ```
-
-
-
-
-  
-
-
-The easiest way to install OrthoFinder3 is using [conda](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/).
 ```bash
+conda create -n of3_env python=3.10
+conda activate of3_env
 conda install orthofinder
-orthofinder -h
 ```
 
-If you are on a mac that has an M1/M2/M3 chip, you might have to adjust your conda architecture. Instructions can be found [here](https://towardsdatascience.com/how-to-manage-conda-environments-on-an-apple-silicon-m1-mac-1e29cb3bad12).
+Alternatively, you could install via github, or download the source code and install locally.
 
+### Install via github
+```bash
+python3 -m venv of3_env 
+. of3_env/bin/activate
+pip install git+https://github.com/OrthoFinder/OrthoFinder.git
+```
 
+### Install locally from source code
 
-A docker image will also available [here](###linktodocker###)
+The following commands provide three ways to download the source code of OrthoFinder locally into a directory named `OrthoFinder`.
+```bash
+# Download via git 
+git clone https://github.com/OrthoFinder/OrthoFinder.git
+# or download the zipfile and unzip it into OrthoFinder
+mkdir OrthoFinder && wget -qO- https://github.com/OrthoFinder/OrthoFinder/archive/refs/heads/master.zip | funzip | tar -x --strip-components=1 -C OrthoFinder
+# or download the tar.gz and unzip it into OrthoFinder
+mkdir OrthoFinder && wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.0.1/orthofinder-3.0.1.tar.gz | tar -xz --strip-components=1 -C OrthoFinder
+```
 
-**Installing dependencies**
+Next, you can run the following commands to install OrthoFinder inside the of3_env virtural environment.
+```bash
+cd OrthoFinder
+python3 -m venv of3_env && . of3_env/bin/activate
+pip install .
+```
 
-Add some info on how to manually install dependencies
+Whether you've installed OrthoFinder directly from GitHub or downloaded and set it up locally, the OrthoFinder package will only be available within the `of3_env` virtual environment. This avoids potential conflicts with Python dependencies.
+
+To deactivate the virtual environment when you are finished, run:
+```bash
+deactivate
+```
+
+### Test your installation
+
+Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/tree/master/ExampleData).
+
+```bash
+orthofinder --help # Print out help informatioin
+orthofinder --version # Check the version
+orthofinder -f ExampleData # Test OrthoFinder on an example dataset
+```
+
+### Uninstalling
+To uninstall on conda:
+```bash
+conda deactivate
+conda remove -n of3_env --all
+```
+To remove the virtual environment where OrthoFinder is installed:
+```bash
+deactivate
+cd ..
+rm -rf OrthoFinder
+```
 
 ## Simple Usage
 
-OrthoFinder requires one FASTA format file for each species being analysed. Each file should contain the complete set of protein sequences encoded by genes present in that species genome,  with a single representative protein sequence for each gene.
+Run OrthoFinder on FASTA format proteomes in `<dir>`
 
-OrthoFinder does not have the ability to distinguish proteins derived from transcript variants from proteins derived from separate genes. If your files have protein sequences derived from multiple transcript variants for each gene then we provide a script `primary_transcripts.py` to extract the longest variant per gene that should be run on your input files prior to running OrthoFinder;
+```python
+orthofinder [options] -f <dir>
+```
+
+OrthoFinder requires one FASTA file for each species. Each file should contain the complete set of protein sequences from that species' genome,  with a single representative sequence for each gene.
+
+If your files have multiple transcript variants for each gene, then we provide a script `primary_transcripts.py` to extract the longest variant per gene. This script should be run on your files prior to running OrthoFinder;
 
 ```bash
 for f in *fa ; do python primary_transcript.py $f ; done
 ```
 
-Run OrthoFinder3 on FASTA format proteomes in `<dir>`
+## Advanced Usage - Scaling to Thousands of Species
+
+If you are analysing >100 species, we reccommend that you use the scalable implementation. 
+
+Add the files for 64 species into one directory `<core>`
+Add the remaining files into another directory `<additional>`
+
+First, run OrthoFinder on the subset of 64 species
 
 ```python
-orthofinder [options] -f <dir> -M dendroblast
+orthofinder [options] -f <core>
 ```
 
-
-## Advanced Usage
-
-If you have large numbers of species to analyse OrthoFinder has a scalable implementation that can be used to add new species to an already inferred set of orthogroups for a smaller, core group of species.
-
-<!-- ![OrthoFinder3 workflow](of3.png) -->
-<img src="assets/OF3_Workflow.png" alt="OrthoFinder3 workflow" width="750"/>
-
-We reccomend that if you are analysing >32 species, you use the this core/assign method. You will need to partition your input dataset into 16 “core” and the remainder “additional” species. 
-
-The core set of species should be the subset that maximally captures the evolutionary uniqueness of the species in the input dataset.
-
-You need to make a folder `core` with the core species, and a folder `additional`  with the additional species
-
-You can then run OrthoFinder3 on the core species
+Then, add the additional species to the results of the core run
 
 ```python
-orthofinder [options] -f <dir_core>
+orthofinder [options] --assign <additional> --core <Results_Dir>
 ```
 
-Next, you can add the additional species
+To choose which 64 species to include in the core, aim to capture a broad range of the evolutionary diversity of your species.
 
-```python
-orthofinder [options] --assign <dir_additional> --core <dir_core>
-```
+<p align="center">
+  <img src="assets/images/core_assign_figure.jpg" alt="core_assign_figure" width="800"/>
+</p>
 
-**Note that this alternative way of running OrthoFinder requires that the core species set is run using the multiple sequence alignment option. You cannot add additional species to OrthoFinder results that were run with the `-M dendroblast` option, which was the default for OrthoFinder2**
+**Note that this alternative way of running OrthoFinder requires that the core species are run using the multiple sequence alignment option. You cannot add additional species to OrthoFinder results that were run with the `-M dendroblast` option, which was the default for OrthoFinder2**
+
 
 ## Command-line options
 
@@ -163,9 +142,9 @@ Command-line options for OrthoFinder
 | Parameter | Description                               | Default   | Options                                                                                     |
 |-----------|-------------------------------------------|-----------|---------------------------------------------------------------------------------------------|
 | `-M`      | Method for gene tree inference.           | `msa`     | `dendroblast`, `msa`                                                                        |
-| `-S`      | Sequence search program                   | `diamond` | `blast`, `diamond`, `diamond_ultra_sens`, `diamond_custom`, `diamond_ultra_sens_custom`, `blast_gz`, `mmseqs`, `blast_nucl` |
-| `-A`      | MSA program, requires `-M msa`            | `famsa`   | `famsa`, `mafft`, `muscle`, `mafft_memsave`                                                          |
-| `-T`      | Tree inference method, requires `-M msa`  | `fasttree`| `fasttree`, `fasttree_fastest`, `raxml`, `raxml-ng`, `iqtree`                               |
+| `-S`      | Sequence search program                   | `diamond` | `blast`, `diamond`, `diamond_ultra_sens`, `blastp`, `mmseqs`, `blastn` |
+| `-A`      | MSA program, requires `-M msa`            | `famsa`   | `famsa`, `mafft`, `muscle`,                                                          |
+| `-T`      | Tree inference method, requires `-M msa`  | `fasttree`| `fasttree`, `fasttree_fastest`, `raxml`, `iqtree`                               |
 | `-I`      | MCL inflation parameter                   | `1.2`     | `1-10`                                                                                         |
 
 **Input options**
@@ -177,18 +156,15 @@ Command-line options for OrthoFinder
 **Output options**
 | Parameter   | Description                                                                 |
 |-----------  |-----------------------------------------------------------------------------|
-| `-x <file>`      | Info for outputting results in OrthoXML format.                             |
-| `-p <dir>`      | Write the temporary pickle files to `<dir>`.                                |
 | `-X`      | Don’t add species names to sequence IDs.                                    |
 | `-n <txt>`      | Name to append to the results directory.                                    |
 | `-o <txt>`      | Specify a non-default results directory.                                    |
-| `-efn`    | Extend the output directory name with the name of the scoring matrix, gap penalties, search program, MSA program, and tree program. |
 
 **Parallel processing options**
 | Parameter | Description                                 | Default |
 |-----------|---------------------------------------------|---------|
-| `-t`      | Number of parallel sequence search threads. | `11`    |
-| `-a`      | Number of parallel analysis threads.        | `1`     |
+| `-t`      | Number of parallel sequence search threads. | `All available`    |
+| `-a`      | Number of parallel analysis threads.        | `16 or t/8 (whichever lower)`     |
 
 **Workflow stopping options**
 | Parameter | Description                                                                 |
@@ -204,10 +180,7 @@ Command-line options for OrthoFinder
 | Parameter        | Description                                                               |
 |------------------|---------------------------------------------------------------------------|
 | `-1`             | Only perform one-way sequence search.                                     |
-| `--matrix`       | Scoring matrix allowed by DIAMOND.                                        |
-| `--custom-matrix`| Custom scoring matrix.                                                    |
 | `-z`             | Don’t trim MSAs (columns >= 90% gap, min. alignment length 500).          |
-| `--save-space`   | Only create one compressed orthologs file per species.                    |
 | `-y`             | Split paralogous clades below the root of a HOG into separate HOGs.        |
 | `-h`             | Print this help text.                                                     |
 | `-v`             | Print version.                                                     |
@@ -217,7 +190,14 @@ Command-line options for OrthoFinder
 
 A standard OrthoFinder run produces a set of files describing the orthogroups, orthologs, gene trees, resolve gene trees, the rooted species tree, gene duplication events, and comparative genomic statistics for the set of species being analysed. These files are located in an intuitive directory structure.
 
-Full details on the output files and directories can be found [here](https://sites.google.com/view/orthofinder3/guide-to-results-files). The directories that are useful for most users are;
+Full details on the output files and directories can be found in the PDF [here](link). The directories that are useful for most users are;
+
+```/Orthogroups```
+- Orthogroups.tsv is the main orthogroup file. Each row contains the genes belonging to a single orthogroup. The genes from each orthogroup are organized into columns, one per species. 
+- Orthogroups.txt is a text file with each line showing the genes in a single orthogroup. It differs from Orthogroups.tsv in that it doesn’t show the species which each gene belongs to.
+- Orthogroups.GeneCount.tsv is a tab separated text file that contains counts of the number of genes for each species in each orthogroup.
+- Orthogroups_SingleCopyOrthologues.txt is a list of orthogroups that contain exactly one gene per species
+- Orthogrouops_UnassignedGenes.tsv is a tab separated text file that contains all of the genes that were not assigned to any orthogroup.
 
 ```/Phylogenetic_Hierarchical_Orthogroups```
 - Each file is a phylogenetic hierarchical orthogroup (HOG) for a different node of the species tree
@@ -250,25 +230,19 @@ The current version of OrthoFinder has several major changes comapred to OrthoFi
 
 **New workflow for scalability**
 
-OrthoFinder now provides a ``--core --assign`` workflow to assign additional species to a previously computed OrthoFinder run. This workflow makes use of SHOOT to create profiles for the previously computed orthogroups, and new genes are assigned to these orthogroups without requiring a costly all-versus-all sequence search. Genes that cannot be assigned using the [SHOOT](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02652-8) approach are analysed on a clade-by-clade basis using a standard OrthoFinder workflow. 
+The ``--core --assign`` workflow uses [SHOOT](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02652-8) to create profiles for previously computed orthogroups, and adds new genes to these orthogroups without requiring a costly all-versus-all sequence search. Genes that cannot be assigned using the SHOOT approach are analysed using a standard OrthoFinder workflow. 
 
 **Phylogenetic Hierarchical Orthogroups**
 
-OrthoFinder3 uses phylogenetic trees to determine orthologs. This is in contrast to most other methods that use only sequence similarity to infer orthologs. We have now extended our phylogenetic approach to orthogroups. This means that the orthogroups are more accurate than before, and also that orthogroups are now provided for each node within the species tree.
+OrthoFinder has now extended its phylogenetic approach to orthogroups, allowing orthogroups to be defined for each node within the species tree. This significantly increases the accuracy of orthogroups, and enables users to perform orthogroup analyses for any clade of species in the species tree. 
 
-This change significantly increases the accuracy of the orthogroups identified by OrthoFinder. It also provides new functionality by enabling users to perform orthogroup-level analyses for any clade of species in the species tree. Orthogroups for every internal node in the species tree are provided in `/Comparative_Genomics_Statistics` (e.g. `N3.tsv` is the orthogroups for node N3 in the species tree).
-
-<img src="assets/hog.png" alt="HOGs" width="500"/>
-
-**Performance improvements**
-
-(4x quicker runtime, 2.5x lower RAM usage, 15% more accurate orthogroups)
-
+<p align="center">
+  <img src="assets/images/hog.png" alt="HOGs" width="400"/>
+</p>
 
 ## Citation
 
-The manuscript "OrthoFinder is the best" is now published in *Nature Methods*
-[link here](https://uk.linkedin.com/in/jonathan-holmes-ab2794294).
+The manuscript "OrthoFinder: scalable phylogenetic orthology inference for comparative genomics" is available as a preprint on biorxiv.
 
 [Emms & Kelly (2015)](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-015-0721-2]) introduced the orthogroup inference method.
 
@@ -285,5 +259,4 @@ OrthoFinder was developed by David Emms & Steve Kelly
 Current members of the OrthoFinder team:
 
 Yi Liu, Jonathan Holmes, Laurie Belcher
-
 

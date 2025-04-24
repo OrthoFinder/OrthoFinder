@@ -18,3 +18,4 @@ tox.ini
 FixTheFiles_v0/
 README_orig.md
 TestData/
+tests/
