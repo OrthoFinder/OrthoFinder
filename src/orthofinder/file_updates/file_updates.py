@@ -2,12 +2,9 @@ from . import ogs, trees
 import os
 import tempfile
 import csv
-import shutil
 from collections import defaultdict
-import traceback
 
 from ..utils import files, util
-from ..utils.util import printer
 
 def update_output_files(
         sp_ids,
@@ -24,7 +21,7 @@ def update_output_files(
         i_og_restart=0,
         exist_msa=True,
     ):
-    #quit()
+
     sequence_id_dict = defaultdict(set)
     for key, value in id_sequence_dict.items():
         sequence_id_dict[value].add(key)

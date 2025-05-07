@@ -6,8 +6,7 @@ from collections import defaultdict, Counter
 
 from ..tools import trees_msa
 from ..tools import mcl as MCL
-from ..utils import util, files, parallel_task_manager
-from ..comparative_genomics import stats
+from ..utils import util, files
 
 import xml.etree.ElementTree as ET              # Y
 from xml.etree.ElementTree import SubElement    # Y

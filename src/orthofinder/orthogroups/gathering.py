@@ -182,41 +182,6 @@ def DoOrthogroups(
                 
         parallel_task_manager.ManageQueueNew(runningProcesses, result_queue, gathering_progress, task, update_cycle)
         gathering_progress.stop()
-## ---------------------------------------------------------
-    # gathering_progress.start()
-
-    # with ProcessPoolExecutor(max_workers=options.nProcessAlg) as executor:
-    #     # Submit the worker task n_processes times
-    #     futures = {
-    #         executor.submit(
-    #         waterfall.WaterfallMethod.ProcessBlastHits,
-    #         seqsInfo,
-    #         blastDir_list,
-    #         Lengths, 
-    #         iSpeciesJob,
-    #         files.FileHandler.GetPickleDir(),
-    #         options.qDoubleBlast,
-    #         options.v2_scores,
-    #         q_unassigned,
-    #         ): iSpeciesJob
-    #         for iSpeciesJob in range(seqsInfo.nSpecies)
-    #     }
-
-    #     for i, future in enumerate(as_completed(futures)):
-    #         iSpeciesJob = futures[future]
-    #         try:
-    #             future.result() 
-    #         except Exception as e:
-    #             for f in futures:
-    #                 f.cancel()
-    #             print("ERROR: Error processing files Blast%d_*" % seqsInfo.speciesToUse[iSpeciesJob])
-    #             util.Fail()  
-    #             break
-    #         finally:
-    #             if (i + 1) % update_cycle == 0:
-    #                 gathering_progress.update(task, advance=update_cycle)
-    # gathering_progress.stop()
-## --------------------------------------------------------------------
 
     if options.gathering_version < (3, 0):
         util.PrintTime("Connected putative homologues")
