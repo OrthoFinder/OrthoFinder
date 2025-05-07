@@ -1,0 +1,199 @@
+<footer class="site-footer h-card">
+  <data class="u-url" href="{{ "/" | relative_url }}"></data>
+
+  <div class="wrapper">
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col">
+
+        <!-- <p class="feed-subscribe">
+          <a href="{{ site.feed.path | default: 'feed.xml' | absolute_url }}">
+            <svg class="svg-icon orange">
+              <use xlink:href="{{ 'assets/minima-social-icons.svg#rss' | relative_url }}"></use>
+            </svg><span>Subscribe</span>
+          </a>
+        </p> -->
+
+        <!-- {%- include social.html -%} -->
+         
+        <div class="social-icons">
+          {% if site.author.github %}
+          <a href="{{ site.author.github }}" target="_blank" title="GitHub">
+            <svg class="svg-icon grey">
+              <use xlink:href="{{ 'assets/minima-social-icons.svg#github' | relative_url }}"></use>
+            </svg>
+            <span>GitHub</span>
+          </a>
+          {% endif %}
+          <!-- {% if site.author.twitter %}
+          <a href="{{ site.author.twitter }}" target="_blank" title="Twitter">
+            <svg class="svg-icon grey">
+              <use xlink:href="{{ 'assets/minima-social-icons.svg#twitter' | relative_url }}"></use>
+            </svg>
+            <span>Twitter</span>
+          </a>
+          {% endif %} -->
+        </div>
+        {%- if site.author %}
+        <ul class="contact-list">
+          <!-- {% if site.author.name -%}
+          <li class="p-name">{{ site.author.name | escape }}</li>
+          {% endif -%}
+          {% if site.author.email -%}
+          <li><a class="u-email" href="mailto:{{ site.author.email }}">{{ site.author.email }}</a></li>
+          {%- endif %} -->
+
+          {% if site.author.name %}
+          <li class="p-name">Author: {{ site.author.name | escape }}</li>
+          {% endif %}
+          {% if site.author.email %}
+          <li>Email: <a class="u-email" href="mailto:{{ site.author.email }}">{{ site.author.email }}</a></li>
+          {% endif %}
+          <!-- {% if site.author.github %}
+          <li>
+            <a href="{{ site.author.github }}" target="_blank" title="GitHub Profile">GitHub</a>
+          </li>
+          {% endif %} -->
+        </ul>
+        {%- endif %}
+      </div>
+      <div class="footer-col">
+        <!-- <p>{{ site.description | escape }}</p> -->
+        <p>{{ site.description | markdownify }}</p>
+      </div>
+    </div>
+
+    <!-- <div class="social-links">
+      {%- include social.html -%}
+    </div> -->
+
+  </div>
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // 1) Find all <pre><code> blocks
+    const codeBlocks = document.querySelectorAll('pre > code');
+
+    codeBlocks.forEach((codeBlock, index) => {
+      // The parent <pre> element
+      const pre = codeBlock.parentNode;
+
+      // 2) Create a container DIV and wrap <pre> inside it
+      const container = document.createElement('div');
+      container.className = 'code-container';
+      pre.parentNode.insertBefore(container, pre);
+      container.appendChild(pre);
+
+      // 3) Create the copy button
+      const button = document.createElement('button');
+      button.className = 'copy-button';
+      button.type = 'button';
+
+      // 4) Insert an inline SVG icon + "Copy" text
+      //    We'll build the SVG as a string, then inject it into button.innerHTML
+      const svgIcon = `
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          fill="currentColor"
+          class="bi bi-files"
+          viewBox="0 0 16 16"
+        >
+            <path d="M13 0H5a1 1 0 0 0-1 1v1H3a2 2 0 0 0-2
+                  2v9.5A1.5 1.5 0 0 0 2.5 15H9v-1H2.5a.5.5
+                  0 0 1-.5-.5V4a1 1 0 0 1 1-1h1v7.5A1.5
+                  1.5 0 0 0 5.5 12H11v-1H5.5a.5.5 0 0
+                  1-.5-.5V1a.5.5 0 0 1 .5-.5H5v3.5A1.5
+                  1.5 0 0 0 6.5 5H13v6h1V1a1 1 0 0 0-1-1z"/>
+        </svg>
+    `;
+      
+
+      
+      button.innerHTML = svgIcon + 'Copy';
+
+      // 5) Assign an ID to <code> if it doesn't have one
+      if (!codeBlock.id) {
+        codeBlock.id = `codeblock-${index}`;
+      }
+
+      // 6) Link button to the code block by ID
+      button.setAttribute('data-clipboard-target', '#' + codeBlock.id);
+
+      // 7) Insert the button into the container
+      container.insertBefore(button, pre);
+    });
+
+    // 8) Initialize Clipboard.js for all .copy-button elements
+    const clipboard = new ClipboardJS('.copy-button');
+    clipboard.on('success', function (e) {
+      e.clearSelection();
+      // Briefly change button text to indicate success
+      e.trigger.innerText = 'Copied!';
+      setTimeout(() => {
+        e.trigger.innerHTML = svgIcon + 'Copy'; // restore icon + text
+      }, 1500);
+    });
+    clipboard.on('error', function (e) {
+      console.error('Failed to copy', e);
+    });
+  });
+</script>
+
+
+  <!-- <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // 1. Find all <pre><code> blocks
+      const codeBlocks = document.querySelectorAll('pre > code');
+
+      codeBlocks.forEach((codeBlock) => {
+        const pre = codeBlock.parentNode;
+
+        // 2. Create a container div to hold the code + button
+        const container = document.createElement('div');
+        container.className = 'code-container';
+
+        // Insert the container before <pre>, then move <pre> inside it
+        pre.parentNode.insertBefore(container, pre);
+        container.appendChild(pre);
+
+        // 3. Create a "Copy" button
+        const button = document.createElement('button');
+        button.className = 'copy-button';
+        button.type = 'button';
+        button.innerText = 'Copy';
+
+        // If the code block doesn’t have an ID, assign one so we can target it
+        let codeId = codeBlock.id;
+        if (!codeId) {
+          codeId = 'codeblock-' + Math.floor(Math.random() * 1000000);
+          codeBlock.setAttribute('id', codeId);
+        }
+
+        // 4. Point the button at the code block
+        button.setAttribute('data-clipboard-target', '#' + codeId);
+
+        // 5. Insert button into the container
+        container.insertBefore(button, pre);
+      });
+
+      // 6. Initialize Clipboard.js
+      const clipboard = new ClipboardJS('.copy-button');
+      clipboard.on('success', function (e) {
+        e.clearSelection();
+        // Change button text to confirm copy
+        e.trigger.textContent = 'Copied!';
+        setTimeout(() => {
+          e.trigger.textContent = 'Copy';
+        }, 2000);
+      });
+      clipboard.on('error', function (e) {
+        console.error('Failed to copy', e);
+      });
+    });
+  </script> -->
+
+
+</footer>

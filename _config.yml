@@ -1,0 +1,111 @@
+# Welcome to Jekyll!
+#
+# This config file is meant for settings that affect your whole blog, values
+# which you are expected to set up once and rarely edit after that. If you find
+# yourself editing this file very often, consider using Jekyll's data files
+# feature for the data you need to update frequently.
+#
+# For technical reasons, this file is *NOT* reloaded automatically when you use
+# 'bundle exec jekyll serve'. If you change this file, please restart the server process.
+#
+# If you need help with YAML syntax, here are some quick references for you:
+# https://learn-the-web.algonquindesign.ca/topics/markdown-yaml-cheat-sheet/#yaml
+# https://learnxinyminutes.com/docs/yaml/
+#
+# Site settings
+# These are used to personalize your new site. If you look in the HTML files,
+# you will see them accessed via {{ site.title }}, {{ site.email }}, and so on.
+# You can create any custom variable you would like, and they will be accessible
+# in the templates via {{ site.myvariable }}.
+
+title: OrthoFinder
+email: steven.kelly@biology.ox.ac.uk
+author:
+  name: David Emms, Jonathan Holmes, Laurence Belcher, Yi Liu
+  # email: lizzie.robbins1@gmail.com
+  github: https://github.com/OrthoFinder/OrthoFinder
+  # twitter: https://twitter.com/OrthoFinder/OrthoFinder
+  address: Department of Biology (South Parks Road), South Parks Road, Oxford OX1 3RB
+
+#  Finding Recurrent Substitutions from Multiple Sequence Alignments.
+description: >- # this means to ignore newlines until "baseurl:"
+  This is a software developed by the [Steven Kelly Lab](http://www.stevekellylab.com/).
+
+baseurl: "/OrthoFinder" # the subpath of your site, e.g. /blog
+url: "https://orthofinder.github.io" # the base hostname & protocol for your site, e.g. http://example.com
+
+# twitter_username: OrthoFinder/OrthoFinder
+github_username: OrthoFinder/OrthoFinder
+repository: OrthoFinder/OrthoFinder
+show_downloads: true
+future: false
+show_excerpts: true
+excerpt_separator: "<!--more-->"
+
+# Build settings
+theme: minima
+plugins:
+  - jekyll-feed
+  - jekyll-github-metadata
+  - jekyll-seo-tag
+
+# remote_theme: pages-themes/hacker@v0.2.0
+# plugins:
+# - jekyll-remote-theme # add this line to the plugins list if you already have one
+# - jekyll-github-metadata
+
+github:
+  # zip_url: "https://github.com/OrthoFinder/RECUR/archive/refs/heads/main.zip"
+  # tar_url: "https://github.com/OrthoFinder/RECUR/releases/download/v1.0.0/recur-iqtree2-linux-intel-1.0.0.tar.gz"
+  repository_url: "https://github.com/OrthoFinder/OrthoFinder"
+
+minima:
+  social_links:
+    - platform: github
+      title: GitHub
+      icon: github
+      url: https://github.com/OrthoFinder/OrthoFinder
+    # - platform: twitter
+    #   title: Twitter
+    #   icon: twitter
+    #   url: https://twitter.com/OrthoFinder/OrthoFinder
+    # - platform: linkedin
+    #   url: https://linkedin.com/OrthoFinder/RECUR
+    # - platform: rss
+    #   url: /feed.xml
+include:
+  - assets/minima-social-icons.svg
+
+header_pages:
+  - index.markdown # Home
+  - about.markdown
+  - docs/download.markdown
+  - docs/installation.markdown
+  - docs/tutorials.markdown
+  - docs/faq.markdown
+
+collections:
+  tutorials:
+    output: true
+    # permalink: /tutorials/:name/
+
+# Exclude from processing.
+# The following items will not be processed, by default.
+# Any item listed under the `exclude:` key here will be automatically added to
+# the internal "default list".
+#
+# Excluded items can be processed by explicitly listing the directories or
+# their entries' file path in the `include:` list.
+#
+exclude:
+  - everything/
+#   - .sass-cache/
+#   - .jekyll-cache/
+#   - gemfiles/
+#   - Gemfile
+#   - Gemfile.lock
+#   - node_modules/
+#   - vendor/bundle/
+#   - vendor/cache/
+#   - vendor/gems/
+#   - vendor/ruby/

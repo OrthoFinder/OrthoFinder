@@ -1,0 +1,93 @@
+// Placeholder to allow defining custom styles that override everything else.
+// (Use `_sass/minima/custom-variables.scss` to override variable defaults)
+h1 {
+    font-family: 'Arial', sans-serif; // or another font
+    font-size: 2.5rem; // adjust as needed
+    // font-weight: bold; // adjust as needed
+    color: #333; // example color
+    // line-height: 1.5;
+}
+
+h2 {
+    font-family: 'Arial', sans-serif; // or another font
+    font-size: 1.5rem; // adjust as needed
+    // font-weight: bold; // adjust as needed
+    color: #333; // example color
+    line-height: 1.5;
+}
+
+.nav,
+.tabs {
+    font-family: 'Open Sans', sans-serif;
+    font-size: 2rem; // or whatever size you want
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    font-size: 1rem; // sets base font size
+    line-height: 1.5; // improves readability
+}
+
+p {
+    margin-top: 1.2rem;
+    margin-bottom: 1.2rem;
+    /* A slightly larger gap */
+}
+
+
+
+.code-container {
+    position: relative;
+    margin-bottom: 1em;
+}
+
+.copy-button {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    font-size: 14px;
+    // background: #fff;
+    color: #888;
+    // border: 1px solid #ccc;
+    border-radius: 4px;
+    border: none !important;
+    background: none !important;
+    cursor: pointer;
+}
+
+.copy-button svg {
+    fill: currentColor;
+    /* ensures the icon color matches the text color */
+}
+
+.copy-button:hover {
+    background-color: #f0f0f0;
+}
+
+.clipboard-icon {
+    margin-right: 4px;
+    /* spacing between icon and text */
+}
+
+.read-time {
+    font-size: 0.9em;
+    color: #999;
+    /* light gray */
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+    margin-bottom: 12px;
+}
+
+.read-time i {
+    font-size: 0.95em;
+}
+
+.post-number {
+    font-weight: bold;
+    margin-right: 4px;
+}
