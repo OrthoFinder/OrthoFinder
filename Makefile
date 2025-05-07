@@ -1038,7 +1038,10 @@ purge_orthofinder:
 	@echo "Remove OrthoFinder and it's environment and dependencies..."
 	rm -rf $(ENV_NAME) 
 	rm -rf **/__pycache__
-	rm -rf ./build ./dist ./orthofinder.egg-info
+	rm -rf ./src/recur/__pycache__
+	rm -rf ./src/recur/utils/__pycache__
+	rm -rf ./src/recur/run/__pycache__
+	rm -rf ./build ./dist **/recur*.egg-info
 
 	if [ -f "$(ORTHOFINDER_DIR)/orthofinder" ]; then \
 		rm -f "$(ORTHOFINDER_DIR)/orthofinder"
