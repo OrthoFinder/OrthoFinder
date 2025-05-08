@@ -5,10 +5,9 @@ permalink: /about/
 ---
 
 
+## About
+
 This is a software developed by the [Steven Kelly Lab](http://www.stevekellylab.com/)
-
-
-
 
 You can find the source code for OrthoFinder at GitHub:
 [OrthoFinder](https://github.com/OrthoFinder/OrthoFinder)

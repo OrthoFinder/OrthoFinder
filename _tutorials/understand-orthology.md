@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Guid to Results"
+title:  "Understand Orthology"
 date:  2025-05-01 09:06:16 +0000
 updated: 2025-05-05
 docs: /assets/docs/understand-orthology.pdf

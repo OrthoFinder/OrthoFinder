@@ -9,7 +9,7 @@ pdfs: https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/gettti
 
 
 
-# Downloading input files for OrthoFinder
+## Downloading input files for OrthoFinder
 
 Let’s imagine we want to perform a phylogenomic analysis across a set of species:
 Dingo (*Canis lupus dingo*), Great spotted kiwi (*Apteryx haastii*), Kakapo (*Strigops
