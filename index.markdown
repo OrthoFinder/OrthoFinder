@@ -143,57 +143,60 @@ To choose which 64 species to include in the core, aim to capture a broad range 
 Command-line options for OrthoFinder
 
 **Adding additional species**
-| Parameter | Description                               |
-|-----------|-------------------------------------------|
-| `--assign <dir1> --core <dir2>`      | Assign species from `<dir1>` to existing orthogroups in `<dir2>`.                   |
+
+| Parameter                             | Description                                                      |
+|---------------------------------------|------------------------------------------------------------------|
+| `--assign <dir1> --core <dir2>`       | Assign species from `<dir1>` to existing orthogroups in `<dir2>`. |
 
 **Method choices**
-| Parameter | Description                               | Default   | Options                                                                                     |
-|-----------|-------------------------------------------|-----------|---------------------------------------------------------------------------------------------|
-| `-M`      | Method for gene tree inference.           | `msa`     | `dendroblast`, `msa`                                                                        |
-| `-S`      | Sequence search program                   | `diamond` | `blast`, `diamond`, `diamond_ultra_sens`, `blastp`, `mmseqs`, `blastn` |
-| `-A`      | MSA program, requires `-M msa`            | `famsa`   | `famsa`, `mafft`, `muscle`,                                                          |
-| `-T`      | Tree inference method, requires `-M msa`  | `fasttree`| `fasttree`, `fasttree_fastest`, `raxml`, `iqtree`                               |
-| `-I`      | MCL inflation parameter                   | `1.2`     | `1-10`                                                                                         |
+
+| Parameter | Description                              | Default   | Options                                                           |
+|-----------|------------------------------------------|-----------|-------------------------------------------------------------------|
+| `-M`      | Method for gene-tree inference           | `msa`     | `dendroblast`, `msa`                                              |
+| `-S`      | Sequence-search program                  | `diamond` | `blast`, `diamond`, `diamond_ultra_sens`, `blastp`, `mmseqs`, `blastn` |
+| `-A`      | MSA program (requires `-M msa`)          | `famsa`   | `famsa`, `mafft`, `muscle`                                        |
+| `-T`      | Tree-inference program (requires `-M msa`)| `fasttree`| `fasttree`, `fasttree_fastest`, `raxml`, `iqtree`                 |
+| `-I`      | MCL inflation parameter                  | `1.2`     | `1-10`                                                            |
+
 
 **Input options**
-| Parameter | Description                               |
-|-----------|-------------------------------------------|
-| `-d`      | Input is DNA sequences.                   |
-| `-s`      | User-specified rooted species tree.        |
+
+| Parameter | Description                       |
+|-----------|-----------------------------------|
+| `-d`      | Input is DNA sequences            |
+| `-s`      | User-supplied rooted species tree |
 
 **Output options**
-| Parameter   | Description                                                                 |
-|-----------  |-----------------------------------------------------------------------------|
-| `-X`      | Don’t add species names to sequence IDs.                                    |
-| `-n <txt>`      | Name to append to the results directory.                                    |
-| `-o <txt>`      | Specify a non-default results directory.                                    |
 
-**Parallel processing options**
-| Parameter | Description                                 | Default |
-|-----------|---------------------------------------------|---------|
-| `-t`      | Number of parallel sequence search threads. | `All available`    |
-| `-a`      | Number of parallel analysis threads.        | `16 or t/8 (whichever lower)`     |
+| Parameter   | Description                                   |
+|-------------|-----------------------------------------------|
+| `-X`        | Don’t add species names to sequence IDs       |
+| `-n <txt>`  | Append `<txt>` to the results directory name  |
+| `-o <txt>`  | Use `<txt>` as the results directory path     |
 
-**Workflow stopping options**
-| Parameter | Description                                                                 |
-|-----------|-----------------------------------------------------------------------------|
-| `-op`     | Stop after preparing input files for BLAST.                                 |
+**Parallel processing**
 
-**Workflow restart options**
-| Parameter  | Description                                                  |
-|------------|--------------------------------------------------------------|
-| `-b <dir>` | Start OrthoFinder from pre-computed BLAST results in `<dir>`. |
+| Parameter | Description                                 | Default                         |
+|-----------|---------------------------------------------|---------------------------------|
+| `-t`      | Sequence-search threads                     | All available                   |
+| `-a`      | Analysis threads                            | 16&nbsp;or&nbsp;t&nbsp;/&nbsp;8 |
+
+**Workflow stopping / restart**
+
+| Parameter  | Description                                             |
+|------------|---------------------------------------------------------|
+| `-op`      | Stop after BLAST-input preparation                      |
+| `-b <dir>` | Restart from pre-computed BLAST results found in `<dir>`|
 
 **Other options**
-| Parameter        | Description                                                               |
-|------------------|---------------------------------------------------------------------------|
-| `-1`             | Only perform one-way sequence search.                                     |
-| `-z`             | Don’t trim MSAs (columns >= 90% gap, min. alignment length 500).          |
-| `-y`             | Split paralogous clades below the root of a HOG into separate HOGs.        |
-| `-h`             | Print this help text.                                                     |
-| `-v`             | Print version.                                                     |
 
+| Parameter | Description                                                     |
+|-----------|-----------------------------------------------------------------|
+| `-1`      | Perform one-way sequence search only                            |
+| `-z`      | Don’t trim MSAs (≥ 90 % gaps; min length 500)                   |
+| `-y`      | Split paralogous clades below the HOG root into separate HOGs   |
+| `-h`      | Print help                                                      |
+| `-v`      | Print version                                                   |
 
 ## Output files
 

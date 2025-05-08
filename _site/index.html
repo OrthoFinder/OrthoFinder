@@ -171,57 +171,191 @@ Add the remaining files into another directory <code class="language-plaintext h
 
 <p>Command-line options for OrthoFinder</p>
 
-<p><strong>Adding additional species</strong>
-| Parameter | Description                               |
-|———–|——————————————-|
-| <code class="language-plaintext highlighter-rouge">--assign &lt;dir1&gt; --core &lt;dir2&gt;</code>      | Assign species from <code class="language-plaintext highlighter-rouge">&lt;dir1&gt;</code> to existing orthogroups in <code class="language-plaintext highlighter-rouge">&lt;dir2&gt;</code>.                   |</p>
+<p><strong>Adding additional species</strong></p>
 
-<p><strong>Method choices</strong>
-| Parameter | Description                               | Default   | Options                                                                                     |
-|———–|——————————————-|———–|———————————————————————————————|
-| <code class="language-plaintext highlighter-rouge">-M</code>      | Method for gene tree inference.           | <code class="language-plaintext highlighter-rouge">msa</code>     | <code class="language-plaintext highlighter-rouge">dendroblast</code>, <code class="language-plaintext highlighter-rouge">msa</code>                                                                        |
-| <code class="language-plaintext highlighter-rouge">-S</code>      | Sequence search program                   | <code class="language-plaintext highlighter-rouge">diamond</code> | <code class="language-plaintext highlighter-rouge">blast</code>, <code class="language-plaintext highlighter-rouge">diamond</code>, <code class="language-plaintext highlighter-rouge">diamond_ultra_sens</code>, <code class="language-plaintext highlighter-rouge">blastp</code>, <code class="language-plaintext highlighter-rouge">mmseqs</code>, <code class="language-plaintext highlighter-rouge">blastn</code> |
-| <code class="language-plaintext highlighter-rouge">-A</code>      | MSA program, requires <code class="language-plaintext highlighter-rouge">-M msa</code>            | <code class="language-plaintext highlighter-rouge">famsa</code>   | <code class="language-plaintext highlighter-rouge">famsa</code>, <code class="language-plaintext highlighter-rouge">mafft</code>, <code class="language-plaintext highlighter-rouge">muscle</code>,                                                          |
-| <code class="language-plaintext highlighter-rouge">-T</code>      | Tree inference method, requires <code class="language-plaintext highlighter-rouge">-M msa</code>  | <code class="language-plaintext highlighter-rouge">fasttree</code>| <code class="language-plaintext highlighter-rouge">fasttree</code>, <code class="language-plaintext highlighter-rouge">fasttree_fastest</code>, <code class="language-plaintext highlighter-rouge">raxml</code>, <code class="language-plaintext highlighter-rouge">iqtree</code>                               |
-| <code class="language-plaintext highlighter-rouge">-I</code>      | MCL inflation parameter                   | <code class="language-plaintext highlighter-rouge">1.2</code>     | <code class="language-plaintext highlighter-rouge">1-10</code>                                                                                         |</p>
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">--assign &lt;dir1&gt; --core &lt;dir2&gt;</code></td>
+      <td>Assign species from <code class="language-plaintext highlighter-rouge">&lt;dir1&gt;</code> to existing orthogroups in <code class="language-plaintext highlighter-rouge">&lt;dir2&gt;</code>.</td>
+    </tr>
+  </tbody>
+</table>
 
-<p><strong>Input options</strong>
-| Parameter | Description                               |
-|———–|——————————————-|
-| <code class="language-plaintext highlighter-rouge">-d</code>      | Input is DNA sequences.                   |
-| <code class="language-plaintext highlighter-rouge">-s</code>      | User-specified rooted species tree.        |</p>
+<p><strong>Method choices</strong></p>
 
-<p><strong>Output options</strong>
-| Parameter   | Description                                                                 |
-|———–  |—————————————————————————–|
-| <code class="language-plaintext highlighter-rouge">-X</code>      | Don’t add species names to sequence IDs.                                    |
-| <code class="language-plaintext highlighter-rouge">-n &lt;txt&gt;</code>      | Name to append to the results directory.                                    |
-| <code class="language-plaintext highlighter-rouge">-o &lt;txt&gt;</code>      | Specify a non-default results directory.                                    |</p>
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Description</th>
+      <th>Default</th>
+      <th>Options</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-M</code></td>
+      <td>Method for gene-tree inference</td>
+      <td><code class="language-plaintext highlighter-rouge">msa</code></td>
+      <td><code class="language-plaintext highlighter-rouge">dendroblast</code>, <code class="language-plaintext highlighter-rouge">msa</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-S</code></td>
+      <td>Sequence-search program</td>
+      <td><code class="language-plaintext highlighter-rouge">diamond</code></td>
+      <td><code class="language-plaintext highlighter-rouge">blast</code>, <code class="language-plaintext highlighter-rouge">diamond</code>, <code class="language-plaintext highlighter-rouge">diamond_ultra_sens</code>, <code class="language-plaintext highlighter-rouge">blastp</code>, <code class="language-plaintext highlighter-rouge">mmseqs</code>, <code class="language-plaintext highlighter-rouge">blastn</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-A</code></td>
+      <td>MSA program (requires <code class="language-plaintext highlighter-rouge">-M msa</code>)</td>
+      <td><code class="language-plaintext highlighter-rouge">famsa</code></td>
+      <td><code class="language-plaintext highlighter-rouge">famsa</code>, <code class="language-plaintext highlighter-rouge">mafft</code>, <code class="language-plaintext highlighter-rouge">muscle</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-T</code></td>
+      <td>Tree-inference program (requires <code class="language-plaintext highlighter-rouge">-M msa</code>)</td>
+      <td><code class="language-plaintext highlighter-rouge">fasttree</code></td>
+      <td><code class="language-plaintext highlighter-rouge">fasttree</code>, <code class="language-plaintext highlighter-rouge">fasttree_fastest</code>, <code class="language-plaintext highlighter-rouge">raxml</code>, <code class="language-plaintext highlighter-rouge">iqtree</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-I</code></td>
+      <td>MCL inflation parameter</td>
+      <td><code class="language-plaintext highlighter-rouge">1.2</code></td>
+      <td><code class="language-plaintext highlighter-rouge">1-10</code></td>
+    </tr>
+  </tbody>
+</table>
 
-<p><strong>Parallel processing options</strong>
-| Parameter | Description                                 | Default |
-|———–|———————————————|———|
-| <code class="language-plaintext highlighter-rouge">-t</code>      | Number of parallel sequence search threads. | <code class="language-plaintext highlighter-rouge">All available</code>    |
-| <code class="language-plaintext highlighter-rouge">-a</code>      | Number of parallel analysis threads.        | <code class="language-plaintext highlighter-rouge">16 or t/8 (whichever lower)</code>     |</p>
+<p><strong>Input options</strong></p>
 
-<p><strong>Workflow stopping options</strong>
-| Parameter | Description                                                                 |
-|———–|—————————————————————————–|
-| <code class="language-plaintext highlighter-rouge">-op</code>     | Stop after preparing input files for BLAST.                                 |</p>
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-d</code></td>
+      <td>Input is DNA sequences</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-s</code></td>
+      <td>User-supplied rooted species tree</td>
+    </tr>
+  </tbody>
+</table>
 
-<p><strong>Workflow restart options</strong>
-| Parameter  | Description                                                  |
-|————|————————————————————–|
-| <code class="language-plaintext highlighter-rouge">-b &lt;dir&gt;</code> | Start OrthoFinder from pre-computed BLAST results in <code class="language-plaintext highlighter-rouge">&lt;dir&gt;</code>. |</p>
+<p><strong>Output options</strong></p>
 
-<p><strong>Other options</strong>
-| Parameter        | Description                                                               |
-|——————|—————————————————————————|
-| <code class="language-plaintext highlighter-rouge">-1</code>             | Only perform one-way sequence search.                                     |
-| <code class="language-plaintext highlighter-rouge">-z</code>             | Don’t trim MSAs (columns &gt;= 90% gap, min. alignment length 500).          |
-| <code class="language-plaintext highlighter-rouge">-y</code>             | Split paralogous clades below the root of a HOG into separate HOGs.        |
-| <code class="language-plaintext highlighter-rouge">-h</code>             | Print this help text.                                                     |
-| <code class="language-plaintext highlighter-rouge">-v</code>             | Print version.                                                     |</p>
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-X</code></td>
+      <td>Don’t add species names to sequence IDs</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-n &lt;txt&gt;</code></td>
+      <td>Append <code class="language-plaintext highlighter-rouge">&lt;txt&gt;</code> to the results directory name</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-o &lt;txt&gt;</code></td>
+      <td>Use <code class="language-plaintext highlighter-rouge">&lt;txt&gt;</code> as the results directory path</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Parallel processing</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Description</th>
+      <th>Default</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-t</code></td>
+      <td>Sequence-search threads</td>
+      <td>All available</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-a</code></td>
+      <td>Analysis threads</td>
+      <td>16 or t / 8</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Workflow stopping / restart</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-op</code></td>
+      <td>Stop after BLAST-input preparation</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-b &lt;dir&gt;</code></td>
+      <td>Restart from pre-computed BLAST results found in <code class="language-plaintext highlighter-rouge">&lt;dir&gt;</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Other options</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-1</code></td>
+      <td>Perform one-way sequence search only</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-z</code></td>
+      <td>Don’t trim MSAs (≥ 90 % gaps; min length 500)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-y</code></td>
+      <td>Split paralogous clades below the HOG root into separate HOGs</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-h</code></td>
+      <td>Print help</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-v</code></td>
+      <td>Print version</td>
+    </tr>
+  </tbody>
+</table>
 
 <h2 id="output-files">Output files</h2>
 
@@ -453,57 +587,191 @@ Add the remaining files into another directory <code class="language-plaintext h
 
 <p>Command-line options for OrthoFinder</p>
 
-<p><strong>Adding additional species</strong>
-| Parameter | Description                               |
-|———–|——————————————-|
-| <code class="language-plaintext highlighter-rouge">--assign &lt;dir1&gt; --core &lt;dir2&gt;</code>      | Assign species from <code class="language-plaintext highlighter-rouge">&lt;dir1&gt;</code> to existing orthogroups in <code class="language-plaintext highlighter-rouge">&lt;dir2&gt;</code>.                   |</p>
+<p><strong>Adding additional species</strong></p>
 
-<p><strong>Method choices</strong>
-| Parameter | Description                               | Default   | Options                                                                                     |
-|———–|——————————————-|———–|———————————————————————————————|
-| <code class="language-plaintext highlighter-rouge">-M</code>      | Method for gene tree inference.           | <code class="language-plaintext highlighter-rouge">msa</code>     | <code class="language-plaintext highlighter-rouge">dendroblast</code>, <code class="language-plaintext highlighter-rouge">msa</code>                                                                        |
-| <code class="language-plaintext highlighter-rouge">-S</code>      | Sequence search program                   | <code class="language-plaintext highlighter-rouge">diamond</code> | <code class="language-plaintext highlighter-rouge">blast</code>, <code class="language-plaintext highlighter-rouge">diamond</code>, <code class="language-plaintext highlighter-rouge">diamond_ultra_sens</code>, <code class="language-plaintext highlighter-rouge">blastp</code>, <code class="language-plaintext highlighter-rouge">mmseqs</code>, <code class="language-plaintext highlighter-rouge">blastn</code> |
-| <code class="language-plaintext highlighter-rouge">-A</code>      | MSA program, requires <code class="language-plaintext highlighter-rouge">-M msa</code>            | <code class="language-plaintext highlighter-rouge">famsa</code>   | <code class="language-plaintext highlighter-rouge">famsa</code>, <code class="language-plaintext highlighter-rouge">mafft</code>, <code class="language-plaintext highlighter-rouge">muscle</code>,                                                          |
-| <code class="language-plaintext highlighter-rouge">-T</code>      | Tree inference method, requires <code class="language-plaintext highlighter-rouge">-M msa</code>  | <code class="language-plaintext highlighter-rouge">fasttree</code>| <code class="language-plaintext highlighter-rouge">fasttree</code>, <code class="language-plaintext highlighter-rouge">fasttree_fastest</code>, <code class="language-plaintext highlighter-rouge">raxml</code>, <code class="language-plaintext highlighter-rouge">iqtree</code>                               |
-| <code class="language-plaintext highlighter-rouge">-I</code>      | MCL inflation parameter                   | <code class="language-plaintext highlighter-rouge">1.2</code>     | <code class="language-plaintext highlighter-rouge">1-10</code>                                                                                         |</p>
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">--assign &lt;dir1&gt; --core &lt;dir2&gt;</code></td>
+      <td>Assign species from <code class="language-plaintext highlighter-rouge">&lt;dir1&gt;</code> to existing orthogroups in <code class="language-plaintext highlighter-rouge">&lt;dir2&gt;</code>.</td>
+    </tr>
+  </tbody>
+</table>
 
-<p><strong>Input options</strong>
-| Parameter | Description                               |
-|———–|——————————————-|
-| <code class="language-plaintext highlighter-rouge">-d</code>      | Input is DNA sequences.                   |
-| <code class="language-plaintext highlighter-rouge">-s</code>      | User-specified rooted species tree.        |</p>
+<p><strong>Method choices</strong></p>
 
-<p><strong>Output options</strong>
-| Parameter   | Description                                                                 |
-|———–  |—————————————————————————–|
-| <code class="language-plaintext highlighter-rouge">-X</code>      | Don’t add species names to sequence IDs.                                    |
-| <code class="language-plaintext highlighter-rouge">-n &lt;txt&gt;</code>      | Name to append to the results directory.                                    |
-| <code class="language-plaintext highlighter-rouge">-o &lt;txt&gt;</code>      | Specify a non-default results directory.                                    |</p>
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Description</th>
+      <th>Default</th>
+      <th>Options</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-M</code></td>
+      <td>Method for gene-tree inference</td>
+      <td><code class="language-plaintext highlighter-rouge">msa</code></td>
+      <td><code class="language-plaintext highlighter-rouge">dendroblast</code>, <code class="language-plaintext highlighter-rouge">msa</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-S</code></td>
+      <td>Sequence-search program</td>
+      <td><code class="language-plaintext highlighter-rouge">diamond</code></td>
+      <td><code class="language-plaintext highlighter-rouge">blast</code>, <code class="language-plaintext highlighter-rouge">diamond</code>, <code class="language-plaintext highlighter-rouge">diamond_ultra_sens</code>, <code class="language-plaintext highlighter-rouge">blastp</code>, <code class="language-plaintext highlighter-rouge">mmseqs</code>, <code class="language-plaintext highlighter-rouge">blastn</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-A</code></td>
+      <td>MSA program (requires <code class="language-plaintext highlighter-rouge">-M msa</code>)</td>
+      <td><code class="language-plaintext highlighter-rouge">famsa</code></td>
+      <td><code class="language-plaintext highlighter-rouge">famsa</code>, <code class="language-plaintext highlighter-rouge">mafft</code>, <code class="language-plaintext highlighter-rouge">muscle</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-T</code></td>
+      <td>Tree-inference program (requires <code class="language-plaintext highlighter-rouge">-M msa</code>)</td>
+      <td><code class="language-plaintext highlighter-rouge">fasttree</code></td>
+      <td><code class="language-plaintext highlighter-rouge">fasttree</code>, <code class="language-plaintext highlighter-rouge">fasttree_fastest</code>, <code class="language-plaintext highlighter-rouge">raxml</code>, <code class="language-plaintext highlighter-rouge">iqtree</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-I</code></td>
+      <td>MCL inflation parameter</td>
+      <td><code class="language-plaintext highlighter-rouge">1.2</code></td>
+      <td><code class="language-plaintext highlighter-rouge">1-10</code></td>
+    </tr>
+  </tbody>
+</table>
 
-<p><strong>Parallel processing options</strong>
-| Parameter | Description                                 | Default |
-|———–|———————————————|———|
-| <code class="language-plaintext highlighter-rouge">-t</code>      | Number of parallel sequence search threads. | <code class="language-plaintext highlighter-rouge">All available</code>    |
-| <code class="language-plaintext highlighter-rouge">-a</code>      | Number of parallel analysis threads.        | <code class="language-plaintext highlighter-rouge">16 or t/8 (whichever lower)</code>     |</p>
+<p><strong>Input options</strong></p>
 
-<p><strong>Workflow stopping options</strong>
-| Parameter | Description                                                                 |
-|———–|—————————————————————————–|
-| <code class="language-plaintext highlighter-rouge">-op</code>     | Stop after preparing input files for BLAST.                                 |</p>
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-d</code></td>
+      <td>Input is DNA sequences</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-s</code></td>
+      <td>User-supplied rooted species tree</td>
+    </tr>
+  </tbody>
+</table>
 
-<p><strong>Workflow restart options</strong>
-| Parameter  | Description                                                  |
-|————|————————————————————–|
-| <code class="language-plaintext highlighter-rouge">-b &lt;dir&gt;</code> | Start OrthoFinder from pre-computed BLAST results in <code class="language-plaintext highlighter-rouge">&lt;dir&gt;</code>. |</p>
+<p><strong>Output options</strong></p>
 
-<p><strong>Other options</strong>
-| Parameter        | Description                                                               |
-|——————|—————————————————————————|
-| <code class="language-plaintext highlighter-rouge">-1</code>             | Only perform one-way sequence search.                                     |
-| <code class="language-plaintext highlighter-rouge">-z</code>             | Don’t trim MSAs (columns &gt;= 90% gap, min. alignment length 500).          |
-| <code class="language-plaintext highlighter-rouge">-y</code>             | Split paralogous clades below the root of a HOG into separate HOGs.        |
-| <code class="language-plaintext highlighter-rouge">-h</code>             | Print this help text.                                                     |
-| <code class="language-plaintext highlighter-rouge">-v</code>             | Print version.                                                     |</p>
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-X</code></td>
+      <td>Don’t add species names to sequence IDs</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-n &lt;txt&gt;</code></td>
+      <td>Append <code class="language-plaintext highlighter-rouge">&lt;txt&gt;</code> to the results directory name</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-o &lt;txt&gt;</code></td>
+      <td>Use <code class="language-plaintext highlighter-rouge">&lt;txt&gt;</code> as the results directory path</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Parallel processing</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Description</th>
+      <th>Default</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-t</code></td>
+      <td>Sequence-search threads</td>
+      <td>All available</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-a</code></td>
+      <td>Analysis threads</td>
+      <td>16 or t / 8</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Workflow stopping / restart</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-op</code></td>
+      <td>Stop after BLAST-input preparation</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-b &lt;dir&gt;</code></td>
+      <td>Restart from pre-computed BLAST results found in <code class="language-plaintext highlighter-rouge">&lt;dir&gt;</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Other options</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-1</code></td>
+      <td>Perform one-way sequence search only</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-z</code></td>
+      <td>Don’t trim MSAs (≥ 90 % gaps; min length 500)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-y</code></td>
+      <td>Split paralogous clades below the HOG root into separate HOGs</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-h</code></td>
+      <td>Print help</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">-v</code></td>
+      <td>Print version</td>
+    </tr>
+  </tbody>
+</table>
 
 <h2 id="output-files">Output files</h2>
 
