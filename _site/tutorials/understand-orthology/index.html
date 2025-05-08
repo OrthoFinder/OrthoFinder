@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Guid to Results | OrthoFinder</title>
+<meta name="generator" content="Jekyll v3.10.0" />
+<meta property="og:title" content="Guid to Results" />
+<meta name="author" content="David Emms, Jonathan Holmes, Laurence Belcher, Yi Liu" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Orthogroups, Orthologs, and Paralogs Orthogroup = the group of genes descended from a single gene in the last common ancestor of a group of species Orthologs = pairs of genes that descended from a single gene in the last common ancestor of two species Paralogs = pairs of genes descended from a gene duplication event Orthologs can be thought of as ‘equivalent genes’ between two species, as they descended from a single gene in the last common ancestor of that species. For example, the last common ancestor of humans and mice is a small mammal which lived alongside the dinosaurs. Individual genes present in that ancestor still exist in some form through their descendants in both humans and mice, and those genes are orthologs. Orthologs describe relationships between pairs of species, but we can extend this idea to larger groups of species. Humans, mice, and chickens share a common ancestor from a few hundred million years ago, before the dinosaurs had even emerged. We can describe a group of genes across all three species that were descended from a single gene in this ancestor - these genes form an orthogroup. Look at the figure below, which shows data for three species: human, mouse and chicken. understanding_img1 Figure 1: Orthologues, Orthogroups &amp; Paralogues The tree in Figure 1A shows the evolutionary history of a gene. First, there was a speciation event where the chicken lineage diverged from the human-mouse ancestor. In the human-mouse ancestor, there was a gene duplication event at X producing two copies of the gene in that ancestor, Y &amp; Z. When human and mouse diverged they each inherited gene Y (becoming HuA &amp; MoA) and gene Z (HuB &amp; MoB). In general, we can identify a gene duplication event because it creates two copies of a gene in a species (e.g. HuA &amp; HuB). The mouse gene MoB is closer related to a human gene than it is to the other mouse gene MoA. This is because the gene duplication occurred in the ancestor, so each mouse gene is more closely related to its human ortholog (e.g. HuA and MoA), as they were both descended from a single gene. By contrast, HuA and MoB diverged at the gene duplication event. They aren’t descended from a single gene in the common ancestor of human and mice, so aren’t orthologs. Instead, they are paralogs (Figure 1C). Paralogs are more distantly related, they diverged at a gene duplication event in a common ancestor. Such a gene duplication event must have occurred further back in time than when the species diverged and so paralogs between a pair of species are always less closely related than orthologs between that pair of species. Paralogs are also possible within a species (e.g. HuA &amp; HuB). The chicken gene diverged from the other genes when the lineage leading to chicken split from the lineage leading to human and mouse. Therefore, the chicken gene ChC is an ortholog of HuA &amp; HuB in human and an ortholog of MoA &amp; MoB in mouse. Depending on what happend after the genes diverged, orthologs can be in one-to-one relationships (HuA - MoA), many-to-one (HuA &amp; HuB - ChC), or many-to-many (no examples in this tree, but would occur if there were a duplication in chicken). All of these relationships are identified by OrthoFinder. Why Orthogroups? There are several reasons why Orthogroups are the relevant way of analysing orthology relationships between species: Orthogroups allow you to analyse all of your data All of the genes in an orthogroup are descended from a single ancestral gene. Thus, all the genes in an orthogroup started out with the same sequence and function. As gene duplication and loss occur frequently in evolution, one-to-one orthologs are rare and limitation of analyses to on-to-one orthologs limits an analysis to a small fraction of the available data. By analysing orthogroups you can analyse all of your data. Orthogroups allow you to define the unit of comparison It is important to note that with orthogroups you choose where to define the limits of the unit of comparison. For example, if you just chose to analyse human and mouse in the above figure then you would have two orthogroups. Orthogroups are the only way to identify orthologs Orthology is defined by phylogeny. It is not definable by amino acid content, codon bias, GC content or other measures of sequence similarity. Methods that use such scores to define orthologs in the absence of phylogeny can only provide guesses. The only way to be sure that the orthology assignment is correct is by conducting a phylogenetic reconstruction of all genes descended from a single gene the last common ancestor of the species under consideration. This set of genes is an orthogroup. Thus, the only way to define orthology is by analysing orthogroups. For a comprehensive overview of orthology and the OrthoFinder approach, you can watch David Emms’ conference talk on youtube, from the 2020 symposium on Phylogenomics and Comparative genomics." />
+<meta property="og:description" content="Orthogroups, Orthologs, and Paralogs Orthogroup = the group of genes descended from a single gene in the last common ancestor of a group of species Orthologs = pairs of genes that descended from a single gene in the last common ancestor of two species Paralogs = pairs of genes descended from a gene duplication event Orthologs can be thought of as ‘equivalent genes’ between two species, as they descended from a single gene in the last common ancestor of that species. For example, the last common ancestor of humans and mice is a small mammal which lived alongside the dinosaurs. Individual genes present in that ancestor still exist in some form through their descendants in both humans and mice, and those genes are orthologs. Orthologs describe relationships between pairs of species, but we can extend this idea to larger groups of species. Humans, mice, and chickens share a common ancestor from a few hundred million years ago, before the dinosaurs had even emerged. We can describe a group of genes across all three species that were descended from a single gene in this ancestor - these genes form an orthogroup. Look at the figure below, which shows data for three species: human, mouse and chicken. understanding_img1 Figure 1: Orthologues, Orthogroups &amp; Paralogues The tree in Figure 1A shows the evolutionary history of a gene. First, there was a speciation event where the chicken lineage diverged from the human-mouse ancestor. In the human-mouse ancestor, there was a gene duplication event at X producing two copies of the gene in that ancestor, Y &amp; Z. When human and mouse diverged they each inherited gene Y (becoming HuA &amp; MoA) and gene Z (HuB &amp; MoB). In general, we can identify a gene duplication event because it creates two copies of a gene in a species (e.g. HuA &amp; HuB). The mouse gene MoB is closer related to a human gene than it is to the other mouse gene MoA. This is because the gene duplication occurred in the ancestor, so each mouse gene is more closely related to its human ortholog (e.g. HuA and MoA), as they were both descended from a single gene. By contrast, HuA and MoB diverged at the gene duplication event. They aren’t descended from a single gene in the common ancestor of human and mice, so aren’t orthologs. Instead, they are paralogs (Figure 1C). Paralogs are more distantly related, they diverged at a gene duplication event in a common ancestor. Such a gene duplication event must have occurred further back in time than when the species diverged and so paralogs between a pair of species are always less closely related than orthologs between that pair of species. Paralogs are also possible within a species (e.g. HuA &amp; HuB). The chicken gene diverged from the other genes when the lineage leading to chicken split from the lineage leading to human and mouse. Therefore, the chicken gene ChC is an ortholog of HuA &amp; HuB in human and an ortholog of MoA &amp; MoB in mouse. Depending on what happend after the genes diverged, orthologs can be in one-to-one relationships (HuA - MoA), many-to-one (HuA &amp; HuB - ChC), or many-to-many (no examples in this tree, but would occur if there were a duplication in chicken). All of these relationships are identified by OrthoFinder. Why Orthogroups? There are several reasons why Orthogroups are the relevant way of analysing orthology relationships between species: Orthogroups allow you to analyse all of your data All of the genes in an orthogroup are descended from a single ancestral gene. Thus, all the genes in an orthogroup started out with the same sequence and function. As gene duplication and loss occur frequently in evolution, one-to-one orthologs are rare and limitation of analyses to on-to-one orthologs limits an analysis to a small fraction of the available data. By analysing orthogroups you can analyse all of your data. Orthogroups allow you to define the unit of comparison It is important to note that with orthogroups you choose where to define the limits of the unit of comparison. For example, if you just chose to analyse human and mouse in the above figure then you would have two orthogroups. Orthogroups are the only way to identify orthologs Orthology is defined by phylogeny. It is not definable by amino acid content, codon bias, GC content or other measures of sequence similarity. Methods that use such scores to define orthologs in the absence of phylogeny can only provide guesses. The only way to be sure that the orthology assignment is correct is by conducting a phylogenetic reconstruction of all genes descended from a single gene the last common ancestor of the species under consideration. This set of genes is an orthogroup. Thus, the only way to define orthology is by analysing orthogroups. For a comprehensive overview of orthology and the OrthoFinder approach, you can watch David Emms’ conference talk on youtube, from the 2020 symposium on Phylogenomics and Comparative genomics." />
+<link rel="canonical" href="http://localhost:4000/OrthoFinder/tutorials/understand-orthology/" />
+<meta property="og:url" content="http://localhost:4000/OrthoFinder/tutorials/understand-orthology/" />
+<meta property="og:site_name" content="OrthoFinder" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-05-01T10:06:16+01:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Guid to Results" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"David Emms, Jonathan Holmes, Laurence Belcher, Yi Liu"},"dateModified":"2025-05-01T10:06:16+01:00","datePublished":"2025-05-01T10:06:16+01:00","description":"Orthogroups, Orthologs, and Paralogs Orthogroup = the group of genes descended from a single gene in the last common ancestor of a group of species Orthologs = pairs of genes that descended from a single gene in the last common ancestor of two species Paralogs = pairs of genes descended from a gene duplication event Orthologs can be thought of as ‘equivalent genes’ between two species, as they descended from a single gene in the last common ancestor of that species. For example, the last common ancestor of humans and mice is a small mammal which lived alongside the dinosaurs. Individual genes present in that ancestor still exist in some form through their descendants in both humans and mice, and those genes are orthologs. Orthologs describe relationships between pairs of species, but we can extend this idea to larger groups of species. Humans, mice, and chickens share a common ancestor from a few hundred million years ago, before the dinosaurs had even emerged. We can describe a group of genes across all three species that were descended from a single gene in this ancestor - these genes form an orthogroup. Look at the figure below, which shows data for three species: human, mouse and chicken. understanding_img1 Figure 1: Orthologues, Orthogroups &amp; Paralogues The tree in Figure 1A shows the evolutionary history of a gene. First, there was a speciation event where the chicken lineage diverged from the human-mouse ancestor. In the human-mouse ancestor, there was a gene duplication event at X producing two copies of the gene in that ancestor, Y &amp; Z. When human and mouse diverged they each inherited gene Y (becoming HuA &amp; MoA) and gene Z (HuB &amp; MoB). In general, we can identify a gene duplication event because it creates two copies of a gene in a species (e.g. HuA &amp; HuB). The mouse gene MoB is closer related to a human gene than it is to the other mouse gene MoA. This is because the gene duplication occurred in the ancestor, so each mouse gene is more closely related to its human ortholog (e.g. HuA and MoA), as they were both descended from a single gene. By contrast, HuA and MoB diverged at the gene duplication event. They aren’t descended from a single gene in the common ancestor of human and mice, so aren’t orthologs. Instead, they are paralogs (Figure 1C). Paralogs are more distantly related, they diverged at a gene duplication event in a common ancestor. Such a gene duplication event must have occurred further back in time than when the species diverged and so paralogs between a pair of species are always less closely related than orthologs between that pair of species. Paralogs are also possible within a species (e.g. HuA &amp; HuB). The chicken gene diverged from the other genes when the lineage leading to chicken split from the lineage leading to human and mouse. Therefore, the chicken gene ChC is an ortholog of HuA &amp; HuB in human and an ortholog of MoA &amp; MoB in mouse. Depending on what happend after the genes diverged, orthologs can be in one-to-one relationships (HuA - MoA), many-to-one (HuA &amp; HuB - ChC), or many-to-many (no examples in this tree, but would occur if there were a duplication in chicken). All of these relationships are identified by OrthoFinder. Why Orthogroups? There are several reasons why Orthogroups are the relevant way of analysing orthology relationships between species: Orthogroups allow you to analyse all of your data All of the genes in an orthogroup are descended from a single ancestral gene. Thus, all the genes in an orthogroup started out with the same sequence and function. As gene duplication and loss occur frequently in evolution, one-to-one orthologs are rare and limitation of analyses to on-to-one orthologs limits an analysis to a small fraction of the available data. By analysing orthogroups you can analyse all of your data. Orthogroups allow you to define the unit of comparison It is important to note that with orthogroups you choose where to define the limits of the unit of comparison. For example, if you just chose to analyse human and mouse in the above figure then you would have two orthogroups. Orthogroups are the only way to identify orthologs Orthology is defined by phylogeny. It is not definable by amino acid content, codon bias, GC content or other measures of sequence similarity. Methods that use such scores to define orthologs in the absence of phylogeny can only provide guesses. The only way to be sure that the orthology assignment is correct is by conducting a phylogenetic reconstruction of all genes descended from a single gene the last common ancestor of the species under consideration. This set of genes is an orthogroup. Thus, the only way to define orthology is by analysing orthogroups. For a comprehensive overview of orthology and the OrthoFinder approach, you can watch David Emms’ conference talk on youtube, from the 2020 symposium on Phylogenomics and Comparative genomics.","headline":"Guid to Results","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/OrthoFinder/tutorials/understand-orthology/"},"url":"http://localhost:4000/OrthoFinder/tutorials/understand-orthology/"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/OrthoFinder/assets/css/style.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/OrthoFinder/feed.xml" title="OrthoFinder" /><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<body><header class="site-header">
+
+  <div class="wrapper"><!-- <a class="site-title" rel="author" href="/OrthoFinder/%20/">OrthoFinder</a> -->
+    <a class="site-title" rel="author" href="/OrthoFinder/">OrthoFinder</a><nav class="site-nav">
+      <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+      <label for="nav-trigger">
+        <span class="menu-icon">
+          <svg viewBox="0 0 18 15" width="18px" height="15px">
+            <path
+              d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z" />
+          </svg>
+        </span>
+      </label>
+      <div class="trigger">
+        <!--<a class="page-link" href="/OrthoFinder/">Home</a><a class="page-link" href="/OrthoFinder/about/">About</a><a class="page-link" href="/OrthoFinder/download/">Download</a><a class="page-link" href="/OrthoFinder/installation/">Installation</a><a class="page-link" href="/OrthoFinder/tutorial/">Tutorial</a><a class="page-link" href="/OrthoFinder/faq/">FAQ</a>--><a class="page-link" href="/OrthoFinder/">Home</a><a class="page-link" href="/OrthoFinder/about/">About</a><a class="page-link" href="/OrthoFinder/download/">Download</a><a class="page-link" href="/OrthoFinder/installation/">Installation</a><a class="page-link" href="/OrthoFinder/tutorial/">Tutorial</a><a class="page-link" href="/OrthoFinder/faq/">FAQ</a>
+        <a class="page-link" href="https://github.com/OrthoFinder/OrthoFinder" target="_blank" title="GitHub Profile">GitHub</a>
+        
+      </div>
+    </nav></div>
+  <script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+</header><main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Guid to Results</h1>
+    <p class="post-meta"><!-- <time class="dt-published" datetime="2025-05-01T10:06:16+01:00" itemprop="datePublished">
+        May 1, 2025
+      </time> --><!-- <i class="fa fa-refresh" aria-hidden="true"></i> -->
+      <time class="dt-modified" datetime="2025-05-05T00:00:00+01:00" itemprop="dateModified">
+        Updated May 5, 2025
+      </time>
+      <meta itemprop="datePublished" content="2025-05-01T10:06:16+01:00"></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <h3 id="orthogroups-orthologs-and-paralogs">Orthogroups, Orthologs, and Paralogs</h3>
+
+<p>Orthogroup = the group of genes descended from a single gene in the last common ancestor
+of a group of species</p>
+
+<p>Orthologs = pairs of genes that descended from a single gene in the last common ancestor
+of two species</p>
+
+<p>Paralogs = pairs of genes descended from a gene duplication event</p>
+
+<p>Orthologs can be thought of as ‘equivalent genes’ between two species, as they descended
+from a single gene in the last common ancestor of that species. For example, the last
+common ancestor of humans and mice is a small mammal which lived alongside the
+dinosaurs. Individual genes present in that ancestor still exist in some form through their
+descendants in both humans and mice, and those genes are orthologs.</p>
+
+<p>Orthologs describe relationships between pairs of species, but we can extend this idea to
+larger groups of species. Humans, mice, and chickens share a common ancestor from a few
+hundred million years ago, before the dinosaurs had even emerged. We can describe a
+group of genes across all three species that were descended from a single gene in this
+ancestor - these genes form an orthogroup.</p>
+
+<p>Look at the figure below, which shows data for three species: human, mouse and chicken.</p>
+
+<p><em>understanding_img1</em>
+<em>Figure 1: Orthologues, Orthogroups &amp; Paralogues</em></p>
+
+<p>The tree in Figure 1A shows the evolutionary history of a gene. First, there was a speciation
+event where the chicken lineage diverged from the human-mouse ancestor. In the
+human-mouse ancestor, there was a gene duplication event at X producing two copies of the
+gene in that ancestor, Y &amp; Z. When human and mouse diverged they each inherited gene Y
+(becoming HuA &amp; MoA) and gene Z (HuB &amp; MoB). In general, we can identify a gene
+duplication event because it creates two copies of a gene in a species (e.g. HuA &amp; HuB).</p>
+
+<p>The mouse gene MoB is closer related to a human gene than it is to the other mouse gene
+MoA. This is because the gene duplication occurred in the ancestor, so each mouse gene is
+more closely related to its human ortholog (e.g. HuA and MoA), as they were both
+descended from a single gene. By contrast, HuA and MoB diverged at the gene
+duplication event. They aren’t descended from a single gene in the common ancestor of
+human and mice, so aren’t orthologs. Instead, they are paralogs (Figure 1C). Paralogs
+are more distantly related, they diverged at a gene duplication event in a common
+ancestor. Such a gene duplication event must have occurred further back in time than
+when the species diverged and so paralogs between a pair of species are always less
+closely related than orthologs between that pair of species. Paralogs are also possible
+within a species (e.g. HuA &amp; HuB).</p>
+
+<p>The chicken gene diverged from the other genes when the lineage leading to chicken
+split from the lineage leading to human and mouse. Therefore, the chicken gene ChC is
+an ortholog of HuA &amp; HuB in human and an ortholog of MoA &amp; MoB in mouse.
+Depending on what happend after the genes diverged, orthologs can be in one-to-one
+relationships (HuA - MoA), many-to-one (HuA &amp; HuB - ChC), or many-to-many (no
+examples in this tree, but would occur if there were a duplication in chicken). All of these
+relationships are identified by OrthoFinder.</p>
+
+<h2 id="why-orthogroups">Why Orthogroups?</h2>
+
+<p>There are several reasons why Orthogroups are the relevant way of analysing orthology
+relationships between species:</p>
+
+<p><strong>Orthogroups allow you to analyse all of your data</strong>
+All of the genes in an orthogroup are descended from a single ancestral gene. Thus, all
+the genes in an orthogroup started out with the same sequence and function. As gene
+duplication and loss occur frequently in evolution, one-to-one orthologs are rare and
+limitation of analyses to on-to-one orthologs limits an analysis to a small fraction of the
+available data. By analysing orthogroups you can analyse all of your data.</p>
+
+<p><strong>Orthogroups allow you to define the unit of comparison</strong>
+It is important to note that with orthogroups you choose where to define the limits of the
+unit of comparison. For example, if you just chose to analyse human and mouse in the
+above figure then you would have two orthogroups.</p>
+
+<p><strong>Orthogroups are the only way to identify orthologs</strong>
+Orthology is defined by phylogeny. It is not definable by amino acid content, codon bias,
+GC content or other measures of sequence similarity. Methods that use such scores to
+define orthologs in the absence of phylogeny can only provide guesses. The only way to
+be sure that the orthology assignment is correct is by conducting a phylogenetic
+reconstruction of all genes descended from a single gene the last common ancestor of
+the species under consideration. This set of genes is an orthogroup. Thus, the only way
+to define orthology is by analysing orthogroups.</p>
+
+<p>For a comprehensive overview of orthology and the OrthoFinder approach, you can
+watch David Emms’ conference talk on <a href="https://www.youtube.com/watch?v=L6eXJAE5J7g">youtube</a>, from the 2020 symposium on Phylogenomics and
+Comparative genomics.</p>
+
+
+  </div><a class="u-url" href="/OrthoFinder/tutorials/understand-orthology/" hidden></a>
+</article>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        fetch("https://api.github.com/repos/OrthoFinder/OrthoFinder/releases")
+            .then(response => response.json())
+            .then(data => {
+                const assets = data.flatMap(release => release.assets);
+                document.querySelectorAll(".download-count").forEach(el => {
+                    const assetName = el.getAttribute("data-asset");
+                    const match = assets.find(a => a.name === assetName);
+                    if (match && match.download_count !== undefined) {
+                        el.innerHTML = `<i class="fa fa-download" aria-hidden="true"></i> ${match.download_count} downloads`;
+                    } else {
+                        el.textContent = "(not found)";
+                    }
+                });
+            })
+            .catch(error => {
+                console.error("GitHub API fetch error:", error);
+                document.querySelectorAll(".download-count").forEach(el => {
+                    el.textContent = "(error)";
+                });
+            });
+    });
+</script>
+        
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/OrthoFinder/"></data>
+
+  <div class="wrapper">
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col">
+
+        <!-- <p class="feed-subscribe">
+          <a href="http://localhost:4000/OrthoFinder/feed.xml">
+            <svg class="svg-icon orange">
+              <use xlink:href="/OrthoFinder/assets/minima-social-icons.svg#rss"></use>
+            </svg><span>Subscribe</span>
+          </a>
+        </p> -->
+
+        <!--<ul class="social-media-list"><li>
+  <a rel="me" href="" target="_blank" title="GitHub">
+    <svg class="svg-icon grey">
+      <use xlink:href="/OrthoFinder/assets/minima-social-icons.svg#github"></use>
+    </svg>
+  </a>
+</li>
+
+
+</ul>
+-->
+         
+        <div class="social-icons">
+          
+          <a href="https://github.com/OrthoFinder/OrthoFinder" target="_blank" title="GitHub">
+            <svg class="svg-icon grey">
+              <use xlink:href="/OrthoFinder/assets/minima-social-icons.svg#github"></use>
+            </svg>
+            <span>GitHub</span>
+          </a>
+          
+          <!--  -->
+        </div>
+
+
+          <!--
+          <ul class="contact-list">
+
+            Link to the team section instead of listing every author
+            <li>
+              <a href="/OrthoFinder/about/#team">
+                Meet&nbsp;the&nbsp;Team
+              </a>
+            </li>
+
+          </ul> -->
+
+          <ul class="contact-list">
+            <li><a href="/OrthoFinder/about/#team">Meet the Team</a></li>
+          </ul>
+
+
+      </div>
+      
+      <div class="footer-col">
+        <!-- <p>This is a software developed by the [Steven Kelly Lab](http://www.stevekellylab.com/).</p> -->
+        <p><p>This is a software developed by the <a href="http://www.stevekellylab.com/">Steven Kelly Lab</a>.</p>
+</p>
+      </div>
+    </div>
+
+    <!-- <div class="social-links"><ul class="social-media-list"><li>
+  <a rel="me" href="" target="_blank" title="GitHub">
+    <svg class="svg-icon grey">
+      <use xlink:href="/OrthoFinder/assets/minima-social-icons.svg#github"></use>
+    </svg>
+  </a>
+</li>
+
+
+</ul>
+</div> -->
+
+  </div>
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // 1) Find all <pre><code> blocks
+    const codeBlocks = document.querySelectorAll('pre > code');
+
+    codeBlocks.forEach((codeBlock, index) => {
+      // The parent <pre> element
+      const pre = codeBlock.parentNode;
+
+      // 2) Create a container DIV and wrap <pre> inside it
+      const container = document.createElement('div');
+      container.className = 'code-container';
+      pre.parentNode.insertBefore(container, pre);
+      container.appendChild(pre);
+
+      // 3) Create the copy button
+      const button = document.createElement('button');
+      button.className = 'copy-button';
+      button.type = 'button';
+
+      // 4) Insert an inline SVG icon + "Copy" text
+      //    We'll build the SVG as a string, then inject it into button.innerHTML
+      const svgIcon = `
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          fill="currentColor"
+          class="bi bi-files"
+          viewBox="0 0 16 16"
+        >
+            <path d="M13 0H5a1 1 0 0 0-1 1v1H3a2 2 0 0 0-2
+                  2v9.5A1.5 1.5 0 0 0 2.5 15H9v-1H2.5a.5.5
+                  0 0 1-.5-.5V4a1 1 0 0 1 1-1h1v7.5A1.5
+                  1.5 0 0 0 5.5 12H11v-1H5.5a.5.5 0 0
+                  1-.5-.5V1a.5.5 0 0 1 .5-.5H5v3.5A1.5
+                  1.5 0 0 0 6.5 5H13v6h1V1a1 1 0 0 0-1-1z"/>
+        </svg>
+    `;
+      
+
+      
+      button.innerHTML = svgIcon + 'Copy';
+
+      // 5) Assign an ID to <code> if it doesn't have one
+      if (!codeBlock.id) {
+        codeBlock.id = `codeblock-${index}`;
+      }
+
+      // 6) Link button to the code block by ID
+      button.setAttribute('data-clipboard-target', '#' + codeBlock.id);
+
+      // 7) Insert the button into the container
+      container.insertBefore(button, pre);
+    });
+
+    // 8) Initialize Clipboard.js for all .copy-button elements
+    const clipboard = new ClipboardJS('.copy-button');
+    clipboard.on('success', function (e) {
+      e.clearSelection();
+      // Briefly change button text to indicate success
+      e.trigger.innerText = 'Copied!';
+      setTimeout(() => {
+        e.trigger.innerHTML = svgIcon + 'Copy'; // restore icon + text
+      }, 1500);
+    });
+    clipboard.on('error', function (e) {
+      console.error('Failed to copy', e);
+    });
+  });
+</script>
+
+
+  <!-- <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // 1. Find all <pre><code> blocks
+      const codeBlocks = document.querySelectorAll('pre > code');
+
+      codeBlocks.forEach((codeBlock) => {
+        const pre = codeBlock.parentNode;
+
+        // 2. Create a container div to hold the code + button
+        const container = document.createElement('div');
+        container.className = 'code-container';
+
+        // Insert the container before <pre>, then move <pre> inside it
+        pre.parentNode.insertBefore(container, pre);
+        container.appendChild(pre);
+
+        // 3. Create a "Copy" button
+        const button = document.createElement('button');
+        button.className = 'copy-button';
+        button.type = 'button';
+        button.innerText = 'Copy';
+
+        // If the code block doesn’t have an ID, assign one so we can target it
+        let codeId = codeBlock.id;
+        if (!codeId) {
+          codeId = 'codeblock-' + Math.floor(Math.random() * 1000000);
+          codeBlock.setAttribute('id', codeId);
+        }
+
+        // 4. Point the button at the code block
+        button.setAttribute('data-clipboard-target', '#' + codeId);
+
+        // 5. Insert button into the container
+        container.insertBefore(button, pre);
+      });
+
+      // 6. Initialize Clipboard.js
+      const clipboard = new ClipboardJS('.copy-button');
+      clipboard.on('success', function (e) {
+        e.clearSelection();
+        // Change button text to confirm copy
+        e.trigger.textContent = 'Copied!';
+        setTimeout(() => {
+          e.trigger.textContent = 'Copy';
+        }, 2000);
+      });
+      clipboard.on('error', function (e) {
+        console.error('Failed to copy', e);
+      });
+    });
+  </script> -->
+
+
+</footer></body>
+
+</html>
+

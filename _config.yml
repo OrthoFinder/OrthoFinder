@@ -87,7 +87,7 @@ header_pages:
 collections:
   tutorials:
     output: true
-    # permalink: /tutorials/:name/
+    permalink: /tutorials/:name/
 
 # Exclude from processing.
 # The following items will not be processed, by default.

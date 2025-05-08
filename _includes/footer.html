@@ -34,29 +34,28 @@
           </a>
           {% endif %} -->
         </div>
-        {%- if site.author %}
-        <ul class="contact-list">
-          <!-- {% if site.author.name -%}
-          <li class="p-name">{{ site.author.name | escape }}</li>
-          {% endif -%}
-          {% if site.author.email -%}
-          <li><a class="u-email" href="mailto:{{ site.author.email }}">{{ site.author.email }}</a></li>
+
+
+          <!-- {%- if site.author %}
+          <ul class="contact-list">
+
+            Link to the team section instead of listing every author
+            <li>
+              <a href="{{ '/about/#team' | relative_url }}">
+                Meet&nbsp;the&nbsp;Team
+              </a>
+            </li>
+
+          </ul>
           {%- endif %} -->
 
-          {% if site.author.name %}
-          <li class="p-name">Author: {{ site.author.name | escape }}</li>
-          {% endif %}
-          {% if site.author.email %}
-          <li>Email: <a class="u-email" href="mailto:{{ site.author.email }}">{{ site.author.email }}</a></li>
-          {% endif %}
-          <!-- {% if site.author.github %}
-          <li>
-            <a href="{{ site.author.github }}" target="_blank" title="GitHub Profile">GitHub</a>
-          </li>
-          {% endif %} -->
-        </ul>
-        {%- endif %}
+          <ul class="contact-list">
+            <li><a href="{{ '/about/#team' | relative_url }}">Meet the Team</a></li>
+          </ul>
+
+
       </div>
+      
       <div class="footer-col">
         <!-- <p>{{ site.description | escape }}</p> -->
         <p>{{ site.description | markdownify }}</p>

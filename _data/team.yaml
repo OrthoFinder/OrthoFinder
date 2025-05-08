@@ -1,0 +1,25 @@
+- name: David Emms
+  photo: /assets/team/david.jpeg
+  github: https://github.com/davidemms/
+  role: Software engineering for OrthoFinder
+  status: Former
+
+- name: Jonathan Holmes
+  photo: /assets/team/jonathon.jpeg
+  scholar: https://scholar.google.com/…
+  github: https://github.com/...
+  role: Bioinformatics Specialist
+  status: Current
+
+- name: Laurence Belcher
+  photo: /assets/team/laurie.jpeg
+  scholar: https://scholar.google.com/…
+  github: https://github.com/...
+  role: Bioinformatics Specialist
+  status: Current
+
+- name: Yi Liu
+  photo: /assets/team/yi.jpeg
+  github: https://github.com/OrthoFinder
+  role: Some weirdo
+  status: Current

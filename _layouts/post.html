@@ -7,9 +7,29 @@ layout: base
     <h1 class="post-title p-name" itemprop="name headline">{{ page.title | escape }}</h1>
     <p class="post-meta">
       {%- assign date_format = site.minima.date_format | default: "%b %-d, %Y" -%}
+
+      <!-- <time class="dt-published" datetime="{{ page.date | date_to_xmlschema }}" itemprop="datePublished">
+        {{ page.date | date: date_format }}
+      </time> -->
+
+      {%- comment -%}
+      Pick the correct label & date:
+      • If “updated” exists → show “Updated …”
+      • else → show original publish date
+      {%- endcomment -%}
+      
+      {%- if page.updated -%}
+      <!-- <i class="fa fa-refresh" aria-hidden="true"></i> -->
+      <time class="dt-modified" datetime="{{ page.updated | date_to_xmlschema }}" itemprop="dateModified">
+        Updated {{ page.updated | date: date_format }}
+      </time>
+      <meta itemprop="datePublished" content="{{ page.date | date_to_xmlschema }}">
+      {%- else -%}
       <time class="dt-published" datetime="{{ page.date | date_to_xmlschema }}" itemprop="datePublished">
         {{ page.date | date: date_format }}
       </time>
+      {%- endif -%}
+
       {%- if page.modified_date -%}
         ~ 
         {%- assign mdate = page.modified_date | date_to_xmlschema -%}
@@ -17,6 +37,7 @@ layout: base
           {{ mdate | date: date_format }}
         </time>
       {%- endif -%}
+
       {%- if page.author -%}
         • {% for author in page.author %}
           <span itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -36,3 +57,4 @@ layout: base
 
   <a class="u-url" href="{{ page.url | relative_url }}" hidden></a>
 </article>
+{% include download-count.html %}

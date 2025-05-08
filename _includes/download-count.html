@@ -1,0 +1,24 @@
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        fetch("https://api.github.com/repos/OrthoFinder/OrthoFinder/releases")
+            .then(response => response.json())
+            .then(data => {
+                const assets = data.flatMap(release => release.assets);
+                document.querySelectorAll(".download-count").forEach(el => {
+                    const assetName = el.getAttribute("data-asset");
+                    const match = assets.find(a => a.name === assetName);
+                    if (match && match.download_count !== undefined) {
+                        el.innerHTML = `<i class="fa fa-download" aria-hidden="true"></i> ${match.download_count} downloads`;
+                    } else {
+                        el.textContent = "(not found)";
+                    }
+                });
+            })
+            .catch(error => {
+                console.error("GitHub API fetch error:", error);
+                document.querySelectorAll(".download-count").forEach(el => {
+                    el.textContent = "(error)";
+                });
+            });
+    });
+</script>

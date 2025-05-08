@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Beginner Tutorial | OrthoFinder</title>
+<meta name="generator" content="Jekyll v3.10.0" />
+<meta property="og:title" content="Beginner Tutorial" />
+<meta name="author" content="David Emms, Jonathan Holmes, Laurence Belcher, Yi Liu" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Beginner tutorial for using OrthoFinder This tutorial will cover: Downloading OrthoFinder Running OrthoFinder Exploring the results of OrthoFinder OrthoFinder requires as input the amino acid sequences for all the protein coding genes in your species of interest. We provide a separate tutorial for getting input files for OrthoFinder need to add link to the ‘Getting Input Data’ page All these steps will be done on the command line so that you can just copy and paste the commands yourself. If you are not familiar with the command line there are many online tutorials and reference pages, here is a nice short one that covers the basics. Downloading OrthoFinder There are two main ways of getting OrthoFinder. You can either use conda, or you can install it directly from github. Installing directly from github will always give you the latest version, but you might have to manually install other software that OrthoFinder is dependent on, and it can be trickier to troubleshoot if you aren’t familiar with the command line. Conda automates the installation process and handles all dependencies, making it very beginner-friendly. To install via conda, we first need to install miniconda. Follow the instructions here We then need to run these commands conda config --add channels defaults conda config --add channels bioconda conda config --add channels conda-forge conda create -n orthofinder conda activate orthofinder conda install orthofinder If you are on one of the newer Macs with the new chips (M1/M2/M3), you might need to follow a few extra steps to use conda. Check out the guide here. To install directly from github, we need to run these commands python3 -m venv of3_env . of3_env/bin/activate pip install git+https://github.com/OrthoFinder/OrthoFinder.git You can test that OrthoFinder has been installed by printing its help file orthofinder -h, which will print all of the command line options. You can test that OrthoFinder is working correctly by running it on the example dataset, which you can download from our github orthofinder -f ExampleData/ OrthoFinder will print lots of information to the command line as it runs. If you get an error message, the best way to troubleshoot is to just google the error message. You can also ask a question on our github When OrthoFinder has finished running, it will generate a folder containing the output, with the folder named according to today’s date. ‘ExampleData/OrthoFinder/Results_Jul12’ The folder looks like this: Beginner_img1 We’ll discuss how to interpret and analyse these files and folders later on, in the ‘Exploring the results’ section of the tutorial. Running OrthoFinder You can now run OrthoFinder First, you have to open a terminal and navigate to the directory where your files are. You can now run OrthoFinder on your proteomes. orthofinder -f primary_transcripts That’s it! OrthoFinder will print updates on its progress to the terminal, and tell you when it’s finished. To see what options you might want to adjust for your own data, check out the github, or the advanced tutorial *link to the ‘advanced tutorial’ page Exploring the results of OrthoFinder OrthoFinder creates a results directory named OrthoFinder inside the proteome directory, and puts the results here. My results directory looks like this: Beginner_img2 Step 1: Quality Control Before we start diving into the orthogroups, it would behoove us to check the quality of the OrthoFinder run. We want to make sure that most genes across all species have been assigned to orthogroups, and that the species tree looks realistic. Open the file Statistics_Overall.tsv from the folder ‘Comparative_Genomics_Statistics’. This file can be opened in spreadsheet software like Microsoft Excel, or in a text editor like Notepad. On the 5th line, we can see the ‘Percentage of genes in orthogroups’, which in my case is 95.7%. Beginner_img3 A good rule of thumb is that this number should be &gt;80%. If not, you are likely missing some orthology relationships that actually exist. The best way to fix this would be better species sampling. Now open the file ‘Statistics_PerSpecies’, from the same folder. This file gives us the % of genes in each species that are assigned to orthogroups, rather than the percentage for all genes across species. You can see here that we capture most genes across all species. Beginner_img4 The lowest percentage is the kiwi (A. haastii), but we still managed to assign 94% of its genes to orthogroups. The key message here is that it’s always a good idea to look at this information before you start interpreting your results. If the numbers were too low for one species, we might want to consider sampling more species to fill in the long evolutionary divergence between species (e.g. something in between a Kiwi and a Kakapo, such as a Hoatzin). One more useful thing to do before we really start to dive in is to look at the species tree. Go to the itol website, and click ‘Upload a tree’. You can then drag and drop the tree file, which is in ‘‘Species_Tree/SpeciesTree_rooted.txt’ You will now see the phylogenetic tree that OrthoFinder has produced. I have annotated my version with icons PhyloPic, so that we can see what is going on Beginner_img5 We now want to do some common-sense checking that everything appears to be in order, and we aren’t rewriting the history of life on earth. With our six species, this tree looks exactly as we would expect. If the tree doesn’t look correct, then this won’t impact orthogroup inference, but will affect our measures of gene duplication, and might affect our assignment of orthologs and paralogs within an orthogroup. If you need to, you can run OrthoFinder with your own species tree (use the -s option). Step 2: Interpreting results Now that we are happy with our OrthoFinder run, we can start diving into the results. Orthologues We will start by finding orthologues of a gene that we are interested in. We will focus on the gene ENSVURG00010002700.1 in wombats, which is an olfactory receptor. Let’s find out what its orthologues are in the Tammar wallaby. In the Orthologues directory there is a sub-directory for each species. Open ‘Orthologues/Orthologues_Vombatus_ursinus/Vombatus_ursinus v Notamacropus_eugeni i.tsv’, in a spreadsheet program (specifying that it’s tab-delimited if necessary). The file has three columns, “Orthogroup”, “Vombatus_ursinus”, and “Notamacropus_eugenii”. Find ‘ENSVURG00010002700.1’ in the table, I can see that the gene is in orthogroup OG0000365 and that it has three orthologues in wallabies: ENSMEUG00000016785.1, ENSMEUG00000001827.1, ENSMEUG00000010434.1 Gene trees Next, we are going to look at the gene tree to see how these orthologues arose. OrthoFinder infers orthlologues from ‘resolved’ gene trees using a Duplication-Loss- Coalescence analysis to identify the more parsimonious interpretation of the tree (see the OrthoFinder2 paper for more details). All of the gene trees are in one file (Resolved_Gene_Trees/Resolved_Gene_Trees.txt). Each line of the file contains the ID of an orthogroup (e.g. OG0000365:), followed by the gene tree for that orthogroup. To find the tree for certain orthogroup, just search for the orthogroup ID. We are going to view the tree for OG0000365 on itol Beginner_img6 Looking at the gene tree, we can see that there have been several gene duplications in the lineage leading to wallabies (Notamacropus). This has resulted in a one-to-three orthology relationship, i.e. all three of the wallaby genes are equally related to the wombat gene ENSVURG00010002700.1. It’s often the case that orthology relationships aren’t one-to-one, and it’s important to know this—you don’t want to spend months doing experiments on ‘the orthologue’ only to find out later there are actually three! Gene duplications Having the gene trees means that OrthoFinder can identify all gene duplication events that occurred. There is a folder called ‘Gene_Duplication_Events’ that has two files that allow us to explore duplications. Let’s first open ‘Gene_Duplication_Events/SpeciesTree_Gene_Duplications_0.5_Support.txt’ in itol. Go into the ‘Advanced’ tab on the Control Panel and select ‘Display’ next to ‘Node IDs:’ to see the node labels Beginner_img7 This gives a summary of gene duplication events. Each node shows the node name followed by an underscore and then the number of well-supported gene duplication events mapped to each node in the species tree. Gene-duplication events are considered ‘well-supported’ if at least 50% of the descendant species have retained both copies of the duplicated gene. For the common ancestor of the mammals, N2, there were 812 of these well-supported gene duplication events. The numbers after the species names are the number of ‘terminal’ duplications that map to that species, rather than an internal node of the species tree. We can see the full list of gene duplication events in the file ‘Gene_Duplication_Events/Duplications.tsv’. Here are just a few lines from the file: Beginner_img8 Each gene duplication event is cross-referenced to the species tree node, and the node in the gene tree. It also lists the genes descended from each of the two copies arising from the gene duplication event. We can check this out for our wombat olfactory receptor orthologues. Beginner_img9 These events are also summarised by orthogroup and by species tree node in the files Duplications_per_Orthogroup.tsv and Duplications_per_Species_Tree_Node.tsv which are both in the directory Comparative_Genomics_Statistics/. Orthogroups Often we’re interested in group-wise species comparisons, that is comparisons across a clade of species rather than between a pair of species. The generalisation of orthology to multiple species is the orthogroup. Just like orthologues are the genes descended from a single gene in the last common ancestor of a pair of species an orthogroup is the set of genes descended from a single gene in a group of species. Each gene tree from OrthoFinder, for example the one above, is for one orthogroup. The orthogroup gene tree is the tree we need to look at if we want it to include all pairwise orthologues. And even though some of the genes within an orthogroup can be paralogs of one another, if we tried to take any genes out then we would also be removing orthologs too. So if we want to do a comparison of the ‘equivalent’ genes in a set of species, we need to do the comparison across the genes in an orthogroup. The orthogroups are in the file Orthogroups/Orthogroups.tsv. This table has one orthogroup per line and one species per column and is ordered from largest orthogroup to smallest. Hierarchical Orthogroups OrthoFinder3 also infers hierarchical orthogroups for each node in the species tree. A file equivalent to Orthogroups/Orthogroups.tsv is available for each node in ‘/Phylogenetic_Hierarchical_Orthogroups’. You can compare the node number (e.g. N3) to the species tree, to see which species will be included. Orthogroup sequences For each orthogroup there is a FASTA file in Orthogroup_Sequences/ which contains the sequences for the genes in that orthogroup. Other results files We have now covered all of the main output files that will be useful to most users, but OrthoFinder also outputs much more useful information! A full description of the output files is available below. There are also some useful community tools that allow interactive viewing of results, such as OrthoBrowser" />
+<meta property="og:description" content="Beginner tutorial for using OrthoFinder This tutorial will cover: Downloading OrthoFinder Running OrthoFinder Exploring the results of OrthoFinder OrthoFinder requires as input the amino acid sequences for all the protein coding genes in your species of interest. We provide a separate tutorial for getting input files for OrthoFinder need to add link to the ‘Getting Input Data’ page All these steps will be done on the command line so that you can just copy and paste the commands yourself. If you are not familiar with the command line there are many online tutorials and reference pages, here is a nice short one that covers the basics. Downloading OrthoFinder There are two main ways of getting OrthoFinder. You can either use conda, or you can install it directly from github. Installing directly from github will always give you the latest version, but you might have to manually install other software that OrthoFinder is dependent on, and it can be trickier to troubleshoot if you aren’t familiar with the command line. Conda automates the installation process and handles all dependencies, making it very beginner-friendly. To install via conda, we first need to install miniconda. Follow the instructions here We then need to run these commands conda config --add channels defaults conda config --add channels bioconda conda config --add channels conda-forge conda create -n orthofinder conda activate orthofinder conda install orthofinder If you are on one of the newer Macs with the new chips (M1/M2/M3), you might need to follow a few extra steps to use conda. Check out the guide here. To install directly from github, we need to run these commands python3 -m venv of3_env . of3_env/bin/activate pip install git+https://github.com/OrthoFinder/OrthoFinder.git You can test that OrthoFinder has been installed by printing its help file orthofinder -h, which will print all of the command line options. You can test that OrthoFinder is working correctly by running it on the example dataset, which you can download from our github orthofinder -f ExampleData/ OrthoFinder will print lots of information to the command line as it runs. If you get an error message, the best way to troubleshoot is to just google the error message. You can also ask a question on our github When OrthoFinder has finished running, it will generate a folder containing the output, with the folder named according to today’s date. ‘ExampleData/OrthoFinder/Results_Jul12’ The folder looks like this: Beginner_img1 We’ll discuss how to interpret and analyse these files and folders later on, in the ‘Exploring the results’ section of the tutorial. Running OrthoFinder You can now run OrthoFinder First, you have to open a terminal and navigate to the directory where your files are. You can now run OrthoFinder on your proteomes. orthofinder -f primary_transcripts That’s it! OrthoFinder will print updates on its progress to the terminal, and tell you when it’s finished. To see what options you might want to adjust for your own data, check out the github, or the advanced tutorial *link to the ‘advanced tutorial’ page Exploring the results of OrthoFinder OrthoFinder creates a results directory named OrthoFinder inside the proteome directory, and puts the results here. My results directory looks like this: Beginner_img2 Step 1: Quality Control Before we start diving into the orthogroups, it would behoove us to check the quality of the OrthoFinder run. We want to make sure that most genes across all species have been assigned to orthogroups, and that the species tree looks realistic. Open the file Statistics_Overall.tsv from the folder ‘Comparative_Genomics_Statistics’. This file can be opened in spreadsheet software like Microsoft Excel, or in a text editor like Notepad. On the 5th line, we can see the ‘Percentage of genes in orthogroups’, which in my case is 95.7%. Beginner_img3 A good rule of thumb is that this number should be &gt;80%. If not, you are likely missing some orthology relationships that actually exist. The best way to fix this would be better species sampling. Now open the file ‘Statistics_PerSpecies’, from the same folder. This file gives us the % of genes in each species that are assigned to orthogroups, rather than the percentage for all genes across species. You can see here that we capture most genes across all species. Beginner_img4 The lowest percentage is the kiwi (A. haastii), but we still managed to assign 94% of its genes to orthogroups. The key message here is that it’s always a good idea to look at this information before you start interpreting your results. If the numbers were too low for one species, we might want to consider sampling more species to fill in the long evolutionary divergence between species (e.g. something in between a Kiwi and a Kakapo, such as a Hoatzin). One more useful thing to do before we really start to dive in is to look at the species tree. Go to the itol website, and click ‘Upload a tree’. You can then drag and drop the tree file, which is in ‘‘Species_Tree/SpeciesTree_rooted.txt’ You will now see the phylogenetic tree that OrthoFinder has produced. I have annotated my version with icons PhyloPic, so that we can see what is going on Beginner_img5 We now want to do some common-sense checking that everything appears to be in order, and we aren’t rewriting the history of life on earth. With our six species, this tree looks exactly as we would expect. If the tree doesn’t look correct, then this won’t impact orthogroup inference, but will affect our measures of gene duplication, and might affect our assignment of orthologs and paralogs within an orthogroup. If you need to, you can run OrthoFinder with your own species tree (use the -s option). Step 2: Interpreting results Now that we are happy with our OrthoFinder run, we can start diving into the results. Orthologues We will start by finding orthologues of a gene that we are interested in. We will focus on the gene ENSVURG00010002700.1 in wombats, which is an olfactory receptor. Let’s find out what its orthologues are in the Tammar wallaby. In the Orthologues directory there is a sub-directory for each species. Open ‘Orthologues/Orthologues_Vombatus_ursinus/Vombatus_ursinus v Notamacropus_eugeni i.tsv’, in a spreadsheet program (specifying that it’s tab-delimited if necessary). The file has three columns, “Orthogroup”, “Vombatus_ursinus”, and “Notamacropus_eugenii”. Find ‘ENSVURG00010002700.1’ in the table, I can see that the gene is in orthogroup OG0000365 and that it has three orthologues in wallabies: ENSMEUG00000016785.1, ENSMEUG00000001827.1, ENSMEUG00000010434.1 Gene trees Next, we are going to look at the gene tree to see how these orthologues arose. OrthoFinder infers orthlologues from ‘resolved’ gene trees using a Duplication-Loss- Coalescence analysis to identify the more parsimonious interpretation of the tree (see the OrthoFinder2 paper for more details). All of the gene trees are in one file (Resolved_Gene_Trees/Resolved_Gene_Trees.txt). Each line of the file contains the ID of an orthogroup (e.g. OG0000365:), followed by the gene tree for that orthogroup. To find the tree for certain orthogroup, just search for the orthogroup ID. We are going to view the tree for OG0000365 on itol Beginner_img6 Looking at the gene tree, we can see that there have been several gene duplications in the lineage leading to wallabies (Notamacropus). This has resulted in a one-to-three orthology relationship, i.e. all three of the wallaby genes are equally related to the wombat gene ENSVURG00010002700.1. It’s often the case that orthology relationships aren’t one-to-one, and it’s important to know this—you don’t want to spend months doing experiments on ‘the orthologue’ only to find out later there are actually three! Gene duplications Having the gene trees means that OrthoFinder can identify all gene duplication events that occurred. There is a folder called ‘Gene_Duplication_Events’ that has two files that allow us to explore duplications. Let’s first open ‘Gene_Duplication_Events/SpeciesTree_Gene_Duplications_0.5_Support.txt’ in itol. Go into the ‘Advanced’ tab on the Control Panel and select ‘Display’ next to ‘Node IDs:’ to see the node labels Beginner_img7 This gives a summary of gene duplication events. Each node shows the node name followed by an underscore and then the number of well-supported gene duplication events mapped to each node in the species tree. Gene-duplication events are considered ‘well-supported’ if at least 50% of the descendant species have retained both copies of the duplicated gene. For the common ancestor of the mammals, N2, there were 812 of these well-supported gene duplication events. The numbers after the species names are the number of ‘terminal’ duplications that map to that species, rather than an internal node of the species tree. We can see the full list of gene duplication events in the file ‘Gene_Duplication_Events/Duplications.tsv’. Here are just a few lines from the file: Beginner_img8 Each gene duplication event is cross-referenced to the species tree node, and the node in the gene tree. It also lists the genes descended from each of the two copies arising from the gene duplication event. We can check this out for our wombat olfactory receptor orthologues. Beginner_img9 These events are also summarised by orthogroup and by species tree node in the files Duplications_per_Orthogroup.tsv and Duplications_per_Species_Tree_Node.tsv which are both in the directory Comparative_Genomics_Statistics/. Orthogroups Often we’re interested in group-wise species comparisons, that is comparisons across a clade of species rather than between a pair of species. The generalisation of orthology to multiple species is the orthogroup. Just like orthologues are the genes descended from a single gene in the last common ancestor of a pair of species an orthogroup is the set of genes descended from a single gene in a group of species. Each gene tree from OrthoFinder, for example the one above, is for one orthogroup. The orthogroup gene tree is the tree we need to look at if we want it to include all pairwise orthologues. And even though some of the genes within an orthogroup can be paralogs of one another, if we tried to take any genes out then we would also be removing orthologs too. So if we want to do a comparison of the ‘equivalent’ genes in a set of species, we need to do the comparison across the genes in an orthogroup. The orthogroups are in the file Orthogroups/Orthogroups.tsv. This table has one orthogroup per line and one species per column and is ordered from largest orthogroup to smallest. Hierarchical Orthogroups OrthoFinder3 also infers hierarchical orthogroups for each node in the species tree. A file equivalent to Orthogroups/Orthogroups.tsv is available for each node in ‘/Phylogenetic_Hierarchical_Orthogroups’. You can compare the node number (e.g. N3) to the species tree, to see which species will be included. Orthogroup sequences For each orthogroup there is a FASTA file in Orthogroup_Sequences/ which contains the sequences for the genes in that orthogroup. Other results files We have now covered all of the main output files that will be useful to most users, but OrthoFinder also outputs much more useful information! A full description of the output files is available below. There are also some useful community tools that allow interactive viewing of results, such as OrthoBrowser" />
+<link rel="canonical" href="http://localhost:4000/OrthoFinder/tutorials/beginner-tutorial/" />
+<meta property="og:url" content="http://localhost:4000/OrthoFinder/tutorials/beginner-tutorial/" />
+<meta property="og:site_name" content="OrthoFinder" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-05-01T10:01:16+01:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Beginner Tutorial" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"David Emms, Jonathan Holmes, Laurence Belcher, Yi Liu"},"dateModified":"2025-05-01T10:01:16+01:00","datePublished":"2025-05-01T10:01:16+01:00","description":"Beginner tutorial for using OrthoFinder This tutorial will cover: Downloading OrthoFinder Running OrthoFinder Exploring the results of OrthoFinder OrthoFinder requires as input the amino acid sequences for all the protein coding genes in your species of interest. We provide a separate tutorial for getting input files for OrthoFinder need to add link to the ‘Getting Input Data’ page All these steps will be done on the command line so that you can just copy and paste the commands yourself. If you are not familiar with the command line there are many online tutorials and reference pages, here is a nice short one that covers the basics. Downloading OrthoFinder There are two main ways of getting OrthoFinder. You can either use conda, or you can install it directly from github. Installing directly from github will always give you the latest version, but you might have to manually install other software that OrthoFinder is dependent on, and it can be trickier to troubleshoot if you aren’t familiar with the command line. Conda automates the installation process and handles all dependencies, making it very beginner-friendly. To install via conda, we first need to install miniconda. Follow the instructions here We then need to run these commands conda config --add channels defaults conda config --add channels bioconda conda config --add channels conda-forge conda create -n orthofinder conda activate orthofinder conda install orthofinder If you are on one of the newer Macs with the new chips (M1/M2/M3), you might need to follow a few extra steps to use conda. Check out the guide here. To install directly from github, we need to run these commands python3 -m venv of3_env . of3_env/bin/activate pip install git+https://github.com/OrthoFinder/OrthoFinder.git You can test that OrthoFinder has been installed by printing its help file orthofinder -h, which will print all of the command line options. You can test that OrthoFinder is working correctly by running it on the example dataset, which you can download from our github orthofinder -f ExampleData/ OrthoFinder will print lots of information to the command line as it runs. If you get an error message, the best way to troubleshoot is to just google the error message. You can also ask a question on our github When OrthoFinder has finished running, it will generate a folder containing the output, with the folder named according to today’s date. ‘ExampleData/OrthoFinder/Results_Jul12’ The folder looks like this: Beginner_img1 We’ll discuss how to interpret and analyse these files and folders later on, in the ‘Exploring the results’ section of the tutorial. Running OrthoFinder You can now run OrthoFinder First, you have to open a terminal and navigate to the directory where your files are. You can now run OrthoFinder on your proteomes. orthofinder -f primary_transcripts That’s it! OrthoFinder will print updates on its progress to the terminal, and tell you when it’s finished. To see what options you might want to adjust for your own data, check out the github, or the advanced tutorial *link to the ‘advanced tutorial’ page Exploring the results of OrthoFinder OrthoFinder creates a results directory named OrthoFinder inside the proteome directory, and puts the results here. My results directory looks like this: Beginner_img2 Step 1: Quality Control Before we start diving into the orthogroups, it would behoove us to check the quality of the OrthoFinder run. We want to make sure that most genes across all species have been assigned to orthogroups, and that the species tree looks realistic. Open the file Statistics_Overall.tsv from the folder ‘Comparative_Genomics_Statistics’. This file can be opened in spreadsheet software like Microsoft Excel, or in a text editor like Notepad. On the 5th line, we can see the ‘Percentage of genes in orthogroups’, which in my case is 95.7%. Beginner_img3 A good rule of thumb is that this number should be &gt;80%. If not, you are likely missing some orthology relationships that actually exist. The best way to fix this would be better species sampling. Now open the file ‘Statistics_PerSpecies’, from the same folder. This file gives us the % of genes in each species that are assigned to orthogroups, rather than the percentage for all genes across species. You can see here that we capture most genes across all species. Beginner_img4 The lowest percentage is the kiwi (A. haastii), but we still managed to assign 94% of its genes to orthogroups. The key message here is that it’s always a good idea to look at this information before you start interpreting your results. If the numbers were too low for one species, we might want to consider sampling more species to fill in the long evolutionary divergence between species (e.g. something in between a Kiwi and a Kakapo, such as a Hoatzin). One more useful thing to do before we really start to dive in is to look at the species tree. Go to the itol website, and click ‘Upload a tree’. You can then drag and drop the tree file, which is in ‘‘Species_Tree/SpeciesTree_rooted.txt’ You will now see the phylogenetic tree that OrthoFinder has produced. I have annotated my version with icons PhyloPic, so that we can see what is going on Beginner_img5 We now want to do some common-sense checking that everything appears to be in order, and we aren’t rewriting the history of life on earth. With our six species, this tree looks exactly as we would expect. If the tree doesn’t look correct, then this won’t impact orthogroup inference, but will affect our measures of gene duplication, and might affect our assignment of orthologs and paralogs within an orthogroup. If you need to, you can run OrthoFinder with your own species tree (use the -s option). Step 2: Interpreting results Now that we are happy with our OrthoFinder run, we can start diving into the results. Orthologues We will start by finding orthologues of a gene that we are interested in. We will focus on the gene ENSVURG00010002700.1 in wombats, which is an olfactory receptor. Let’s find out what its orthologues are in the Tammar wallaby. In the Orthologues directory there is a sub-directory for each species. Open ‘Orthologues/Orthologues_Vombatus_ursinus/Vombatus_ursinus v Notamacropus_eugeni i.tsv’, in a spreadsheet program (specifying that it’s tab-delimited if necessary). The file has three columns, “Orthogroup”, “Vombatus_ursinus”, and “Notamacropus_eugenii”. Find ‘ENSVURG00010002700.1’ in the table, I can see that the gene is in orthogroup OG0000365 and that it has three orthologues in wallabies: ENSMEUG00000016785.1, ENSMEUG00000001827.1, ENSMEUG00000010434.1 Gene trees Next, we are going to look at the gene tree to see how these orthologues arose. OrthoFinder infers orthlologues from ‘resolved’ gene trees using a Duplication-Loss- Coalescence analysis to identify the more parsimonious interpretation of the tree (see the OrthoFinder2 paper for more details). All of the gene trees are in one file (Resolved_Gene_Trees/Resolved_Gene_Trees.txt). Each line of the file contains the ID of an orthogroup (e.g. OG0000365:), followed by the gene tree for that orthogroup. To find the tree for certain orthogroup, just search for the orthogroup ID. We are going to view the tree for OG0000365 on itol Beginner_img6 Looking at the gene tree, we can see that there have been several gene duplications in the lineage leading to wallabies (Notamacropus). This has resulted in a one-to-three orthology relationship, i.e. all three of the wallaby genes are equally related to the wombat gene ENSVURG00010002700.1. It’s often the case that orthology relationships aren’t one-to-one, and it’s important to know this—you don’t want to spend months doing experiments on ‘the orthologue’ only to find out later there are actually three! Gene duplications Having the gene trees means that OrthoFinder can identify all gene duplication events that occurred. There is a folder called ‘Gene_Duplication_Events’ that has two files that allow us to explore duplications. Let’s first open ‘Gene_Duplication_Events/SpeciesTree_Gene_Duplications_0.5_Support.txt’ in itol. Go into the ‘Advanced’ tab on the Control Panel and select ‘Display’ next to ‘Node IDs:’ to see the node labels Beginner_img7 This gives a summary of gene duplication events. Each node shows the node name followed by an underscore and then the number of well-supported gene duplication events mapped to each node in the species tree. Gene-duplication events are considered ‘well-supported’ if at least 50% of the descendant species have retained both copies of the duplicated gene. For the common ancestor of the mammals, N2, there were 812 of these well-supported gene duplication events. The numbers after the species names are the number of ‘terminal’ duplications that map to that species, rather than an internal node of the species tree. We can see the full list of gene duplication events in the file ‘Gene_Duplication_Events/Duplications.tsv’. Here are just a few lines from the file: Beginner_img8 Each gene duplication event is cross-referenced to the species tree node, and the node in the gene tree. It also lists the genes descended from each of the two copies arising from the gene duplication event. We can check this out for our wombat olfactory receptor orthologues. Beginner_img9 These events are also summarised by orthogroup and by species tree node in the files Duplications_per_Orthogroup.tsv and Duplications_per_Species_Tree_Node.tsv which are both in the directory Comparative_Genomics_Statistics/. Orthogroups Often we’re interested in group-wise species comparisons, that is comparisons across a clade of species rather than between a pair of species. The generalisation of orthology to multiple species is the orthogroup. Just like orthologues are the genes descended from a single gene in the last common ancestor of a pair of species an orthogroup is the set of genes descended from a single gene in a group of species. Each gene tree from OrthoFinder, for example the one above, is for one orthogroup. The orthogroup gene tree is the tree we need to look at if we want it to include all pairwise orthologues. And even though some of the genes within an orthogroup can be paralogs of one another, if we tried to take any genes out then we would also be removing orthologs too. So if we want to do a comparison of the ‘equivalent’ genes in a set of species, we need to do the comparison across the genes in an orthogroup. The orthogroups are in the file Orthogroups/Orthogroups.tsv. This table has one orthogroup per line and one species per column and is ordered from largest orthogroup to smallest. Hierarchical Orthogroups OrthoFinder3 also infers hierarchical orthogroups for each node in the species tree. A file equivalent to Orthogroups/Orthogroups.tsv is available for each node in ‘/Phylogenetic_Hierarchical_Orthogroups’. You can compare the node number (e.g. N3) to the species tree, to see which species will be included. Orthogroup sequences For each orthogroup there is a FASTA file in Orthogroup_Sequences/ which contains the sequences for the genes in that orthogroup. Other results files We have now covered all of the main output files that will be useful to most users, but OrthoFinder also outputs much more useful information! A full description of the output files is available below. There are also some useful community tools that allow interactive viewing of results, such as OrthoBrowser","headline":"Beginner Tutorial","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/OrthoFinder/tutorials/beginner-tutorial/"},"url":"http://localhost:4000/OrthoFinder/tutorials/beginner-tutorial/"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/OrthoFinder/assets/css/style.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/OrthoFinder/feed.xml" title="OrthoFinder" /><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<body><header class="site-header">
+
+  <div class="wrapper"><!-- <a class="site-title" rel="author" href="/OrthoFinder/%20/">OrthoFinder</a> -->
+    <a class="site-title" rel="author" href="/OrthoFinder/">OrthoFinder</a><nav class="site-nav">
+      <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+      <label for="nav-trigger">
+        <span class="menu-icon">
+          <svg viewBox="0 0 18 15" width="18px" height="15px">
+            <path
+              d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z" />
+          </svg>
+        </span>
+      </label>
+      <div class="trigger">
+        <!--<a class="page-link" href="/OrthoFinder/">Home</a><a class="page-link" href="/OrthoFinder/about/">About</a><a class="page-link" href="/OrthoFinder/download/">Download</a><a class="page-link" href="/OrthoFinder/installation/">Installation</a><a class="page-link" href="/OrthoFinder/tutorial/">Tutorial</a><a class="page-link" href="/OrthoFinder/faq/">FAQ</a>--><a class="page-link" href="/OrthoFinder/">Home</a><a class="page-link" href="/OrthoFinder/about/">About</a><a class="page-link" href="/OrthoFinder/download/">Download</a><a class="page-link" href="/OrthoFinder/installation/">Installation</a><a class="page-link" href="/OrthoFinder/tutorial/">Tutorial</a><a class="page-link" href="/OrthoFinder/faq/">FAQ</a>
+        <a class="page-link" href="https://github.com/OrthoFinder/OrthoFinder" target="_blank" title="GitHub Profile">GitHub</a>
+        
+      </div>
+    </nav></div>
+  <script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+</header><main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Beginner Tutorial</h1>
+    <p class="post-meta"><!-- <time class="dt-published" datetime="2025-05-01T10:01:16+01:00" itemprop="datePublished">
+        May 1, 2025
+      </time> --><!-- <i class="fa fa-refresh" aria-hidden="true"></i> -->
+      <time class="dt-modified" datetime="2025-05-08T00:00:00+01:00" itemprop="dateModified">
+        Updated May 8, 2025
+      </time>
+      <meta itemprop="datePublished" content="2025-05-01T10:01:16+01:00"></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <h2 id="beginner-tutorial-for-using-orthofinder">Beginner tutorial for using OrthoFinder</h2>
+
+<p>This tutorial will cover:</p>
+
+<ul>
+  <li><a href="#downloading-orthofinder">Downloading OrthoFinder</a></li>
+  <li><a href="#running-orthofinder">Running OrthoFinder</a></li>
+  <li><a href="#exploring-the-results-of-orthofinder">Exploring the results of OrthoFinder</a></li>
+</ul>
+
+<p>OrthoFinder requires as input the amino acid sequences for all the protein coding genes in
+your species of interest. We provide a separate tutorial for getting input files for OrthoFinder
+<em>need to add link to the ‘Getting Input Data’ page</em></p>
+
+<p>All these steps will be done on the command line so that you can just copy and
+paste the commands yourself. If you are not familiar with the command line there
+are many online tutorials and reference pages, <a href="https://www.techspot.com/guides/835-linux-command-line-basics/">here</a> is a nice short one that covers
+the basics.</p>
+
+<h3 id="downloading-orthofinder">Downloading OrthoFinder</h3>
+
+<p>There are two main ways of getting OrthoFinder. You can either use conda, or you can
+install it directly from github. Installing directly from github will always give you the latest
+version, but you might have to manually install other software that OrthoFinder is
+dependent on, and it can be trickier to troubleshoot if you aren’t familiar with the
+command line. Conda automates the installation process and handles all dependencies,
+making it very beginner-friendly.
+To install via conda, we first need to install miniconda. Follow the instructions <a href="https://docs.anaconda.com/miniconda/">here</a></p>
+
+<p>We then need to run these commands</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>conda config --add channels defaults conda config --add channels bioconda conda config
+--add channels conda-forge
+conda create -n orthofinder
+conda activate orthofinder
+conda install orthofinder
+</code></pre></div></div>
+
+<p>If you are on one of the newer Macs with the new chips (M1/M2/M3), you might need to
+follow a few extra steps to use conda. Check out the guide <a href="https://towardsdatascience.com/how-to-manage-conda-environments-on-an-applesilicon-
+m 1-mac-1e29cb3bad12">here</a>.</p>
+
+<p>To install directly from github, we need to run these commands</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python3 -m venv of3_env
+. of3_env/bin/activate
+pip install git+https://github.com/OrthoFinder/OrthoFinder.git
+</code></pre></div></div>
+
+<p>You can test that OrthoFinder has been installed by printing its help file
+<code class="language-plaintext highlighter-rouge">orthofinder -h</code>, which will print all of the command line options.</p>
+
+<p>You can test that OrthoFinder is working correctly by running it on the example
+dataset, which you can download from our <a href="https://github.com/OrthoFinder/OrthoFinder/">github</a></p>
+
+<p><code class="language-plaintext highlighter-rouge">orthofinder -f ExampleData/</code></p>
+
+<p>OrthoFinder will print lots of information to the command line as it runs. If you get an
+error message, the best way to troubleshoot is to just google the error message. You
+can also ask a question on our <a href="https://github.com/OrthoFinder/OrthoFinder/issues">github</a></p>
+
+<p>When OrthoFinder has finished running, it will generate a folder containing the output,
+with the folder named according to today’s date.
+‘ExampleData/OrthoFinder/Results_Jul12’ The folder looks like this:</p>
+
+<p><em>Beginner_img1</em></p>
+
+<p>We’ll discuss how to interpret and analyse these files and folders later on, in the
+‘Exploring the results’ section of the tutorial.</p>
+
+<h3 id="running-orthofinder">Running OrthoFinder</h3>
+
+<p>You can now run OrthoFinder
+First, you have to open a terminal and navigate to the directory where your files
+are. You can now run OrthoFinder on your proteomes.</p>
+
+<p><code class="language-plaintext highlighter-rouge">orthofinder -f primary_transcripts</code></p>
+
+<p>That’s it! OrthoFinder will print updates on its progress to the terminal, and tell you when
+it’s finished. To see what options you might want to adjust for your own data, check out the github, or the advanced tutorial
+*link to the ‘advanced tutorial’ page</p>
+
+<h3 id="exploring-the-results-of-orthofinder">Exploring the results of OrthoFinder</h3>
+
+<p>OrthoFinder creates a results directory named OrthoFinder inside the proteome
+directory, and puts the results here. My results directory looks like this:</p>
+
+<p><em>Beginner_img2</em></p>
+
+<h4 id="step-1-quality-control">Step 1: Quality Control</h4>
+
+<p>Before we start diving into the orthogroups, it would behoove us to check the quality
+of the OrthoFinder run. We want to make sure that most genes across all species
+have been assigned to orthogroups, and that the species tree looks realistic.</p>
+
+<p>Open the file Statistics_Overall.tsv from the folder ‘Comparative_Genomics_Statistics’. This file can be opened in spreadsheet software
+like Microsoft Excel, or in a text editor like Notepad.</p>
+
+<p>On the 5th line, we can see the ‘Percentage of genes in orthogroups’, which in my case
+is 95.7%.</p>
+
+<p><em>Beginner_img3</em></p>
+
+<p>A good rule of thumb is that this number should be &gt;80%. If not, you are likely missing
+some orthology relationships that actually exist. The best way to fix this would be better
+species sampling.</p>
+
+<p>Now open the file ‘Statistics_PerSpecies’, from the same folder. This file gives us the
+% of genes in each species that are assigned to orthogroups, rather than the
+percentage for all genes across species.</p>
+
+<p>You can see here that we capture most genes across all species.</p>
+
+<p><em>Beginner_img4</em></p>
+
+<p>The lowest percentage is the kiwi (<em>A. haastii</em>), but we still managed to assign 94% of its
+genes to orthogroups. The key message here is that it’s always a good idea to look at
+this information before you start interpreting your results. If the numbers were too low for
+one species, we might want to consider sampling more species to fill in the long
+evolutionary divergence between species (e.g. something in between a Kiwi and a
+Kakapo, such as a Hoatzin).</p>
+
+<p>One more useful thing to do before we really start to dive in is to look at the species
+tree. Go to the <a href="https://itol.embl.de/">itol website</a>, and click ‘Upload a tree’.
+You can then drag and drop the tree file, which is in ‘‘Species_Tree/SpeciesTree_rooted.txt’
+You will now see the phylogenetic tree that OrthoFinder has produced. I have annotated
+my version with icons PhyloPic, so that we can see what is going on</p>
+
+<p><em>Beginner_img5</em></p>
+
+<p>We now want to do some common-sense checking that everything appears to be in
+order, and we aren’t rewriting the history of life on earth. With our six species, this tree
+looks exactly as we would expect.
+If the tree doesn’t look correct, then this won’t impact orthogroup inference, but will affect
+our measures of gene duplication, and might affect our assignment of orthologs and
+paralogs within an orthogroup. If you need to, you can run OrthoFinder with your own
+species tree (use the -s option).</p>
+
+<h4 id="step-2-interpreting-results">Step 2: Interpreting results</h4>
+
+<p>Now that we are happy with our OrthoFinder run, we can start diving into the results.</p>
+
+<h5 id="orthologues">Orthologues</h5>
+
+<p>We will start by finding orthologues of a gene that we are interested in.</p>
+
+<p>We will focus on the gene ENSVURG00010002700.1 in wombats, which is an
+olfactory receptor. Let’s find out what its orthologues are in the Tammar wallaby.
+In the Orthologues directory there is a sub-directory for each species.</p>
+
+<p>Open ‘Orthologues/Orthologues_Vombatus_ursinus/Vombatus_ursinus v
+Notamacropus_eugeni i.tsv’, in a spreadsheet program (specifying that it’s tab-delimited
+if necessary). The file has three columns, “Orthogroup”, “Vombatus_ursinus”, and
+“Notamacropus_eugenii”. Find ‘ENSVURG00010002700.1’ in the table, I can see that
+the gene is in orthogroup OG0000365 and that it has three orthologues in wallabies:
+ENSMEUG00000016785.1, ENSMEUG00000001827.1, ENSMEUG00000010434.1</p>
+
+<h5 id="gene-trees">Gene trees</h5>
+
+<p>Next, we are going to look at the gene tree to see how these orthologues arose.
+OrthoFinder infers orthlologues from ‘resolved’ gene trees using a Duplication-Loss-
+Coalescence analysis to identify the more parsimonious interpretation of the tree (see
+the OrthoFinder2 <a href="https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1832-y">paper</a> for more details).</p>
+
+<p>All of the gene trees are in one file (Resolved_Gene_Trees/Resolved_Gene_Trees.txt).
+Each line of the file contains the ID of an orthogroup (e.g. OG0000365:), followed by the
+gene tree for that orthogroup. To find the tree for certain orthogroup, just search for the
+orthogroup ID.</p>
+
+<p>We are going to view the tree for OG0000365 on <a href="https://itol.embl.de/">itol</a></p>
+
+<p><em>Beginner_img6</em></p>
+
+<p>Looking at the gene tree, we can see that there have been several gene duplications in
+the lineage leading to wallabies (<em>Notamacropus</em>). This has resulted in a one-to-three
+orthology relationship, i.e. all three of the wallaby genes are equally related to the
+wombat gene ENSVURG00010002700.1. It’s often the case that orthology relationships
+aren’t one-to-one, and it’s important to know this—you don’t want to spend months doing
+experiments on ‘the orthologue’ only to find out later there are actually three!</p>
+
+<h5 id="gene-duplications">Gene duplications</h5>
+
+<p>Having the gene trees means that OrthoFinder can identify all gene duplication events
+that occurred. There is a folder called ‘Gene_Duplication_Events’ that has two files that
+allow us to explore duplications. Let’s first open
+‘Gene_Duplication_Events/SpeciesTree_Gene_Duplications_0.5_Support.txt’ in itol.
+Go into the ‘Advanced’ tab on the Control Panel and select ‘Display’ next to ‘Node IDs:’
+to see the node labels</p>
+
+<p><em>Beginner_img7</em></p>
+
+<p>This gives a summary of gene duplication events. Each node shows the node name
+followed by an underscore and then the number of well-supported gene duplication
+events mapped to each node in the species tree. Gene-duplication events are
+considered ‘well-supported’ if at least 50% of the descendant species have retained
+both copies of the duplicated gene. For the common ancestor of the mammals, N2, there were 812 of these well-supported gene duplication events. The numbers after the
+species names are the number of ‘terminal’ duplications that map to that species, rather
+than an internal node of the species tree.</p>
+
+<p>We can see the full list of gene duplication
+events in the file ‘Gene_Duplication_Events/Duplications.tsv’. Here are just a few lines
+from the file:</p>
+
+<p><em>Beginner_img8</em></p>
+
+<p>Each gene duplication event is cross-referenced to the species tree node, and the node
+in the gene tree. It also lists the genes descended from each of the two copies arising
+from the gene duplication event. We can check this out for our wombat olfactory
+receptor orthologues.</p>
+
+<p><em>Beginner_img9</em></p>
+
+<p>These events are also summarised by orthogroup and by species tree node in the files
+Duplications_per_Orthogroup.tsv and Duplications_per_Species_Tree_Node.tsv which are
+both in the directory Comparative_Genomics_Statistics/.</p>
+
+<h5 id="orthogroups">Orthogroups</h5>
+
+<p>Often we’re interested in group-wise species comparisons, that is comparisons across a
+clade of species rather than between a pair of species. The generalisation of orthology
+to multiple species is the orthogroup. Just like orthologues are the genes descended
+from a single gene in the last common ancestor of a pair of species an orthogroup is the
+set of genes descended from a single gene in a group of species. Each gene tree from
+OrthoFinder, for example the one above, is for one orthogroup. The orthogroup gene
+tree is the tree we need to look at if we want it to include all pairwise orthologues. And
+even though some of the genes within an orthogroup can be paralogs of one another, if
+we tried to take any genes out then we would also be removing orthologs too.</p>
+
+<p>So if we want to do a comparison of the ‘equivalent’ genes in a set of species, we need
+to do the comparison across the genes in an orthogroup. The orthogroups are in the file
+Orthogroups/Orthogroups.tsv. This table has one orthogroup per line and one species
+per column and is ordered from largest orthogroup to smallest.</p>
+
+<h5 id="hierarchical-orthogroups">Hierarchical Orthogroups</h5>
+
+<p>OrthoFinder3 also infers hierarchical orthogroups for each node in the species tree. A
+file equivalent to Orthogroups/Orthogroups.tsv is available for each node in
+‘/Phylogenetic_Hierarchical_Orthogroups’. You can compare the node number (e.g. N3)
+to the species tree, to see which species will be included.</p>
+
+<h5 id="orthogroup-sequences">Orthogroup sequences</h5>
+
+<p>For each orthogroup there is a FASTA file in Orthogroup_Sequences/ which contains the
+sequences for the genes in that orthogroup.</p>
+
+<h5 id="other-results-files">Other results files</h5>
+
+<p>We have now covered all of the main output files that will be useful to most users, but
+OrthoFinder also outputs much more useful information! A full description of the output
+files is available below.</p>
+
+<p>There are also some useful community tools that allow interactive viewing of results,
+such as <a href="https://orthobrowserexamples.netlify.app/">OrthoBrowser</a></p>
+
+
+  </div><a class="u-url" href="/OrthoFinder/tutorials/beginner-tutorial/" hidden></a>
+</article>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        fetch("https://api.github.com/repos/OrthoFinder/OrthoFinder/releases")
+            .then(response => response.json())
+            .then(data => {
+                const assets = data.flatMap(release => release.assets);
+                document.querySelectorAll(".download-count").forEach(el => {
+                    const assetName = el.getAttribute("data-asset");
+                    const match = assets.find(a => a.name === assetName);
+                    if (match && match.download_count !== undefined) {
+                        el.innerHTML = `<i class="fa fa-download" aria-hidden="true"></i> ${match.download_count} downloads`;
+                    } else {
+                        el.textContent = "(not found)";
+                    }
+                });
+            })
+            .catch(error => {
+                console.error("GitHub API fetch error:", error);
+                document.querySelectorAll(".download-count").forEach(el => {
+                    el.textContent = "(error)";
+                });
+            });
+    });
+</script>
+        
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/OrthoFinder/"></data>
+
+  <div class="wrapper">
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col">
+
+        <!-- <p class="feed-subscribe">
+          <a href="http://localhost:4000/OrthoFinder/feed.xml">
+            <svg class="svg-icon orange">
+              <use xlink:href="/OrthoFinder/assets/minima-social-icons.svg#rss"></use>
+            </svg><span>Subscribe</span>
+          </a>
+        </p> -->
+
+        <!--<ul class="social-media-list"><li>
+  <a rel="me" href="" target="_blank" title="GitHub">
+    <svg class="svg-icon grey">
+      <use xlink:href="/OrthoFinder/assets/minima-social-icons.svg#github"></use>
+    </svg>
+  </a>
+</li>
+
+
+</ul>
+-->
+         
+        <div class="social-icons">
+          
+          <a href="https://github.com/OrthoFinder/OrthoFinder" target="_blank" title="GitHub">
+            <svg class="svg-icon grey">
+              <use xlink:href="/OrthoFinder/assets/minima-social-icons.svg#github"></use>
+            </svg>
+            <span>GitHub</span>
+          </a>
+          
+          <!--  -->
+        </div>
+
+
+          <!--
+          <ul class="contact-list">
+
+            Link to the team section instead of listing every author
+            <li>
+              <a href="/OrthoFinder/about/#team">
+                Meet&nbsp;the&nbsp;Team
+              </a>
+            </li>
+
+          </ul> -->
+
+          <ul class="contact-list">
+            <li><a href="/OrthoFinder/about/#team">Meet the Team</a></li>
+          </ul>
+
+
+      </div>
+      
+      <div class="footer-col">
+        <!-- <p>This is a software developed by the [Steven Kelly Lab](http://www.stevekellylab.com/).</p> -->
+        <p><p>This is a software developed by the <a href="http://www.stevekellylab.com/">Steven Kelly Lab</a>.</p>
+</p>
+      </div>
+    </div>
+
+    <!-- <div class="social-links"><ul class="social-media-list"><li>
+  <a rel="me" href="" target="_blank" title="GitHub">
+    <svg class="svg-icon grey">
+      <use xlink:href="/OrthoFinder/assets/minima-social-icons.svg#github"></use>
+    </svg>
+  </a>
+</li>
+
+
+</ul>
+</div> -->
+
+  </div>
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // 1) Find all <pre><code> blocks
+    const codeBlocks = document.querySelectorAll('pre > code');
+
+    codeBlocks.forEach((codeBlock, index) => {
+      // The parent <pre> element
+      const pre = codeBlock.parentNode;
+
+      // 2) Create a container DIV and wrap <pre> inside it
+      const container = document.createElement('div');
+      container.className = 'code-container';
+      pre.parentNode.insertBefore(container, pre);
+      container.appendChild(pre);
+
+      // 3) Create the copy button
+      const button = document.createElement('button');
+      button.className = 'copy-button';
+      button.type = 'button';
+
+      // 4) Insert an inline SVG icon + "Copy" text
+      //    We'll build the SVG as a string, then inject it into button.innerHTML
+      const svgIcon = `
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          fill="currentColor"
+          class="bi bi-files"
+          viewBox="0 0 16 16"
+        >
+            <path d="M13 0H5a1 1 0 0 0-1 1v1H3a2 2 0 0 0-2
+                  2v9.5A1.5 1.5 0 0 0 2.5 15H9v-1H2.5a.5.5
+                  0 0 1-.5-.5V4a1 1 0 0 1 1-1h1v7.5A1.5
+                  1.5 0 0 0 5.5 12H11v-1H5.5a.5.5 0 0
+                  1-.5-.5V1a.5.5 0 0 1 .5-.5H5v3.5A1.5
+                  1.5 0 0 0 6.5 5H13v6h1V1a1 1 0 0 0-1-1z"/>
+        </svg>
+    `;
+      
+
+      
+      button.innerHTML = svgIcon + 'Copy';
+
+      // 5) Assign an ID to <code> if it doesn't have one
+      if (!codeBlock.id) {
+        codeBlock.id = `codeblock-${index}`;
+      }
+
+      // 6) Link button to the code block by ID
+      button.setAttribute('data-clipboard-target', '#' + codeBlock.id);
+
+      // 7) Insert the button into the container
+      container.insertBefore(button, pre);
+    });
+
+    // 8) Initialize Clipboard.js for all .copy-button elements
+    const clipboard = new ClipboardJS('.copy-button');
+    clipboard.on('success', function (e) {
+      e.clearSelection();
+      // Briefly change button text to indicate success
+      e.trigger.innerText = 'Copied!';
+      setTimeout(() => {
+        e.trigger.innerHTML = svgIcon + 'Copy'; // restore icon + text
+      }, 1500);
+    });
+    clipboard.on('error', function (e) {
+      console.error('Failed to copy', e);
+    });
+  });
+</script>
+
+
+  <!-- <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // 1. Find all <pre><code> blocks
+      const codeBlocks = document.querySelectorAll('pre > code');
+
+      codeBlocks.forEach((codeBlock) => {
+        const pre = codeBlock.parentNode;
+
+        // 2. Create a container div to hold the code + button
+        const container = document.createElement('div');
+        container.className = 'code-container';
+
+        // Insert the container before <pre>, then move <pre> inside it
+        pre.parentNode.insertBefore(container, pre);
+        container.appendChild(pre);
+
+        // 3. Create a "Copy" button
+        const button = document.createElement('button');
+        button.className = 'copy-button';
+        button.type = 'button';
+        button.innerText = 'Copy';
+
+        // If the code block doesn’t have an ID, assign one so we can target it
+        let codeId = codeBlock.id;
+        if (!codeId) {
+          codeId = 'codeblock-' + Math.floor(Math.random() * 1000000);
+          codeBlock.setAttribute('id', codeId);
+        }
+
+        // 4. Point the button at the code block
+        button.setAttribute('data-clipboard-target', '#' + codeId);
+
+        // 5. Insert button into the container
+        container.insertBefore(button, pre);
+      });
+
+      // 6. Initialize Clipboard.js
+      const clipboard = new ClipboardJS('.copy-button');
+      clipboard.on('success', function (e) {
+        e.clearSelection();
+        // Change button text to confirm copy
+        e.trigger.textContent = 'Copied!';
+        setTimeout(() => {
+          e.trigger.textContent = 'Copy';
+        }, 2000);
+      });
+      clipboard.on('error', function (e) {
+        console.error('Failed to copy', e);
+      });
+    });
+  </script> -->
+
+
+</footer></body>
+
+</html>
+

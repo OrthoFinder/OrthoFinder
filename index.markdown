@@ -9,7 +9,7 @@ title: Home
 ## Home
 
 <p align="center">
-  <img src="assets/images/concept_figure.png" alt="concept_figure" width="800"/>
+  <img src="assets/images/workflow.jpg" alt="workflow" width="1000"/>
 </p>
 OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and analyzes the gene trees to identify the rooted species tree. The method subsequently identifies all gene duplication events in the complete set of gene trees, and analyses them at both gene tree and species tree level. OrthoFinder further analyzes all of this phylogenetic information to identify the complete set of orthologs between all species, and provide extensive comparative genomics statistics.
 

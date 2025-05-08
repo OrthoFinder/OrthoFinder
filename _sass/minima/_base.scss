@@ -318,18 +318,3 @@ table {
     -ms-overflow-style: -ms-autohiding-scrollbar;
   }
 }
-
-.read-time {
-  font-size: 0.9em;
-  color: #999;
-  /* light gray */
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 4px;
-  margin-bottom: 12px;
-}
-
-.read-time i {
-  font-size: 0.95em;
-}

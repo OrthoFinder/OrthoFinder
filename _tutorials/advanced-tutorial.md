@@ -1,9 +1,10 @@
 ---
 layout: post
 title:  "Advanced Tutorial"
-date:   2025-05-07 09:16:16 +0000
-categories: tutorials
-permalink: /:categories/:title.html
+date:   2025-05-01 09:02:16 +0000
+updated: 2025-05-07
+docs: /assets/docs/advanced-usage.pdf
+pdfs: https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/advanced-usage.pdf
 ---
 
 

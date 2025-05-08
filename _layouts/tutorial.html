@@ -2,6 +2,7 @@
 layout: base
 ---
 
+
 <div class="post">
     <!-- {%- if page.title -%}
     <h1 class="page-heading">{{ page.title }}</h1>
@@ -22,6 +23,7 @@ layout: base
     {%- if page.list_title -%}
     <h2 class="post-list-heading">{{ page.list_title }}</h2>
     {%- endif -%}
+
     <ul class="post-list">
         {%- assign date_format = site.minima.date_format | default: "%b %-d, %Y" -%}
         {%- for post in posts -%}
@@ -38,11 +40,25 @@ layout: base
                     {{ post.title | escape }}
                 </a>
             </h2>
-            <p class="read-time">
+
+            <!-- <p class="read-time">
                 <i class="fa fa-clock-o" aria-hidden="true"></i>
                 {% include read-time.html %}
+            </p> -->
+            <p class="read-time">
+                <i class="fa fa-clock-o" aria-hidden="true"></i> 
+                {% include read-time.html %} | {% include updated-times.html %}
             </p>
 
+            <!-- <p class="post-meta-bar">
+                <a href="{{ post.docs | relative_url }}" target="_blank">
+                    📄 Read in PDF
+                </a> | 
+                <a href="{{ post.pdfs }}" target="_blank">
+                    📄 Download PDF
+                </a> | 
+                {% include download-count.html post=post %}
+            </p> -->
 
 
             <!-- <ul>
@@ -52,7 +68,7 @@ layout: base
             </ul> -->
 
 
-            <span class="post-meta">{{ post.date | date: date_format }}</span>
+            <!-- <span class="post-meta">{{ post.date | date: date_format }}</span> -->
 
             <!-- <div class="container">
                 <section id="tutorials">

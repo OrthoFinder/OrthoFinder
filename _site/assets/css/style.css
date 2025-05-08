@@ -136,10 +136,6 @@ table th { background-color: #f0f0f0; border: 1px solid #e0e0e0; }
 table td { border: 1px solid #e8e8e8; }
 @media screen and (max-width: 800px) { table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; -ms-overflow-style: -ms-autohiding-scrollbar; } }
 
-.read-time { font-size: 0.9em; color: #999; /* light gray */ display: flex; align-items: center; gap: 4px; margin-top: 4px; margin-bottom: 12px; }
-
-.read-time i { font-size: 0.95em; }
-
 /** Site header */
 .site-header { position: fixed; top: 0; left: 0; width: 100%; z-index: 1000; background-color: #ffffff; border-top: 5px solid #424242; border-bottom: 1px solid #e8e8e8; min-height: 37.3px; line-height: 60.75px; }
 
@@ -263,3 +259,19 @@ p { margin-top: 1.2rem; margin-bottom: 1.2rem; /* A slightly larger gap */ }
 .read-time i { font-size: 0.95em; }
 
 .post-number { font-weight: bold; margin-right: 4px; }
+
+.post-meta-bar a { text-decoration: none; color: #444; font-size: 0.9em; }
+
+.post-meta-bar a:hover { text-decoration: underline; }
+
+.team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2.5rem 2rem; text-align: center; }
+
+.team-card { max-width: 300px; margin-inline: auto; }
+
+.team-photo { width: 160px; height: 160px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 6px rgba(0, 0, 0, 0.2); }
+
+.team-name { margin: .8rem 0 .2rem; font-size: 1.35rem; color: #1d5183; }
+
+.team-link { margin: 0 0 .4rem; }
+
+.team-role { margin: 0; font-size: .95rem; color: #444; }

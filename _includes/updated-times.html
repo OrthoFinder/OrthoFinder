@@ -1,0 +1,22 @@
+<!-- {% assign updated_date = page.updated | date: "%Y-%m-%d" %}
+{% assign updated_seconds = updated_date | date: "%s" | plus: 0 %}
+{% assign now_seconds = "now" | date: "%s" | plus: 0 %}
+{% assign days_ago = now_seconds | minus: updated_seconds | divided_by: 86400 %}
+
+<span class="meta-info">
+    🕒 Updated {{ days_ago }} day{% if days_ago != 1 %}s{% endif %} ago
+
+    <i class="fa fa-clock-o" aria-hidden="true"></i>
+    Updated {{ days_ago }} day{% if days_ago != 1 %}s{% endif %} ago
+</span> -->
+
+
+{% assign updated_date = post.updated | date: "%Y-%m-%d" %}
+{% assign updated_seconds = updated_date | date: "%s" | plus: 0 %}
+{% assign now_seconds = "now" | date: "%s" | plus: 0 %}
+{% assign days_ago = now_seconds | minus: updated_seconds | divided_by: 86400 %}
+
+<span class="meta-info">
+    <i class="fa fa-clock-o" aria-hidden="true"></i>
+    Updated {{ days_ago }} day{% if days_ago != 1 %}s{% endif %} ago
+</span>

@@ -7,44 +7,49 @@ permalink: /:categories/:day/:month/:year/:title.html
 ---
 
 <div class="download-item">
+  📦 
     <a href="https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-linux-intel-3.1.0.tar.gz" class="btn">
-        <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
-            <path d="M12 16l4-4H8l4 4zm1-13h2v6h-2V3zm-4 6h8v2H9V9zM4 22h16v-2H4v2z" />
-        </svg>
         orthofinder-linux-intel-3.1.0.tar.gz
     </a>
+    <span class="download-count" data-asset="orthofinder-linux-intel-3.1.0.tar.gz">
+    <i class="fa fa-download" aria-hidden="true"></i>
+    </span>
 </div>
 <div class="download-item">
+  📦 
     <a href="https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-linux-arm-3.1.0.tar.gz" class="btn">
-        <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
-            <path d="M12 16l4-4H8l4 4zm1-13h2v6h-2V3zm-4 6h8v2H9V9zM4 22h16v-2H4v2z" />
-        </svg>
         orthofinder-linux-arm-3.1.0.tar.gz
     </a>
+    <span class="download-count" data-asset="orthofinder-linux-arm-3.1.0.tar.gz">
+    <i class="fa fa-download" aria-hidden="true"></i>
+    </span>
 </div>
 <div class="download-item">
+  📦 
     <a href="https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-macos-arm-3.1.0.tar.gz" class="btn">
-        <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
-            <path d="M12 16l4-4H8l4 4zm1-13h2v6h-2V3zm-4 6h8v2H9V9zM4 22h16v-2H4v2z" />
-        </svg>
         orthofinder-macos-arm-3.1.0.tar.gz
     </a>
+    <span class="download-count" data-asset="orthofinder-macos-arm-3.1.0.tar.gz">
+    <i class="fa fa-download" aria-hidden="true"></i>
+    </span>
 </div>
 <div class="download-item">
+  📦 
     <a href="https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-macos-intel-3.1.0.tar.gz" class="btn">
-        <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
-            <path d="M12 16l4-4H8l4 4zm1-13h2v6h-2V3zm-4 6h8v2H9V9zM4 22h16v-2H4v2z" />
-        </svg>
         orthofinder-macos-intel-3.1.0.tar.gz
     </a>
+    <span class="download-count" data-asset="orthofinder-macos-intel-3.1.0.tar.gz">
+    <i class="fa fa-download" aria-hidden="true"></i>
+    </span>
 </div>
 <div class="download-item">
+  📦 
     <a href="https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-macos-universal-3.1.0.tar.gz" class="btn">
-        <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
-            <path d="M12 16l4-4H8l4 4zm1-13h2v6h-2V3zm-4 6h8v2H9V9zM4 22h16v-2H4v2z" />
-        </svg>
         orthofinder-macos-universal-3.1.0.tar.gz
     </a>
+    <span class="download-count" data-asset="orthofinder-macos-universal-3.1.0.tar.gz">
+    <i class="fa fa-download" aria-hidden="true"></i>
+    </span>
 </div>
 <!--more-->
 

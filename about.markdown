@@ -1,19 +1,20 @@
 ---
 layout: page
-# title: About
+title: About
 permalink: /about/
 ---
 
 
 This is a software developed by the [Steven Kelly Lab](http://www.stevekellylab.com/)
 
-You can find the source code for RECUR at GitHub:
+
+
+
+You can find the source code for OrthoFinder at GitHub:
 [OrthoFinder](https://github.com/OrthoFinder/OrthoFinder)
 
 The Kelly Lab develops software for analysis of biological data (including, genes genomes and quantitative data). This software provides the foundation of our experimental research. Details on individual methods can be found at the links below.
-- [OrthoFinder](https://github.com/OrthoFinder/OrthoFinder):
-Accurate orthogroups, gene trees, species tree, gene duplication events and more, made easy.
-You can find the legacy version [here](https://github.com/OrthoFinder/OrthoFinder).
+- [RECUR](https://github.com/OrthoFinder/RECUR): Identifying recurrent amino acid substitutions from multiple sequence alignments
 
 - [OGtoberfest](https://github.com/OrthoFinder/OGtoberfest): Benchmarking Orthogroups and Orthologs
 
@@ -38,3 +39,26 @@ DendroBLAST:  Fast and accurate phylogenetic trees from BLAST scores.
 SLaP mapper:  Identification and and analysis of Spliced-Leader Addition and Polyadenylation sites in kinetoplastid genomes.
 
 Conditional Orthology Assignment: a webserver for identifying homologous transcripts from a whole de novo transcriptome assembly.
+
+
+## Meet&nbsp;the&nbsp;Team {#team}
+
+### Current&nbsp;Team&nbsp;Member {#team-current}
+
+<div class="team-grid">
+{% assign current_team = site.data.team | where: "status", "Current" %}
+{% for member in current_team %}
+  {% include team-card.html member=member %}
+{% endfor %}
+</div>
+
+---
+
+### Former&nbsp;Team&nbsp;Member {#team-former}
+
+<div class="team-grid">
+{% assign former_team = site.data.team | where: "status", "Former" %}
+{% for member in former_team %}
+  {% include team-card.html member=member %}
+{% endfor %}
+</div>

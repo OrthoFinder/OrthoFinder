@@ -1,0 +1,35 @@
+<div class="team-card">
+    <img class="team-photo" src="{{ member.photo | relative_url }}" alt="{{ member.name }}">
+
+    {%- if member.scholar -%}
+    <h3 class="team-name">
+        <a href="{{ member.scholar }}" target="_blank" rel="noopener">
+            {{ member.name }}
+        </a>
+    </h3>
+    {%- elsif member.website -%}
+    <h3 class="team-name">
+        <a href="{{ member.website }}" target="_blank" rel="noopener">
+            {{ member.name }}
+        </a>
+    </h3>
+    {%- elsif member.github -%}
+    <h3 class="team-name">
+        <a href="{{ member.github }}" target="_blank" rel="noopener">
+            {{ member.name }}
+        </a>
+    </h3>
+    {%- else -%}
+    <h3 class="team-name">{{ member.name }}</h3>
+    {%- endif %}
+
+    <!-- {%- if member.github -%}
+    <p class="team-link">
+        <a href="{{ member.github }}" target="_blank" rel="noopener">GitHub</a>
+    </p>
+    {%- endif %} -->
+
+    {%- if member.role -%}
+    <p class="team-role">{{ member.role }}</p>
+    {%- endif %}
+</div>
