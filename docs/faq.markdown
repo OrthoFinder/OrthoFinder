@@ -7,8 +7,9 @@ permalink: /faq/
 ## Frequently Asked Questions
 
 
-#### **1. How many sequences can OrthoFinder handle?**
- 
+#### **1. How many species can OrthoFinder handle?**
+
+Tens of thousands
 
 
 

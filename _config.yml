@@ -80,7 +80,6 @@ header_pages:
   - index.markdown # Home
   - about.markdown
   - docs/download.markdown
-  - docs/installation.markdown
   - docs/tutorials.markdown
   - docs/faq.markdown
 

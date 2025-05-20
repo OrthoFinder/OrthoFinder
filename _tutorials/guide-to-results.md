@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Guid to Results"
+title:  "Guide to Results"
 date:   2025-05-01 09:05:16 +0000
 updated: 2025-05-06
 docs: /assets/docs/guide-to-results.pdf
