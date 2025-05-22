@@ -273,3 +273,35 @@ p {
 .faq-bullet-text {
     line-height: 1.6;
 }
+
+
+.tight-bullets {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.tight-bullets li {
+    margin-bottom: 1.2rem;
+}
+
+.bullet-header {
+    display: flex;
+    align-items: baseline;
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.bullet {
+    margin-right: 0.4rem;
+}
+
+.bullet-title {
+    font-weight: bold;
+}
+
+.bullet-text {
+    margin-left: 0.7rem;
+    line-height: 1.5;
+    margin-top: 0.2rem;
+}
