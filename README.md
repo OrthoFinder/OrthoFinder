@@ -5,13 +5,13 @@
 OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and analyzes the gene trees to identify the rooted species tree. The method subsequently identifies all gene duplication events in the complete set of gene trees, and analyses them at both gene tree and species tree level. OrthoFinder further analyzes all of this phylogenetic information to identify the complete set of orthologs between all species, and provide extensive comparative genomics statistics.
 
 ## Table of contents
-- [Installation](#Installation)
-- [Simple Usage](#Simple-Usage)
-- [Advanced Usage - Scaling to Thousands of Species](#Advanced-Usage-Scaling-to-Thousands-of-Species)
-- [Command line Options](#Command-line-Options)
-- [Output files](#Output-files)
-- [Latest additions](#Latest-additions)
-- [Citation](#Citation)
+- [Installation](#installation)
+- [Simple Usage](#simple-usage)
+- [Advanced Usage - Scaling to Thousands of Species](#advanced-usage---scaling-to-thousands-of-species)
+- [Command line Options](#command-line-options)
+- [Output files](#output-files)
+- [Latest additions](#latest-additions)
+- [Citation](#citation)
 
 A single PDF with all documentation and tutorial is available [here](https://github.com/OrthoFinder/OrthoFinder/blob/update_readme/assets/docs/of3_v2.pdf). For more information please visit [our website](https://orthofinder.github.io/OrthoFinder/).
 
