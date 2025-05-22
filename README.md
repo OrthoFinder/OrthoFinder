@@ -13,13 +13,13 @@ OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and a
 - [Latest additions](#Latest-additions)
 - [Citation](#Citation)
 
-A single PDF with all documentation and tutorial is available [here](https://github.com/OrthoFinder/OrthoFinder/blob/update_readme/assets/docs/of3_v2.pdf)
+A single PDF with all documentation and tutorial is available [here](https://github.com/OrthoFinder/OrthoFinder/blob/update_readme/assets/docs/of3_v2.pdf). For more information please visit [our website](https://orthofinder.github.io/OrthoFinder/).
 
 ## Installation
 
 ### Install in conda (recommended) 
 
-The easiest way to install OrthoFinder is using [conda](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/).
+The simplest way to install OrthoFinder is through [conda](https://anaconda.org/bioconda/orthofinder). If you're unfamiliar with conda, [this tutorial](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/) offers a beginner-friendly introduction.
 
 ```bash
 conda create -n of3_env python=3.10
