@@ -7,6 +7,12 @@
             {{ member.name }}
         </a>
     </h3>
+    {%- elsif member.researchgate -%}
+    <h3 class="team-name">
+        <a href="{{ member.researchgate }}" target="_blank" rel="noopener">
+            {{ member.name }}
+        </a>
+    </h3>
     {%- elsif member.website -%}
     <h3 class="team-name">
         <a href="{{ member.website }}" target="_blank" rel="noopener">
@@ -16,6 +22,12 @@
     {%- elsif member.github -%}
     <h3 class="team-name">
         <a href="{{ member.github }}" target="_blank" rel="noopener">
+            {{ member.name }}
+        </a>
+    </h3>
+    {%- elsif member.linkedin -%}
+    <h3 class="team-name">
+        <a href="{{ member.linkedin }}" target="_blank" rel="noopener">
             {{ member.name }}
         </a>
     </h3>

@@ -270,8 +270,44 @@ p { margin-top: 1.2rem; margin-bottom: 1.2rem; /* A slightly larger gap */ }
 
 .team-photo { width: 160px; height: 160px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 6px rgba(0, 0, 0, 0.2); }
 
-.team-name { margin: .8rem 0 .2rem; font-size: 1.35rem; color: #1d5183; }
+.team-name { margin: 0.8rem 0 0.2rem; font-size: 1.25rem !important; color: #1d5183; font-weight: 500 !important; }
 
 .team-link { margin: 0 0 .4rem; }
 
-.team-role { margin: 0; font-size: .95rem; color: #444; }
+.team-role { margin: 0; font-size: 1rem !important; color: #444; font-weight: bold !important; }
+
+.qa-list { list-style: decimal outside; padding-left: 1rem; margin-left: 0; }
+
+.qa-list ul { margin: 0.5rem 0 1rem 1.2rem; padding-left: 0.8rem; line-height: 1.6; }
+
+.qa-list ul li { margin-bottom: 1rem; }
+
+.qa-numbered-question { font-weight: 600; font-size: 1.2rem; color: #000; display: inline-block; margin-bottom: 0.5rem; margin-left: 0; display: block; }
+
+.qa-answer { margin: 0.4rem 0 1.2rem 0; line-height: 1.6; }
+
+.qa-answer-block ul { list-style-position: inside; padding-left: 0; margin: 0.4rem 0 1rem 0; line-height: 1.6; }
+
+.qa-answer-block ul li { margin-bottom: 0.4rem; }
+
+.qa-answer-block { margin-left: 0; }
+
+.qa-answer-block > p:first-of-type { margin-top: 0.4rem; margin-bottom: 0.4rem; }
+
+.qa-bullet-list { list-style-position: inside; padding-left: 0; margin: 0.4rem 0 1rem 0; }
+
+.qa-bullet-list li { margin-bottom: 0.1rem; line-height: 1.2; }
+
+.faq-bullet-list { list-style: none; margin: 0; padding: 0; }
+
+.faq-bullet-list li { margin-bottom: 1.2rem; }
+
+.faq-bullet-wrapper { display: flex; align-items: flex-start; gap: 0.6rem; }
+
+.faq-bullet { font-size: 1.2rem; line-height: 1.4; padding-top: 0.2rem; flex-shrink: 0; }
+
+.faq-bullet-body { flex: 1; }
+
+.faq-bullet-title { font-family: inherit; font-weight: 700; font-style: italic; font-size: 1rem; line-height: 1.4; margin-bottom: 0.2rem; }
+
+.faq-bullet-text { line-height: 1.6; }

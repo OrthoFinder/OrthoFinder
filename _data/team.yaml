@@ -1,25 +1,28 @@
 - name: David Emms
-  photo: /assets/team/david.jpeg
-  github: https://github.com/davidemms/
-  role: Software engineering for OrthoFinder
+  photo: /assets/team/david-emms.jfif
+  # github: https://github.com/davidemms/
+  linkedin: https://uk.linkedin.com/in/david-emms-381a1850
+  role: Computational Geneticist
   status: Former
 
 - name: Jonathan Holmes
-  photo: /assets/team/jonathon.jpeg
-  scholar: https://scholar.google.com/…
-  github: https://github.com/...
+  photo: /assets/team/jonathan-holmes.jfif
+  researchgate: https://www.researchgate.net/profile/Jonathan-Holmes-8?ev=hdr_xprf
+  # scholar: https://scholar.google.com/…
+  # github: https://github.com/...
+  # linkedin: https://www.linkedin.com/in/jonathan-holmes-ab2794294/
   role: Bioinformatics Specialist
   status: Current
 
 - name: Laurence Belcher
-  photo: /assets/team/laurie.jpeg
-  scholar: https://scholar.google.com/…
-  github: https://github.com/...
+  photo: /assets/team/laurence-belcher.jpg
+  scholar: https://scholar.google.com/citations?user=e3c1TdffPOcC
+  # github: https://github.com/...
   role: Bioinformatics Specialist
   status: Current
 
 - name: Yi Liu
   photo: /assets/team/yi.jpeg
   github: https://github.com/OrthoFinder
-  role: Some weirdo
+  role: Computational Engineer
   status: Current
