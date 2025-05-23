@@ -91,18 +91,6 @@ genes.
     <li><strong><code>Genes 2</code></strong>: the list of genes descended from the other copy of the duplicate gene.</li>
   </ol>
 
-    a. "Orthogroup"
-
-    b. "Species Tree node" (see Species_Tree/SpeciesTree_rooted_node_labels.txt)
-    c. "Gene tree node" (see corresponding orthogroup tree in Resolved_Gene_Trees/)
-    d. "Support" (proportion of expected species for which both copies of the duplicated gene are present)
-    e. "Type"
-      i. "Terminal": duplication on a terminal branch of the species tree
-      ii. "Non-Terminal": duplication on an internal branch of the species tree & therefore shared by more than one species
-      iii. "Non-Terminal: STRIDE": Non-Terminal duplication that also passes the very stringent STRIDE checks for what the topology of the gene tree should be post-duplication)
-    f. "Genes 1" (the list of genes descended from one of the copies of the duplicate gene)
-    g. "Genes 2" (the list of genes descended from the other copy of the duplicate gene.
-
 - **SpeciesTree_Gene_Duplications_0.5_Support.txt**<br> 
   It provides a summation of the
   above duplications over the branches of the species tree. The numbers after each
