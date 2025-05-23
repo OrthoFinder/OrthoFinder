@@ -4,5 +4,4 @@ title: Older Versions
 permalink: /older-versions/
 ---
 
-## Older Versions
-
+<h2 style="margin-bottom: 1.2rem;"><strong>Older Versions</strong></h2>

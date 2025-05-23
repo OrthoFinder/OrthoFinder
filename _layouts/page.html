@@ -3,9 +3,17 @@ layout: base
 ---
 <article class="page">
 
-  <!-- <header class="post-header"> 
-    <h1 class="post-title">{{ page.title | escape }}</h1>
-  </header> -->
+  <header class="post-header">
+    <h1 class="post-title">
+      <strong>
+        {% if page.title == "FAQ" %}
+        Frequently Asked Questions
+        {% else %}
+        {{ page.title | escape }}
+        {% endif %}
+      </strong>
+    </h1>
+  </header>
 
   <div class="post-content">
     {{ content }}

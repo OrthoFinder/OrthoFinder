@@ -323,3 +323,7 @@ p { margin-top: 1.2rem; margin-bottom: 1.2rem; /* A slightly larger gap */ }
 .bullet-title { font-weight: bold; }
 
 .bullet-text { margin-left: 0.7rem; line-height: 1.5; margin-top: 0.2rem; }
+
+.figure-wrapper { margin-top: 2rem; }
+
+.figure-caption { font-size: 1.1rem; font-weight: 500; margin-top: 0.6rem; text-align: center; }

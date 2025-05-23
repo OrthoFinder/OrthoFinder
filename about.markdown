@@ -5,7 +5,7 @@ permalink: /about/
 ---
 
 
-## About
+<!-- <h2 style="margin-bottom: 1.2rem;"><strong>About</strong></h2> -->
 
 ### Why OrthoFinder?
 
@@ -52,7 +52,7 @@ We focus on:
 </ul>
 
 ### Development and community
-OrthoFinder is developed by [Steve Kelly’s research group](http://www.stevekellylab.com/) at the University of Oxford. We have an active community of users and developers on github, who can provide help and assistance 
+OrthoFinder is developed by [Steve Kelly’s research group](http://www.stevekellylab.com/) at the University of Oxford. We have an active community of users and developers on GitHub, who can provide help and assistance 
  
 ### Meet&nbsp;the&nbsp;Team {#team}
 

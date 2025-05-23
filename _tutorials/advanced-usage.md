@@ -14,15 +14,14 @@ To run OrthoFinder3 on default setting, you will need diamond, famsa, fasttree, 
 If you install OrthoFinder using a recommended method, you shouldn’t need to install
 any of the dependencies manually, but in case you do;
 ```bash
-Diamond
+# Diamond
 https://github.com/bbuchfink/diamond
-FAMSA
+# FAMSA
 https://github.com/refresh-bio/FAMSA
-FastTree
+# FastTree
 http://www.microbesonline.org/fasttree/#Install
-MCL
+# MCL
 https://github.com/micans/mcl
-
 ```
 ### Running BLAST searches separately
 The `-op` option will prepare the files in the format required by
@@ -42,5 +41,5 @@ and, equally, the files from a previous OrthoFinder run are also in the correct 
 orthofinder -b directory_with_processed_fasta_and_blast_results
 ```
 If you are running the BLAST searches yourself it is strongly recommended that you
-use the `-op` option to prepare the files first (see Section "Running BLAST Searches 
-Separately")
+use the `-op` option to prepare the files first (see Section [Running BLAST Searches 
+Separately](#running-blast-searches-separately))

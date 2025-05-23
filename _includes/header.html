@@ -30,12 +30,12 @@
         {%- for path in page_paths -%}
         {%- assign my_page = site.pages | where: "path", path | first -%}
         {%- if my_page.title -%}
-        <a class="page-link" href="{{ my_page.url | relative_url }}">{{ my_page.title | escape }}</a>
+        <a class="page-link" href="{{ my_page.url | relative_url }}"><strong>{{ my_page.title | escape }}</strong></a>
         {%- endif -%}
         {%- endfor -%}
         
         {% if site.author.github %}
-        <a class="page-link" href="{{ site.author.github }}" target="_blank" title="GitHub Profile">GitHub</a>
+        <a class="page-link" href="{{ site.author.github }}" target="_blank" title="GitHub Profile"><strong>GitHub</strong></a>
         {% endif %}
       </div>
     </nav>

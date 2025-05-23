@@ -4,7 +4,9 @@ title: Download & Install
 permalink: /download_and_install/
 ---
 
-## Download
+<!-- <h2 style="margin-bottom: 1.2rem;"><strong>Download & Install</strong></h2> -->
+
+### Download
 
 Please pick the right `.tar.gz` file to download from the list.
 
@@ -61,9 +63,9 @@ Older versions of OrthoFinder can be downloaded from [here]({{ site.baseurl }}/o
 For a full list of OrthoFinder before v3.0.1b1, see the [GitHub Releases](https://github.com/davidemms/OrthoFinder/releases).
 
 
-## Installation
+### Installation
 
-### Install in conda (recommended) 
+#### Install in conda (recommended) 
 
 The easiest way to install OrthoFinder is using [conda](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/).
 
@@ -75,14 +77,14 @@ conda install orthofinder
 
 Alternatively, you could install via github, or download the source code and install locally.
 
-### Install via github
+#### Install via github
 ```bash
 python3 -m venv of3_env 
 . of3_env/bin/activate
 pip install git+https://github.com/OrthoFinder/OrthoFinder.git
 ```
 
-### Install locally from source code
+#### Install locally from source code
 
 The following commands provide three ways to download the source code of OrthoFinder locally into a directory named `OrthoFinder`.
 ```bash
@@ -108,7 +110,7 @@ To deactivate the virtual environment when you are finished, run:
 deactivate
 ```
 
-### Test your installation
+#### Test your installation
 
 Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/tree/master/ExampleData).
 
@@ -118,7 +120,7 @@ orthofinder --version # Check the version
 orthofinder -f ExampleData # Test OrthoFinder on an example dataset
 ```
 
-### Uninstalling
+#### Uninstalling
 To uninstall on conda:
 ```bash
 conda deactivate

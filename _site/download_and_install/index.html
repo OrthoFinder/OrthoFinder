@@ -35,8 +35,8 @@
         </span>
       </label>
       <div class="trigger">
-        <!--<a class="page-link" href="/OrthoFinder/">Home</a><a class="page-link" href="/OrthoFinder/about/">About</a><a class="page-link" href="/OrthoFinder/download_and_install/">Download &amp; Install</a><a class="page-link" href="/OrthoFinder/tutorial/">Tutorial</a><a class="page-link" href="/OrthoFinder/faq/">FAQ</a>--><a class="page-link" href="/OrthoFinder/">Home</a><a class="page-link" href="/OrthoFinder/about/">About</a><a class="page-link" href="/OrthoFinder/download_and_install/">Download &amp; Install</a><a class="page-link" href="/OrthoFinder/tutorial/">Tutorial</a><a class="page-link" href="/OrthoFinder/faq/">FAQ</a>
-        <a class="page-link" href="https://github.com/OrthoFinder/OrthoFinder" target="_blank" title="GitHub Profile">GitHub</a>
+        <!--<a class="page-link" href="/OrthoFinder/">Home</a><a class="page-link" href="/OrthoFinder/about/">About</a><a class="page-link" href="/OrthoFinder/download_and_install/">Download &amp; Install</a><a class="page-link" href="/OrthoFinder/tutorial/">Tutorials</a><a class="page-link" href="/OrthoFinder/faq/">FAQ</a>--><a class="page-link" href="/OrthoFinder/"><strong>Home</strong></a><a class="page-link" href="/OrthoFinder/about/"><strong>About</strong></a><a class="page-link" href="/OrthoFinder/download_and_install/"><strong>Download &amp; Install</strong></a><a class="page-link" href="/OrthoFinder/tutorial/"><strong>Tutorials</strong></a><a class="page-link" href="/OrthoFinder/faq/"><strong>FAQ</strong></a>
+        <a class="page-link" href="https://github.com/OrthoFinder/OrthoFinder" target="_blank" title="GitHub Profile"><strong>GitHub</strong></a>
         
       </div>
     </nav></div>
@@ -46,7 +46,7 @@
         <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">Download &amp; Install</h1>
+    <h1 class="post-title p-name" itemprop="name headline"><strong>Download &amp; Install</strong></h1>
     <p class="post-meta"><!-- <time class="dt-published" datetime="" itemprop="datePublished">
         
       </time> --><time class="dt-published" datetime="" itemprop="datePublished">
@@ -55,7 +55,9 @@
   </header>
 
   <div class="post-content e-content" itemprop="articleBody">
-    <h2 id="download">Download</h2>
+    <!-- <h2 style="margin-bottom: 1.2rem;"><strong>Download & Install</strong></h2> -->
+
+<h3 id="download">Download</h3>
 
 <p>Please pick the right <code class="language-plaintext highlighter-rouge">.tar.gz</code> file to download from the list.</p>
 
@@ -109,9 +111,9 @@
 <p>Older versions of OrthoFinder can be downloaded from <a href="/OrthoFinder/older-versions/">here</a>.<br />
 For a full list of OrthoFinder before v3.0.1b1, see the <a href="https://github.com/davidemms/OrthoFinder/releases">GitHub Releases</a>.</p>
 
-<h2 id="installation">Installation</h2>
+<h3 id="installation">Installation</h3>
 
-<h3 id="install-in-conda-recommended">Install in conda (recommended)</h3>
+<h4 id="install-in-conda-recommended">Install in conda (recommended)</h4>
 
 <p>The easiest way to install OrthoFinder is using <a href="https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/">conda</a>.</p>
 
@@ -122,13 +124,13 @@ conda <span class="nb">install </span>orthofinder
 
 <p>Alternatively, you could install via github, or download the source code and install locally.</p>
 
-<h3 id="install-via-github">Install via github</h3>
+<h4 id="install-via-github">Install via github</h4>
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python3 <span class="nt">-m</span> venv of3_env 
 <span class="nb">.</span> of3_env/bin/activate
 pip <span class="nb">install </span>git+https://github.com/OrthoFinder/OrthoFinder.git
 </code></pre></div></div>
 
-<h3 id="install-locally-from-source-code">Install locally from source code</h3>
+<h4 id="install-locally-from-source-code">Install locally from source code</h4>
 
 <p>The following commands provide three ways to download the source code of OrthoFinder locally into a directory named <code class="language-plaintext highlighter-rouge">OrthoFinder</code>.</p>
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Download via git </span>
@@ -151,7 +153,7 @@ pip <span class="nb">install</span> <span class="nb">.</span>
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>deactivate
 </code></pre></div></div>
 
-<h3 id="test-your-installation">Test your installation</h3>
+<h4 id="test-your-installation">Test your installation</h4>
 
 <p>Once you have installed OrthoFinder, you can print the help information and version, and test it on the <a href="https://github.com/OrthoFinder/OrthoFinder/tree/master/ExampleData">example data</a>.</p>
 
@@ -160,7 +162,7 @@ orthofinder <span class="nt">--version</span> <span class="c"># Check the versio
 orthofinder <span class="nt">-f</span> ExampleData <span class="c"># Test OrthoFinder on an example dataset</span>
 </code></pre></div></div>
 
-<h3 id="uninstalling">Uninstalling</h3>
+<h4 id="uninstalling">Uninstalling</h4>
 <p>To uninstall on conda:</p>
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>conda deactivate
 conda remove <span class="nt">-n</span> of3_env <span class="nt">--all</span>

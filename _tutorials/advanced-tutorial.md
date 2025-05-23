@@ -8,10 +8,8 @@ pdfs: https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/advanc
 ---
 
 
-## Advanced tutorial for using OrthoFinder3
-
 OrthoFinder3 provides a new workflow to assign new genes from new species to an already 
-inferred set of orthogroups for a smaller, core group of species. If you are analysing >100 species, we reccommend that you use this scalable implementation.
+inferred set of orthogroups for a smaller, core group of species. If you are analysing `>100` species, we reccommend that you use this scalable implementation.
 
 To do this effectively, we need to pick a good set of core species. If we are running
 OrthoFinder on some bees, some moths, and some flies, we want to build our core 
@@ -39,9 +37,7 @@ An important note is that this workflow requires multiple sequence alignments, s
 unfortunately you cannot use it to add to OrthoFinder2 results that were run with the
 default `-M` dendroblast option.
 
-### Using Outgroups 
-
-You can make orthogroup inference more accurate by including outgroup species. You 
+You can make orthogroup inference more accurate by including **outgroup species**. You 
 just need to make sure that you use the correct `N*.tsv` file in 
 Phylogenetic_Hierarchical_Orthogroups to look at the orthogroups (use species tree to 
 discover which one)

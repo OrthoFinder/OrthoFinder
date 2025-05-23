@@ -6,7 +6,7 @@ layout: home
 title: Home
 ---
 
-## Home
+<h2 style="margin-bottom: 1.2rem;"><strong>Home</strong></h2>
 
 <p align="center">
   <img src="assets/images/workflow.jpg" alt="workflow" width="1000"/>

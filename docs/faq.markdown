@@ -5,7 +5,7 @@ permalink: /faq/
 ---
 
 <!-- ## Frequently Asked Questions -->
-<h2 style="margin-bottom: 1.2rem;">Frequently Asked Questions</h2>
+<!-- <h2 style="margin-bottom: 1.2rem;"><strong>Frequently Asked Questions</strong></h2> -->
 
 
 <ol class="qa-list">
@@ -34,7 +34,7 @@ permalink: /faq/
     </div>
   </li>
   <li id="question-4">
-    <span class="qa-numbered-question">How many ‘core’ species should I pick?</span>
+    <span class="qa-numbered-question">How many <code>core</code> species should I pick?</span>
     <div class="qa-answer-block">
         <p>
         It depends on how many species you are analysing (see response to <a href="#question-3">question 3</a>).
