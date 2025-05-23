@@ -20,10 +20,14 @@
   width: 100%; // Span the full width
   z-index: 1000; // Ensure it sits above other elements
   background-color: #ffffff;
+
   // Flex layout: items in a row, aligned center vertically, spaced apart
   // display: flex;
-  // align-items: center;
   // justify-content: space-between; // Title on left, nav on right
+  // padding: 10px 20px;
+  // gap: 40px;
+  // align-items: baseline; // Align text baselines exactly
+
 
   // Optional: add some padding for vertical and horizontal space
   // padding-top: 0.5rem;
@@ -42,6 +46,7 @@
   margin-bottom: 0;
   float: left;
   font-weight: bold;
+  // line-height: 1.5;
 
   @include media-query($on-palm) {
     padding-right: 45px;
@@ -54,6 +59,14 @@
 }
 
 .site-nav {
+  // display: flex;
+  // align-items: center;
+  // border: none;
+  // background-color: inherit;
+  // align-self: center;
+  // position: relative;
+  // top: 2px;
+
   position: absolute;
   top: 9px; // 9px
   right: $spacing-unit * .5;
@@ -61,6 +74,7 @@
   border: 1px solid $border-color-01;
   border-radius: 5px;
   text-align: right;
+
 
   .nav-trigger {
     display: none;
@@ -133,6 +147,14 @@
       display: inline;
       padding: 0;
       margin-left: auto;
+
+      // font-family: 'Arial', sans-serif;
+      font-family: 'Roboto', sans-serif;
+      font-size: 22px;
+      font-weight: normal;
+      text-transform: none;
+      color: #333;
+      text-decoration: none;
 
       &:not(:last-child) {
         margin-right: 20px;
