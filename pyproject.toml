@@ -20,7 +20,7 @@ keywords = [
     "Orthology inference",
     "Phylogeneticrelationships",
 ]
-license = { file = "LICENSE" }
+license = "LGPL-3.0-only"
 classifiers = [
     # How mature is this project? Common values are
     #   3 - Alpha
@@ -74,18 +74,23 @@ convert_orthofinder_tree_ids = "tools.convert_orthofinder_tree_ids:main"
 [tool.semantic_release]
 branch = "master"
 version_source = "tag"
-upload_to_pypi = true
+# upload_to_pypi = true
+upload_to_release = true
 build_command = "python -m build"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["orthofinder*"]
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.package-data]
 "orthofinder.bin" = ["*"]
 "orthofinder.bin.mafft.bin" = ["*"]
 "orthofinder.run" = ["*.json"]
 "ExampleData" = ["*"]
+"*" = ["LICENSE"]
 
 [tool.setuptools.exclude-package-data]
 orthofinder = ["**/__pycache__", "**/*.pyc"]
