@@ -239,27 +239,29 @@ The ``--core --assign`` workflow uses [SHOOT](https://genomebiology.biomedcentra
 OrthoFinder has now extended its phylogenetic approach to orthogroups, allowing orthogroups to be defined for each node within the species tree. This significantly increases the accuracy of orthogroups, and enables users to perform orthogroup analyses for any clade of species in the species tree. 
 
 <p align="center">
-  <img src="assets/images/hog.png" alt="HOGs" width="400"/>
+  <img src="assets/images/hog.png" alt="HOGs" width="300"/>
 </p>
 
 ## Citation
-
-The manuscript "OrthoFinder: scalable phylogenetic orthology inference for comparative genomics" is available as a preprint on biorxiv.
 
 - Latest<br>
   [1] *David M Emms, Yi Liu, Laurence Belcher, Jonathan Holmes, Steven Kelly, 2025.* **OrthoFinder: scalable phylogenetic orthology inference for comparative genomics** bioRxiv. 
 
 - Introduced the orthogroup inference method<br>
-  [2] *Emms, D.M., Kelly, S*. **OrthoFinder: solving fundamental biases in whole genome comparisons dramatically improves orthogroup inference accuracy**. Genome Biol 16, 157 (2015). [![DOT:10.1186/s13059-015-0721-2](https://raw.githubusercontent.com/OrthoFinder/OrthoFinder/master/assets/images/doi-badge.svg)](https://doi.org/10.1186/s13059-015-0721-2)
+  [2] *Emms, D.M., Kelly, S*. **OrthoFinder: solving fundamental biases in whole genome comparisons dramatically improves orthogroup inference accuracy**. Genome Biol 16, 157 (2015). [![DOT:10.1186/s13059-015-0721-2](https://img.shields.io/badge/DOI-10.1186%2Fs13059--015--0723--2-blue)](https://doi.org/10.1186/s13059-015-0721-2)
 
 - Introduced the phylogenetic inference of orthologs, including rooted gene and species trees, and gene duplication events<br>
-  [3] *Emms, D.M., Kelly, S*. **OrthoFinder: phylogenetic orthology inference for comparative genomics**. Genome Biol 20, 238 (2019). [![DOT:10.1186/s13059-019-1832-y](https://raw.githubusercontent.com/OrthoFinder/OrthoFinder/master/assets/images/doi-badge.svg)](https://doi.org/10.1186/s13059-019-1832-y)
+  [3] *Emms, D.M., Kelly, S*. **OrthoFinder: phylogenetic orthology inference for comparative genomics**. Genome Biol 20, 238 (2019).  
+  [![DOI:10.1186/s13059-019-1832-y](https://img.shields.io/badge/DOI-10.1186%2Fs13059--019--1832--y-blue)](https://doi.org/10.1186/s13059-019-1832-y)
 
 - Introduced the STRIDE method to root an unrooted species tree.<br>
-  *Emms DM, Kelly S*. **STRIDE: Species Tree Root Inference from Gene Duplication Events**. Mol Biol Evol. 2017 Dec 1;34(12):3267-3278. [![DOT:10.1093/molbev/msx259](https://raw.githubusercontent.com/OrthoFinder/OrthoFinder/master/assets/images/doi-badge.svg)](https://doi.org/10.1093/molbev/msx259)
-  
+  [4] *Emms DM, Kelly S*. **STRIDE: Species Tree Root Inference from Gene Duplication Events**. Mol Biol Evol. 2017 Dec 1;34(12):3267-3278.  
+  [![DOI:10.1093/molbev/msx259](https://img.shields.io/badge/DOI-10.1093%2Fmolbev%2Fmsx259-blue)](https://doi.org/10.1093/molbev/msx259)
+
 - Introduced the STAG method of species tree inference<br>
-  *D.M. Emms, S. Kelly, 2017*. **STAG: Species Tree Inference from All Genes** bioRxiv. [![DOT:10.1101/267914](https://raw.githubusercontent.com/OrthoFinder/OrthoFinder/master/assets/images/doi-badge.svg)](https://doi.org/10.1101/267914)
+  [5] *D.M. Emms, S. Kelly, 2017*. **STAG: Species Tree Inference from All Genes** bioRxiv.  
+  [![DOI:10.1101/267914](https://img.shields.io/badge/DOI-10.1101%2F267914-blue)](https://doi.org/10.1101/267914)
+
 
 
 ## Meet the team
