@@ -20,7 +20,7 @@ keywords = [
     "Orthology inference",
     "Phylogeneticrelationships",
 ]
-license = { file = "License" }
+license = { file = "LICENSE" }
 classifiers = [
     # How mature is this project? Common values are
     #   3 - Alpha
@@ -33,7 +33,7 @@ classifiers = [
     'Topic :: Scientific/Engineering :: Bio-Informatics',
 
     # Pick your license as you wish (should match "license" above)
-    'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
+    # 'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
 
     # Specify the Python versions you support here.
     'Programming Language :: Python :: 3.8',  # tested
@@ -108,3 +108,12 @@ root = "."
 tag_regex = "^(?P<prefix>v)?(?P<version>[^\\+]+)(?P<suffix>.*)?$"
 fallback_version = "3.1.0"
 local_scheme = "dirty"
+git_describe_command = [
+    "git",
+    "describe",
+    "--dirty",
+    "--tags",
+    "--long",
+    "--match",
+    "v*",
+]
