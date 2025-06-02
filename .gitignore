@@ -207,4 +207,3 @@ CONDUCT.md
 OrthoFinder-manual.pdf
 setup.py
 requirements_dev.txt
-src/orthofinder/_version.py
