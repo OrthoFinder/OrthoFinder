@@ -1,6 +1,6 @@
 # OrthoFinder
 <p align="center">
-  <img src="assets/images/concept_figure.png" alt="concept_figure" width="800"/>
+  <img src="assets/images/coreassignfigure-images-2.JPG" alt="concept_figure" width="800"/>
 </p>
 OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and analyzes the gene trees to identify the rooted species tree. The method subsequently identifies all gene duplication events in the complete set of gene trees, and analyses them at both gene tree and species tree level. OrthoFinder further analyzes all of this phylogenetic information to identify the complete set of orthologs between all species, and provide extensive comparative genomics statistics.
 
@@ -13,7 +13,7 @@ OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and a
 - [Latest additions](#latest-additions)
 - [Citation](#citation)
 
-A single PDF with all documentation and tutorial is available [here](https://github.com/OrthoFinder/OrthoFinder/blob/update_readme/assets/docs/of3_v2.pdf). For more information please visit [our website](https://orthofinder.github.io/OrthoFinder/).
+A single PDF with all documentation and tutorial is available [here](https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/OrthoFinder3_tutorial.pdf). For more information please visit [our website](https://orthofinder.github.io/OrthoFinder/).
 
 ## Installation
 
@@ -42,10 +42,12 @@ The following commands provide three ways to download the source code of OrthoFi
 ```bash
 # Download via git 
 git clone https://github.com/OrthoFinder/OrthoFinder.git
-# or download the zipfile and unzip it into OrthoFinder
-mkdir OrthoFinder && wget -qO- https://github.com/OrthoFinder/OrthoFinder/archive/refs/heads/master.zip | funzip | tar -x --strip-components=1 -C OrthoFinder
-# or download the tar.gz and unzip it into OrthoFinder
-mkdir OrthoFinder && wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.0.1/orthofinder-3.0.1.tar.gz | tar -xz --strip-components=1 -C OrthoFinder
+
+# or download the orthofinder-linux-intel-3.1.0.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine
+mkdir OrthoFinder && wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-linux-intel-3.1.0.tar.gz | tar -xz --strip-components=1 -C OrthoFinder
+
+# or download the orthofinder-macos-intel-3.1.0.tar.gz and unzip it into OrthoFinder a MacOS Intel machine
+mkdir OrthoFinder && wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-macos-intel-3.1.0.tar.gz | tar -xz --strip-components=1 -C OrthoFinder
 ```
 
 Next, you can run the following commands to install OrthoFinder inside the of3_env virtural environment.
@@ -64,7 +66,7 @@ deactivate
 
 ### Test your installation
 
-Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/tree/master/ExampleData).
+Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/ExampleData.tar.gz).
 
 ```bash
 orthofinder --help # Print out help informatioin
@@ -244,13 +246,21 @@ OrthoFinder has now extended its phylogenetic approach to orthogroups, allowing 
 
 The manuscript "OrthoFinder: scalable phylogenetic orthology inference for comparative genomics" is available as a preprint on biorxiv.
 
-[Emms & Kelly (2015)](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-015-0721-2]) introduced the orthogroup inference method.
+- Latest<br>
+  [1] *David M Emms, Yi Liu, Laurence Belcher, Jonathan Holmes, Steven Kelly, 2025.* **OrthoFinder: scalable phylogenetic orthology inference for comparative genomics** bioRxiv. 
 
-[Emms & Kelly (2019)](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1832-y) introduced the phylogenetic inference of orthologs, including rooted gene and species trees, and gene duplication events.
+- Introduced the orthogroup inference method<br>
+  [2] *Emms, D.M., Kelly, S*. **OrthoFinder: solving fundamental biases in whole genome comparisons dramatically improves orthogroup inference accuracy**. Genome Biol 16, 157 (2015). [![DOT:10.1186/s13059-015-0721-2](https://raw.githubusercontent.com/OrthoFinder/OrthoFinder/master/assets/images/doi-badge.svg)](https://doi.org/10.1186/s13059-015-0721-2)
 
-[Emms & Kelly (2017)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5850722/) introduced the STRIDE method to root an unrooted species tree.
+- Introduced the phylogenetic inference of orthologs, including rooted gene and species trees, and gene duplication events<br>
+  [3] *Emms, D.M., Kelly, S*. **OrthoFinder: phylogenetic orthology inference for comparative genomics**. Genome Biol 20, 238 (2019). [![DOT:10.1186/s13059-019-1832-y](https://raw.githubusercontent.com/OrthoFinder/OrthoFinder/master/assets/images/doi-badge.svg)](https://doi.org/10.1186/s13059-019-1832-y)
 
-[Emms & Kelly (2017)](https://www.biorxiv.org/content/10.1101/267914v1) introduced the STAG method of species tree inference.
+- Introduced the STRIDE method to root an unrooted species tree.<br>
+  *Emms DM, Kelly S*. **STRIDE: Species Tree Root Inference from Gene Duplication Events**. Mol Biol Evol. 2017 Dec 1;34(12):3267-3278. [![DOT:10.1093/molbev/msx259](https://raw.githubusercontent.com/OrthoFinder/OrthoFinder/master/assets/images/doi-badge.svg)](https://doi.org/10.1093/molbev/msx259)
+  
+- Introduced the STAG method of species tree inference<br>
+  *D.M. Emms, S. Kelly, 2017*. **STAG: Species Tree Inference from All Genes** bioRxiv. [![DOT:10.1101/267914](https://raw.githubusercontent.com/OrthoFinder/OrthoFinder/master/assets/images/doi-badge.svg)](https://doi.org/10.1101/267914)
+
 
 ## Meet the team
 
