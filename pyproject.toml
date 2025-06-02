@@ -61,8 +61,9 @@ dev = [
     "python-semantic-release",
     "pytest",
     "pytest-cov",
-    "setuptools>=64",
+    "setuptools>=77",
     "setuptools_scm>=8",
+    "packaging>=24.2",
 ]
 
 [project.scripts]
