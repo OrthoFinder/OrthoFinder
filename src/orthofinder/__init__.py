@@ -1,13 +1,9 @@
 import multiprocessing as mp
 import os
 import sys
+from setuptools_scm import get_version
 
-# Extract the version number defined in pyproject.toml
-try:
-    from importlib.metadata import version, PackageNotFoundError
-    __version__ = version(__name__)
-except PackageNotFoundError:
-    from ._version import __version__
+__version__ = get_version()
     
 # Find the total number of threads on the host machine
 nThreadsDefault = mp.cpu_count()
