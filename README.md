@@ -247,7 +247,7 @@ The ``--core --assign`` workflow uses [SHOOT](https://genomebiology.biomedcentra
 OrthoFinder has now extended its phylogenetic approach to orthogroups, allowing orthogroups to be defined for each node within the species tree. This significantly increases the accuracy of orthogroups, and enables users to perform orthogroup analyses for any clade of species in the species tree. 
 
 <p align="center">
-  <img src="assets/images/hog.png" alt="HOGs" width="400"/>
+  <img src="assets/images/HOG_figure.png" alt="HOGs" width="400"/>
 </p>
 
 ## Citation
