@@ -108,7 +108,7 @@ markers = [
 
 
 [tool.setuptools_scm]
-# version_file = "src/orthofinder/_version.py"
+write_to = "src/orthofinder/_version.py"
 version_scheme = "no-guess-dev"
 root = "."
 tag_regex = "^(?P<prefix>v)?(?P<version>[^\\+]+)(?P<suffix>.*)?$"
