@@ -1,16 +1,19 @@
 [build-system]
-requires = ["setuptools>=64", "setuptools_scm>=8", "wheel"]
+requires = ["setuptools>=64", "setuptools_scm>=8", "wheel", "packaging"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "orthofinder"
 authors = [
     { name = "David Emms", email = "david_emms@hotmail.com" },
+    { name = "Jonathan Holmes", email = "jonathan.holmes@biology.ox.ac.uk" },
+    { name = "Laurence Belcher", email = "laurence.belcher@biology.ox.ac.uk" },
     { name = "Yi Liu", email = "caoxen7ys@yahoo.com" },
 ]
 description = "Phylogenetic orthology inference for comparative genomics"
 readme = "README.md"
-version = "3.0.1"
+dynamic = ["version"]
+# version = "3.1.0"
 requires-python = ">=3.8"
 keywords = [
     "comparative genomics",
@@ -40,17 +43,17 @@ classifiers = [
     "Programming Language :: Python :: 3.12", # tested
 ]
 dependencies = [
-    "numpy", 
-    "scipy", 
-    "scikit-learn", 
-    "biopython", 
-    "rich", 
-    "ete3", 
+    "numpy",
+    "scipy",
+    "scikit-learn",
+    "biopython",
+    "rich",
+    "ete3",
     "six",
 ]
 
 [project.urls]
-repository = "https://github.com/davidemms/OrthoFinder"
+repository = "https://github.com/OrthoFinder/OrthoFinder"
 
 [project.optional-dependencies]
 build = ["build", "twine", "wheel"]
@@ -61,7 +64,6 @@ dev = [
     "setuptools>=64",
     "setuptools_scm>=8",
 ]
-# colors = ["rich"]
 
 [project.scripts]
 orthofinder = "orthofinder.run.__main__:main"
@@ -70,7 +72,10 @@ make_ultrametric = "tools.make_ultrametric:main"
 convert_orthofinder_tree_ids = "tools.convert_orthofinder_tree_ids:main"
 
 [tool.semantic_release]
-version_variable = "pyproject.toml:version"
+branch = "master"
+version_source = "tag"
+upload_to_pypi = true
+build_command = "python -m build"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -83,7 +88,8 @@ include = ["orthofinder*"]
 "ExampleData" = ["*"]
 
 [tool.setuptools.exclude-package-data]
-mypkg = ["tests"]
+orthofinder = ["**/__pycache__", "**/*.pyc"]
+"*" = ["tests/**"]
 
 [tool.pytest.ini_options]
 addopts = "--cov=orthofinder"
@@ -94,24 +100,11 @@ markers = [
     "regression: marks a test as a regression test",
 ]
 
-[tool.mypy]
-mypy_path = "src"
-check_untyped_defs = true
-disallow_any_generics = true
-ignore_missing_imports = true
-no_implicit_optional = true
-show_error_codes = true
-strict_equality = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unreachable = true
-warn_unused_configs = true
-no_implicit_reexport = true
 
 [tool.setuptools_scm]
 version_file = "src/orthofinder/_version.py"
 version_scheme = "no-guess-dev"
 root = "."
 tag_regex = "^(?P<prefix>v)?(?P<version>[^\\+]+)(?P<suffix>.*)?$"
-fallback_version = "2.5.5"
+fallback_version = "3.1.0"
 local_scheme = "dirty"
