@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=64", "setuptools_scm>=8", "wheel", "packaging"]
+requires = ["setuptools>=77", "setuptools_scm>=8", "wheel", "packaging>=24.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -108,18 +108,7 @@ markers = [
 
 
 [tool.setuptools_scm]
-# write_to = "src/orthofinder/_version.py"
+write_to = "src/orthofinder/_version.py"
 version_scheme = "no-guess-dev"
-root = "."
-tag_regex = "^(?P<prefix>v)?(?P<version>[^\\+]+)(?P<suffix>.*)?$"
+local_scheme = "no-local-version"
 fallback_version = "3.1.0"
-local_scheme = "dirty"
-git_describe_command = [
-    "git",
-    "describe",
-    "--dirty",
-    "--tags",
-    "--long",
-    "--match",
-    "v*",
-]

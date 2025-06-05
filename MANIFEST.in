@@ -1,1 +1,31 @@
-include src/orthofinder/_version.py
+include LICENSE
+include user_config.json
+include README.md
+include pyproject.toml
+
+recursive-include src/orthofinder *.json
+recursive-include ExampleData *
+
+prune tests
+prune .github
+prune assets/docs
+prune src/orthofinder/legacy
+# prune src/orthofinder/bin
+exclude CONTRIBUTING.md
+exclude setup.py
+
+exclude .gitignore
+exclude .pre-commit-config.yaml
+exclude CHANGELOG.md
+exclude DEVNOTES.md
+exclude *.yml
+exclude *.yaml
+
+
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude __pycache__
+global-exclude .DS_Store
+global-exclude *~
+global-exclude *Zone.Identifier
+# global-exclude *.png *.svg

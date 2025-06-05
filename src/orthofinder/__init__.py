@@ -3,10 +3,10 @@ import os
 import sys
 
 try:
-    from ._version import __version__
-except ImportError:
-    from setuptools_scm import get_version
-    __version__ = get_version()
+    from importlib.metadata import PackageNotFoundError, version
+    __version__ = version(__name__)
+except PackageNotFoundError:
+    from ._version import __version__ as __version__
 
     
 # Find the total number of threads on the host machine
