@@ -8,10 +8,11 @@ try:
     from rich import print
 except ImportError:
     ...
-    
-PY2 = sys.version_info <= (3,)
-csv_write_mode = 'wb' if PY2 else 'wt'
-csv_read_mode = 'rb' if PY2 else 'rt'
+
+from . import util
+# PY2 = sys.version_info <= (3,)
+# csv_write_mode = 'wb' if PY2 else 'wt'
+# csv_read_mode = 'rb' if PY2 else 'rt'
 
 
 def split_ortholog_files(d_ologs, q_compress=False):
@@ -31,12 +32,12 @@ def split_ortholog_files(d_ologs, q_compress=False):
             if sp0 == sp1:
                 continue
             if q_compress:
-                file_handles.append(gzip.open(d_out + '%s__v__%s.tsv.gz' % (sp0, sp1), csv_write_mode))
+                file_handles.append(gzip.open(d_out + '%s__v__%s.tsv.gz' % (sp0, sp1), util.csv_write_mode))
             else:
-                file_handles.append(open(d_out + '%s__v__%s.tsv' % (sp0, sp1), csv_write_mode))
+                file_handles.append(open(d_out + '%s__v__%s.tsv' % (sp0, sp1), util.csv_write_mode))
             csv_writers[sp1] = csv.writer(file_handles[-1], delimiter="\t")
             csv_writers[sp1].writerow(("Orthogroup", sp0, sp1))
-        with gzip.open(fn, csv_read_mode) if fn.endswith(".gz") else open(fn, csv_read_mode) as infile:
+        with gzip.open(fn, util.csv_read_mode) if fn.endswith(".gz") else open(fn, util.csv_read_mode) as infile:
             reader = csv.reader(infile, delimiter="\t")
             next(reader)  # skip header
             for row in reader:

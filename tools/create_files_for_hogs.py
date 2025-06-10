@@ -32,7 +32,9 @@ from collections import Counter
 if __name__ == "__main__" and __package__ is None:   
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from scripts_of import util, trees_msa, orthologues, files
+from src.orthofinder.utils import util, files
+from src.orthofinder.tools import trees_msa
+from src.orthofinder.orthogroups import orthogroups_set
 
 
 def process_log(logFN):
@@ -81,7 +83,7 @@ def read_hierarchical_orthogroup(fn, i_skip = 3):
         ogs - List of orthogroups, orthogroup is list of species, species is list 
               of genes
     """
-    with open(fn, csv_read_mode) as infile:
+    with open(fn, util.csv_read_mode) as infile:
         reader = csv.reader(infile, delimiter="\t")
         ogs = []
         next(reader)   # header
@@ -125,7 +127,7 @@ def create_files_for_node(dres, node_name, dout):
     for iog, og in enumerate(ogs):
         try:
             og_ids = [ids_rev[g] for sp in og for g in sp]    # don't care what species they're from (may need to later if this helps identify sequences)
-            og_ids = [orthologues.Seq(g) for g in og_ids if g != "inf_inf"]
+            og_ids = [orthogroups_set.Seq(g) for g in og_ids if g != "inf_inf"]
             fn = d_out_fasta + node_name + (".HOG%07d.fa" % iog)
             fw.WriteSeqsToFasta_withNewAccessions(og_ids, fn, ids)
         except KeyError as e:
