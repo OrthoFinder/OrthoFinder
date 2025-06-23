@@ -120,34 +120,32 @@ def CreateSearchDatabases(speciesInfoObj, options, prog_caller, q_unassigned_gen
 
     for i, iSp in enumerate(iSpeciesToDo):
         fn_fasta = files.FileHandler.GetSpeciesUnassignedFastaFN(iSp) if q_unassigned_genes else files.FileHandler.GetSpeciesFastaFN(iSp)
-        if os.stat(fn_fasta).st_size != 0:
-
-            if options.search_program == "blast":
-                command = " ".join(["makeblastdb", "-dbtype", "prot", "-in", fn_fasta, "-out", files.FileHandler.GetSpeciesDatabaseN(iSp)])
-                util.PrintTime("Creating Blast database %d of %d" % (iSp + 1, len(iSpeciesToDo)))
-                RunBlastDBCommand(command) 
-            else:
-                command = prog_caller.GetSearchMethodCommand_DB(options.search_program, 
-                                                                fn_fasta, 
-                                                                files.FileHandler.GetSpeciesDatabaseN(iSp, options.search_program),
-                                                                options.score_matrix,
-                                                                options.gapopen,
-                                                                options.gapextend,
-                                                                options.method_threads)
-                
-                # util.PrintTime("Creating %s database %d of %d" % (options.search_program, iSp + 1, len(iSpeciesToDo)))
-                ret_code = parallel_task_manager.RunCommand(command, qPrintOnError=True, qPrintStderr=False)
-                if ret_code != 0:
-                    files.FileHandler.LogFailAndExit("ERROR: diamond makedb failed")
-
-            if (i + 1) % update_cycle == 0:
-                progressbar.update(task, advance=update_cycle)
-        
-        else:
+        if os.stat(fn_fasta).st_size == 0:
             if (i + 1) % update_cycle == 0:
                 progressbar.update(task, advance=update_cycle)
             continue
-        
+
+        if options.search_program == "blast":
+            command = " ".join(["makeblastdb", "-dbtype", "prot", "-in", fn_fasta, "-out", files.FileHandler.GetSpeciesDatabaseN(iSp)])
+            util.PrintTime("Creating Blast database %d of %d" % (iSp + 1, len(iSpeciesToDo)))
+            RunBlastDBCommand(command) 
+        else:
+            command = prog_caller.GetSearchMethodCommand_DB(options.search_program, 
+                                                            fn_fasta, 
+                                                            files.FileHandler.GetSpeciesDatabaseN(iSp, options.search_program),
+                                                            options.score_matrix,
+                                                            options.gapopen,
+                                                            options.gapextend,
+                                                            options.method_threads)
+            
+            # util.PrintTime("Creating %s database %d of %d" % (options.search_program, iSp + 1, len(iSpeciesToDo)))
+            ret_code = parallel_task_manager.RunCommand(command, qPrintOnError=True, qPrintStderr=False)
+            if ret_code != 0:
+                files.FileHandler.LogFailAndExit("ERROR: diamond makedb failed")
+
+        if (i + 1) % update_cycle == 0:
+            progressbar.update(task, advance=update_cycle)
+
     progressbar.stop()
 
 def RunSearch_accelerate(options, 
