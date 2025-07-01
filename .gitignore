@@ -21,3 +21,9 @@ TestData/
 tests/
 everything/*
 _site/ExampleData/
+requirements_dev.txt
+scoring_matrix/
+src/
+CONDUCT.md
+DEVNOTES.md
+OrthoFinder-manual.pdf

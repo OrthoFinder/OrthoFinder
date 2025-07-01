@@ -106,7 +106,9 @@
   <li id="question-6">
     <span class="qa-numbered-question">How is the species tree built?</span>
     <p class="qa-answer">
-      <code>--core --assign</code> infers its species tree using Astral Pro III. A regular run uses <code>STRIDE</code> and <code>STAG</code> — <strong>BUT</strong> currently the <code>__main__.py</code> requires Astral to be imported in order to run. So if the binary isn't working, a standard run won't work either.
+      OrthoFinder infers a species tree using multi-copy gene families. OrthoFinder relies on
+      <a href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2129-y" class="btn"> Astral-Pro III
+      </a> and <a href="https://www.biorxiv.org/content/10.1101/267914v1.full.pdf" class="btn"> STAG </a> to infer the species tree from orthogroups created during the initial BLAST and clustering process, these Orthogroups are converted into gene trees using a chosen tree inference method. The root of the unrooted species tree is identified using <a href="https://academic.oup.com/mbe/article/34/12/3267/4259048" class="btn"> STRIDE </a> which identifies well supported duplication events across the tree in order to correct place the root. 
     </p>
   </li>
   <li id="question-7">

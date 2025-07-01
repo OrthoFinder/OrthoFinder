@@ -21,42 +21,6 @@ Please pick the right `.tar.gz` file to download from the list.
     <i class="fa fa-download" aria-hidden="true"></i>
     </span>
 </div>
-<div class="download-item">
-  📦 
-    <a href="https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-linux-arm-3.1.0.tar.gz" class="btn">
-        orthofinder-linux-arm-3.1.0.tar.gz
-    </a>
-    <span class="download-count" data-asset="orthofinder-linux-arm-3.1.0.tar.gz">
-    <i class="fa fa-download" aria-hidden="true"></i>
-    </span>
-</div>
-<div class="download-item">
-  📦 
-    <a href="https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-macos-arm-3.1.0.tar.gz" class="btn">
-        orthofinder-macos-arm-3.1.0.tar.gz
-    </a>
-    <span class="download-count" data-asset="orthofinder-macos-arm-3.1.0.tar.gz">
-    <i class="fa fa-download" aria-hidden="true"></i>
-    </span>
-</div>
-<div class="download-item">
-  📦 
-    <a href="https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-macos-intel-3.1.0.tar.gz" class="btn">
-        orthofinder-macos-intel-3.1.0.tar.gz
-    </a>
-    <span class="download-count" data-asset="orthofinder-macos-intel-3.1.0.tar.gz">
-    <i class="fa fa-download" aria-hidden="true"></i>
-    </span>
-</div>
-<div class="download-item">
-  📦 
-    <a href="https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-macos-universal-3.1.0.tar.gz" class="btn">
-        orthofinder-macos-universal-3.1.0.tar.gz
-    </a>
-    <span class="download-count" data-asset="orthofinder-macos-universal-3.1.0.tar.gz">
-    <i class="fa fa-download" aria-hidden="true"></i>
-    </span>
-</div>
 <!--more-->
 
 Older versions of OrthoFinder can be downloaded from [here]({{ site.baseurl }}/older-versions/).  
@@ -90,16 +54,17 @@ The following commands provide three ways to download the source code of OrthoFi
 ```bash
 # Download via git 
 git clone https://github.com/OrthoFinder/OrthoFinder.git
-# or download the zipfile and unzip it into OrthoFinder
-mkdir OrthoFinder && wget -qO- https://github.com/OrthoFinder/OrthoFinder/archive/refs/heads/master.zip | funzip | tar -x --strip-components=1 -C OrthoFinder
-# or download the tar.gz and unzip it into OrthoFinder
-mkdir OrthoFinder && wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.0.1/orthofinder-3.0.1.tar.gz | tar -xz --strip-components=1 -C OrthoFinder
+# or download the orthofinder-linux-intel-3.1.0.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine
+mkdir OrthoFinder && \
+  wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-linux-intel-3.1.0.tar.gz | \
+  tar -xz --strip-components=1 -C OrthoFinder
 ```
 
 Next, you can run the following commands to install OrthoFinder inside the of3_env virtural environment.
 ```bash
 cd OrthoFinder
-python3 -m venv of3_env && . of3_env/bin/activate
+python3 -m venv of3_env # Create an virtural environment named of3_env
+. of3_env/bin/activate # Activate of3_env
 pip install .
 ```
 
@@ -109,6 +74,12 @@ To deactivate the virtual environment when you are finished, run:
 ```bash
 deactivate
 ```
+
+To activate the virtual environment you have created, run:
+```bash
+. of3_env/bin/activate
+```
+
 
 #### Test your installation
 
