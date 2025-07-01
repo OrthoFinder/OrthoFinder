@@ -1,10 +1,10 @@
 # OrthoFinder
 
 <p align="center">
-  <img src="assets/images/coreassignfigure-images-2.JPG" alt="concept_figure" width="800"/>
+  <img src="assets/images/coreassignfigure-images-2.png" alt="concept_figure" width="800"/>
 </p>
 
-OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and analyzes the gene trees to identify the rooted species tree. The method subsequently identifies all gene duplication events in the complete set of gene trees, and analyses them at both gene tree and species tree level. OrthoFinder further analyzes all of this phylogenetic information to identify the complete set of orthologs between all species, and provide extensive comparative genomics statistics.
+OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and analyzes the gene trees to identify the rooted species tree. The method subsequently identifies all gene duplication events in the complete set of gene trees, and analyses them at both gene tree and species tree level. OrthoFinder further analyzes all of this phylogenetic information to identify the complete set of orthologs between all species, and provides extensive comparative genomics statistics.
 
 ## Table of contents
 
@@ -16,7 +16,7 @@ OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and a
 - [Latest additions](#latest-additions)
 - [Citation](#citation)
 
-A single PDF with all documentation and tutorial is available [here](https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/OrthoFinder3_tutorial.pdf). For more information please visit [our website](https://orthofinder.github.io/OrthoFinder/).
+For more information please visit [our website](https://orthofinder.github.io/OrthoFinder/).
 
 ## Installation
 
@@ -51,17 +51,13 @@ git clone https://github.com/OrthoFinder/OrthoFinder.git
 mkdir OrthoFinder && \
   wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-linux-intel-3.1.0.tar.gz | \
   tar -xz --strip-components=1 -C OrthoFinder
-
-# or download the orthofinder-macos-intel-3.1.0.tar.gz and unzip it into OrthoFinder a MacOS Intel machine
-mkdir OrthoFinder && \
-  wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-macos-intel-3.1.0.tar.gz | \
-  tar -xz --strip-components=1 -C OrthoFinder
 ```
 
 Next, you can run the following commands to install OrthoFinder inside the of3_env virtural environment.
 ```bash
 cd OrthoFinder
-python3 -m venv of3_env && . of3_env/bin/activate
+python3 -m venv of3_env # Create an virtural environment named of3_env
+. of3_env/bin/activate # Activate of3_env
 pip install .
 ```
 
@@ -71,7 +67,11 @@ To deactivate the virtual environment when you are finished, run:
 ```bash
 deactivate
 ```
+To activate the virtual environment you have created, run:
 
+```bash
+. of3_env/bin/activate
+```
 ### Test your installation
 
 Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/ExampleData.tar.gz).
@@ -114,7 +114,7 @@ for f in *fa ; do python primary_transcript.py $f ; done
 
 ## Advanced Usage - Scaling to Thousands of Species
 
-If you are analysing >100 species, we reccommend that you use the scalable implementation. 
+If you are analysing >100 species, we recommend that you use the scalable implementation. 
 
 Add the files for 64 species into one directory `<core>`
 Add the remaining files into another directory `<additional>`
@@ -200,7 +200,7 @@ Command-line options for OrthoFinder
 
 A standard OrthoFinder run produces a set of files describing the orthogroups, orthologs, gene trees, resolve gene trees, the rooted species tree, gene duplication events, and comparative genomic statistics for the set of species being analysed. These files are located in an intuitive directory structure.
 
-Full details on the output files and directories can be found in the PDF [here](link). The directories that are useful for most users are;
+Full details on the output files and directories can be found [here](http://orthofinder.github.io/OrthoFinder/tutorials/guide-to-results/). The directories that are useful for most users are;
 
 **```/Orthogroups```**
 - `Orthogroups.tsv` is the main orthogroup file. Each row contains the genes belonging to a single orthogroup. The genes from each orthogroup are organized into columns, one per species. 
@@ -210,22 +210,22 @@ Full details on the output files and directories can be found in the PDF [here](
 - `Orthogrouops_UnassignedGenes.tsv` is a tab separated text file that contains all of the genes that were not assigned to any orthogroup.
 
 **```/Phylogenetic_Hierarchical_Orthogroups```**
-- Each file is a phylogenetic hierarchical orthogroup (HOG) for a different node of the species tree
-- Each row of a file contain the genes belonging to a single orthogroup
-- Each species is represented by a single column
+- Each file is a phylogenetic hierarchical orthogroup (HOG) for a different node of the species tree.
+- Each row of a file contain the genes belonging to a single orthogroup.
+- Each species is represented by a single column.
 
 **```/Orthologues```**
 - Each species has a sub-directory that in turn contains a file for each pairwise species comparison, listing the orthologs between that species pair.
 
 **```/Comparative_Genomics_Statistics```**
-- Files containing summary statistics across all orthogroups, as well as comparisons between each pair of species
+- Files containing summary statistics across all orthogroups, as well as comparisons between each pair of species.
 
 **```/Resolved_Gene_Trees```**
 - A rooted phylogenetic tree inferred for each orthogroup with 4 or more sequences and resolved using the OrthoFinder hybrid species-overlap/duplication-loss coalescent model.
 
 **```/Species_Tree```**
-- `SpeciesTree_rooted.txt` = A species tree inferred using ASTRAL-Pro.
-- `SpeciesTree_rooted_node_labels.txt` = The same tree, but with nodes labels instead of support values. This labelled version is useful for interpreting and analysing the results of the gene duplication analyses.
+- `SpeciesTree_rooted.txt` is a species tree inferred using STAG or ASTRAL-Pro.
+- `SpeciesTree_rooted_node_labels.txt` is the same tree, but with nodes labels instead of support values. This labelled version is useful for interpreting and analysing the results of the gene duplication analyses.
 
 ```/Gene_Duplication_Events```
 - `Duplications.tsv` has a row for each gene duplication event, with information on orthogroup in which it occured, the species that contain the duplicated gene, the node in the species tree on which the gene duplication event occured, and the support score for the gene duplication event.
@@ -236,11 +236,11 @@ Full details on the output files and directories can be found in the PDF [here](
 
 
 ## Latest additions
-The current version of OrthoFinder has several major changes comapred to OrthoFinder version 2 (Emms & Kelly 2019)
+The current version of OrthoFinder has several major changes comapred to OrthoFinder version 2 ([Emms & Kelly 2019]((https://img.shields.io/badge/DOI-10.1186%2Fs13059--019--1832--y-blue))).
 
 **New workflow for scalability**
 
-The ``--core --assign`` workflow uses [SHOOT](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02652-8) to create profiles for previously computed orthogroups, and adds new genes to these orthogroups without requiring a costly all-versus-all sequence search. Genes that cannot be assigned using the SHOOT approach are analysed using a standard OrthoFinder workflow. 
+The ``--core --assign`` workflow uses the [SHOOT](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02652-8) algorithm to create profiles for previously computed orthogroups, and adds new genes to these orthogroups without requiring a costly all-versus-all sequence search. Genes that cannot be assigned using the SHOOT approach are analysed using a standard OrthoFinder workflow. 
 
 **Phylogenetic Hierarchical Orthogroups**
 
@@ -253,23 +253,22 @@ OrthoFinder has now extended its phylogenetic approach to orthogroups, allowing 
 ## Citation
 
 - Latest<br>
-  [1] *David M Emms, Yi Liu, Laurence Belcher, Jonathan Holmes, Steven Kelly, 2025.* **OrthoFinder: scalable phylogenetic orthology inference for comparative genomics** bioRxiv. 
-
-- Introduced the orthogroup inference method<br>
-  [2] *Emms, D.M., Kelly, S*. **OrthoFinder: solving fundamental biases in whole genome comparisons dramatically improves orthogroup inference accuracy**. Genome Biol 16, 157 (2015). [![DOT:10.1186/s13059-015-0721-2](https://img.shields.io/badge/DOI-10.1186%2Fs13059--015--0723--2-blue)](https://doi.org/10.1186/s13059-015-0721-2)
+  [1] *David M Emms, Yi Liu, Laurence Belcher, Jonathan Holmes, Steven Kelly, 2025.* **OrthoFinder: scalable phylogenetic orthology inference for comparative genomics**. bioRxiv. 
 
 - Introduced the SHOOT method to perform phylogenetic gene search<br>
-  [3] *Emms, D.M., Kelly, S*. **SHOOT: phylogenetic gene search and ortholog inference**. Genome Biol 23, 85 (2022). [![DOI:10.1186/s13059-022-02652-8](https://img.shields.io/badge/DOI-10.1186%2Fs13059--022--02652--8-blue)](https://doi.org/10.1186/s13059-022-02652-8)
+  [2] *Emms, D.M., Kelly, S*. **SHOOT: phylogenetic gene search and ortholog inference**. Genome Biol 23, 85 (2022). [![DOI:10.1186/s13059-022-02652-8](https://img.shields.io/badge/DOI-10.1186%2Fs13059--022--02652--8-blue)](https://doi.org/10.1186/s13059-022-02652-8)
 
 - Introduced the phylogenetic inference of orthologs, including rooted gene and species trees, and gene duplication events<br>
-  [4] *Emms, D.M., Kelly, S*. **OrthoFinder: phylogenetic orthology inference for comparative genomics**. Genome Biol 20, 238 (2019). [![DOI:10.1186/s13059-019-1832-y](https://img.shields.io/badge/DOI-10.1186%2Fs13059--019--1832--y-blue)](https://doi.org/10.1186/s13059-019-1832-y)
+  [3] *Emms, D.M., Kelly, S*. **OrthoFinder: phylogenetic orthology inference for comparative genomics**. Genome Biol 20, 238 (2019). [![DOI:10.1186/s13059-019-1832-y](https://img.shields.io/badge/DOI-10.1186%2Fs13059--019--1832--y-blue)](https://doi.org/10.1186/s13059-019-1832-y)
 
 - Introduced the STRIDE method to root an unrooted species tree.<br>
-  [5] *Emms DM, Kelly S*. **STRIDE: Species Tree Root Inference from Gene Duplication Events**. Mol Biol Evol. 2017 Dec 1;34(12):3267-3278. [![DOI:10.1093/molbev/msx259](https://img.shields.io/badge/DOI-10.1093%2Fmolbev%2Fmsx259-blue)](https://doi.org/10.1093/molbev/msx259)
+  [4] *Emms DM, Kelly S*. **STRIDE: Species Tree Root Inference from Gene Duplication Events**. Mol Biol Evol. 2017 Dec 1;34(12):3267-3278. [![DOI:10.1093/molbev/msx259](https://img.shields.io/badge/DOI-10.1093%2Fmolbev%2Fmsx259-blue)](https://doi.org/10.1093/molbev/msx259)
 
 - Introduced the STAG method of species tree inference<br>
-  [6] *D.M. Emms, S. Kelly, 2017*. **STAG: Species Tree Inference from All Genes** bioRxiv. [![DOI:10.1101/267914](https://img.shields.io/badge/DOI-10.1101%2F267914-blue)](https://doi.org/10.1101/267914)
+  [5] *D.M. Emms, S. Kelly, 2017*. **STAG: Species Tree Inference from All Genes** bioRxiv. [![DOI:10.1101/267914](https://img.shields.io/badge/DOI-10.1101%2F267914-blue)](https://doi.org/10.1101/267914)
 
+- Introduced the orthogroup inference method<br>
+  [6] *Emms, D.M., Kelly, S*. **OrthoFinder: solving fundamental biases in whole genome comparisons dramatically improves orthogroup inference accuracy**. Genome Biol 16, 157 (2015). [![DOT:10.1186/s13059-015-0721-2](https://img.shields.io/badge/DOI-10.1186%2Fs13059--015--0723--2-blue)](https://doi.org/10.1186/s13059-015-0721-2)
 
 ## Meet the team
 
