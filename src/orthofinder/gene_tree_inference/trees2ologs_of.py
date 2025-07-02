@@ -32,6 +32,8 @@ from ..utils import util, files, parallel_task_manager
 PY2 = sys.version_info <= (3,)
 
 debug = False   # HOGs
+# counter = mp.Value('i', 0)
+# lock = mp.Lock()
 
 if not PY2:
     xrange = range
@@ -1955,28 +1957,30 @@ def SortParallelFiles(
     - Duplications
     - HOGs
     """
-   
+
     # HOGs
-    fns_type = [(fn, "h") for fn in glob.glob(os.path.dirname(files.FileHandler.GetHierarchicalOrthogroupsFN("N0.tsv")) + "/*")]
-    if not write_hog_tree:
-        fns_type.append((files.FileHandler.GetWorkingDirectory_Write() + "N0.ids.tsv", "h0"))
+    hog_type = [(fn, "h") for fn in glob.glob(os.path.dirname(files.FileHandler.GetHierarchicalOrthogroupsFN("N0.tsv")) + "/*")]
+    if write_hog_tree:
+        hog_type.append((files.FileHandler.GetWorkingDirectory_Write() + "N0.ids.tsv", "h"))
     
+    other_type = []
     if not write_hog_tree or not fix_files:
         species = [speciesDict[str(sp1)] for sp1 in speciesToUse]
         # Orthologs
         dResultsOrthologues = files.FileHandler.GetOrthologuesDirectory()
         if fewer_open_files:
-            fns_type = [(dResultsOrthologues + '%s.tsv' % sp1, "o") for sp1 in species]
+            other_type = [(dResultsOrthologues + '%s.tsv' % sp1, "o") for sp1 in species]
         else:
             ds = [dResultsOrthologues + "Orthologues_" + sp1 + "/" for sp1 in species]
-            fns_type = [(d + '%s__v__%s.tsv' % (sp1, sp2), "o") for sp1, d in zip(species, ds) for sp2 in species if sp1 != sp2]
+            other_type = [(d + '%s__v__%s.tsv' % (sp1, sp2), "o") for sp1, d in zip(species, ds) for sp2 in species if sp1 != sp2]
         # Xenologs 
         dXenologs = files.FileHandler.GetPutativeXenelogsDir()
-        fns_type.extend([(dXenologs + '%s.tsv' % sp1, "x") for sp1 in species])
+        other_type.extend([(dXenologs + '%s.tsv' % sp1, "x") for sp1 in species])
 
         # Duplications
-        fns_type.append((files.FileHandler.GetDuplicationsFN(), "d"))
-
+        other_type.append((files.FileHandler.GetDuplicationsFN(), "d"))
+    
+    fns_type = hog_type + other_type
     task_size = len(fns_type)
     args_queue = mp.Queue()
     for x in fns_type:
@@ -1998,7 +2002,7 @@ def SortFile(fn, f_type):
         # Need to renumber the hogs as the parallel numbering is incorrect
         with open(fn, util.csv_read_mode) as infile:
             try:
-                header = next(infile)
+                header = next(infile, None)
             except StopIteration:
                 return
             lines = []
@@ -2014,6 +2018,10 @@ def SortFile(fn, f_type):
         with open(fn, util.csv_write_mode) as outfile:
             outfile.write(header)
             for ihog, l in enumerate(lines):
+                # with lock:
+                    # idx = counter.value
+                    # counter.value += 1
+                    # outfile.write(f"{hog_base}.HOG{idx:07d}" + "\t" + l)
                 outfile.write(hog_base + (".HOG%07d" % ihog) + "\t" + l)
     else:
         with open(fn, util.csv_read_mode) as infile:
