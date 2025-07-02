@@ -621,8 +621,9 @@ def OrthologuesWorkflow(
         )
 
     fastaWriter = trees_msa.FastaWriter(files.FileHandler.GetSpeciesSeqsDir(), speciesToUse)
-    ogs = accelerate.read_hogs(files.FileHandler.GetResultsDirectory1(), "N0")
-    ogs = stats.add_unassigned_genes(ogs, ogSet.AllUsedSequenceIDs())
+    # ogs = accelerate.read_hogs(files.FileHandler.GetResultsDirectory1(), "N0")
+
+    ogs = stats.add_unassigned_genes(ogSet.AllOGs(), ogSet.AllUsedSequenceIDs())
     species_dict = {int(k): v for k, v in ogSet.SpeciesDict().items()}
     ids_dict = ogSet.SequenceDict()
 

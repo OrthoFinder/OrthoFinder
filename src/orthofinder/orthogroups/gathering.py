@@ -301,14 +301,15 @@ def post_clustering_orthogroups(
     )
 
     ## --------- this doesn't need to run at this point with the new process --------
-    # if not q_incremental:
-    #     mcl.MCL.CreateOrthogroupTable(
-    #         ogs,
-    #         idsDict,
-    #         speciesNamesDict,
-    #         speciesInfoObj.speciesToUse,
-    #         resultsBaseFilename,
-    #     )
+    if not options.fix_files:
+        if not q_incremental:
+            mcl.MCL.CreateOrthogroupTable(
+                ogs,
+                idsDict,
+                speciesNamesDict,
+                speciesInfoObj.speciesToUse,
+                resultsBaseFilename,
+            )
 
     # Write Orthogroup FASTA files
     ogSet = orthogroups_set.OrthoGroupsSet(

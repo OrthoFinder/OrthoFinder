@@ -262,6 +262,15 @@ class OrthoGroupsSet(object):
 
             # self.ogs_all = sorted(self.ogs_all, key=len, reverse=True)
         return self.ogs_all
+    
+    def AllOGs(self):
+        with open(files.FileHandler.OGsAllIDFN()) as infile:
+                ogs = [og.strip().split(", ") for og in infile]
+        if self.tree_program == "raxml":
+            all_ogs = [[g for g in og]  for og in ogs if len(og) >= self.min_seq]
+        else:
+            all_ogs = [[g for g in og] for og in ogs]
+        return all_ogs
         
     def ID_to_OG_Dict(self):
         if self.id_to_og != None:
