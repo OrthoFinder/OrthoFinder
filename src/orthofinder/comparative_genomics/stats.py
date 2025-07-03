@@ -232,7 +232,7 @@ def Stats(ogs, speciesNamesDict, iSpecies, iResultsVersion, fastaWriter, ids_dic
     util.PrintTime("Done writing files")
     print("\n[bold]Summary: [/bold]")
     summaryText1 = f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] assigned [deep_sky_blue2]{nAssigned}[/deep_sky_blue2] genes ({pAssigned:0.1f}% of total) to [deep_sky_blue2]{nOgs}[/deep_sky_blue2] orthogroups. "
-    summaryText2 = f"[deep_sky_blue2]50[/deep_sky_blue2]%% of genes were in orthogroups with [deep_sky_blue2]{G50}[/deep_sky_blue2] or more genes (G50 was [deep_sky_blue2]{G50}[/deep_sky_blue2]) and were contained in the largest [deep_sky_blue2]{O50}[/deep_sky_blue2] orthogroups (O50 was [deep_sky_blue2]{O50}[/deep_sky_blue2]). "
+    summaryText2 = f"[deep_sky_blue2]50[/deep_sky_blue2]% of genes were in orthogroups with [deep_sky_blue2]{G50}[/deep_sky_blue2] or more genes (G50 was [deep_sky_blue2]{G50}[/deep_sky_blue2]) and were contained in the largest [deep_sky_blue2]{O50}[/deep_sky_blue2] orthogroups (O50 was [deep_sky_blue2]{O50}[/deep_sky_blue2]). "
     summaryText3 = f"There were [deep_sky_blue2]{nCompleteOGs}[/deep_sky_blue2] orthogroups with all species present and [deep_sky_blue2]{nSingleCopy}[/deep_sky_blue2] of these consisted entirely of single-copy genes."
 
     console = Console()
