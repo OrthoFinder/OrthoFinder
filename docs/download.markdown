@@ -31,7 +31,7 @@ For a full list of OrthoFinder before v3.0.1b1, see the [GitHub Releases](https:
 
 #### Install in conda (recommended) 
 
-The easiest way to install OrthoFinder is using [conda](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/).
+The simplest way to install OrthoFinder is through [conda](https://github.com/OrthoFinder/OrthoFinder?tab=readme-ov-file). If you're unfamiliar with conda, [this tutorial](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/) offers a beginner-friendly introduction.
 
 ```bash
 conda create -n of3_env python=3.10
