@@ -117,7 +117,7 @@ def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_name
         reader = csv.DictReader(infile, delimiter='\t')
 
         fieldnames = ["HOG", "OG", "Gene Tree Parent Clade"] + species_names
-        writer = csv.DictWriter(temp_file, fieldnames=fieldnames, delimiter='\t')
+        writer = csv.DictWriter(temp_file, fieldnames=fieldnames, delimiter='\t', lineterminator="\n")
 
         writer.writeheader()
         for row in reader:
@@ -140,7 +140,6 @@ def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_name
             }
             writer.writerow(new_row)
     
-
     os.replace(temp_file.name, hogs_n0_file)
     # shutil.copy(hogs_n0_file, os.path.join(os.path.dirname(hogs_n0_file), "N0_ids.tsv"))
 
