@@ -198,9 +198,11 @@ Command-line options for OrthoFinder
 
 ## Output files
 
+> ***From OrthoFinder `v3.1.0`, `N0.tsv` is removed from `/Phylogenetic_Hierarchical_Orthogroups`. Instead, `Orthogroups/Orthogroups.tsv` contains the orthogroups from `N0.tsv`.***
+
 A standard OrthoFinder run produces a set of files describing the orthogroups, orthologs, gene trees, resolve gene trees, the rooted species tree, gene duplication events, and comparative genomic statistics for the set of species being analysed. These files are located in an intuitive directory structure.
 
-Full details on the output files and directories can be found [here](http://orthofinder.github.io/OrthoFinder/tutorials/guide-to-results/). The directories that are useful for most users are;
+Full details on the output files and directories can be found [here](http://orthofinder.github.io/OrthoFinder/tutorials/guide-to-results/). The directories that are useful for most users are
 
 **```/Orthogroups```**
 - `Orthogroups.tsv` is the main orthogroup file. Each row contains the genes belonging to a single orthogroup. The genes from each orthogroup are organized into columns, one per species. 
@@ -213,6 +215,7 @@ Full details on the output files and directories can be found [here](http://orth
 - Each file is a phylogenetic hierarchical orthogroup (HOG) for a different node of the species tree.
 - Each row of a file contain the genes belonging to a single orthogroup.
 - Each species is represented by a single column.
+- `N0.tsv` from the old version is now `Orthogroups/Orthogroups.tsv`
 
 **```/Orthologues```**
 - Each species has a sub-directory that in turn contains a file for each pairwise species comparison, listing the orthologs between that species pair.
