@@ -256,7 +256,7 @@ OrthoFinder has now extended its phylogenetic approach to orthogroups, allowing 
 ## Citation
 
 - Latest<br>
-  [1] *David M Emms, Yi Liu, Laurence Belcher, Jonathan Holmes, Steven Kelly, 2025.* **OrthoFinder: scalable phylogenetic orthology inference for comparative genomics**. bioRxiv. 
+  [1] *David M Emms, Yi Liu, Laurence Belcher, Jonathan Holmes, Steven Kelly, 2025.* **OrthoFinder: scalable phylogenetic orthology inference for comparative genomics**. bioRxiv. [![DOI:10.1101/2025.07.15.664860](https://img.shields.io/badge/DOI-10.1101%2F2025--07--15--664860-blue)](https://doi.org/10.1101/2025.07.15.664860)
 
 - Introduced the SHOOT method to perform phylogenetic gene search<br>
   [2] *Emms, D.M., Kelly, S*. **SHOOT: phylogenetic gene search and ortholog inference**. Genome Biol 23, 85 (2022). [![DOI:10.1186/s13059-022-02652-8](https://img.shields.io/badge/DOI-10.1186%2Fs13059--022--02652--8-blue)](https://doi.org/10.1186/s13059-022-02652-8)
