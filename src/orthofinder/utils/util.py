@@ -590,7 +590,8 @@ def PrintCitation(d=None):
     # printer.print(print_citation)
     printer.print("\nCITATION:")
     printer.print(" When publishing work that uses [dark_goldenrod]OrthoFinder[/dark_goldenrod] please cite:")
-    printer.print(" Emms D.M., Liu Y., Belcher L., Holmes J. & Kelly S. (2025), bioRxiv")
+    printer.print(" Emms D.M., Liu Y., Belcher L., Holmes J. & Kelly S. (2025), bioRxiv ", end="")
+    printer.print("[dark_cyan][link=https://doi.org/10.1101/2025.07.15.664860]https://doi.org/10.1101/2025.07.15.664860[/link]")
     printer.print(" Emms D.M. & Kelly S. (2019), Genome Biology 20:238\n")
 
     printer.print(" If you use the species tree in your work then please also cite:")
