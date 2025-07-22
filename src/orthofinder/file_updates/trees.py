@@ -3,13 +3,14 @@ import io
 import numpy as np
 import multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor
-import ete3
+import ete4
 
 
 def write_tree(hog_name, subtree, resolved_trees_id_dir):
     try:
         tree_id_file = os.path.join(resolved_trees_id_dir, hog_name + ".txt")
-        tree_string = subtree.write(outfile=None, format=5)
+        # tree_string = subtree.write(outfile=None, format=5)
+        tree_string = subtree.write(outfile=None, parser=5)
         with open(tree_id_file, "wb") as f:
             f.write(tree_string.encode("utf-8"))
     except Exception as e:
@@ -65,8 +66,8 @@ def read_files(unique_og, spec_seq_id_dict, tree_file_index, fasta_file_index):
         try:
             with open(tree_file_index[unique_og], "r") as file:
                 tree_data = file.read().strip()
-                gene_tree = ete3.Tree(tree_data, quoted_node_names=True, format=1)
-                for leaf in gene_tree.iter_leaves():
+                gene_tree = ete4.Tree(tree_data, parser=1) #quoted_node_names=True, format=1
+                for leaf in gene_tree.leaves(): #.iter_leaves():
                     original = leaf.name
                     if original is None or not original.strip():
                         print(f"Warning: Null or empty leaf name in tree {unique_og}")
@@ -120,12 +121,15 @@ def process_task(read_queue, process_queue, hog_index, name_dict, species_names,
                 if parent_node == "n0":
                     subtree = gene_tree.copy()
                 else:
-                    subtree_nodes = gene_tree.search_nodes(name=parent_node)
+                    # subtree_nodes = gene_tree.search_nodes(name=parent_node)
+                    subtree_nodes = list(gene_tree.search_nodes(name=parent_node))
                     if not subtree_nodes:
                         print(f"WARNING: Parent node '{parent_node}' not found in gene tree for {unique_og}, HOG {hog_name}")
                         continue
                     subtree = subtree_nodes[0]
-                current_leaves = [leaf.name for leaf in subtree.get_leaves() if leaf.name]
+                    # subtree = subtree_nodes
+                # current_leaves = [leaf.name for leaf in subtree.get_leaves() if leaf.name]
+                current_leaves = [leaf.name for leaf in subtree.leaves() if leaf.name]
                 expected_leaves = [x.strip() for col in species_names if row.get(col) for x in row[col].split(',')]
                 if not expected_leaves:
                     print(f"WARNING: No expected leaves found for {hog_name} in {unique_og}")

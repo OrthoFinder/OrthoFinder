@@ -55,13 +55,13 @@ except ImportError:
 __all__ = ["read_newick", "write_newick"]
 
 # Regular expressions used for reading newick format
-_ILEGAL_NEWICK_CHARS = ":;(),\[\]\t\n\r="
-_NON_PRINTABLE_CHARS_RE = "[\x00-\x1f]+"
+_ILEGAL_NEWICK_CHARS = r":;(),\[\]\t\n\r="
+_NON_PRINTABLE_CHARS_RE = r"[\x00-\x1f]+"
 
-_NHX_RE = "\[&&NHX:[^\]]*\]"
-_FLOAT_RE = "[+-]?\d+\.?\d*(?:[eE][-+]\d+)?"
+_NHX_RE = r"\[&&NHX:[^\]]*\]"
+_FLOAT_RE = r"[+-]?\d+\.?\d*(?:[eE][-+]\d+)?"
 #_FLOAT_RE = "[+-]?\d+\.?\d*"
-_NAME_RE = "[^():,;\[\]]+"
+_NAME_RE = r"[^():,;\[\]]+"
 
 DEFAULT_DIST = 1.0
 DEFAULT_NAME = ''
