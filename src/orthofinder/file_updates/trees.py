@@ -3,7 +3,7 @@ import io
 import numpy as np
 import multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor
-import ete4
+from ..tools.ete4 import tree
 
 
 def write_tree(hog_name, subtree, resolved_trees_id_dir):
@@ -66,7 +66,7 @@ def read_files(unique_og, spec_seq_id_dict, tree_file_index, fasta_file_index):
         try:
             with open(tree_file_index[unique_og], "r") as file:
                 tree_data = file.read().strip()
-                gene_tree = ete4.Tree(tree_data, parser=1) #quoted_node_names=True, format=1
+                gene_tree = tree.Tree(tree_data, parser=1) #quoted_node_names=True, format=1
                 for leaf in gene_tree.leaves(): #.iter_leaves():
                     original = leaf.name
                     if original is None or not original.strip():

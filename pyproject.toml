@@ -1,5 +1,11 @@
 [build-system]
-requires = ["setuptools>=77", "setuptools_scm>=8", "wheel", "packaging>=24.2"]
+requires = [
+    "setuptools>=77",
+    "setuptools_scm>=8",
+    "wheel",
+    "packaging>=24.2",
+    "cython>=3.0",
+]
 build-backend = "setuptools.build_meta"
 
 [project]

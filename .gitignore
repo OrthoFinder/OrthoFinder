@@ -7,6 +7,9 @@
 
 # C extensions
 *.so
+*.c
+*.pyd
+*.cpp
 
 # Distribution / packaging
 .Python
@@ -205,5 +208,4 @@ scoring_matrix/
 DEVNOTES.md
 CONDUCT.md
 OrthoFinder-manual.pdf
-setup.py
 requirements_dev.txt

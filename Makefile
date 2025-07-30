@@ -1033,6 +1033,9 @@ clean:
 	@echo "Cleaning build environment..."
 	rm -rf **/__pycache__
 	rm -rf ./build ./dist ./orthofinder.egg-info
+	find . -name '*.so' -delete
+	find . -name '*.c' -delete
+	find . -name '__pycache__' -type d -exec rm -r {} +
 
 purge_orthofinder:
 	@echo "Remove OrthoFinder and it's environment and dependencies..."
