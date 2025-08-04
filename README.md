@@ -277,7 +277,7 @@ OrthoFinder has now extended its phylogenetic approach to orthogroups, allowing 
 
 **Operating system** 
 
-OrthoFinder was designed to run on Linux (including WSL). 
+OrthoFinder was designed to run on Linux (including WSL2). 
 
 We have tested OrthoFinder v3.1 on debian 12.9, centOS v8, macOS 14.4.1, macOS 13.2.1. 
 
