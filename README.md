@@ -15,6 +15,7 @@ OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and a
 - [Output files](#output-files)
 - [Latest additions](#latest-additions)
 - [Citation](#citation)
+- [System Requirements](#system-requirements)
 
 For more information please visit [our website](https://orthofinder.github.io/OrthoFinder/).
 
