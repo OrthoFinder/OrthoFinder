@@ -79,7 +79,7 @@ Once you have installed OrthoFinder, you can print the help information and vers
 ```bash
 orthofinder --help # Print out help informatioin
 orthofinder --version # Check the version
-orthofinder -f ExampleData # Test OrthoFinder on an example dataset
+orthofinder -f ExampleData # Test OrthoFinder on an example dataset - this should take a few minutes to run. 
 ```
 
 ### Uninstalling
@@ -239,7 +239,7 @@ Full details on the output files and directories can be found [here](http://orth
 
 
 ## Latest additions
-The current version of OrthoFinder has several major changes comapred to OrthoFinder version 2 ([Emms & Kelly 2019]((https://img.shields.io/badge/DOI-10.1186%2Fs13059--019--1832--y-blue))).
+The current version of OrthoFinder has several major changes compared to OrthoFinder version 2 ([Emms & Kelly 2019]((https://img.shields.io/badge/DOI-10.1186%2Fs13059--019--1832--y-blue))).
 
 **New workflow for scalability**
 
@@ -272,6 +272,25 @@ OrthoFinder has now extended its phylogenetic approach to orthogroups, allowing 
 
 - Introduced the orthogroup inference method<br>
   [6] *Emms, D.M., Kelly, S*. **OrthoFinder: solving fundamental biases in whole genome comparisons dramatically improves orthogroup inference accuracy**. Genome Biol 16, 157 (2015). [![DOT:10.1186/s13059-015-0721-2](https://img.shields.io/badge/DOI-10.1186%2Fs13059--015--0723--2-blue)](https://doi.org/10.1186/s13059-015-0721-2)
+
+## System Requirements 
+
+**Operating system** 
+
+OrthoFinder was designed to run on Linux (including WSL). 
+
+We have tested OrthoFinder v3.1 on debian 12.9, centOS v8, macOS 14.4.1, macOS 13.2.1. 
+
+**Dependencies**
+- Python `<3.12|>=3.8`
+- Diamond `<2.1|>=2.1.7`
+- Famsa `>= 2.2.3`
+- Fasttree `>=2.1.11`
+- Numpy `>=2.3.2`
+- Scipy `>=1.16`
+- Biopython `>=1.85`
+- Rich `>= 14.1.0`
+- Scikit-learn `>= 1.7.1`
 
 ## Meet the team
 
