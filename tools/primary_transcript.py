@@ -190,13 +190,11 @@ def main(args=None):
     if args is None:
         args = sys.argv[1:]
     fn = args[0]
-    print(sys.argv)
 
     if not CheckFile(fn):
         return
 
     dout = os.path.dirname(os.path.abspath(fn)) + "/primary_transcripts/"
-    print(dout)
     if not os.path.exists(dout):
         os.mkdir(dout)
 
