@@ -189,7 +189,11 @@ def main(args=None):
     print("")
     if args is None:
         args = sys.argv[1:]
-    fn = args[0]
+    try:
+        fn = args[0]
+    except IndexError:
+        print("Usage: python primary_transcripts.py filename [function to identify transcripts {last_dot, space, last_dot_after_space}]")
+        exit()
 
     if not CheckFile(fn):
         return
