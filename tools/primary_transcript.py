@@ -179,25 +179,32 @@ def space(text):
     return text[1:].rstrip().split(None, 1)[0]
 
 
-function_dict = {"last_dot":last_dot, "space":space}
+def last_dot_after_space(text):
+    return text[1:].rstrip().split(None, 1)[0].rstrip().rsplit(".", 1)[0]
+
+
+function_dict = {"last_dot":last_dot, "space":space, "last_dot_after_space":last_dot_after_space}
 
 def main(args=None):
     print("")
     if args is None:
         args = sys.argv[1:]
     fn = args[0]
+    print(sys.argv)
 
     if not CheckFile(fn):
         return
 
     dout = os.path.dirname(os.path.abspath(fn)) + "/primary_transcripts/"
+    print(dout)
     if not os.path.exists(dout):
         os.mkdir(dout)
 
     if len(sys.argv) == 3:
         gene_name_function_name = function_dict[sys.argv[2]]
+        q_use_original_accession_line = True
         ScanTags_with_fn(fn, gene_name_function_name)
-        CreatePrimaryTranscriptsFile(fn, dout, gene_name_function_name)
+        CreatePrimaryTranscriptsFile(fn, dout, gene_name_function_name, q_use_original_accession_line)
     else:
         # ScanTags(fn)
         # ScanTags_NCBI(fn)
