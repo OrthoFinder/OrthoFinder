@@ -28,6 +28,25 @@ Then, add the additional species to the results of the core run
 ```bash
 orthofinder [options] --assign <additional> --core <Results_Dir>
 ```
+
+To test the workflow with our ExampleData, run these commands:
+
+```bash
+$ wget https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/ExampleData.tar.gz
+$ tar -xzf ExampleData.tar.gz
+$ tree ExampleData
+ExampleData
+├── Mycoplasma_agalactiae.faa
+├── Mycoplasma_gallisepticum.faa
+├── Mycoplasma_genitalium.faa
+├── Mycoplasma_hyopneumoniae.faa
+└── AdditionalSpecies
+    ├── M_arthritidis.fa
+    └── M_haemocanis.fa
+$ orthofinder -f ExampleData
+$ orthofinder --core ExampleData/OrthoFinder/Results_* --assign ExampleData/AdditionalSpecies
+```
+
 This workflow also makes it really quick and easy to add new species to previous 
 OrthoFinder runs. For example, if your research group works on various species of 
 Angiosperms you might collectively share a core OrthoFinder results folder with a 
