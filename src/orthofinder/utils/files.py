@@ -608,6 +608,9 @@ class __Files_new_dont_manually_create__(object):
 
     def GetAstralFilename(self):
         return self.wd_trees + "astral_input.nk"
+
+    def GetCoreAstralFilename(self):
+        return self.wd_trees + "astral_input_core.nk"
             
     def GetOGsReconTreeDir(self, qResults=False):
         if qResults:

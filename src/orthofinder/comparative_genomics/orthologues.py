@@ -322,7 +322,7 @@ def ReconciliationAndOrthologues(
         util.PrintTime("Done orthologues from Phyldog")
     else:
         if print_info:
-            util.PrintTime("Starting of orthologues")
+            util.PrintTime("Inferring orthologues from gene trees")
         qNoRecon = ("only_overlap" == recon_method)
         # The next function should not create the HOG writer and label the species tree. This should be done here and passed as arguments
         species_tree_rooted_labelled = tree.Tree(speciesTree_ids_fn)
@@ -521,7 +521,8 @@ def OrthologuesWorkflow(
         results_name, 
         root_from_previous, 
         i_og_restart,
-        options.fix_files
+        options.fix_files,
+        options.astral
     )
     if return_obj is None:
         return

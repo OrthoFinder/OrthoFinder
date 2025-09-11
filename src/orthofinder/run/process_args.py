@@ -134,6 +134,7 @@ class Options(object):  #
         self.fix_files = True
         self.config = None
         self.min_seq = 4
+        self.astral = False
 
     def what(self):
         for k, v in self.__dict__.items():
@@ -587,6 +588,9 @@ def ProcessArgs(args):
 
         elif arg == "--old-version":
             options.old_version = True
+
+        elif arg == "--astral":
+            options.astral = True
 
         elif arg == "-1":
             options.qDoubleBlast = False

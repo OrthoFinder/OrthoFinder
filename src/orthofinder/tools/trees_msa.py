@@ -40,9 +40,9 @@ try:
 except ImportError:
     ...
 
-from ..utils import util, program_caller as pc
+from ..utils import util, program_caller as pc, parallel_task_manager
 from ..utils import files
-from ..tools import trim
+from ..tools import trim, astral as astral_pro
 
 
 class FastaWriter(object):
@@ -356,7 +356,8 @@ class TreesForOrthogroups(object):
             method_threads_small=None, 
             threshold=None,
             old_version=False,
-            fix_files=True
+            fix_files=True,
+            astral=False
         ):
 
         print_on_error = True
@@ -464,7 +465,8 @@ class TreesForOrthogroups(object):
         commands_and_filenames = []
         tree_tasksize = None
         if qDoSpeciesTree:
-            print(("Species tree: Using %d orthogroups with minimum of %0.1f%% of species having single-copy genes in any orthogroup" % (len(iOgsForSpeciesTree), 100.*fSingleCopy)))
+            if not astral:
+                print(("Species tree: Using %d orthogroups with minimum of %0.1f%% of species having single-copy genes in any orthogroup" % (len(iOgsForSpeciesTree), 100.*fSingleCopy)))
             util.PrintUnderline("Inferring multiple sequence alignments for species tree") 
             # util.PrintTime("This may take some time...")
             # Do required alignments and trees
@@ -488,7 +490,7 @@ class TreesForOrthogroups(object):
                         for cmd in orig_commands_and_filenames
                         for item in cmd[0][0].split() if os.path.isfile(item) and os.path.exists(item)
                     ]
-
+                
             pc.RunParallelCommandsAndMoveResultsFile(
                 nProcesses, 
                 orig_commands_and_filenames, 
@@ -509,15 +511,16 @@ class TreesForOrthogroups(object):
             with open(dSpeciesTree + "Orthogroups_for_concatenated_alignment.txt", 'w') as outfile:
                 for iog in iOgsForSpeciesTree: outfile.write("OG%07d\n" % iog)
             # Add species tree to list of commands to run
-            commands_and_filenames = [
-                self.program_caller.GetTreeCommands(
-                        self.tree_program, 
-                        [concatenated_algn_fn], 
-                        [speciesTreeFN_ids], 
-                        ["SpeciesTree"],
-                        method_threads=method_threads 
-                    )
-                ]
+            if not astral:
+                commands_and_filenames = [
+                    self.program_caller.GetTreeCommands(
+                            self.tree_program, 
+                            [concatenated_algn_fn], 
+                            [speciesTreeFN_ids], 
+                            ["SpeciesTree"],
+                            method_threads=method_threads 
+                        )
+                    ]
             util.PrintUnderline("Inferring remaining multiple sequence alignments and gene trees") 
         else:
             util.PrintUnderline("Inferring multiple sequence alignments and gene trees")
@@ -526,7 +529,8 @@ class TreesForOrthogroups(object):
         iOgsForSpeciesTree = set(iOgsForSpeciesTree)
         iog_to_align_index = {iog: index for index, iog in enumerate(iogs_align)}
         for i, iog in enumerate(iogs_tree):
-            if iog in iOgsForSpeciesTree: continue
+            if iog in iOgsForSpeciesTree: 
+                continue
             if qTrim:
                 commands_and_filenames.append([alignCommands_and_filenames[iog_to_align_index[iog]],
                                               (trim_fn, alignmentFilesToUse[iog_to_align_index[iog]]),
@@ -535,7 +539,8 @@ class TreesForOrthogroups(object):
                 commands_and_filenames.append([alignCommands_and_filenames[iog_to_align_index[iog]],
                                               treeCommands_and_filenames[i]])
         for iog in set(iogs_align).difference(iogs_tree):
-            if iog in iOgsForSpeciesTree: continue
+            if iog in iOgsForSpeciesTree: 
+                continue
             commands_and_filenames.append([alignCommands_and_filenames[iog_to_align_index[iog]]])
         
         if cmd_order == "ascending":
@@ -545,7 +550,6 @@ class TreesForOrthogroups(object):
                         for cmd in orig_commands_and_filenames
                         for item in cmd[0][0].split() if os.path.isfile(item) and os.path.exists(item)
                     ]
-
         pc.RunParallelCommandsAndMoveResultsFile(nProcesses, 
                                                  commands_and_filenames, 
                                                  True, 
@@ -577,12 +581,24 @@ class TreesForOrthogroups(object):
 
         # Add concatenated Alignment
         if qDoSpeciesTree:
+            if astral:
+                util.PrintUnderline("Inferring unrooted species tree using Astral-Pro.") 
+                astral_fn = files.FileHandler.GetCoreAstralFilename()
+                astral_pro.create_input_file(files.FileHandler.GetOGsTreeDir(), astral_fn)
+                speciesTreeFN_ids = files.FileHandler.GetSpeciesTreeUnrootedFN()
+                parallel_task_manager.RunCommand(
+                    astral_pro.get_astral_command(
+                        astral_fn, speciesTreeFN_ids, nProcesses
+                    )
+                )
+
             qHaveSupport = util.HaveSupportValues(speciesTreeFN_ids)
             if os.path.exists(speciesTreeFN_ids):
                 util.RenameTreeTaxa(speciesTreeFN_ids, files.FileHandler.GetSpeciesTreeUnrootedFN(True), idDict, qSupport=qHaveSupport, qFixNegatives=True)
             else:
                 text = "ERROR: Species tree inference failed"
                 files.FileHandler.LogFailAndExit(text)
+
 
          # ------------------ this section is not needed at this stage for the new procedure -------------
         if not fix_files:
@@ -594,5 +610,5 @@ class TreesForOrthogroups(object):
                 accessionAlignmentFNs.append(files.FileHandler.GetSpeciesTreeConcatAlignFN(True))
 
             self.RenameAlignmentTaxa(alignmentFilesToUse, accessionAlignmentFNs, idDict)
-
+        
         return resultsDirsFullPath[:2]
