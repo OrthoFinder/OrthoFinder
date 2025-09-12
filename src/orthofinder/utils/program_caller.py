@@ -32,7 +32,8 @@ import subprocess
 # from .. import my_env
 import types
 import traceback
-
+import re 
+import shlex
 try:
     import queue
 except ImportError:
@@ -46,6 +47,34 @@ except ImportError:
     ...
 
 import multiprocessing as mp
+import threading
+
+TOTAL_CORES = os.cpu_count() or 8
+TOKENS = threading.BoundedSemaphore(TOTAL_CORES)
+
+_METHODTHREAD_RE = re.compile(r"(?<![A-Za-z0-9_])(METHODTHREADS?|METHODTHREAD)(?![A-Za-z0-9_])")
+
+def _to_text_or_none(x):
+    if isinstance(x, str):
+        return x
+    if isinstance(x, bytes):
+        try:
+            return x.decode("utf-8", "ignore")
+        except Exception:
+            return None
+    return None 
+
+def threads_from_cmd(cmd_maybe, method_threads: int) -> int:
+    s = _to_text_or_none(cmd_maybe)
+    if not s:
+        return 1
+    return int(method_threads) if _METHODTHREAD_RE.search(s) else 1
+
+def _detect_cores():
+    try:
+        return len(os.sched_getaffinity(0))
+    except Exception:
+        return mp.cpu_count() or 1
 
 
 # try:
@@ -997,122 +1026,46 @@ def RunParallelCommandsAndMoveResultsFile(
         if method_threads is None:
             method_threads = "1"
 
-        if method_threads is not None:
-            if nProcesses * int(method_threads) > mp.cpu_count():
-                nProcesses = mp.cpu_count() // int(method_threads)
+        # nProcesses = max(1, mp.cpu_count() // int(method_threads))
+        nProcesses = min(len(commands_and_filenames), TOTAL_CORES * 4)
 
-        if not qListOfList:
-            if "METHODTHREAD" in commands_and_filenames[0][0]:
-                commands_and_filenames = [
-                    (cmd[0].replace("METHODTHREAD", method_threads), cmd[1])
-                    for cmd in commands_and_filenames
-                ]
-
-        else:
-            if "METHODTHREAD" in commands_and_filenames[0][0][0]:
-                if qTrim:
-                    commands_and_filenames = [
-                        (
-                            [
-                                (
-                                    cmd[0][0].replace(
-                                        "METHODTHREAD", method_threads
-                                    ),
-                                    cmd[0][1],
-                                ),
-                                (
-                                    cmd[1][0],
-                                    cmd[1][1].replace(
-                                        "METHODTHREAD", method_threads
-                                    ),
-                                ),
-                                (
-                                    cmd[2][0].replace(
-                                        "METHODTHREAD", method_threads
-                                    ),
-                                    cmd[2][1],
-                                ),
-                            ]
-                            if len(cmd) > 1
-                            else [
-                                (
-                                    cmd[0][0].replace(
-                                        "METHODTHREAD", method_threads
-                                    ),
-                                    cmd[0][1],
-                                )
-                            ]
-                        )
-                        for cmd in commands_and_filenames
-                    ]
-
-                else:
-                    commands_and_filenames = [
-                        [
-                            (
-                                cmd[0][0].replace("METHODTHREAD", method_threads),
-                                cmd[0][1],
-                            ),
-                            (
-                                cmd[1][0].replace("METHODTHREAD", method_threads),
-                                cmd[1][1],
-                            ),
-                        ]
-                        for cmd in commands_and_filenames
-                    ]
         progressbar, task = util.get_progressbar(total_commands)
         progressbar.start()
         update_cycle = 1 #10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000
 
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=nProcesses
-        ) as executor:
-            futures = {
-                executor.submit(
+        with concurrent.futures.ThreadPoolExecutor(max_workers=nProcesses) as executor:
+            futures = {}
+            for cmd_unit in commands_and_filenames:
+                if cmd_unit is None:
+                    continue
+                fut = executor.submit(
                     Worker_RunCommands_And_Move,
-                    cmd,
+                    cmd_unit,
+                    method_threads,
                     qListOfList,
                     q_print_on_error,
-                    q_always_print_stderr,
-                ): cmd
-                for cmd in commands_and_filenames
-                if cmd is not None
-            }
+                    q_always_print_stderr
+                )
+                futures[fut] = cmd_unit
 
             for i, future in enumerate(concurrent.futures.as_completed(futures)):
                 try:
                     result = future.result()
-                    # completed_count += 1
-                    # if (
-                    #     divmod(
-                    #         completed_count,
-                    #         (
-                    #             10
-                    #             if total_commands <= 200
-                    #             else 100 if total_commands <= 2000 else 1000
-                    #         ),
-                    #     )[1]
-                    #     == 0
-                    # ):
-                    #     util.PrintTime(
-                    #         "Done %d of %d" % (completed_count, total_commands)
-                    #     )
-
                     if result != 0 and q_print_on_error:
                         print(f"ERROR occurred with command: {futures[future]}")
                 except Exception as e:
                     print(f"Exception with command {futures[future]}: {e}")
-
                 finally:
                     if (i + 1) % update_cycle == 0:
                         progressbar.update(task, advance=update_cycle)
         progressbar.stop()
 
+
 q_print_first_traceback_0 = False
 
 
 def Worker_RunCommands_And_Move(
-    command_fns_list, qListOfLists, q_print_on_error, q_always_print_stderr
+    command_fns_list, method_threads, qListOfLists, q_print_on_error, q_always_print_stderr
 ):
     """
     Continuously takes commands that need to be run from the cmd_and_filename_queue until the queue is empty. If required, moves
@@ -1154,6 +1107,7 @@ def Worker_RunCommands_And_Move(
                 else:
                     return_code = RunCommand(
                         command,
+                        method_threads,
                         qPrintOnError=q_print_on_error,
                         qPrintStderr=q_always_print_stderr,
                     )
@@ -1175,29 +1129,61 @@ def Worker_RunCommands_And_Move(
         print("WARNING: Unknown caught unknown exception")
 
 
-def RunCommand(command, qPrintOnError=False, qPrintStderr=True):
-    """Run a single command"""
-    popen = subprocess.Popen(
-        command, env=parallel_task_manager.my_env, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
-    if qPrintOnError:
-        stdout, stderr = popen.communicate()
-        if popen.returncode != 0:
-            print(
-                (
-                    "\nERROR: external program called by OrthoFinder returned an error code: %d"
-                    % popen.returncode
-                )
-            )
-            print(("\nCommand: %s" % command))
-            print(("\nstdout:\n%s" % stdout))
-            print(("stderr:\n%s" % stderr))
-        elif qPrintStderr and len(stderr) > 0 and not util.stderr_exempt(stderr):
-            print("\nWARNING: program called by OrthoFinder produced output to stderr")
-            print(("\nCommand: %s" % command))
-            print(("\nstdout:\n%s" % stdout))
-            print(("stderr:\n%s" % stderr))
-        return popen.returncode
-    else:
-        popen.communicate()
-        return popen.returncode
+def RunCommand(command, method_threads, qPrintOnError=False, qPrintStderr=True):
+    """Run a single command with token gating."""
+    
+    threads_needed = threads_from_cmd(command, method_threads)
+
+    # try:
+    #     prog = os.path.basename(shlex.split(command)[0]).lower()
+    # except Exception:
+    #     prog = "" 
+    
+    # if _METHODTHREAD_RE.search(command):          # only if the template is threadable
+    #     if prog.startswith("diamond"):  # diamond makedb / blastp
+    #         threads_needed = max(1, int(method_threads) * 2)
+
+    if threads_needed > TOTAL_CORES:
+        # if qPrintOnError:
+        #     print(f"Capping threads from {threads_needed} to {TOTAL_CORES} for {prog} to avoid oversubscription.")
+        threads_needed = TOTAL_CORES
+    if threads_needed < 1:
+        threads_needed = 1
+
+    command = _METHODTHREAD_RE.sub(str(threads_needed), command)
+
+    acquired = 0
+    try:
+        for _ in range(threads_needed):
+            TOKENS.acquire()
+            acquired += 1
+
+        env = dict(parallel_task_manager.my_env) if hasattr(parallel_task_manager, "my_env") else os.environ.copy()
+        if threads_needed > 1:
+            env["OMP_NUM_THREADS"] = str(threads_needed)
+        env.setdefault("OPENBLAS_NUM_THREADS", "1")
+        env.setdefault("MKL_NUM_THREADS", "1")
+
+        popen = subprocess.Popen(
+            command, env=env, shell=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        if qPrintOnError:
+            stdout, stderr = popen.communicate()
+            if popen.returncode != 0:
+                print(f"\nERROR: external program returned code {popen.returncode}")
+                print(f"\nCommand: {command}")
+                print(f"\nstdout:\n{stdout}")
+                print(f"stderr:\n{stderr}")
+            elif qPrintStderr and len(stderr) > 0 and not util.stderr_exempt(stderr):
+                print("\nWARNING: program produced output to stderr")
+                print(f"\nCommand: {command}")
+                print(f"\nstdout:\n{stdout}")
+                print(f"stderr:\n{stderr}")
+            return popen.returncode
+        else:
+            popen.communicate()
+            return popen.returncode
+    finally:
+        for _ in range(acquired):
+            TOKENS.release()
