@@ -522,7 +522,8 @@ def OrthologuesWorkflow(
         root_from_previous, 
         i_og_restart,
         options.fix_files,
-        options.astral
+        options.astral,
+        options.dynamic_threads
     )
     if return_obj is None:
         return

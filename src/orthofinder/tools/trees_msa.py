@@ -357,7 +357,8 @@ class TreesForOrthogroups(object):
             threshold=None,
             old_version=False,
             fix_files=True,
-            astral=False
+            astral=False,
+            dynamic_threads=False
         ):
 
         print_on_error = True
@@ -419,20 +420,22 @@ class TreesForOrthogroups(object):
                 cmd_order=cmd_order,
                 qTrim=qTrim,
                 q_print_on_error=print_on_error,
-                old_version=old_version
+                old_version=old_version,
+                dynamic_threads=dynamic_threads
             )
             if qDoSpeciesTree:
-                CreateConcatenatedAlignment(
-                    iOgsForSpeciesTree, 
-                    ogs, 
-                    self.GetAlignmentFilename, 
-                    concatenated_algn_fn, 
-                    fSingleCopy
-                )
-                # write OGs used to file
-                dSpeciesTree = os.path.split(files.FileHandler.GetSpeciesTreeResultsFN(0, True))[0] + "/"
-                with open(dSpeciesTree + "Orthogroups_for_concatenated_alignment.txt", 'w') as outfile:
-                    for iog in iOgsForSpeciesTree: outfile.write("OG%07d\n" % iog)
+                if not astral:
+                    CreateConcatenatedAlignment(
+                        iOgsForSpeciesTree, 
+                        ogs, 
+                        self.GetAlignmentFilename, 
+                        concatenated_algn_fn, 
+                        fSingleCopy
+                    )
+                    # write OGs used to file
+                    dSpeciesTree = os.path.split(files.FileHandler.GetSpeciesTreeResultsFN(0, True))[0] + "/"
+                    with open(dSpeciesTree + "Orthogroups_for_concatenated_alignment.txt", 'w') as outfile:
+                        for iog in iOgsForSpeciesTree: outfile.write("OG%07d\n" % iog)
             
             # ------------------ this section is not needed at this stage for the new procedure -------------
             # ids -> accessions
@@ -503,7 +506,8 @@ class TreesForOrthogroups(object):
                 cmd_order=cmd_order,
                 qTrim=qTrim,
                 q_print_on_error=print_on_error,
-                old_version=old_version
+                old_version=old_version,
+                dynamic_threads=dynamic_threads
             )
             CreateConcatenatedAlignment(iOgsForSpeciesTree, ogs, self.GetAlignmentFilename, concatenated_algn_fn, fSingleCopy)
             # write OGs used to file
@@ -561,7 +565,8 @@ class TreesForOrthogroups(object):
                                                  cmd_order=cmd_order,
                                                  qTrim=qTrim,
                                                  q_print_on_error=print_on_error,
-                                                 old_version=old_version
+                                                 old_version=old_version,
+                                                 dynamic_threads=dynamic_threads
                                                  )
         
         # # Convert ids to accessions for MSA

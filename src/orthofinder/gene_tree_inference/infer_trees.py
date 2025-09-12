@@ -40,7 +40,8 @@ def InferGeneAndSpeciesTrees(
         root_from_previous = False,
         i_og_restart=0,
         fix_files=True,
-        astral=True
+        astral=True,
+        dynamic_threads=False
     ):
     """
     1. Setup:
@@ -102,7 +103,8 @@ def InferGeneAndSpeciesTrees(
             threshold=threshold,
             old_version=old_version,
             fix_files=fix_files,
-            astral=astral
+            astral=astral,
+            dynamic_threads=dynamic_threads
         )
         util.PrintTime("Done MSA/Trees")
         if qDoMSASpeciesTree:

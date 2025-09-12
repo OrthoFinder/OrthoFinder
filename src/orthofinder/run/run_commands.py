@@ -91,7 +91,8 @@ def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller,
         qListOfList=False,
         q_print_on_error=True, 
         q_always_print_stderr=False,
-        old_version=options.old_version
+        old_version=options.old_version,
+        dynamic_threads=options.dynamic_threads
     )
 
     # remove BLAST databases
@@ -180,7 +181,8 @@ def RunSearch_accelerate(options,
                                        qListOfList=False,
                                        q_print_on_error=True, 
                                        q_always_print_stderr=False,
-                                       old_version=options.old_version
+                                       old_version=options.old_version,
+                                       dynamic_threads=options.dynamic_threads
                                        )
 
     util.PrintTime("Done profiles search")

@@ -135,6 +135,7 @@ class Options(object):  #
         self.config = None
         self.min_seq = 4
         self.astral = False
+        self.dynamic_threads = False
 
     def what(self):
         for k, v in self.__dict__.items():
@@ -831,6 +832,9 @@ def ProcessArgs(args):
 
         elif arg == "-efn" or arg == "--extended-filename":
             options.extended_filename = True
+        
+        elif arg == "--dythreads":
+            options.dynamic_threads = True
 
         else:
             print("Unrecognised argument: %s\n" % arg)

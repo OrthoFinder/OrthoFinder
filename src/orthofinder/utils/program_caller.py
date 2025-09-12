@@ -77,6 +77,53 @@ def _detect_cores():
         return mp.cpu_count() or 1
 
 
+_SPLIT_CMDS_RE = re.compile(r"\s*(?:;|&&|\|)\s*")
+_INPUT_FLAGS = {"-s", "--msa", "-q", "--query", "--in", "--input", "-align"}
+_FASTA_EXTS = (".fa", ".fasta", ".faa", ".aln", ".fa.gz", ".fasta.gz", ".faa.gz", ".aln.gz")
+
+def _tokens(cmd):
+    try:
+        return shlex.split(cmd, posix=True)
+    except Exception:
+        return cmd.split()
+
+def _first_existing_path(tokens):
+    for t in tokens:
+        if t in {">", "1>", "2>"}:
+            break
+        if ("/" in t or t.lower().endswith(_FASTA_EXTS)) and os.path.exists(t):
+            return t
+    return None
+
+def extract_input_path(cmd: str):
+    """Return the most likely INPUT path for this (possibly compound) command."""
+    for sub in _SPLIT_CMDS_RE.split(cmd):
+        toks = _tokens(sub)
+        if not toks:
+            continue
+        for i, t in enumerate(toks[:-1]):
+            if t in _INPUT_FLAGS and os.path.exists(toks[i+1]):
+                return toks[i+1]
+        prog = os.path.basename(toks[0]).lower()
+        if prog in {"famsa", "fasttree", "fasttreemp", "mafft", "mafft-memsave", "muscle"}:
+            inp = _first_existing_path(toks)
+            if inp: return inp
+    return None
+
+
+def _threads_by_size(path: str, base_threads: int) -> int:
+    try:
+        sz = os.path.getsize(path)
+    except Exception:
+        return 1
+    if sz < 200_000:        # < ~200 KB
+        return min(1, base_threads)
+    if sz < 2_000_000:      # < ~2 MB
+        return min(2, base_threads)
+    if sz < 10_000_000:     # < ~10 MB
+        return min(4, base_threads)
+    return min(8, base_threads) 
+
 # try:
 #     longer_file = impresources.files(test_sequences) / "longer.txt"
 #     shorter_file = impresources.files(test_sequences) / "shorter.txt"
@@ -911,6 +958,7 @@ def RunParallelCommands(
     q_print_on_error=False,
     q_always_print_stderr=False,
     old_version=False,
+    dynamic_threads=False
 ):
 
     if qListOfList:
@@ -933,6 +981,7 @@ def RunParallelCommands(
         q_print_on_error,
         q_always_print_stderr,
         old_version,
+        dynamic_threads
     )
 
 
@@ -983,6 +1032,7 @@ def RunParallelCommandsAndMoveResultsFile(
     q_print_on_error=False,
     q_always_print_stderr=False,
     old_version=False,
+    dynamic_threads=False
 ):
     """
     Calls the commands in parallel and if required moves the results file to the required new filename
@@ -1044,7 +1094,8 @@ def RunParallelCommandsAndMoveResultsFile(
                     method_threads,
                     qListOfList,
                     q_print_on_error,
-                    q_always_print_stderr
+                    q_always_print_stderr,
+                    dynamic_threads=dynamic_threads
                 )
                 futures[fut] = cmd_unit
 
@@ -1065,7 +1116,12 @@ q_print_first_traceback_0 = False
 
 
 def Worker_RunCommands_And_Move(
-    command_fns_list, method_threads, qListOfLists, q_print_on_error, q_always_print_stderr
+    command_fns_list, 
+    method_threads, 
+    qListOfLists, 
+    q_print_on_error, 
+    q_always_print_stderr, 
+    dynamic_threads,
 ):
     """
     Continuously takes commands that need to be run from the cmd_and_filename_queue until the queue is empty. If required, moves
@@ -1129,10 +1185,10 @@ def Worker_RunCommands_And_Move(
         print("WARNING: Unknown caught unknown exception")
 
 
-def RunCommand(command, method_threads, qPrintOnError=False, qPrintStderr=True):
+def RunCommand(command, method_threads, dynamic_threads=False, qPrintOnError=False, qPrintStderr=True):
     """Run a single command with token gating."""
     
-    threads_needed = threads_from_cmd(command, method_threads)
+    # threads_needed = threads_from_cmd(command, method_threads)
 
     # try:
     #     prog = os.path.basename(shlex.split(command)[0]).lower()
@@ -1143,14 +1199,29 @@ def RunCommand(command, method_threads, qPrintOnError=False, qPrintStderr=True):
     #     if prog.startswith("diamond"):  # diamond makedb / blastp
     #         threads_needed = max(1, int(method_threads) * 2)
 
-    if threads_needed > TOTAL_CORES:
-        # if qPrintOnError:
-        #     print(f"Capping threads from {threads_needed} to {TOTAL_CORES} for {prog} to avoid oversubscription.")
-        threads_needed = TOTAL_CORES
-    if threads_needed < 1:
+    # if threads_needed > TOTAL_CORES:
+    #     # if qPrintOnError:
+    #     #     print(f"Capping threads from {threads_needed} to {TOTAL_CORES} for {prog} to avoid oversubscription.")
+    #     threads_needed = TOTAL_CORES
+    # if threads_needed < 1:
+    #     threads_needed = 1
+
+    base_cap = max(1, min(int(method_threads), TOTAL_CORES))
+    if _METHODTHREAD_RE.search(command):
+        if dynamic_threads:
+            inp = extract_input_path(command)
+            if inp:
+                t_dyn = _threads_by_size(inp, TOTAL_CORES) 
+                threads_needed = min(t_dyn, base_cap)
+            else:
+                threads_needed = base_cap
+        else:
+            threads_needed = base_cap
+    else:
         threads_needed = 1
 
-    command = _METHODTHREAD_RE.sub(str(threads_needed), command)
+
+    # command = _METHODTHREAD_RE.sub(str(threads_needed), command)
 
     acquired = 0
     try:
@@ -1187,3 +1258,7 @@ def RunCommand(command, method_threads, qPrintOnError=False, qPrintStderr=True):
     finally:
         for _ in range(acquired):
             TOKENS.release()
+
+
+
+
