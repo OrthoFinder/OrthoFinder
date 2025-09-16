@@ -179,11 +179,11 @@ def space(text):
     return text[1:].rstrip().split(None, 1)[0]
 
 
-def last_dot_after_space(text):
+def last_dot_before_first_space(text):
     return text[1:].rstrip().split(None, 1)[0].rstrip().rsplit(".", 1)[0]
 
 
-function_dict = {"last_dot":last_dot, "space":space, "last_dot_after_space":last_dot_after_space}
+function_dict = {"last_dot":last_dot, "space":space, "last_dot_before_first_space":last_dot_before_first_space}
 
 def main(args=None):
     print("")
@@ -192,7 +192,7 @@ def main(args=None):
     try:
         fn = args[0]
     except IndexError:
-        print("Usage: python primary_transcripts.py filename [function to identify transcripts {last_dot, space, last_dot_after_space}]")
+        print("Usage: python primary_transcripts.py filename [function to identify transcripts {last_dot, space, last_dot_before_first_space}]")
         exit()
 
     if not CheckFile(fn):
