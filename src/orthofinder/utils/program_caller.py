@@ -116,13 +116,9 @@ def _threads_by_size(path: str, base_threads: int) -> int:
         sz = os.path.getsize(path)
     except Exception:
         return 1
-    if sz < 200_000:        # < ~200 KB
-        return min(1, base_threads)
-    if sz < 2_000_000:      # < ~2 MB
-        return min(2, base_threads)
-    if sz < 10_000_000:     # < ~10 MB
-        return min(4, base_threads)
-    return min(8, base_threads) 
+    if sz <= 10000:        # < ~200 KB
+        return 1
+    return max(4, base_threads) 
 
 # try:
 #     longer_file = impresources.files(test_sequences) / "longer.txt"
@@ -1076,8 +1072,8 @@ def RunParallelCommandsAndMoveResultsFile(
         if method_threads is None:
             method_threads = "1"
 
-        # nProcesses = max(1, mp.cpu_count() // int(method_threads))
-        nProcesses = min(len(commands_and_filenames), TOTAL_CORES * 4)
+
+        nProcesses = min((nProcesses, len(commands_and_filenames), TOTAL_CORES * 4))
 
         progressbar, task = util.get_progressbar(total_commands)
         progressbar.start()
@@ -1190,21 +1186,17 @@ def RunCommand(command, method_threads, dynamic_threads=False, qPrintOnError=Fal
     
     # threads_needed = threads_from_cmd(command, method_threads)
 
-    # try:
-    #     prog = os.path.basename(shlex.split(command)[0]).lower()
-    # except Exception:
-    #     prog = "" 
-    
-    # if _METHODTHREAD_RE.search(command):          # only if the template is threadable
-    #     if prog.startswith("diamond"):  # diamond makedb / blastp
-    #         threads_needed = max(1, int(method_threads) * 2)
-
     # if threads_needed > TOTAL_CORES:
     #     # if qPrintOnError:
     #     #     print(f"Capping threads from {threads_needed} to {TOTAL_CORES} for {prog} to avoid oversubscription.")
     #     threads_needed = TOTAL_CORES
     # if threads_needed < 1:
     #     threads_needed = 1
+
+    try:
+        prog = os.path.basename(shlex.split(command)[0]).lower()
+    except Exception:
+        prog = "" 
 
     base_cap = max(1, min(int(method_threads), TOTAL_CORES))
     if _METHODTHREAD_RE.search(command):
@@ -1217,11 +1209,13 @@ def RunCommand(command, method_threads, dynamic_threads=False, qPrintOnError=Fal
                 threads_needed = base_cap
         else:
             threads_needed = base_cap
+
+        if prog.startswith("diamond"):  # diamond makedb / blastp
+            threads_needed = 1
     else:
         threads_needed = 1
 
-
-    # command = _METHODTHREAD_RE.sub(str(threads_needed), command)
+    command = _METHODTHREAD_RE.sub(str(threads_needed), command)
 
     acquired = 0
     try:
@@ -1234,11 +1228,16 @@ def RunCommand(command, method_threads, dynamic_threads=False, qPrintOnError=Fal
             env["OMP_NUM_THREADS"] = str(threads_needed)
         env.setdefault("OPENBLAS_NUM_THREADS", "1")
         env.setdefault("MKL_NUM_THREADS", "1")
+        env.setdefault("OMP_NESTED", "0")
+
+        out = subprocess.DEVNULL if not qPrintOnError else subprocess.PIPE
+        err = subprocess.DEVNULL if not (qPrintOnError and qPrintStderr) else subprocess.PIPE
 
         popen = subprocess.Popen(
             command, env=env, shell=True,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            stdout=out, stderr=err
         )
+
         if qPrintOnError:
             stdout, stderr = popen.communicate()
             if popen.returncode != 0:

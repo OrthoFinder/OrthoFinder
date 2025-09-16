@@ -49,13 +49,13 @@
     },
     "diamond": {
         "program_type": "search",
-        "db_cmd": "diamond makedb --threads METHODTHREAD --ignore-warnings --in INPUT -d OUTPUT",
-        "search_cmd": "diamond blastp --threads METHODTHREAD --ignore-warnings -d DATABASE -q INPUT -o OUTPUT --matrix SCOREMATRIX --gapopen GAPOPEN --gapextend GAPEXTEND --more-sensitive -p 1 --quiet -e 0.001 --compress 1"
+        "db_cmd": "diamond makedb --ignore-warnings --in INPUT -d OUTPUT",
+        "search_cmd": "diamond blastp --ignore-warnings -d DATABASE -q INPUT -o OUTPUT --matrix SCOREMATRIX --gapopen GAPOPEN --gapextend GAPEXTEND --more-sensitive -p 1 --quiet -e 0.001 --compress 1"
     },
     "diamond_ultra_sens": {
         "program_type": "search",
-        "db_cmd": "diamond makedb --threads METHODTHREAD --ignore-warnings --in INPUT -d OUTPUT",
-        "search_cmd": "diamond blastp --threads METHODTHREAD --ignore-warnings -d DATABASE -q INPUT -o OUTPUT --matrix SCOREMATRIX --gapopen GAPOPEN --gapextend GAPEXTEND --ultra-sensitive -p 1 --quiet -e 0.001 --compress 1"
+        "db_cmd": "diamond makedb --ignore-warnings --in INPUT -d OUTPUT",
+        "search_cmd": "diamond blastp --ignore-warnings -d DATABASE -q INPUT -o OUTPUT --matrix SCOREMATRIX --gapopen GAPOPEN --gapextend GAPEXTEND --ultra-sensitive -p 1 --quiet -e 0.001 --compress 1"
     },
     "blastp": {
         "program_type": "search",
@@ -65,7 +65,7 @@
     "mmseqs": {
         "program_type": "search",
         "db_cmd": "mmseqs createdb INPUT OUTPUT.fa ; mmseqs createindex OUTPUT.fa /tmp",
-        "search_cmd": "mmseqs search PATH/mmseqsDBBASENAME DATABASE.fa OUTPUT.db /tmp/tmpBASEOUTNAME  --threads 1 ; mmseqs convertalis --threads 1 PATH/mmseqsDBBASENAME DATABASE.fa OUTPUT.db OUTPUT"
+        "search_cmd": "mmseqs search PATH/mmseqsDBBASENAME DATABASE.fa OUTPUT.db /tmp/tmpBASEOUTNAME  --threads METHODTHREAD ; mmseqs convertalis --threads METHODTHREAD PATH/mmseqsDBBASENAME DATABASE.fa OUTPUT.db OUTPUT"
     },
     "blastn": {
         "program_type": "search",
