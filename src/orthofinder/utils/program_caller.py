@@ -1073,7 +1073,7 @@ def RunParallelCommandsAndMoveResultsFile(
             method_threads = "1"
 
 
-        nProcesses = min((nProcesses, len(commands_and_filenames), TOTAL_CORES * 4))
+        nProcesses = max(1, min((nProcesses, len(commands_and_filenames), TOTAL_CORES * 4)))
 
         progressbar, task = util.get_progressbar(total_commands)
         progressbar.start()

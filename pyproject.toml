@@ -104,6 +104,7 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "disabled: marks tests as disabled (deselect with '-m \"not disabled\"')",
     "regression: marks a test as a regression test",
+    "unit: marks a test as a unit test",
 ]
 
 

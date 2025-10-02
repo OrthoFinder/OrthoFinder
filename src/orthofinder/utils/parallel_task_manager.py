@@ -39,7 +39,7 @@ try:
     from rich import print
 except ImportError:
     ...
-from .util import printer
+    
 try:
     width = os.get_terminal_size().columns
 except OSError as e:
@@ -107,12 +107,12 @@ except RuntimeError as e:
 
 
 def PrintTime(message):
-    printer.print((str(datetime.datetime.now()).rsplit(".", 1)[0] + " : " + message), style="default")
+    util.printer.print((str(datetime.datetime.now()).rsplit(".", 1)[0] + " : " + message), style="default")
     sys.stdout.flush()
 
 
 def PrintNoNewLine(text):
-    printer.print(text, end="")
+    util.printer.print(text, end="")
     sys.stdout.flush()
     # sys.stdout.write(text)
 
@@ -159,7 +159,7 @@ def ManageQueueNew(processes, result_queue, progress_bar, task, update_cycle):
                     if result != "success":
                         for p in processes:
                             p.terminate()
-                        printer.print(f"ERROR: Error processing job {ijob}", style="error")
+                        util.printer.print(f"ERROR: Error processing job {ijob}", style="error")
                         util.Fail()
                 except queue.Empty:
                     if not processes:
@@ -228,13 +228,13 @@ def CanRunCommand(
         and return_code_check
     ):
         if qPrint:
-            printer.print(" - [bold green]ok")
+            util.printer.print(" - [bold green]ok")
         return True
     else:
         if qPrint:
-            printer.print(" - [bold red]failed")
+            util.printer.print(" - [bold red]failed")
         if not return_code_check:
-            printer.print("Returned a non-zero code: %d" % capture.returncode, style="error")
+            util.printer.print("Returned a non-zero code: %d" % capture.returncode, style="error")
         print("\nstdout:")
         for l in stdout:
             print(l)
