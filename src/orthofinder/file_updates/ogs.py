@@ -191,10 +191,30 @@ class OrthoGroupsSet(object):
             nSpAll, 
             qAddSpeciesToIDs, 
             tree_prgram = "fasttree",
-            idExtractor = util.FirstWordExtractor
+            idExtractor = util.FirstWordExtractor,
+            species_id_fn="",
+            sequence_id_fn="",
+            ogs_all_fn="",
+            results_dir="",
         ):
+
+        if not species_id_fn:
+            self.species_id_fn = files.FileHandler.GetSpeciesIDsFN()
+        else:
+            self.species_id_fn = species_id_fn
         
-        self.speciesIDsEx = util.FullAccession(files.FileHandler.GetSpeciesIDsFN())
+        if not sequence_id_fn:
+            self.sequence_id_fn = files.FileHandler.GetSequenceIDsFN()
+        else:
+            self.sequence_id_fn = sequence_id_fn
+
+        if not ogs_all_fn:
+            self.ogs_all_fn = files.FileHandler.OGsAllIDFN()
+        else:
+            self.ogs_all_fn = ogs_all_fn
+        
+        self.results_dir = results_dir 
+        self.speciesIDsEx = util.FullAccession(self.species_id_fn)
         self._Spec_SeqIDs = None
         self._extractor = idExtractor
         self.seqIDsEx = None
@@ -214,15 +234,15 @@ class OrthoGroupsSet(object):
             return self.cached_seq_ids_dict
         if self.seqIDsEx == None:
             try:
-                self.seqIDsEx = self._extractor(files.FileHandler.GetSequenceIDsFN())
+                self.seqIDsEx = self._extractor(self.sequence_id_fn)
             except RuntimeError as error:
                 print(str(error))
                 if str(error).startswith("ERROR"): 
-                    files.FileHandler.LogFailAndExit()
+                    files.FileHandler.LogFailAndExit(results_dir=self.results_dir)
                 else:
                     print("Tried to use only the first part of the accession in order to list the sequences in each orthogroup")
                     print("more concisely but these were not unique. The full accession line will be used instead.\n")
-                    self.seqIDsEx = util.FullAccession(files.FileHandler.GetSequenceIDsFN())
+                    self.seqIDsEx = util.FullAccession(self.sequence_id_fn)
         self.cached_seq_ids_dict = self.seqIDsEx.GetIDToNameDict()
         return self.cached_seq_ids_dict
         
@@ -253,7 +273,7 @@ class OrthoGroupsSet(object):
 
     def OGsAll(self):
         if self.ogs_all is None:
-            with open(files.FileHandler.OGsAllIDFN()) as infile:
+            with open(self.ogs_all_fn) as infile:
                 ogs = [og.strip().split(", ") for og in infile]
             if self.tree_program == "raxml":
                 self.ogs_all = [[Seq(g) for g in og]  for og in ogs if len(og) >= self.min_seq]
@@ -264,7 +284,7 @@ class OrthoGroupsSet(object):
         return self.ogs_all
     
     def AllOGs(self):
-        with open(files.FileHandler.OGsAllIDFN()) as infile:
+        with open(self.ogs_all_fn) as infile:
                 ogs = [og.strip().split(", ") for og in infile]
         if self.tree_program == "raxml":
             all_ogs = [[g for g in og]  for og in ogs if len(og) >= self.min_seq]

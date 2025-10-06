@@ -1,0 +1,132 @@
+name: OrthoFinder CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [
+        # "main",
+        # "dev-*",
+        # "feat/**",
+        "sep_fix",
+      ]
+    paths-ignore:
+      - ".gitignore"
+      - "README.md"
+      - "LICENSE"
+      - "DEVNOTES.md"
+      - "CONTRIBUTING.md"
+      - "CONDUCT.md"
+      - "badge-status.json" # prevent CI loops from badge commits
+  pull_request:
+    branches: ["main", "dev-*", "feat/**"]
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - ".github/workflows/*" # keep if you don't want PRs to touch workflows
+
+permissions:
+  contents: write # needed only for the badge commit step (guarded to run on push to main)
+
+concurrency:
+  group: ortho-ci-${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / py${{ matrix.python }} / tests
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: "pip"
+
+      - name: Show environment
+        run: |
+          python -V
+          pip -V
+
+      - name: Install project (with dev extras if present)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --upgrade pip
+          # Prefer pyproject editable install; fall back if no extras
+          pip install -e ".[dev]" || pip install -e .
+          # test/lint tools if not in [dev]
+          pip install pytest build || true
+
+      - name: Ensure bundled binaries are executable & on PATH
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if [ -d "src/orthofinder/bin" ]; then
+            chmod +x src/orthofinder/bin/* || true
+            echo "$(pwd)/src/orthofinder/bin" >> "$GITHUB_PATH"
+            ls -al src/orthofinder/bin || true
+          fi
+          which famsa || true
+
+      - name: Smoke test (help/print)
+        run: python orthofinder.py --help || python orthofinder.py
+
+      - name: Run on ExampleData
+        run: python3 orthofinder.py -f ExampleData
+
+      - name: List OrthoFinder output
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ls -al
+          if [ -d "ExampleData/OrthoFinder" ]; then
+            ls -al ExampleData/OrthoFinder
+          else
+            echo "No OrthoFinder output directory found."
+          fi
+
+      - name: Upload ExampleData artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ExampleData-Output-py${{ matrix.python }}
+          path: |
+            ExampleData/OrthoFinder/**
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Run pytest
+        run: pytest -sv tests/
+
+      # Badge writing (single leg, only on push to main)
+      - name: Configure Git for badge commit
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.python == '3.12'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Update badge to passing
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.python == '3.12' && success()
+        run: |
+          echo '{"schemaVersion":1,"label":"Tested","message":"passing","color":"brightgreen"}' > badge-status.json
+          git add badge-status.json
+          git commit -m "CI: badge passing [skip ci]" || echo "No changes to commit"
+          git push origin HEAD:main
+
+      - name: Update badge to failing
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.python == '3.12' && failure()
+        run: |
+          echo '{"schemaVersion":1,"label":"Tested","message":"failing","color":"red"}' > badge-status.json
+          git add badge-status.json
+          git commit -m "CI: badge failing [skip ci]" || echo "No changes to commit"
+          git push origin HEAD:main

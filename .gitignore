@@ -198,8 +198,6 @@ _site/
 _includes/
 _tutorials/
 docs/
-.github/
-tests/
 src/orthofinder/legacy/
 scoring_matrix/
 DEVNOTES.md

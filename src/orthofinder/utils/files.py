@@ -641,10 +641,12 @@ class __Files_new_dont_manually_create__(object):
     
     """ ========================================================================================== """
          
-    def CleanWorkingDir2(self):
+    def CleanWorkingDir2(self, working_dir=""):
+        if not working_dir:
+            working_dir = self.wd_current
         dirs = ['Distances/']
         for d in dirs:
-            dFull = self.wd_current + d
+            dFull = working_dir + d
             if os.path.exists(dFull): 
                 try:
                     shutil.rmtree(dFull)
@@ -656,16 +658,18 @@ class __Files_new_dont_manually_create__(object):
             
 # RefactorDS - FileHandler 
     """ Standard Methods ========================================================================================== """  
-    def LogFailAndExit(self, text=""):
+    def LogFailAndExit(self, text="", results_dir=""):
         if text != "": print(text)
-        self.WriteToLog("\nERROR: An error occurred\n" + text)
+        self.WriteToLog("\nERROR: An error occurred\n" + text, results_dir=results_dir)
         util.Fail()
              
-    def WriteToLog(self, text, qWithTime=False):
+    def WriteToLog(self, text, qWithTime=False, results_dir=""):
+        if not results_dir:
+            results_dir = self.rd1
         prepend = ""
         if qWithTime:
             prepend = str(datetime.datetime.now()).rsplit(".", 1)[0] + " : "
-        with open(self.rd1 + "Log.txt", 'a') as outfile:
+        with open(results_dir + "Log.txt", 'a') as outfile:
             outfile.write(prepend + text)
     
     def StartLog(self, search_program=None, msa_program=None, tree_program=None, 
@@ -1002,7 +1006,14 @@ class PreviousFilesLocator_old(PreviousFilesLocator):
 """ ************************************************************************************************************************* """
 """ ************************************************************************************************************************* """
 
-def InitialiseFileHandler(options, fastaDir=None, continuationDir=None, resultsDir_nonDefault=None, pickleDir_nonDefault=None):
+def InitialiseFileHandler(
+        options, 
+        fastaDir=None, 
+        continuationDir=None, 
+        resultsDir_nonDefault=None, 
+        pickleDir_nonDefault=None,
+        working_dir="",
+    ):
     """
     Creates a file handler object which will determine the location of all the files:
     Results will be under the user specified directory of the default results location. Defaults:
@@ -1058,5 +1069,11 @@ def InitialiseFileHandler(options, fastaDir=None, continuationDir=None, resultsD
     - If starting from a previous old-structure directory then, as high up as we can go and still be in the directory structure:
         - Fasta/Results_OldDate/OrthoFinder/Results_Date
     """
-    FileHandler.CreateOutputDirectories(options, pfl, base_dir, fastaDir)    
+    if not working_dir:
+        FileHandler.CreateOutputDirectories(options, pfl, base_dir, fastaDir)
+    else:
+        FileHandler.wd_base.append(working_dir)
+        FileHandler.wd_current = working_dir
+        FileHandler.rd1 = os.path.dirname(working_dir)
+        FileHandler.wd_trees = working_dir
         

@@ -41,7 +41,7 @@ def update_output_files(
     seq_dir = files.FileHandler.GetResultsSeqsDir()
     util.clear_dir(seq_dir)
 
-    ogSet,  idDict, name_dictionary = ogs.post_hogs_processing(
+    ogSet, idDict, name_dictionary = ogs.post_hogs_processing(
         all_seq_ids,
         speciesInfoObj,
         seqsInfo,
@@ -64,7 +64,7 @@ def update_output_files(
     align_dir = files.FileHandler.GetResultsAlignDir()
     align_id_dir = files.FileHandler.GetAlignIDDir()
     
-    old_hog_n0 = read_hog_n0_file(hog_n0_file)
+    old_hog_n0 = read_hog_file(hog_n0_file)
     hog_n0_over4genes = hog_file_over4genes(old_hog_n0, 2)
 
     del old_hog_n0
@@ -143,9 +143,9 @@ def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_name
     os.replace(temp_file.name, hogs_n0_file)
     # shutil.copy(hogs_n0_file, os.path.join(os.path.dirname(hogs_n0_file), "N0_ids.tsv"))
 
-def read_hog_n0_file(hog_n0_file):
+def read_hog_file(hog_file):
     hog_n0 = []
-    with open(hog_n0_file, newline = '') as csvfile:
+    with open(hog_file, newline = '') as csvfile:
         reader = csv.DictReader(csvfile, delimiter='\t')
         reader.fieldnames = [
             # fieldname.replace('.', '_') 

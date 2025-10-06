@@ -126,7 +126,7 @@ def GetSeqsInfo(inputDirectory_list, speciesToUse, nSpAll):
     nSeqsPerSpecies = dict()
     for iFasta in range(nSpAll):
         for d in inputDirectory_list:
-            fastaFilename = d + "Species%d.fa" % iFasta
+            fastaFilename = os.path.join(d, "Species%d.fa" % iFasta) 
             if os.path.exists(fastaFilename):
                 break
         n = 0

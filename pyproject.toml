@@ -42,15 +42,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11", # tested
     "Programming Language :: Python :: 3.12", # tested
 ]
-dependencies = [
-    "numpy",
-    "scipy",
-    "scikit-learn",
-    "biopython",
-    "rich",
-    "ete3",
-    "six",
-]
+dependencies = ["numpy", "scipy", "scikit-learn", "biopython", "rich", "ete4"]
 
 [project.urls]
 repository = "https://github.com/OrthoFinder/OrthoFinder"
@@ -97,8 +89,20 @@ include-package-data = true
 orthofinder = ["**/__pycache__", "**/*.pyc"]
 "*" = ["tests/**"]
 
+[tool.coverage.run]
+source = ["src/orthofinder"]
+branch = true
+parallel = true
+concurrency = ["thread", "multiprocessing"]
+
+[tool.coverage.report]
+show_missing = true
+omit = ["src/orthofinder/_version.py", "src/orthofinder/run/__main__.py"]
+exclude_lines = ["pragma: no cover", "if __name__ == .__main__.:"]
+
 [tool.pytest.ini_options]
-addopts = "--cov=orthofinder"
+# addopts = "--cov=orthofinder"
+addopts = "--cov --cov-report=term-missing"
 testpaths = ["tests"]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",

@@ -630,7 +630,7 @@ def OrthologuesWorkflow(
     ids_dict = ogSet.SequenceDict()
 
     if options.fix_files:
-        os.remove(files.FileHandler.OGsAllIDFN())
+        # os.remove(files.FileHandler.OGsAllIDFN())
         os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
         shutil.rmtree(files.FileHandler.GetResolvedTreeIDDir())
 
@@ -766,7 +766,8 @@ def InferOrthologs(
         print_info=True,
         exist_msa=True,
         write_hog_tree=True,
-        fix_files=True
+        fix_files=True,
+        working_dir="",
     ):
     """ C. Gene tree rooting & orthologs"""
 
@@ -806,7 +807,7 @@ def InferOrthologs(
     )
     # util.PrintTime("Done Recon")
 
-    files.FileHandler.CleanWorkingDir2()
+    files.FileHandler.CleanWorkingDir2(working_dir=working_dir)
     if print_info:
         util.PrintUnderline("Writing results files", True)
         # util.PrintTime("Start writing files")

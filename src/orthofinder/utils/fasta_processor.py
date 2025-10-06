@@ -99,7 +99,15 @@ class FastaWriter(object):
                     sys.stderr.write(seq + "\n")
 
 
-def ProcessesNewFasta(fastaDir, q_dna, speciesInfoObj_prev = None, speciesToUse_prev_names=[]):
+def ProcessesNewFasta(
+        fastaDir, 
+        q_dna, 
+        speciesInfoObj_prev = None, 
+        speciesToUse_prev_names=[],
+        species_id_fn="",
+        sequence_id_fn="",
+        working_dir="",
+    ):
     """
     Process fasta files and return a Directory object with all paths completed.
     """
@@ -147,55 +155,61 @@ def ProcessesNewFasta(fastaDir, q_dna, speciesInfoObj_prev = None, speciesToUse_
     else:
         speciesInfoObj = speciesInfoObj_prev
 
+    if not species_id_fn:
+        species_id_fn = files.FileHandler.GetSpeciesIDsFN()
+    if not sequence_id_fn:
+        sequence_id_fn = files.FileHandler.GetSequenceIDsFN()
+
     iSeq = 0
     iSpecies = 0
     # If it's a previous analysis:
     if len(speciesToUse_prev_names) != 0:
-        with open(files.FileHandler.GetSpeciesIDsFN(), 'r') as infile:
+        with open(species_id_fn, 'r') as infile:
             for line in infile: pass
         if line.startswith("#"): line = line[1:]
         iSpecies = int(line.split(":")[0]) + 1
     speciesInfoObj.iFirstNewSpecies = iSpecies
     newSpeciesIDs = []
-
-    with open(files.FileHandler.GetSequenceIDsFN(), 'a') as idsFile, open(files.FileHandler.GetSpeciesIDsFN(), 'a') as speciesFile:
+    
+    with open(sequence_id_fn, 'a') as idsFile, open(species_id_fn, 'a') as speciesFile:
         for fastaFilename in originalFastaFilenames:
             newSpeciesIDs.append(iSpecies)
-            outputFasta = open(files.FileHandler.GetSpeciesFastaFN(iSpecies, qForCreation=True), 'w')
-            fastaFilename = fastaFilename.rstrip()
-            speciesFile.write("%d: %s\n" % (iSpecies, fastaFilename))
-            baseFilename, extension = os.path.splitext(fastaFilename)
-            mLinesToCheck = 100
-            qHasAA = False
-            with open(fastaDir + os.sep + fastaFilename, 'r') as fastaFile:
-                for iLine, line in enumerate(fastaFile):
-                    if line.isspace(): continue
-                    if len(line) > 0 and line[0] == ">":
-                        newID = "%d_%d" % (iSpecies, iSeq)
-                        acc = line[1:].rstrip()
-                        if len(acc) == 0:
-                            print("ERROR: %s contains a blank accession line on line %d" % (fastaDir + os.sep + fastaFilename, iLine+1))
-                            util.Fail()
-                        idsFile.write("%s: %s\n" % (newID, acc))
-                        outputFasta.write(">%s\n" % newID)    
-                        iSeq += 1
-                    else:
-                        line = line.upper()    # allow lowercase letters in sequences
-                        if not qHasAA and (iLine < mLinesToCheck):
-#                            qHasAA = qHasAA or any([c in line for c in ['D','E','F','H','I','K','L','M','N','P','Q','R','S','V','W','Y']])
-                            qHasAA = qHasAA or any([c in line for c in ['E','F','I','L','P','Q']]) # AAs minus nucleotide ambiguity codes
-                        outputFasta.write(line)
-                outputFasta.write("\n")
-            if (not qHasAA) and (not q_dna):
-                qOk = False
-                print("ERROR: %s appears to contain nucleotide sequences instead of amino acid sequences. Use '-d' option" % fastaFilename)
+            if not working_dir:
+                outputFasta = open(files.FileHandler.GetSpeciesFastaFN(iSpecies, qForCreation=True), 'w')
+                fastaFilename = fastaFilename.rstrip()
+                speciesFile.write("%d: %s\n" % (iSpecies, fastaFilename))
+                baseFilename, extension = os.path.splitext(fastaFilename)
+                mLinesToCheck = 100
+                qHasAA = False
+                with open(fastaDir + os.sep + fastaFilename, 'r') as fastaFile:
+                    for iLine, line in enumerate(fastaFile):
+                        if line.isspace(): continue
+                        if len(line) > 0 and line[0] == ">":
+                            newID = "%d_%d" % (iSpecies, iSeq)
+                            acc = line[1:].rstrip()
+                            if len(acc) == 0:
+                                print("ERROR: %s contains a blank accession line on line %d" % (fastaDir + os.sep + fastaFilename, iLine+1))
+                                util.Fail()
+                            idsFile.write("%s: %s\n" % (newID, acc))
+                            outputFasta.write(">%s\n" % newID)    
+                            iSeq += 1
+                        else:
+                            line = line.upper()    # allow lowercase letters in sequences
+                            if not qHasAA and (iLine < mLinesToCheck):
+    #                            qHasAA = qHasAA or any([c in line for c in ['D','E','F','H','I','K','L','M','N','P','Q','R','S','V','W','Y']])
+                                qHasAA = qHasAA or any([c in line for c in ['E','F','I','L','P','Q']]) # AAs minus nucleotide ambiguity codes
+                            outputFasta.write(line)
+                    outputFasta.write("\n")
+                if (not qHasAA) and (not q_dna):
+                    qOk = False
+                    print("ERROR: %s appears to contain nucleotide sequences instead of amino acid sequences. Use '-d' option" % fastaFilename)
+                outputFasta.close()
             iSpecies += 1
             iSeq = 0
-            outputFasta.close()
         if not qOk:
             util.Fail()
-
-    if len(originalFastaFilenames) > 0: outputFasta.close()
+    if not working_dir:
+        if len(originalFastaFilenames) > 0: outputFasta.close()
     speciesInfoObj.speciesToUse = speciesInfoObj.speciesToUse + newSpeciesIDs
     speciesInfoObj.nSpAll = max(speciesInfoObj.speciesToUse) + 1      # will be one of the new species
     
