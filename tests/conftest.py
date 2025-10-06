@@ -2,6 +2,7 @@ import os
 import sys
 import pytest
 import helper
+from typing import Optional
 
 
 # HERE = Path(__file__).resolve()
@@ -75,7 +76,6 @@ def pytest_addoption(parser):
         help="MSA program",
     )
 
-
     parser.addoption(
         "--gene-tree",
         action="store",
@@ -100,7 +100,7 @@ def pytest_addoption(parser):
 def _split_csv(s: str):
     return [x for x in s.split(",") if x] if s else []
 
-def _split_or_default(s: str, default_value: str | None):
+def _split_or_default(s: str, default_value: Optional[str]):
     lst = _split_csv(s)
     if lst:
         return lst
