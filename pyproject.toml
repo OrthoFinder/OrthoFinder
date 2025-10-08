@@ -54,6 +54,7 @@ dev = [
     "pytest",
     "pytest-cov",
     "pytest-check",
+    "pytest-order",
     "setuptools>=77",
     "setuptools_scm>=8",
     "packaging>=24.2",
@@ -98,8 +99,8 @@ concurrency = ["thread", "multiprocessing"]
 
 [tool.coverage.report]
 show_missing = true
-omit = ["src/orthofinder/_version.py", "src/orthofinder/run/__main__.py"]
-exclude_lines = ["pragma: no cover", "if __name__ == .__main__.:"]
+# omit = ["src/orthofinder/_version.py", "src/orthofinder/run/__main__.py"]
+# exclude_lines = ["pragma: no cover", "if __name__ == .__main__.:"]
 
 [tool.pytest.ini_options]
 # addopts = "--cov=orthofinder"

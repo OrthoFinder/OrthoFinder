@@ -136,6 +136,7 @@ class HogWriter(object):
             seq_ids, 
             sp_ids, 
             species_to_use,
+            write_to_rd,
         ):
         """
         Prepare files, get ready to write.
@@ -146,7 +147,12 @@ class HogWriter(object):
         """
         self.sp_ids = sp_ids
         self.seq_ids = seq_ids
-        d = os.path.dirname(files.FileHandler.GetHierarchicalOrthogroupsFN("N0"))
+        if write_to_rd:
+            q_results = True
+        else:
+            q_results = False
+        
+        d = os.path.dirname(files.FileHandler.GetHierarchicalOrthogroupsFN("N0", q_results=q_results))
         if not os.path.exists(d):
             os.mkdir(d)
         self.fhs = dict()
@@ -157,8 +163,12 @@ class HogWriter(object):
         self.species_tree = species_tree
         species_names = [sp_ids[i] for i in self.iSps]
         for name in species_tree_node_names + ["N0.ids"]:
-            q_results = not name.endswith(".ids")
-            fn = files.FileHandler.GetHierarchicalOrthogroupsFN(name, q_results=q_results)
+
+            if not name.endswith(".ids"):
+                fn = files.FileHandler.GetHierarchicalOrthogroupsFN(name, q_results=q_results)
+            elif name.endswith(".ids"):
+                fn = files.FileHandler.GetHierarchicalOrthogroupsFN(name, q_results=q_results, extension=".ids")
+            
             self.fhs[name] = open(fn, util.csv_write_mode)
             util.writerow(self.fhs[name], ["HOG", "OG", "Gene Tree Parent Clade"] + species_names)
             self.fhs[name].flush()

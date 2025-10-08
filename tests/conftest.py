@@ -2,13 +2,15 @@ import os
 import sys
 import pytest
 import helper
-from typing import Optional
-
+from typing import Optional, Union, List, Any
+import multiprocessing as mp
+from orthofinder.utils.util import CreateNewWorkingDirectory
 
 # HERE = Path(__file__).resolve()
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 EXAMPLEDATA = os.path.join(ROOT, "ExampleData")
 EXAMPLE_RESULTS = os.path.join(ROOT, "ExampleData", "OrthoFinder")
+
 ORTHOFINDER = os.path.join(ROOT,"src")
 sys.path.insert(0, ORTHOFINDER)
 
@@ -20,25 +22,38 @@ if EXAMPLE_RESULTS[-1] != os.sep:
 if ORTHOFINDER[-1] != os.sep:
     ORTHOFINDER += os.sep
 
-exampledata_results_dir_list = sorted([
-    (entry.stat().st_mtime, entry.path) 
-    for entry in os.scandir(EXAMPLE_RESULTS)
-])
+# exampledata_results_dir_list = sorted([
+#     (entry.stat().st_mtime, entry.path) 
+#     for entry in os.scandir(EXAMPLE_RESULTS)
+# ])
 
-latest_output_dir = exampledata_results_dir_list[-1][1]
-working_dir = os.path.join(latest_output_dir, "WorkingDirectory")
+# latest_output_dir = exampledata_results_dir_list[-1][1]
+# working_dir = os.path.join(latest_output_dir, "WorkingDirectory")
 
 
-def _latest_output_dir() -> str:
-    try:
-        entries = sorted((e.stat().st_mtime, e.path) for e in os.scandir(EXAMPLE_RESULTS))
-        return entries[-1][1] if entries else ""
-    except FileNotFoundError:
-        return ""
+# def _latest_output_dir() -> str:
+#     try:
+#         entries = sorted((e.stat().st_mtime, e.path) for e in os.scandir(EXAMPLE_RESULTS))
+#         return entries[-1][1] if entries else ""
+#     except FileNotFoundError:
+#         return ""
+baseDirectoryName = EXAMPLE_RESULTS + "Results_"
+DEFAULT_PROJECTS_RESULTS = CreateNewWorkingDirectory(
+    baseDirectoryName,
+    qDate=True,
+    search_program=None,
+    msa_program=None,
+    tree_program=None,
+    scorematrix=None,
+    gapopen=None,
+    gapextend=None,
+    extended_filename=False,
+    makedir=False
+)
 
 DEFAULT_PROJECTS = EXAMPLEDATA
-DEFAULT_PROJECTS_RESULTS = _latest_output_dir()  # used if --projects not supplied
-
+# DEFAULT_PROJECTS_RESULTS = _latest_output_dir()  # used if --projects not supplied
+working_dir = os.path.join(DEFAULT_PROJECTS_RESULTS, "WorkingDirectory")
 
 def pytest_addoption(parser):
     parser.addoption(
@@ -48,12 +63,12 @@ def pytest_addoption(parser):
         help="Comma-separated list of project paths (defaults to latest ExampleData/OrthoFinder run).",
     )
 
-    parser.addoption(
-        "--projects-results",
-        action="store",
-        default=DEFAULT_PROJECTS_RESULTS, 
-        help="Comma-separated list of project result paths (defaults to latest ExampleData/OrthoFinder run).",
-    )
+    # parser.addoption(
+    #     "--projects-results",
+    #     action="store",
+    #     default=DEFAULT_PROJECTS_RESULTS, 
+    #     help="Comma-separated list of project result paths (defaults to latest ExampleData/OrthoFinder run).",
+    # )
 
     parser.addoption(
         "--expected-results",
@@ -83,12 +98,7 @@ def pytest_addoption(parser):
         help="Gene tree program",
     )
 
-    parser.addoption(
-        "--dendroblast",
-        action="store_true",
-        default=False,  
-        help="Non-MSA program",
-    )
+    parser.addoption("--dendroblast", action="store_true", default=False, help="Non-MSA program")
 
     parser.addoption(
         "--species-tree",
@@ -97,14 +107,50 @@ def pytest_addoption(parser):
         help="Species tree program",
     )
 
-def _split_csv(s: str):
-    return [x for x in s.split(",") if x] if s else []
+    parser.addoption(
+        "--recon-method",
+        action="store",
+        default="of_recon",  
+        help="Rreconciliation method",
+    )
 
-def _split_or_default(s: str, default_value: Optional[str]):
-    lst = _split_csv(s)
+    parser.addoption("--t", action="store", type=int, default=mp.cpu_count(),
+                     help="Number of parallel sequence search threads")
+    parser.addoption("--a", action="store", type=int,
+                     default=min(16, max(1, int(mp.cpu_count() / 8))),
+                     help="Number of parallel analysis threads")
+
+
+def _to_list(value: Optional[Union[str, int, bool]]) -> List[Any]:
+    """
+    Normalize a CLI option value to a list:
+      - str: split by commas (empty -> [])
+      - int/bool: wrap as single-element list
+      - None: []
+      - list: return as-is (defensive)
+    """
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str):
+        value = value.strip()
+        return [x for x in value.split(",") if x] if value else []
+    if isinstance(value, (int, bool)):
+        return [value]
+    # fallback
+    return [value]
+
+def _split_or_default(value: Optional[Union[str, int, bool]],
+                      default_value: Optional[Union[str, int, bool]]) -> List[Any]:
+    """
+    Use value if present (after normalization); otherwise use default.
+    Both paths return lists.
+    """
+    lst = _to_list(value)
     if lst:
         return lst
-    return [default_value] if default_value else []
+    return _to_list(default_value)
 
 def _broadcast_to_len(lst: list, target_len: int, name: str):
     """
@@ -122,40 +168,35 @@ def _broadcast_to_len(lst: list, target_len: int, name: str):
         return lst * target_len
     if len(lst) == target_len:
         return lst
-    raise pytest.UsageError(
+    raise pytest.usage_error(
         f"Length mismatch for '{name}': got {len(lst)} values, need {target_len}. "
         f"Provide 1 value to broadcast or {target_len} values to align."
     )
 
 def pytest_generate_tests(metafunc):
-    """
-    Dynamically parameterize tests that request any combination of:
-    projects, projects_results, expected_results,
-    cluster, msa, gene_tree, dendroblast, species_tree
-    """
-    # figure out what the test actually asks for
     requested = [name for name in (
         "projects",
-        "projects_results",
+        # "projects_results",
         "expected_results",
         "cluster",
         "msa",
         "gene_tree",
         "dendroblast",
-        "species_tree"
+        "species_tree",
+        "t",
+        "a",
     ) if name in metafunc.fixturenames]
     if not requested:
         return
 
-    # gather CLI options into lists
     values_by_name = {
         "projects": _split_or_default(
             metafunc.config.getoption("--projects"), default_value=DEFAULT_PROJECTS
         ),
-        "projects_results": _split_or_default(
-            metafunc.config.getoption("--projects-results"), default_value=DEFAULT_PROJECTS_RESULTS
-        ),
-        "expected_results": _split_csv(
+        # "projects_results": _split_or_default(
+        #     metafunc.config.getoption("--projects-results"), default_value=DEFAULT_PROJECTS_RESULTS
+        # ),
+        "expected_results": _to_list(
             metafunc.config.getoption("--expected-results")
         ),
         "cluster": _split_or_default(
@@ -168,33 +209,36 @@ def pytest_generate_tests(metafunc):
             metafunc.config.getoption("--gene-tree"), default_value="fasttree"
         ),
         "dendroblast": _split_or_default(
-            # store_true returns bool, convert to list
-            str(metafunc.config.getoption("--dendroblast")),
-            default_value=str(False)
+            metafunc.config.getoption("--dendroblast"), default_value=False  # ← keep as bool
         ),
         "species_tree": _split_or_default(
             metafunc.config.getoption("--species-tree"), default_value="astral-pro"
         ),
+        "recon_method": _split_or_default(
+            metafunc.config.getoption("--recon-method"), default_value="of_recon"
+        ),
+        "t": _split_or_default(
+            metafunc.config.getoption("--t"), default_value=mp.cpu_count()
+        ),
+        "a": _split_or_default(
+            metafunc.config.getoption("--a"),
+            default_value=min(16, max(1, int(mp.cpu_count() / 8)))
+        ),
     }
 
-    # decide how many rows to generate:
-    # pick first requested arg that has >1 elements or any non-empty
+    # decide base_len (first requested arg with >1, else first non-empty)
     base_len = 1
     for n in requested:
         if len(values_by_name[n]) > 1:
             base_len = len(values_by_name[n])
             break
-    # if all requested are singletons or empty but projects has >1, pick that
     if base_len == 1:
         for n in requested:
             if values_by_name[n]:
                 base_len = len(values_by_name[n])
                 break
 
-    # align each requested value list
-    aligned_lists = [ _broadcast_to_len(values_by_name[n], base_len, n) for n in requested ]
-
-    # parametrize with a single call
+    aligned_lists = [_broadcast_to_len(values_by_name[n], base_len, n) for n in requested]
     params = list(zip(*aligned_lists))
     metafunc.parametrize(tuple(requested), params, scope="session")
 
@@ -206,9 +250,34 @@ def projects(request):
     return request.config.getoption("--projects")
 
 @pytest.fixture(scope="session")
-def projects_results(request):
+def projects_results(projects):
     """Fixture giving the projects results path for a test run"""
-    return request.config.getoption("--projects-results")
+
+    baseDirectoryName = os.path.join(projects, "OrthoFinder")
+    if baseDirectoryName[-1] == os.sep:
+        baseDirectoryName += "Results_"
+    else:
+        baseDirectoryName = baseDirectoryName + os.sep + "Results_"
+
+    results_dir = CreateNewWorkingDirectory(
+        baseDirectoryName,
+        qDate=True,
+        search_program=None,
+        msa_program=None,
+        tree_program=None,
+        scorematrix=None,
+        gapopen=None,
+        gapextend=None,
+        extended_filename=False,
+        makedir=False
+    )
+
+    return results_dir
+
+# @pytest.fixture(scope="session")
+# def projects_results(request, projects):
+#     """Fixture giving the projects results path for a test run"""
+#     return request.config.getoption("--projects-results")
 
 @pytest.fixture(scope="session")
 def expected_results(request):
@@ -239,6 +308,21 @@ def dendroblast(request):
 def species_tree(request):
     """Fixture giving the species tree inference program (e.g., astral-pro, etc.)"""
     return request.config.getoption("--species-tree")
+
+@pytest.fixture(scope="session")
+def recon_method(request):
+    """Fixture giving the reconciliation program (e.g., of_recon, etc.)"""
+    return request.config.getoption("--recon-method")
+
+@pytest.fixture(scope="session")
+def sequence_search_threads(request):
+    """Fixture giving the number of parallel sequence search threads"""
+    return request.config.getoption("--t")
+
+@pytest.fixture(scope="session")
+def analysis_threads(request):
+    """Fixture giving the number of analysis threads"""
+    return request.config.getoption("--a")
 
 ### -----------------------------------------------------------------
 

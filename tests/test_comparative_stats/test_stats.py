@@ -3,6 +3,7 @@ import pytest
 import pytest_check as check
 import numpy as np
 from orthofinder.comparative_genomics.stats import add_unassigned_genes, OrthogroupsMatrix
+from orthofinder.run.__main__ import main
 
 # class TestComparativeStats:
 #     def test_number_of_species(
@@ -18,10 +19,10 @@ from orthofinder.comparative_genomics.stats import add_unassigned_genes, Orthogr
 #         )
 
 
-
+@pytest.mark.order(7)
 @pytest.mark.unit
 class TestComparativeStats:
-    def test_overall_stats(self, sequence_info_obj, ogset_obj, expected_overall_stats_info):
+    def test_overall_stats(self, of_obj, expected_overall_stats_info):
         """
         Validate high-level statistics of an OrthoFinder run against the expected baseline.
         Uses pytest-check so all checks run even if one fails.
@@ -31,6 +32,8 @@ class TestComparativeStats:
         # --- Number of species ---
         print("[1] Number of species")
         expected_n = int(expected_overall_stats_info["Number of species"])
+        sequence_info_obj = of_obj.get_sequence_info_obj()
+        ogset_obj = of_obj.get_og_obj()
         project_n = sequence_info_obj.nSpecies
         check.equal(
             project_n,
@@ -69,7 +72,6 @@ class TestComparativeStats:
             expected_ogs,
             f"[2] Number of orthogroups should be {expected_ogs}, you got {project_n}"
         )
-
 
         # --- Total number of species-specific orthogroups ---
         print("[3] Number of species-specific orthogroups")
@@ -261,7 +263,9 @@ class TestComparativeStats:
             f"[17] Number of single-copy orthogroups should be {expected_n}, you got {project_n}"
         )
     
-    def test_number_of_species_in_orthogroup(self, sequence_info_obj, ogset_obj, expected_og_nspecies_info):
+    def test_number_of_species_in_orthogroup(self, of_obj, expected_og_nspecies_info):
+        sequence_info_obj = of_obj.get_sequence_info_obj()
+        ogset_obj = of_obj.get_og_obj()
         ogs = add_unassigned_genes(ogset_obj.AllOGs(), ogset_obj.AllUsedSequenceIDs())
         allOgs = [[list(map(int, g.split("_"))) for g in og] for og in ogs]
         properOGs = [og for og in allOgs if len(og) > 1]
@@ -280,4 +284,13 @@ class TestComparativeStats:
                 expected_n,
                 f"Number of orthogroups with {i} species should be {expected_n}, you got {project_n}"
             )
+
+    # def test_orthofinder_run(self, of_obj):
+    #     try:
+    #         print(of_obj.args)
+    #         main(of_obj.args)
+    #         return True
+    #     except:
+    #         return False
+
 

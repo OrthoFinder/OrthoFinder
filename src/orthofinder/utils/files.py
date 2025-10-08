@@ -572,15 +572,30 @@ class __Files_new_dont_manually_create__(object):
         d = util.FullAccession(self.GetSpeciesIDsFN()).GetIDToNameDict()
         return {k:v.rsplit(".",1)[0] for k,v in d.items()}
 
-    def GetHierarchicalOrthogroupsFN(self, sp_node_name, q_results=True):
-        if q_results:
-            return self.rd1 + "Phylogenetic_Hierarchical_Orthogroups/%s.tsv" % sp_node_name
-        else:
+    def GetHierarchicalOrthogroupsFN(self, sp_node_name, q_results=True, extension=""):
+        if q_results and not extension:
+            hog_dir = self.rd1 + "Phylogenetic_Hierarchical_Orthogroups/"
+            if not os.path.exists(hog_dir):
+                os.makedirs(hog_dir, exist_ok=True)
+            return hog_dir + "%s.tsv" % sp_node_name
+        elif extension == ".ids":
             return self.GetWorkingDirectory_Write() + "%s.tsv" % sp_node_name
+        else:
+            wd_hog_dir = self.GetWorkingDirectory_Write() + "HOGs/"
+            if not os.path.exists(wd_hog_dir):
+                os.makedirs(wd_hog_dir, exist_ok=True)
+            return wd_hog_dir + "%s.tsv" % sp_node_name
         
     
+    def WDHierarchicalOrthogroupsFNN0(self):
+        return self.GetWorkingDirectory_Write() + "HOGs/N0.tsv"
+    
     def HierarchicalOrthogroupsFNN0(self):
-        return self.rd1 + "Phylogenetic_Hierarchical_Orthogroups/N0.tsv"
+        hog_dir = self.rd1 + "Phylogenetic_Hierarchical_Orthogroups/"
+        if not os.path.exists(hog_dir):
+            os.makedirs(hog_dir, exist_ok=True)
+
+        return hog_dir + "N0.tsv"
     
     def OGsAllIDFN(self):
         return self.wd_current + "OGsAll.tsv"

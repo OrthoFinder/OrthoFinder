@@ -29,7 +29,7 @@ def post_hogs_processing(
         q_incremental - These are not the final orthogroups, don't write results
     """
     new_ogs, name_dictionary = \
-        update_ogs(files.FileHandler.HierarchicalOrthogroupsFNN0())
+        update_ogs(files.FileHandler.WDHierarchicalOrthogroupsFNN0())
     resultsBaseFilename = files.FileHandler.GetOrthogroupResultsFNBase()
     # util.PrintUnderline("Writing orthogroups to file")
     all_assigned = set([g for og in new_ogs for g in og])
@@ -122,7 +122,7 @@ def update_ogs(input_path):
 
         new_og_set = set(", ".join(line[4:]).replace("\n", "").split(", "))
         new_og_list.append({gene for gene in new_og_set if len(gene) != 0})
-    return  new_og_list, name_dictionary
+    return new_og_list, name_dictionary
 
 def read_hogs_to_matrix(input_path):
     #holds lines to write to new output file

@@ -269,6 +269,7 @@ def CreateNewWorkingDirectory(
     gapopen=None,
     gapextend=None,
     extended_filename=False,
+    makedir=True
 ):
     dateStr = datetime.date.today().strftime("%b%d") if qDate else ""
     iAppend = 0
@@ -283,20 +284,21 @@ def CreateNewWorkingDirectory(
         gapextend,
         extended_filename,
     )
-    while os.path.exists(newDirectoryName):
-        iAppend += 1
-        newDirectoryName = GetDirectoryName(
-            baseDirectoryName + dateStr,
-            iAppend,
-            search_program,
-            msa_program,
-            tree_program,
-            scorematrix,
-            gapopen,
-            gapextend,
-            extended_filename,
-        )
-    os.mkdir(newDirectoryName)
+    if makedir:
+        while os.path.exists(newDirectoryName):
+            iAppend += 1
+            newDirectoryName = GetDirectoryName(
+                baseDirectoryName + dateStr,
+                iAppend,
+                search_program,
+                msa_program,
+                tree_program,
+                scorematrix,
+                gapopen,
+                gapextend,
+                extended_filename,
+            )
+        os.mkdir(newDirectoryName)
     return newDirectoryName
 
 
@@ -817,14 +819,15 @@ def get_progressbar(len_task, visible=True):
     return progressbar, task
 
 def clear_dir(of3_dir):
-    with os.scandir(of3_dir) as entries:
-        for entry in entries:
-            try:
-                if entry.is_file() or entry.is_symlink():
-                    os.unlink(entry.path) 
-                elif entry.is_dir():
-                    shutil.rmtree(entry.path) 
-                    
-            except Exception as e:
-                printer.print(f'Failed to delete {entry.path}. Reason: {e}', style="error")
+    if os.path.exists(of3_dir):
+        with os.scandir(of3_dir) as entries:
+            for entry in entries:
+                try:
+                    if entry.is_file() or entry.is_symlink():
+                        os.unlink(entry.path) 
+                    elif entry.is_dir():
+                        shutil.rmtree(entry.path) 
+                        
+                except Exception as e:
+                    printer.print(f'Failed to delete {entry.path}. Reason: {e}', style="error")
 
