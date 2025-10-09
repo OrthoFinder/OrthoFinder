@@ -136,6 +136,7 @@ class Options(object):  #
         self.min_seq = 4
         self.astral = False
         self.dynamic_threads = False
+        self.n_skip = 50
 
     def what(self):
         for k, v in self.__dict__.items():
@@ -607,6 +608,14 @@ def ProcessArgs(args):
 
         elif arg == "-z":
             options.qTrim = False
+
+        elif arg == "-nk":
+
+            if len(args) == 0:
+                print("Missing option for command line argument %s\n" % arg)
+                util.Fail()
+                
+            options.n_skip = int(args.pop(0))
 
         elif arg == "-I" or arg == "--inflation":
             if len(args) == 0:

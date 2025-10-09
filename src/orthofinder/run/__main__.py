@@ -242,11 +242,12 @@ def BetweenCoreOrthogroupsWorkflow(
             qPhyldog=False,
             results_name=options.name,
             root_from_previous=True,
+            n_skip=options.n_skip
         )
 
         # Infer species tree
         astral_fn = files.FileHandler.GetAstralFilename()
-        astral.create_input_file(files.FileHandler.GetOGsTreeDir(), astral_fn)
+        astral.create_input_file(files.FileHandler.GetOGsTreeDir(), astral_fn, n_skip=options.n_skip)
         species_tree_unrooted_fn = files.FileHandler.GetSpeciesTreeUnrootedFN()
         parallel_task_manager.RunCommand(
             astral.get_astral_command(

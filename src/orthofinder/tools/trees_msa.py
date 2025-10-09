@@ -358,7 +358,8 @@ class TreesForOrthogroups(object):
             old_version=False,
             fix_files=True,
             astral=False,
-            dynamic_threads=False
+            dynamic_threads=False,
+            n_skip=50,
         ):
 
         print_on_error = True
@@ -589,7 +590,7 @@ class TreesForOrthogroups(object):
             if astral:
                 util.PrintUnderline("Inferring unrooted species tree using Astral-Pro.") 
                 astral_fn = files.FileHandler.GetCoreAstralFilename()
-                astral_pro.create_input_file(files.FileHandler.GetOGsTreeDir(), astral_fn)
+                astral_pro.create_input_file(files.FileHandler.GetOGsTreeDir(), astral_fn, n_skip=n_skip)
                 speciesTreeFN_ids = files.FileHandler.GetSpeciesTreeUnrootedFN()
                 parallel_task_manager.RunCommand(
                     astral_pro.get_astral_command(

@@ -531,7 +531,8 @@ def OrthologuesWorkflow(
         i_og_restart,
         options.fix_files,
         options.astral,
-        options.dynamic_threads
+        options.dynamic_threads,
+        n_skip=options.n_skip
     )
     if return_obj is None:
         return
