@@ -14,6 +14,7 @@ EXAMPLE_RESULTS = os.path.join(ROOT, "ExampleData", "OrthoFinder")
 ORTHOFINDER = os.path.join(ROOT,"src")
 sys.path.insert(0, ORTHOFINDER)
 
+ASSIGN = os.path.join(ROOT, "ExampleData", "AdditionalSpecies")
 EXPECTED_RESULTS = os.path.join(ROOT, "tests", "expected_results")
 
 if EXAMPLE_RESULTS[-1] != os.sep:
@@ -37,7 +38,9 @@ if ORTHOFINDER[-1] != os.sep:
 #         return entries[-1][1] if entries else ""
 #     except FileNotFoundError:
 #         return ""
-baseDirectoryName = EXAMPLE_RESULTS + "Results_"
+
+baseDirectoryName = os.path.join(ROOT, "ExampleData", "OrthoFinder", "Results_")
+
 DEFAULT_PROJECTS_RESULTS = CreateNewWorkingDirectory(
     baseDirectoryName,
     qDate=True,
@@ -69,6 +72,13 @@ def pytest_addoption(parser):
     #     default=DEFAULT_PROJECTS_RESULTS, 
     #     help="Comma-separated list of project result paths (defaults to latest ExampleData/OrthoFinder run).",
     # )
+
+    parser.addoption(
+        "--assign",
+        action="store",
+        default=ASSIGN, 
+        help="Comma-separated list of additional species paths.",
+    )
 
     parser.addoption(
         "--expected-results",
@@ -177,12 +187,14 @@ def pytest_generate_tests(metafunc):
     requested = [name for name in (
         "projects",
         # "projects_results",
+        "assign",
         "expected_results",
         "cluster",
         "msa",
         "gene_tree",
         "dendroblast",
         "species_tree",
+        "recon_method",
         "t",
         "a",
     ) if name in metafunc.fixturenames]
@@ -196,6 +208,9 @@ def pytest_generate_tests(metafunc):
         # "projects_results": _split_or_default(
         #     metafunc.config.getoption("--projects-results"), default_value=DEFAULT_PROJECTS_RESULTS
         # ),
+        "assign": _split_or_default(
+            metafunc.config.getoption("--assign"), default_value=ASSIGN
+        ),
         "expected_results": _to_list(
             metafunc.config.getoption("--expected-results")
         ),
@@ -217,10 +232,10 @@ def pytest_generate_tests(metafunc):
         "recon_method": _split_or_default(
             metafunc.config.getoption("--recon-method"), default_value="of_recon"
         ),
-        "t": _split_or_default(
+        "sequence_search_threads": _split_or_default(
             metafunc.config.getoption("--t"), default_value=mp.cpu_count()
         ),
-        "a": _split_or_default(
+        "analysis_threads": _split_or_default(
             metafunc.config.getoption("--a"),
             default_value=min(16, max(1, int(mp.cpu_count() / 8)))
         ),
@@ -244,35 +259,35 @@ def pytest_generate_tests(metafunc):
 
 ### ------------------- CLI input --------------------------------
 
-@pytest.fixture(scope="session")
-def projects(request):
-    """Fixture giving the current project path for a test run"""
-    return request.config.getoption("--projects")
+# @pytest.fixture(scope="session")
+# def projects(request):
+#     """Fixture giving the current project path for a test run"""
+#     return request.config.getoption("--projects")
 
-@pytest.fixture(scope="session")
-def projects_results(projects):
-    """Fixture giving the projects results path for a test run"""
+# @pytest.fixture(scope="session")
+# def projects_results(projects):
+#     """Fixture giving the projects results path for a test run"""
 
-    baseDirectoryName = os.path.join(projects, "OrthoFinder")
-    if baseDirectoryName[-1] == os.sep:
-        baseDirectoryName += "Results_"
-    else:
-        baseDirectoryName = baseDirectoryName + os.sep + "Results_"
+#     baseDirectoryName = os.path.join(projects, "OrthoFinder")
+#     if baseDirectoryName[-1] == os.sep:
+#         baseDirectoryName += "Results_"
+#     else:
+#         baseDirectoryName = baseDirectoryName + os.sep + "Results_"
 
-    results_dir = CreateNewWorkingDirectory(
-        baseDirectoryName,
-        qDate=True,
-        search_program=None,
-        msa_program=None,
-        tree_program=None,
-        scorematrix=None,
-        gapopen=None,
-        gapextend=None,
-        extended_filename=False,
-        makedir=False
-    )
+#     results_dir = CreateNewWorkingDirectory(
+#         baseDirectoryName,
+#         qDate=True,
+#         search_program=None,
+#         msa_program=None,
+#         tree_program=None,
+#         scorematrix=None,
+#         gapopen=None,
+#         gapextend=None,
+#         extended_filename=False,
+#         makedir=False
+#     )
 
-    return results_dir
+#     return results_dir
 
 # @pytest.fixture(scope="session")
 # def projects_results(request, projects):
@@ -280,14 +295,23 @@ def projects_results(projects):
 #     return request.config.getoption("--projects-results")
 
 @pytest.fixture(scope="session")
+def projects(request):
+    return request.param
+
+@pytest.fixture(scope="session")
+def assign(request):
+    """Fixture giving the additional species path for a test run"""
+    return request.param
+
+@pytest.fixture(scope="session")
 def expected_results(request):
     """Fixture giving the expected results path for a test run"""
-    return request.config.getoption("--expected-results")
+    return request.param
 
 @pytest.fixture(scope="session")
 def cluster(request):
     """Fixture giving the clustering program used (e.g., mcl, etc.)"""
-    return request.config.getoption("--cluster")
+    return request.param
 
 @pytest.fixture(scope="session")
 def msa(request):
@@ -297,22 +321,22 @@ def msa(request):
 @pytest.fixture(scope="session")
 def gene_tree(request):
     """Fixture giving the gene tree inference program (e.g., fasttree, iqtree, etc.)"""
-    return request.config.getoption("--gene-tree")
+    return request.param
 
 @pytest.fixture(scope="session")
 def dendroblast(request):
     """Fixture indicating whether dendroblast (non-MSA) mode is enabled"""
-    return request.config.getoption("--dendroblast")
+    return request.param
 
 @pytest.fixture(scope="session")
 def species_tree(request):
     """Fixture giving the species tree inference program (e.g., astral-pro, etc.)"""
-    return request.config.getoption("--species-tree")
+    return request.param
 
 @pytest.fixture(scope="session")
 def recon_method(request):
     """Fixture giving the reconciliation program (e.g., of_recon, etc.)"""
-    return request.config.getoption("--recon-method")
+    return request.param
 
 @pytest.fixture(scope="session")
 def sequence_search_threads(request):
@@ -326,13 +350,13 @@ def analysis_threads(request):
 
 ### -----------------------------------------------------------------
 
-@pytest.fixture(scope="session")
-def project_overall_stats(projects_results):
-    return os.path.join(
-        helper.create_path(projects_results),
-        "Comparative_Genomics_Statistics",
-        "Statistics_Overall.tsv"
-    )
+# @pytest.fixture(scope="session")
+# def project_overall_stats(projects_results):
+#     return os.path.join(
+#         helper.create_path(projects_results),
+#         "Comparative_Genomics_Statistics",
+#         "Statistics_Overall.tsv"
+#     )
 
 @pytest.fixture(scope="session")
 def expected_overall_stats(expected_results):
@@ -341,11 +365,11 @@ def expected_overall_stats(expected_results):
         "Statistics_Overall.tsv"
     )
 
-@pytest.fixture(scope="session")
-def orthogroups(projects_results):
-    return os.path.join(
-        helper.create_path(projects_results),
-        "Orthogroups",
-        "Orthogroups.txt"
-    )
+# @pytest.fixture(scope="session")
+# def orthogroups(projects_results):
+#     return os.path.join(
+#         helper.create_path(projects_results),
+#         "Orthogroups",
+#         "Orthogroups.txt"
+#     )
 

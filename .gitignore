@@ -205,3 +205,6 @@ OrthoFinder-manual.pdf
 setup.py
 requirements_dev.txt
 *expected
+Species_*
+Core 
+Assign

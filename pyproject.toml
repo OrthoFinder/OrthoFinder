@@ -99,12 +99,15 @@ concurrency = ["thread", "multiprocessing"]
 
 [tool.coverage.report]
 show_missing = true
-# omit = ["src/orthofinder/_version.py", "src/orthofinder/run/__main__.py"]
-# exclude_lines = ["pragma: no cover", "if __name__ == .__main__.:"]
+omit = [
+    "src/orthofinder/_version.py",
+    # "src/orthofinder/run/__main__.py",
+]
+exclude_lines = ["pragma: no cover", "if __name__ == .__main__.:"]
 
 [tool.pytest.ini_options]
-# addopts = "--cov=orthofinder"
-addopts = "--cov --cov-report=term-missing"
+addopts = "--cov=orthofinder"
+# addopts = "--cov --cov-report=term-missing"
 testpaths = ["tests"]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",

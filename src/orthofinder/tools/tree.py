@@ -190,19 +190,19 @@ class TreeNode(object):
     #: A list of children nodes
     children = property(fget=_get_children, fset=_set_children)
 
-    def _set_face_areas(self, value):
-        if isinstance(value, _FaceAreas):
-            self._faces = value
-        else:
-            raise ValueError("[%s] is not a valid FaceAreas instance" %type(value))
+    # def _set_face_areas(self, value):
+    #     if isinstance(value, _FaceAreas):
+    #         self._faces = value
+    #     else:
+    #         raise ValueError("[%s] is not a valid FaceAreas instance" %type(value))
         
-    def _get_face_areas(self):
-        if not hasattr(self, "_faces"):
-            self._faces = _FaceAreas()
-        return self._faces
+    # def _get_face_areas(self):
+    #     if not hasattr(self, "_faces"):
+    #         self._faces = _FaceAreas()
+    #     return self._faces
 
-    faces = property(fget=_get_face_areas, \
-                         fset=_set_face_areas)
+    # faces = property(fget=_get_face_areas, \
+    #                      fset=_set_face_areas)
 
     def __init__(self, newick=None, format=0, dist=None, support=None,
                  name=None):
@@ -1120,101 +1120,101 @@ class TreeNode(object):
 
 
             
-    def get_midpoint_outgroup(self):
-        """
-        Returns the node that divides the current tree into two distance-balanced
-        partitions.
-        """
-        # Gets the farthest node to the current root
-        root = self.get_tree_root()
-        nA , r2A_dist = root.get_farthest_leaf()
-        nB , A2B_dist = nA.get_farthest_node()
+    # def get_midpoint_outgroup(self):
+    #     """
+    #     Returns the node that divides the current tree into two distance-balanced
+    #     partitions.
+    #     """
+    #     # Gets the farthest node to the current root
+    #     root = self.get_tree_root()
+    #     nA , r2A_dist = root.get_farthest_leaf()
+    #     nB , A2B_dist = nA.get_farthest_node()
 
-        outgroup = nA
-        middist  = A2B_dist / 2.0
-        cdist = 0
-        current = nA
-        while current is not None:
-            cdist += current.dist
-            if cdist > (middist): # Deja de subir cuando se pasa del maximo
-                break
-            else:
-                current = current.up
-        return current
+    #     outgroup = nA
+    #     middist  = A2B_dist / 2.0
+    #     cdist = 0
+    #     current = nA
+    #     while current is not None:
+    #         cdist += current.dist
+    #         if cdist > (middist): # Deja de subir cuando se pasa del maximo
+    #             break
+    #         else:
+    #             current = current.up
+    #     return current
         
-    def populate(self, size, names_library=None, reuse_names=False,
-                 random_branches=False, branch_range=(0,1),
-                 support_range=(0,1)): 
-        """
-        Generates a random topology by populating current node.
+    # def populate(self, size, names_library=None, reuse_names=False,
+    #              random_branches=False, branch_range=(0,1),
+    #              support_range=(0,1)): 
+    #     """
+    #     Generates a random topology by populating current node.
 
-        :argument None names_library: If provided, names library
-          (list, set, dict, etc.) will be used to name nodes.
+    #     :argument None names_library: If provided, names library
+    #       (list, set, dict, etc.) will be used to name nodes.
 
-        :argument False reuse_names: If True, node names will not be
-          necessarily unique, which makes the process a bit more
-          efficient.
+    #     :argument False reuse_names: If True, node names will not be
+    #       necessarily unique, which makes the process a bit more
+    #       efficient.
 
-        :argument False random_branches: If True, branch distances and support
-          values will be randomized.
+    #     :argument False random_branches: If True, branch distances and support
+    #       values will be randomized.
         
-        :argument (0,1) branch_range: If random_branches is True, this
-        range of values will be used to generate random distances.
+    #     :argument (0,1) branch_range: If random_branches is True, this
+    #     range of values will be used to generate random distances.
 
-        :argument (0,1) support_range: If random_branches is True,
-        this range of values will be used to generate random branch
-        support values.
+    #     :argument (0,1) support_range: If random_branches is True,
+    #     this range of values will be used to generate random branch
+    #     support values.
 
-        """
-        NewNode = self.__class__
+    #     """
+    #     NewNode = self.__class__
 
-        if len(self.children) > 1: 
-            connector = NewNode()
-            for ch in self.get_children():
-                ch.detach()
-                connector.add_child(child = ch)
-            root = NewNode()
-            self.add_child(child = connector)
-            self.add_child(child = root)
-        else:
-            root = self
+    #     if len(self.children) > 1: 
+    #         connector = NewNode()
+    #         for ch in self.get_children():
+    #             ch.detach()
+    #             connector.add_child(child = ch)
+    #         root = NewNode()
+    #         self.add_child(child = connector)
+    #         self.add_child(child = root)
+    #     else:
+    #         root = self
 
-        next = deque([root])
-        for i in range(size-1):
-            if random.randint(0, 1):
-                p = next.pop()
-            else:
-                p = next.popleft()
+    #     next = deque([root])
+    #     for i in range(size-1):
+    #         if random.randint(0, 1):
+    #             p = next.pop()
+    #         else:
+    #             p = next.popleft()
 
-            c1 = p.add_child()
-            c2 = p.add_child()
-            next.extend([c1, c2])
-            if random_branches:
-                c1.dist = random.uniform(*branch_range)
-                c2.dist = random.uniform(*branch_range)
-                c1.support = random.uniform(*branch_range)
-                c2.support = random.uniform(*branch_range)
-            else:
-                c1.dist = 1.0
-                c2.dist = 1.0
-                c1.support = 1.0
-                c2.support = 1.0
+    #         c1 = p.add_child()
+    #         c2 = p.add_child()
+    #         next.extend([c1, c2])
+    #         if random_branches:
+    #             c1.dist = random.uniform(*branch_range)
+    #             c2.dist = random.uniform(*branch_range)
+    #             c1.support = random.uniform(*branch_range)
+    #             c2.support = random.uniform(*branch_range)
+    #         else:
+    #             c1.dist = 1.0
+    #             c2.dist = 1.0
+    #             c1.support = 1.0
+    #             c2.support = 1.0
 
-        # next contains leaf nodes
-        charset =  "abcdefghijklmnopqrstuvwxyz"
-        if names_library:
-            names_library = deque(names_library)
-        else:
-            avail_names = itertools.combinations_with_replacement(charset, 10)
-        for n in next:
-            if names_library:
-                if reuse_names: 
-                    tname = random.sample(names_library, 1)[0]
-                else:
-                    tname = names_library.pop()
-            else:
-                tname = ''.join(next(avail_names))
-            n.name = tname
+    #     # next contains leaf nodes
+    #     charset =  "abcdefghijklmnopqrstuvwxyz"
+    #     if names_library:
+    #         names_library = deque(names_library)
+    #     else:
+    #         avail_names = itertools.combinations_with_replacement(charset, 10)
+    #     for n in next:
+    #         if names_library:
+    #             if reuse_names: 
+    #                 tname = random.sample(names_library, 1)[0]
+    #             else:
+    #                 tname = names_library.pop()
+    #         else:
+    #             tname = ''.join(next(avail_names))
+    #         n.name = tname
             
 
     def set_outgroup(self, outgroup):
@@ -1302,23 +1302,23 @@ class TreeNode(object):
         outgroup2.dist = middist
         outgroup2.support = outgroup.support
 
-    def unroot(self):
-        """ 
-        Unroots current node. This function is expected to be used on
-        the absolute tree root node, but it can be also be applied to
-        any other internal node. It will convert a split into a
-        multifurcation.
-        """
-        # if is rooted
-        if not self.is_root():
-            sys.stderr.write("Warning. You are unrooting an internal node!!!\n")
-        if len(self.children)==2:
-            if not self.children[0].is_leaf():
-                self.children[0].delete()
-            elif not self.children[1].is_leaf():
-                self.children[1].delete()
-            else:
-                raise TreeError("Cannot unroot a tree with only two leaves")
+    # def unroot(self):
+    #     """ 
+    #     Unroots current node. This function is expected to be used on
+    #     the absolute tree root node, but it can be also be applied to
+    #     any other internal node. It will convert a split into a
+    #     multifurcation.
+    #     """
+    #     # if is rooted
+    #     if not self.is_root():
+    #         sys.stderr.write("Warning. You are unrooting an internal node!!!\n")
+    #     if len(self.children)==2:
+    #         if not self.children[0].is_leaf():
+    #             self.children[0].delete()
+    #         elif not self.children[1].is_leaf():
+    #             self.children[1].delete()
+    #         else:
+    #             raise TreeError("Cannot unroot a tree with only two leaves")
 
     def copy(self, method="cpickle"):
         """.. versionadded: 2.1
@@ -1366,152 +1366,152 @@ class TreeNode(object):
             new_node = pickle.loads(pickle.dumps(self, 2))
             self.up = parent
         else:
-            raise ValuerError("Invalid copy method")
+            raise ValueError("Invalid copy method")
             
         return new_node
         
-    def _asciiArt(self, char1='-', show_internal=True, compact=False, attributes=None):
-        """
-        Returns the ASCII representation of the tree.
+    # def _asciiArt(self, char1='-', show_internal=True, compact=False, attributes=None):
+    #     """
+    #     Returns the ASCII representation of the tree.
 
-        Code based on the PyCogent GPL project.
-        """
-        if not attributes:
-            attributes = ["name"]
-        node_name = ', '.join(map(str, [getattr(self, v) for v in attributes if hasattr(self, v)]))
+    #     Code based on the PyCogent GPL project.
+    #     """
+    #     if not attributes:
+    #         attributes = ["name"]
+    #     node_name = ', '.join(map(str, [getattr(self, v) for v in attributes if hasattr(self, v)]))
         
-        LEN = max(3, len(node_name) if not self.children or show_internal else 3)
-        PAD = ' ' * LEN
-        PA = ' ' * (LEN-1)
-        if not self.is_leaf():
-            mids = []
-            result = []
-            for c in self.children:
-                if len(self.children) == 1:
-                    char2 = '/'
-                elif c is self.children[0]:
-                    char2 = '/'
-                elif c is self.children[-1]:
-                    char2 = '\\'
-                else:
-                    char2 = '-'
-                (clines, mid) = c._asciiArt(char2, show_internal, compact, attributes)
-                mids.append(mid+len(result))
-                result.extend(clines)
-                if not compact:
-                    result.append('')
-            if not compact:
-                result.pop()
-            (lo, hi, end) = (mids[0], mids[-1], len(result))
-            prefixes = [PAD] * (lo+1) + [PA+'|'] * (hi-lo-1) + [PAD] * (end-hi)
-            mid = int((lo + hi) / 2)
-            prefixes[mid] = char1 + '-'*(LEN-2) + prefixes[mid][-1]
-            result = [p+l for (p,l) in zip(prefixes, result)]
-            if show_internal:
-                stem = result[mid]
-                result[mid] = stem[0] + node_name + stem[len(node_name)+1:]
-            return (result, mid)
-        else:
-            return ([char1 + '-' + node_name], 0)
+    #     LEN = max(3, len(node_name) if not self.children or show_internal else 3)
+    #     PAD = ' ' * LEN
+    #     PA = ' ' * (LEN-1)
+    #     if not self.is_leaf():
+    #         mids = []
+    #         result = []
+    #         for c in self.children:
+    #             if len(self.children) == 1:
+    #                 char2 = '/'
+    #             elif c is self.children[0]:
+    #                 char2 = '/'
+    #             elif c is self.children[-1]:
+    #                 char2 = '\\'
+    #             else:
+    #                 char2 = '-'
+    #             (clines, mid) = c._asciiArt(char2, show_internal, compact, attributes)
+    #             mids.append(mid+len(result))
+    #             result.extend(clines)
+    #             if not compact:
+    #                 result.append('')
+    #         if not compact:
+    #             result.pop()
+    #         (lo, hi, end) = (mids[0], mids[-1], len(result))
+    #         prefixes = [PAD] * (lo+1) + [PA+'|'] * (hi-lo-1) + [PAD] * (end-hi)
+    #         mid = int((lo + hi) / 2)
+    #         prefixes[mid] = char1 + '-'*(LEN-2) + prefixes[mid][-1]
+    #         result = [p+l for (p,l) in zip(prefixes, result)]
+    #         if show_internal:
+    #             stem = result[mid]
+    #             result[mid] = stem[0] + node_name + stem[len(node_name)+1:]
+    #         return (result, mid)
+    #     else:
+    #         return ([char1 + '-' + node_name], 0)
 
-    def get_ascii(self, show_internal=True, compact=False, attributes=None):
-        """
-        Returns a string containing an ascii drawing of the tree.
+    # def get_ascii(self, show_internal=True, compact=False, attributes=None):
+    #     """
+    #     Returns a string containing an ascii drawing of the tree.
 
-        :argument show_internal: includes internal edge names.
-        :argument compact: use exactly one line per tip.
+    #     :argument show_internal: includes internal edge names.
+    #     :argument compact: use exactly one line per tip.
 
-        :param attributes: A list of node attributes to shown in the
-            ASCII representation.
+    #     :param attributes: A list of node attributes to shown in the
+    #         ASCII representation.
         
-        """
-        (lines, mid) = self._asciiArt(show_internal=show_internal,
-                                      compact=compact, attributes=attributes)
-        return '\n'+'\n'.join(lines)
+    #     """
+    #     (lines, mid) = self._asciiArt(show_internal=show_internal,
+    #                                   compact=compact, attributes=attributes)
+    #     return '\n'+'\n'.join(lines)
 
 
-    def ladderize(self, direction=0):
-        """ 
-        .. versionadded: 2.1 
+    # def ladderize(self, direction=0):
+    #     """ 
+    #     .. versionadded: 2.1 
 
-        Sort the branches of a given tree (swapping children nodes)
-        according to the size of each partition.
+    #     Sort the branches of a given tree (swapping children nodes)
+    #     according to the size of each partition.
 
-        ::
+    #     ::
 
-           t =  Tree("(f,((d, ((a,b),c)),e));")
+    #        t =  Tree("(f,((d, ((a,b),c)),e));")
 
-           print t
+    #        print t
 
-           #            
-           #      /-f
-           #     |
-           #     |          /-d
-           # ----|         |
-           #     |     /---|          /-a
-           #     |    |    |     /---|
-           #     |    |     \---|     \-b
-           #      \---|         |
-           #          |          \-c
-           #          |
-           #           \-e
+    #        #            
+    #        #      /-f
+    #        #     |
+    #        #     |          /-d
+    #        # ----|         |
+    #        #     |     /---|          /-a
+    #        #     |    |    |     /---|
+    #        #     |    |     \---|     \-b
+    #        #      \---|         |
+    #        #          |          \-c
+    #        #          |
+    #        #           \-e
 
-           t.ladderize()
-           print t
+    #        t.ladderize()
+    #        print t
 
-           #      /-f
-           # ----|
-           #     |     /-e
-           #      \---|
-           #          |     /-d
-           #           \---|
-           #               |     /-c
-           #                \---|
-           #                    |     /-a
-           #                     \---|
-           #                          \-b
+    #        #      /-f
+    #        # ----|
+    #        #     |     /-e
+    #        #      \---|
+    #        #          |     /-d
+    #        #           \---|
+    #        #               |     /-c
+    #        #                \---|
+    #        #                    |     /-a
+    #        #                     \---|
+    #        #                          \-b
 
-        """
+    #     """
        
-        if not self.is_leaf():
-            n2s = {}
-            for n in self.get_children():
-                s = n.ladderize(direction=direction)
-                n2s[n] = s
+    #     if not self.is_leaf():
+    #         n2s = {}
+    #         for n in self.get_children():
+    #             s = n.ladderize(direction=direction)
+    #             n2s[n] = s
 
-            self.children.sort(lambda x,y: cmp(n2s[x], n2s[y]))
-            if direction == 1:
-                self.children.reverse()
-            size = sum(n2s.values())
-        else:
-            size = 1
+    #         self.children.sort(lambda x,y: cmp(n2s[x], n2s[y]))
+    #         if direction == 1:
+    #             self.children.reverse()
+    #         size = sum(n2s.values())
+    #     else:
+    #         size = 1
 
-        return size
+    #     return size
 
-    def sort_descendants(self):
-        """ 
-        .. versionadded: 2.1 
+    # def sort_descendants(self):
+    #     """ 
+    #     .. versionadded: 2.1 
 
-        This function sort the branches of a given tree by
-        considerening node names. After the tree is sorted, nodes are
-        labeled using ascendent numbers.  This can be used to ensure
-        that nodes in a tree with the same node names are always
-        labeled in the same way. Note that if duplicated names are
-        present, extra criteria should be added to sort nodes.
+    #     This function sort the branches of a given tree by
+    #     considerening node names. After the tree is sorted, nodes are
+    #     labeled using ascendent numbers.  This can be used to ensure
+    #     that nodes in a tree with the same node names are always
+    #     labeled in the same way. Note that if duplicated names are
+    #     present, extra criteria should be added to sort nodes.
 
-        Unique id is stored as a node._nid attribute
+    #     Unique id is stored as a node._nid attribute
        
-        """
+    #     """
 
-        node2content = self.get_cached_content()
-        def sort_by_content(x, y):
-            return cmp(str(sorted([i.name for i in node2content[x]])),
-                       str(sorted([i.name for i in node2content[y]])))
+    #     node2content = self.get_cached_content()
+    #     def sort_by_content(x, y):
+    #         return cmp(str(sorted([i.name for i in node2content[x]])),
+    #                    str(sorted([i.name for i in node2content[y]])))
 
-        for n in self.traverse():
-            if not n.is_leaf():
-                n.children.sort(sort_by_content)
-        return node2content
+    #     for n in self.traverse():
+    #         if not n.is_leaf():
+    #             n.children.sort(sort_by_content)
+    #     return node2content
 
     # def get_cached_content(self, store_attr=None,  _store=None):
     #     """ 
@@ -1582,112 +1582,112 @@ class TreeNode(object):
         return _store
 
        
-    def robinson_foulds(self, t2, attr_t1="name", attr_t2="name"):
-        """
-        .. versionadded: 2.2
+    # def robinson_foulds(self, t2, attr_t1="name", attr_t2="name"):
+    #     """
+    #     .. versionadded: 2.2
         
-        Returns the Robinson-Foulds symmetric distance between current
-        tree and a different tree instance.
+    #     Returns the Robinson-Foulds symmetric distance between current
+    #     tree and a different tree instance.
      
-        :param t2: target tree
+    #     :param t2: target tree
         
-        :param name attr_t1: Compare trees using a custom node
-                              attribute as a node name.
+    #     :param name attr_t1: Compare trees using a custom node
+    #                           attribute as a node name.
         
-        :param name attr_t2: Compare trees using a custom node
-                              attribute as a node name in target tree.
+    #     :param name attr_t2: Compare trees using a custom node
+    #                           attribute as a node name in target tree.
 
-        :returns: (symmetric distance, total partitions, common node
-         names, partitions in current tree, partitions in target tree)
+    #     :returns: (symmetric distance, total partitions, common node
+    #      names, partitions in current tree, partitions in target tree)
            
-        """
+    #     """
         
-        t1 = self
-        t1content = t1.get_cached_content()
-        t2content = t2.get_cached_content()
-        target_names = set([getattr(_n, attr_t1) for _n in t1content[t1]])
-        ref_names = set([getattr(_n, attr_t2) for _n in t2content[t2]])
-        common_names = target_names & ref_names
-        if len(common_names) < 2:
-            raise ValueError("Trees share less than 2 nodes")
+    #     t1 = self
+    #     t1content = t1.get_cached_content()
+    #     t2content = t2.get_cached_content()
+    #     target_names = set([getattr(_n, attr_t1) for _n in t1content[t1]])
+    #     ref_names = set([getattr(_n, attr_t2) for _n in t2content[t2]])
+    #     common_names = target_names & ref_names
+    #     if len(common_names) < 2:
+    #         raise ValueError("Trees share less than 2 nodes")
 
-        r1 = set([",".join(sorted([getattr(_c, attr_t1) for _c in cont
-                                   if getattr(_c, attr_t1) in common_names]))
-                  for cont in t1content.values() if len(cont)>1])
-        r2 = set([",".join(sorted([getattr(_c, attr_t2) for _c in cont
-                                   if getattr(_c, attr_t2) in common_names]))
-                  for cont in t2content.values() if len(cont)>1])
-        r1.discard("")
-        r2.discard("")              
-        inters = r1.intersection(r2)
-        if len(r1) == len(r2):
-                rf = (len(r1) - len(inters)) * 2
-        else :
-                rf = (len(r1) - len(inters)) + (len(r2) - len(inters))
-        max_parts = len(r1) + len(r2)
-        return rf, max_parts, common_names, r1, r2
+    #     r1 = set([",".join(sorted([getattr(_c, attr_t1) for _c in cont
+    #                                if getattr(_c, attr_t1) in common_names]))
+    #               for cont in t1content.values() if len(cont)>1])
+    #     r2 = set([",".join(sorted([getattr(_c, attr_t2) for _c in cont
+    #                                if getattr(_c, attr_t2) in common_names]))
+    #               for cont in t2content.values() if len(cont)>1])
+    #     r1.discard("")
+    #     r2.discard("")              
+    #     inters = r1.intersection(r2)
+    #     if len(r1) == len(r2):
+    #             rf = (len(r1) - len(inters)) * 2
+    #     else :
+    #             rf = (len(r1) - len(inters)) + (len(r2) - len(inters))
+    #     max_parts = len(r1) + len(r2)
+    #     return rf, max_parts, common_names, r1, r2
 
-    def get_partitions(self):
-        """ 
-        .. versionadded: 2.1
+    # def get_partitions(self):
+    #     """ 
+    #     .. versionadded: 2.1
         
-        It returns the set of all possible partitions under a
-        node. Note that current implementation is quite inefficient
-        when used in very large trees.
+    #     It returns the set of all possible partitions under a
+    #     node. Note that current implementation is quite inefficient
+    #     when used in very large trees.
 
-        t = Tree("((a, b), e);")
-        partitions = t.get_partitions()
+    #     t = Tree("((a, b), e);")
+    #     partitions = t.get_partitions()
 
-        # Will return: 
-        # a,b,e
-        # a,e
-        # b,e
-        # a,b
-        # e
-        # b
-        # a
-        """
-        all_leaves = frozenset(self.get_leaf_names())
-        all_partitions = set([all_leaves])
-        for n in self.iter_descendants():
-            p1 = frozenset(n.get_leaf_names())
-            p2 = frozenset(all_leaves - p1)
-            all_partitions.add(p1)
-            all_partitions.add(p2)
-        return all_partitions
+    #     # Will return: 
+    #     # a,b,e
+    #     # a,e
+    #     # b,e
+    #     # a,b
+    #     # e
+    #     # b
+    #     # a
+    #     """
+    #     all_leaves = frozenset(self.get_leaf_names())
+    #     all_partitions = set([all_leaves])
+    #     for n in self.iter_descendants():
+    #         p1 = frozenset(n.get_leaf_names())
+    #         p2 = frozenset(all_leaves - p1)
+    #         all_partitions.add(p1)
+    #         all_partitions.add(p2)
+    #     return all_partitions
 
-    def convert_to_ultrametric(self, tree_length, strategy="balanced"):
-        """
-        .. versionadded: 2.1 
+    # def convert_to_ultrametric(self, tree_length, strategy="balanced"):
+    #     """
+    #     .. versionadded: 2.1 
 
-        Converts a tree to ultrametric topology (all leaves must have
-        the same distance to root). Note that, for visual inspection
-        of ultrametric trees, node.img_style["size"] should be set to
-        0.
-        """
+    #     Converts a tree to ultrametric topology (all leaves must have
+    #     the same distance to root). Note that, for visual inspection
+    #     of ultrametric trees, node.img_style["size"] should be set to
+    #     0.
+    #     """
 
-        # pre-calculate how many splits remain under each node
-        node2max_depth = {}
-        for node in self.traverse("postorder"):
-            if not node.is_leaf():
-                max_depth = max([node2max_depth[c] for c in node.children]) + 1
-                node2max_depth[node] = max_depth
-            else:
-                node2max_depth[node] = 1
-        node2dist = {self: 0.0}
-        tree_length = float(tree_length)
-        step = tree_length / node2max_depth[self]
-        for node in self.iter_descendants("levelorder"):
-            if strategy == "balanced":
-                node.dist = (tree_length - node2dist[node.up]) / node2max_depth[node]
-                node2dist[node] =  node.dist + node2dist[node.up]
-            elif strategy == "fixed":
-                if not node.is_leaf():
-                    node.dist = step
-                else:
-                    node.dist = tree_length - ((node2dist[node.up]) * step)
-                node2dist[node] = node2dist[node.up] + 1
-            node.dist = node.dist
+    #     # pre-calculate how many splits remain under each node
+    #     node2max_depth = {}
+    #     for node in self.traverse("postorder"):
+    #         if not node.is_leaf():
+    #             max_depth = max([node2max_depth[c] for c in node.children]) + 1
+    #             node2max_depth[node] = max_depth
+    #         else:
+    #             node2max_depth[node] = 1
+    #     node2dist = {self: 0.0}
+    #     tree_length = float(tree_length)
+    #     step = tree_length / node2max_depth[self]
+    #     for node in self.iter_descendants("levelorder"):
+    #         if strategy == "balanced":
+    #             node.dist = (tree_length - node2dist[node.up]) / node2max_depth[node]
+    #             node2dist[node] =  node.dist + node2dist[node.up]
+    #         elif strategy == "fixed":
+    #             if not node.is_leaf():
+    #                 node.dist = step
+    #             else:
+    #                 node.dist = tree_length - ((node2dist[node.up]) * step)
+    #             node2dist[node] = node2dist[node.up] + 1
+    #         node.dist = node.dist
 
     def check_monophyly(self, values, target_attr, ignore_missing=False):
         """
@@ -1752,77 +1752,77 @@ class TreeNode(object):
                 return False, "paraphyletic"
 
             
-    def get_monophyletic(self, values, target_attr):
-        """
-        .. versionadded:: 2.2
+    # def get_monophyletic(self, values, target_attr):
+    #     """
+    #     .. versionadded:: 2.2
 
-        Returns a list of nodes matching the provided monophyly
-        criteria. For a node to be considered a match, all
-        `target_attr` values within and node, and exclusively them,
-        should be grouped.
+    #     Returns a list of nodes matching the provided monophyly
+    #     criteria. For a node to be considered a match, all
+    #     `target_attr` values within and node, and exclusively them,
+    #     should be grouped.
         
-        :param values: a set of values for which monophyly is
-            expected.
+    #     :param values: a set of values for which monophyly is
+    #         expected.
             
-        :param target_attr: node attribute being used to check
-            monophyly (i.e. species for species trees, names for gene
-            family trees).
+    #     :param target_attr: node attribute being used to check
+    #         monophyly (i.e. species for species trees, names for gene
+    #         family trees).
            
-        """
+    #     """
 
-        if type(values) != set:
-            values = set(values)
+    #     if type(values) != set:
+    #         values = set(values)
 
-        n2values = self.get_cached_content(store_attr=target_attr)
+    #     n2values = self.get_cached_content(store_attr=target_attr)
       
-        is_monophyletic = lambda node: n2values[node] == values
-        for match in self.iter_leaves(is_leaf_fn=is_monophyletic):
-            if is_monophyletic(match):
-                yield match
+    #     is_monophyletic = lambda node: n2values[node] == values
+    #     for match in self.iter_leaves(is_leaf_fn=is_monophyletic):
+    #         if is_monophyletic(match):
+    #             yield match
 
             
-    def resolve_polytomy(self, default_dist=0.0, default_support=0.0,
-                         recursive=True):
-        """
-        .. versionadded: 2.2
+    # def resolve_polytomy(self, default_dist=0.0, default_support=0.0,
+    #                      recursive=True):
+    #     """
+    #     .. versionadded: 2.2
         
-        Resolve all polytomies under current node by creating an
-        arbitrary dicotomic structure among the affected nodes. This
-        function randomly modifies current tree topology and should
-        only be used for compatibility reasons (i.e. programs
-        rejecting multifurcated node in the newick representation).
+    #     Resolve all polytomies under current node by creating an
+    #     arbitrary dicotomic structure among the affected nodes. This
+    #     function randomly modifies current tree topology and should
+    #     only be used for compatibility reasons (i.e. programs
+    #     rejecting multifurcated node in the newick representation).
 
-        :param 0.0 default_dist: artificial branch distance of new
-            nodes.
+    #     :param 0.0 default_dist: artificial branch distance of new
+    #         nodes.
                                   
-        :param 0.0 default_support: artificial branch support of new
-            nodes.
+    #     :param 0.0 default_support: artificial branch support of new
+    #         nodes.
                                    
-        :param True recursive: Resolve any polytomy under this
-             node. When False, only current node will be checked and fixed.
-        """
+    #     :param True recursive: Resolve any polytomy under this
+    #          node. When False, only current node will be checked and fixed.
+    #     """
         
         
-        def _resolve(node):
-            if len(node.children) > 2:
-                children = list(node.children)
-                node.children = []
-                next_node = root = node
-                for i in range(len(children)-2):
-                    next_node = next_node.add_child()
-                    next_node.dist = default_dist
-                    next_node.support = default_support
+    #     def _resolve(node):
+    #         if len(node.children) > 2:
+    #             children = list(node.children)
+    #             node.children = []
+    #             next_node = root = node
+    #             for i in range(len(children)-2):
+    #                 next_node = next_node.add_child()
+    #                 next_node.dist = default_dist
+    #                 next_node.support = default_support
 
-                next_node = root
-                for ch in children:
-                    next_node.add_child(ch)
-                    if ch != children[-2]:
-                        next_node = next_node.children[0]
-        target = [self]
-        if recursive: 
-            target.extend([n for n in self.get_descendants()])
-        for n in target:
-            _resolve(n)
+    #             next_node = root
+    #             for ch in children:
+    #                 next_node.add_child(ch)
+    #                 if ch != children[-2]:
+    #                     next_node = next_node.children[0]
+    #     target = [self]
+    #     if recursive: 
+    #         target.extend([n for n in self.get_descendants()])
+    #     for n in target:
+    #         _resolve(n)
 
 
 def _translate_nodes(root, *nodes):

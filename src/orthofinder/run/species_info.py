@@ -149,67 +149,67 @@ def ProcessPreviousFiles(workingDir_list, qDoubleBlast, check_blast=True):
     return speciesInfo, speciesToUse_names
 
 
-def GetXMLSpeciesInfo(seqsInfoObj, options):
-    # speciesInfo:  name, NCBITaxID, sourceDatabaseName, databaseVersionFastaFile
-    util.PrintUnderline("Reading species information file")
-    # do this now so that we can alert user to any errors prior to running the algorithm
-    speciesXML = [[] for i_ in seqsInfoObj.speciesToUse]
-    speciesNamesDict = SpeciesNameDict(files.FileHandler.GetSpeciesIDsFN())
-    speciesRevDict = {v: k for k, v in speciesNamesDict.items()}
-    userFastaFilenames = [
-        os.path.split(speciesNamesDict[i])[1] for i in seqsInfoObj.speciesToUse
-    ]
-    with open(options.speciesXMLInfoFN, "r") as speciesInfoFile:
-        reader = csv.reader(speciesInfoFile, delimiter="\t")
-        for iLine, line in enumerate(reader):
-            if len(line) != 5:
-                # allow for an extra empty line at the end
-                if len(line) == 0 and iLine == len(userFastaFilenames):
-                    continue
-                print("ERROR")
-                print(
-                    "Species information file %s line %d is incorrectly formatted."
-                    % (options.speciesXMLInfoFN, iLine + 1)
-                )
-                print("File should be contain one line per species")
-                print("Each line should contain 5 tab-delimited fields:")
-                print(
-                    "  fastaFilename, speciesName, NCBITaxID, sourceDatabaseName, databaseFastaFilename"
-                )
-                print("See README file for more information.")
-                util.Fail()
-            (
-                fastaFilename,
-                speciesName,
-                NCBITaxID,
-                sourceDatabaseName,
-                databaseVersionFastaFile,
-            ) = line
-            try:
-                iSpecies = speciesRevDict[os.path.splitext(fastaFilename)[0]]
-            except KeyError:
-                print(
-                    "Skipping %s from line %d as it is not being used in this analysis"
-                    % (fastaFilename, iLine + 1)
-                )
-                continue
-            speciesXML[seqsInfoObj.speciesToUse.index(iSpecies)] = line
-    # check information has been provided for all species
-    speciesMissing = False
-    for iPos, iSpecies in enumerate(seqsInfoObj.speciesToUse):
-        if speciesXML[iPos] == []:
-            if not speciesMissing:
-                print("ERROR")
-                print(
-                    "Species information file %s does not contain information for all species."
-                    % options.speciesXMLInfoFN
-                )
-                print("Information is missing for:")
-                speciesMissing = True
-            print(speciesNamesDict[iSpecies])
-    if speciesMissing:
-        util.Fail()
-    return speciesXML
+# def GetXMLSpeciesInfo(seqsInfoObj, options):
+#     # speciesInfo:  name, NCBITaxID, sourceDatabaseName, databaseVersionFastaFile
+#     util.PrintUnderline("Reading species information file")
+#     # do this now so that we can alert user to any errors prior to running the algorithm
+#     speciesXML = [[] for i_ in seqsInfoObj.speciesToUse]
+#     speciesNamesDict = SpeciesNameDict(files.FileHandler.GetSpeciesIDsFN())
+#     speciesRevDict = {v: k for k, v in speciesNamesDict.items()}
+#     userFastaFilenames = [
+#         os.path.split(speciesNamesDict[i])[1] for i in seqsInfoObj.speciesToUse
+#     ]
+#     with open(options.speciesXMLInfoFN, "r") as speciesInfoFile:
+#         reader = csv.reader(speciesInfoFile, delimiter="\t")
+#         for iLine, line in enumerate(reader):
+#             if len(line) != 5:
+#                 # allow for an extra empty line at the end
+#                 if len(line) == 0 and iLine == len(userFastaFilenames):
+#                     continue
+#                 print("ERROR")
+#                 print(
+#                     "Species information file %s line %d is incorrectly formatted."
+#                     % (options.speciesXMLInfoFN, iLine + 1)
+#                 )
+#                 print("File should be contain one line per species")
+#                 print("Each line should contain 5 tab-delimited fields:")
+#                 print(
+#                     "  fastaFilename, speciesName, NCBITaxID, sourceDatabaseName, databaseFastaFilename"
+#                 )
+#                 print("See README file for more information.")
+#                 util.Fail()
+#             (
+#                 fastaFilename,
+#                 speciesName,
+#                 NCBITaxID,
+#                 sourceDatabaseName,
+#                 databaseVersionFastaFile,
+#             ) = line
+#             try:
+#                 iSpecies = speciesRevDict[os.path.splitext(fastaFilename)[0]]
+#             except KeyError:
+#                 print(
+#                     "Skipping %s from line %d as it is not being used in this analysis"
+#                     % (fastaFilename, iLine + 1)
+#                 )
+#                 continue
+#             speciesXML[seqsInfoObj.speciesToUse.index(iSpecies)] = line
+#     # check information has been provided for all species
+#     speciesMissing = False
+#     for iPos, iSpecies in enumerate(seqsInfoObj.speciesToUse):
+#         if speciesXML[iPos] == []:
+#             if not speciesMissing:
+#                 print("ERROR")
+#                 print(
+#                     "Species information file %s does not contain information for all species."
+#                     % options.speciesXMLInfoFN
+#                 )
+#                 print("Information is missing for:")
+#                 speciesMissing = True
+#             print(speciesNamesDict[iSpecies])
+#     if speciesMissing:
+#         util.Fail()
+#     return speciesXML
 
 
 def SpeciesNameDict(speciesIDsFN):
@@ -227,15 +227,15 @@ def SpeciesNameDict(speciesIDsFN):
     return speciesNamesDict
 
 
-def SpeciesSequenceNameDict(sequenceIDsFN):
-    try:
-        seqIDsEx = util.FirstWordExtractor(sequenceIDsFN)
-    except RuntimeError as error:
-        print(str(error))
-        if str(error).startswith("ERROR"): 
-            files.FileHandler.LogFailAndExit()
-        else:
-            print("Tried to use only the first part of the accession in order to list the sequences in each orthogroup")
-            print("more concisely but these were not unique. The full accession line will be used instead.\n")
-            seqIDsEx = util.FullAccession(sequenceIDsFN)
-    return seqIDsEx.GetIDToNameDict()
+# def SpeciesSequenceNameDict(sequenceIDsFN):
+#     try:
+#         seqIDsEx = util.FirstWordExtractor(sequenceIDsFN)
+#     except RuntimeError as error:
+#         print(str(error))
+#         if str(error).startswith("ERROR"): 
+#             files.FileHandler.LogFailAndExit()
+#         else:
+#             print("Tried to use only the first part of the accession in order to list the sequences in each orthogroup")
+#             print("more concisely but these were not unique. The full accession line will be used instead.\n")
+#             seqIDsEx = util.FullAccession(sequenceIDsFN)
+#     return seqIDsEx.GetIDToNameDict()

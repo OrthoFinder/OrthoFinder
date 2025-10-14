@@ -581,14 +581,14 @@ class __Files_new_dont_manually_create__(object):
         elif extension == ".ids":
             return self.GetWorkingDirectory_Write() + "%s.tsv" % sp_node_name
         else:
-            wd_hog_dir = self.GetWorkingDirectory_Write() + "HOGs/"
+            wd_hog_dir = self.rd1 + "Phylogenetic_Hierarchical_Orthogroups/"
             if not os.path.exists(wd_hog_dir):
                 os.makedirs(wd_hog_dir, exist_ok=True)
             return wd_hog_dir + "%s.tsv" % sp_node_name
         
     
-    def WDHierarchicalOrthogroupsFNN0(self):
-        return self.GetWorkingDirectory_Write() + "HOGs/N0.tsv"
+    # def WDHierarchicalOrthogroupsFNN0(self):
+    #     return self.GetWorkingDirectory_Write() + "HOGs/N0.tsv"
     
     def HierarchicalOrthogroupsFNN0(self):
         hog_dir = self.rd1 + "Phylogenetic_Hierarchical_Orthogroups/"
@@ -1056,6 +1056,8 @@ def InitialiseFileHandler(
     """
     # 1 & 2
     # If starting from scratch, no need for a PreviousFileLocator
+    if fastaDir is not None and fastaDir[-1] != os.sep:
+        fastaDir += os.sep
     if options.qStartFromFasta and not options.qStartFromBlast:
         pfl = None
         base_dir = resultsDir_nonDefault if resultsDir_nonDefault != None else fastaDir + "OrthoFinder/"
@@ -1087,6 +1089,8 @@ def InitialiseFileHandler(
     if not working_dir:
         FileHandler.CreateOutputDirectories(options, pfl, base_dir, fastaDir)
     else:
+        if working_dir[-1] != os.sep:
+            working_dir += os.sep
         FileHandler.wd_base.append(working_dir)
         FileHandler.wd_current = working_dir
         FileHandler.rd1 = os.path.dirname(working_dir)

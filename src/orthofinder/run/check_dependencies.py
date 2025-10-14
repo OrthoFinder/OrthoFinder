@@ -109,45 +109,45 @@ def CanRunOrthologueDependencies(
             printer.print("Please check FastME is installed and that the executables are in the system path.\n", style="error")
             return False
     # DLCPar
-    if ("dlcpar" in recon_method) and not (qStopAfterTrees or qStopAfterAlignments):
-        if not parallel_task_manager.CanRunCommand("dlcpar_search --version", qAllowStderr=False):
-            printer.print("ERROR: Cannot run dlcpar_search", style="error")
-            printer.print("Please check DLCpar is installed and that the executables are in the system path.\n", style="error")
-            return False
-        if recon_method == "dlcpar_convergedsearch":
-            capture = subprocess.Popen(
-                "dlcpar_search --version", 
-                shell=True, 
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.PIPE, 
-                env=parallel_task_manager.my_env
-            )
-            stdout = [x for x in capture.stdout]
-            try:
-                stdout = "".join([x.decode() for x in stdout])
-            except (UnicodeDecodeError, AttributeError):
-                stdout = "".join([x.encode() for x in stdout])
-            version = stdout.split()[-1]
-            tokens = list(map(int, version.split(".")))
-            major, minor = tokens[:2]
-            release = tokens[2] if len(tokens) > 2 else 0
-            # require 1.0.1 or above            
-            actual = (major, minor, release)
-            required = [1,0,1]
-            versionOK = True
-            for r, a in zip(required, actual):
-                if a > r:
-                    versionOK = True
-                    break
-                elif a < r:
-                    versionOK = False
-                    break
-                else:
-                    pass
-                    # need to check next level down
-            if not versionOK:
-                printer.print("ERROR: dlcpar_convergedsearch requires dlcpar_search version 1.0.1 or above", style="error")
-                return False                   
+    # if ("dlcpar" in recon_method) and not (qStopAfterTrees or qStopAfterAlignments):
+    #     if not parallel_task_manager.CanRunCommand("dlcpar_search --version", qAllowStderr=False):
+    #         printer.print("ERROR: Cannot run dlcpar_search", style="error")
+    #         printer.print("Please check DLCpar is installed and that the executables are in the system path.\n", style="error")
+    #         return False
+        # if recon_method == "dlcpar_convergedsearch":
+        #     capture = subprocess.Popen(
+        #         "dlcpar_search --version", 
+        #         shell=True, 
+        #         stdout=subprocess.PIPE, 
+        #         stderr=subprocess.PIPE, 
+        #         env=parallel_task_manager.my_env
+        #     )
+        #     stdout = [x for x in capture.stdout]
+        #     try:
+        #         stdout = "".join([x.decode() for x in stdout])
+        #     except (UnicodeDecodeError, AttributeError):
+        #         stdout = "".join([x.encode() for x in stdout])
+        #     version = stdout.split()[-1]
+        #     tokens = list(map(int, version.split(".")))
+        #     major, minor = tokens[:2]
+        #     release = tokens[2] if len(tokens) > 2 else 0
+        #     # require 1.0.1 or above            
+        #     actual = (major, minor, release)
+        #     required = [1,0,1]
+        #     versionOK = True
+        #     for r, a in zip(required, actual):
+        #         if a > r:
+        #             versionOK = True
+        #             break
+        #         elif a < r:
+        #             versionOK = False
+        #             break
+        #         else:
+        #             pass
+        #             # need to check next level down
+        #     if not versionOK:
+        #         printer.print("ERROR: dlcpar_convergedsearch requires dlcpar_search version 1.0.1 or above", style="error")
+        #         return False                   
     
     # FastTree & MAFFT
     if qMSAGeneTrees or qPhyldog:
@@ -178,10 +178,10 @@ def CanRunOrthologueDependencies(
                          "the orthofinder/config.json file\n", style="error")
                    return False
             
-    if qPhyldog:
-        if not parallel_task_manager.CanRunCommand("mpirun -np 1 phyldog", qAllowStderr=False):
-            printer.print("ERROR: Cannot run mpirun -np 1 phyldog", style="error")
-            printer.print("Please check phyldog is installed and that the executable is in the system path\n", style="error")
-            return False
+    # if qPhyldog:
+    #     if not parallel_task_manager.CanRunCommand("mpirun -np 1 phyldog", qAllowStderr=False):
+    #         printer.print("ERROR: Cannot run mpirun -np 1 phyldog", style="error")
+    #         printer.print("Please check phyldog is installed and that the executable is in the system path\n", style="error")
+    #         return False
         
     return True    

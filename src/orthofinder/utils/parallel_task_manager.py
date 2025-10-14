@@ -485,13 +485,13 @@ class ParallelTaskManager_singleton:
         self.instance.manager_process.join()
 
 
-def RunParallelMethods(func, args_list, nProcesses):
-    """nProcesss - the number of processes to run in parallel
-    commands - list of lists of commands where the commands in the inner list are completed in order (the i_th won't run until
-    the i-1_th has finished).
-    """
-    ptm = ParallelTaskManager_singleton()
-    ptm.RunParallel(func, args_list, nProcesses)
+# def RunParallelMethods(func, args_list, nProcesses):
+#     """nProcesss - the number of processes to run in parallel
+#     commands - list of lists of commands where the commands in the inner list are completed in order (the i_th won't run until
+#     the i-1_th has finished).
+#     """
+#     ptm = ParallelTaskManager_singleton()
+#     ptm.RunParallel(func, args_list, nProcesses)
 
 
 def Success():

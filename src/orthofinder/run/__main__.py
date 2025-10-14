@@ -62,7 +62,7 @@ from ..utils import (
 from ..orthogroups import gathering, orthogroups_set
 from ..orthogroups import accelerate as acc
 
-from ..tools import astral, tree, mcl
+from ..tools import astral, mcl, tree
 from ..gene_tree_inference import trees2ologs_of, infer_trees
 from . import process_args, check_dependencies, run_commands, species_info
 from .. import orphan_genes_version, __version__, __location__
@@ -439,11 +439,12 @@ def main(args=None):
                 speciesInfoObj.nSpAll,
             )
             # 5.
-            speciesXML = (
-                species_info.GetXMLSpeciesInfo(speciesInfoObj, options)
-                if options.speciesXMLInfoFN
-                else None
-            )
+            # speciesXML = (
+            #     species_info.GetXMLSpeciesInfo(speciesInfoObj, options)
+            #     if options.speciesXMLInfoFN
+            #     else None
+            # )
+            speciesXML = None
             # 6.
             util.PrintUnderline("Dividing up work for BLAST for parallel processing")
             run_commands.CreateSearchDatabases(speciesInfoObj, options, prog_caller)
@@ -483,11 +484,12 @@ def main(args=None):
                 speciesInfoObj.nSpAll,
             )
             # 5.
-            speciesXML = (
-                species_info.GetXMLSpeciesInfo(speciesInfoObj, options)
-                if options.speciesXMLInfoFN
-                else None
-            )
+            # speciesXML = (
+            #     species_info.GetXMLSpeciesInfo(speciesInfoObj, options)
+            #     if options.speciesXMLInfoFN
+            #     else None
+            # )
+            speciesXML = None
             # 6.
             util.PrintUnderline("Dividing up work for BLAST for parallel processing")
             run_commands.CreateSearchDatabases(speciesInfoObj, options, prog_caller)
@@ -533,11 +535,12 @@ def main(args=None):
                 speciesInfoObj.nSpAll,
             )
             # 5.
-            speciesXML = (
-                species_info.GetXMLSpeciesInfo(speciesInfoObj, options)
-                if options.speciesXMLInfoFN
-                else None
-            )
+            # speciesXML = (
+            #     species_info.GetXMLSpeciesInfo(speciesInfoObj, options)
+            #     if options.speciesXMLInfoFN
+            #     else None
+            # )
+            speciesXML = None
             # 8
             speciesNamesDict = species_info.SpeciesNameDict(
                 files.FileHandler.GetSpeciesIDsFN()
@@ -569,11 +572,12 @@ def main(args=None):
             options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
 
             ### 9
-            speciesXML = (
-                species_info.GetXMLSpeciesInfo(speciesInfoObj, options)
-                if options.speciesXMLInfoFN
-                else None
-            )
+            # speciesXML = (
+            #     species_info.GetXMLSpeciesInfo(speciesInfoObj, options)
+            #     if options.speciesXMLInfoFN
+            #     else None
+            # )
+            speciesXML = None
             ### 8
             speciesNamesDict = species_info.SpeciesNameDict(
                 files.FileHandler.GetSpeciesIDsFN()

@@ -1050,42 +1050,42 @@ def Worker_RootAndGetOrthologues_from_tree(iog, tree_fn, species_tree_rooted, Ge
             result_queue.put((iog, e))
 
 
-def GetOrthologuesStandalone_Parallel(trees_dir, species_tree_rooted_fn, GeneToSpecies, output_dir, qSingleTree):
-    species_tree_rooted = tree_lib.Tree(species_tree_rooted_fn)
-    neighbours = GetSpeciesNeighbours(species_tree_rooted)
-    args_queue = mp.Queue()
-    task_size = 0
-    for treeFn in glob.glob(trees_dir + ("*" if qSingleTree else "/*")): 
-        args_queue.put((0, treeFn, species_tree_rooted, GeneToSpecies, neighbours))
-        task_size += 1
-    # Now need to root the tree first
-    parallel_task_manager.RunMethodParallel(RootAndGetOrthologues_from_tree, args_queue, 16, task_size)
+# def GetOrthologuesStandalone_Parallel(trees_dir, species_tree_rooted_fn, GeneToSpecies, output_dir, qSingleTree):
+#     species_tree_rooted = tree_lib.Tree(species_tree_rooted_fn)
+#     neighbours = GetSpeciesNeighbours(species_tree_rooted)
+#     args_queue = mp.Queue()
+#     task_size = 0
+#     for treeFn in glob.glob(trees_dir + ("*" if qSingleTree else "/*")): 
+#         args_queue.put((0, treeFn, species_tree_rooted, GeneToSpecies, neighbours))
+#         task_size += 1
+#     # Now need to root the tree first
+#     parallel_task_manager.RunMethodParallel(RootAndGetOrthologues_from_tree, args_queue, 16, task_size)
 
-def RootTreeStandalone_Serial(trees_dir, species_tree_rooted_fn, GeneToSpecies, output_dir, qSingleTree):
-    species_tree_rooted = tree_lib.Tree(species_tree_rooted_fn)
-#    args_queue = mp.Queue()
-    for treeFN in glob.glob(trees_dir + ("*" if qSingleTree else "/*")): 
-        if (not os.path.exists(treeFN)) or os.stat(treeFN).st_size == 0: return 
-        try:
-            tree = tree_lib.Tree(treeFN)
-        except:
-            tree = tree_lib.Tree(treeFN, format=3)
-        if len(tree) == 1: return 
-        root = GetRoot(tree, species_tree_rooted, GeneToSpecies)
-        if root == None: return 
-        # Pick the first root for now
-        if root != tree:
-            tree.set_outgroup(root)
-        tree.write(outfile=treeFN + ".rooted.txt")
+# def RootTreeStandalone_Serial(trees_dir, species_tree_rooted_fn, GeneToSpecies, output_dir, qSingleTree):
+#     species_tree_rooted = tree_lib.Tree(species_tree_rooted_fn)
+# #    args_queue = mp.Queue()
+#     for treeFN in glob.glob(trees_dir + ("*" if qSingleTree else "/*")): 
+#         if (not os.path.exists(treeFN)) or os.stat(treeFN).st_size == 0: return 
+#         try:
+#             tree = tree_lib.Tree(treeFN)
+#         except:
+#             tree = tree_lib.Tree(treeFN, format=3)
+#         if len(tree) == 1: return 
+#         root = GetRoot(tree, species_tree_rooted, GeneToSpecies)
+#         if root == None: return 
+#         # Pick the first root for now
+#         if root != tree:
+#             tree.set_outgroup(root)
+#         tree.write(outfile=treeFN + ".rooted.txt")
     
-def GetOrthologuesStandalone_Serial(trees_dir, species_tree_rooted_fn, GeneToSpecies, output_dir, qSingleTree):
-    species_tree_rooted = tree_lib.Tree(species_tree_rooted_fn)
-    neighbours = GetSpeciesNeighbours(species_tree_rooted)
-#    args_queue = mp.Queue()
-    for treeFn in glob.glob(trees_dir + ("*" if qSingleTree else "/*")): 
-        print(treeFn)
-        # Now need to root the tree first
-        RootAndGetOrthologues_from_tree(0, treeFn, species_tree_rooted, GeneToSpecies, neighbours)        
+# def GetOrthologuesStandalone_Serial(trees_dir, species_tree_rooted_fn, GeneToSpecies, output_dir, qSingleTree):
+#     species_tree_rooted = tree_lib.Tree(species_tree_rooted_fn)
+#     neighbours = GetSpeciesNeighbours(species_tree_rooted)
+# #    args_queue = mp.Queue()
+#     for treeFn in glob.glob(trees_dir + ("*" if qSingleTree else "/*")): 
+#         print(treeFn)
+#         # Now need to root the tree first
+#         RootAndGetOrthologues_from_tree(0, treeFn, species_tree_rooted, GeneToSpecies, neighbours)        
 
 class OrthologsFiles(object):
     """wrapper to open all the orthologs files as once"""
@@ -1512,7 +1512,6 @@ class TreeAnalyser(object):
                 olog_sus_lines, 
                 fewer_open_files=self.fewer_open_files
             )
-
             GetHOGs_from_tree(
                 iog, 
                 recon_tree, 
@@ -1881,7 +1880,6 @@ def RunOrthologsParallel(
         # Add sentinels to the args_queue to signal workers to terminate
         for _ in range(nProcesses):
             args_queue.put(None)
-
         runningProcesses = [
             mp.Process(
                 target=Worker_RunOrthologsMethod_New,
@@ -2057,145 +2055,145 @@ def Worker_SortFile(fn, f_type, result_queue):
             print(traceback.format_exc(), flush=True)
 
 
-def GetOrthologues_from_phyldog_tree(iog, treeFN, GeneToSpecies, qWrite=False, dupsWriter=None, seqIDs=None, spIDs=None):
-    """ if dupsWriter != None then seqIDs and spIDs must also be provided"""
-    empty = set()
-    orthologues = []
-    if (not os.path.exists(treeFN)) or os.stat(treeFN).st_size == 0: return set(orthologues)
-    tree = tree_lib.Tree(treeFN)
-    if len(tree) == 1: return set(orthologues)
-    """ At this point need to label the tree nodes """
-    leaf_labels = dict()
-    empty_dict = dict()
-    for n in tree.traverse('preorder'):
-        if n.is_leaf(): 
-            leaf_labels[n.name] = ("n" + n.ND)
-            continue
-        else:
-            n.name = "n" + n.ND
-        ch = n.get_children()
-        if len(ch) == 2:       
-            oSize, overlap, sp0, sp1 = OverlapSize(n, GeneToSpecies, empty)
-            if n.Ev == "D":
-                if dupsWriter != None:
-                    sp_present = sp0.union(sp1)
-                    stNode = "N" + n.S
-                    if len(sp_present) == 1:
-                        isSTRIDE = "Terminal"
-                    else:
-                        isSTRIDE = "Non-Terminal"
-                    dupsWriter.writerow(["OG%07d" % iog, spIDs[stNode] if len(stNode) == 1 else stNode, n.name, "-", isSTRIDE, ", ".join([seqIDs[g] for g in ch[0].get_leaf_names()]), ", ".join([seqIDs[g] for g in ch[1].get_leaf_names()])]) 
-            else:
-                d0 = defaultdict(list)
-                for g in ch[0].get_leaf_names():
-                    sp, seq = g.split("_")
-                    d0[sp].append(seq)
-                d1 = defaultdict(list)
-                for g in ch[1].get_leaf_names():
-                    sp, seq = g.split("_")
-                    d1[sp].append(seq)
-                orthologues.append((d0, d1, empty_dict, empty_dict))
-        elif len(ch) > 2:
-            print("Non-binary node")
-            print((n.get_leaf_names()))
-    if qWrite:
-        directory = os.path.split(treeFN)[0]
-        WriteQfO2(orthologues, directory + "/../Orthologues_M3/" + os.path.split(treeFN)[1], qAppend=False)
-    return orthologues
+# def GetOrthologues_from_phyldog_tree(iog, treeFN, GeneToSpecies, qWrite=False, dupsWriter=None, seqIDs=None, spIDs=None):
+#     """ if dupsWriter != None then seqIDs and spIDs must also be provided"""
+#     empty = set()
+#     orthologues = []
+#     if (not os.path.exists(treeFN)) or os.stat(treeFN).st_size == 0: return set(orthologues)
+#     tree = tree_lib.Tree(treeFN)
+#     if len(tree) == 1: return set(orthologues)
+#     """ At this point need to label the tree nodes """
+#     leaf_labels = dict()
+#     empty_dict = dict()
+#     for n in tree.traverse('preorder'):
+#         if n.is_leaf(): 
+#             leaf_labels[n.name] = ("n" + n.ND)
+#             continue
+#         else:
+#             n.name = "n" + n.ND
+#         ch = n.get_children()
+#         if len(ch) == 2:       
+#             oSize, overlap, sp0, sp1 = OverlapSize(n, GeneToSpecies, empty)
+#             if n.Ev == "D":
+#                 if dupsWriter != None:
+#                     sp_present = sp0.union(sp1)
+#                     stNode = "N" + n.S
+#                     if len(sp_present) == 1:
+#                         isSTRIDE = "Terminal"
+#                     else:
+#                         isSTRIDE = "Non-Terminal"
+#                     dupsWriter.writerow(["OG%07d" % iog, spIDs[stNode] if len(stNode) == 1 else stNode, n.name, "-", isSTRIDE, ", ".join([seqIDs[g] for g in ch[0].get_leaf_names()]), ", ".join([seqIDs[g] for g in ch[1].get_leaf_names()])]) 
+#             else:
+#                 d0 = defaultdict(list)
+#                 for g in ch[0].get_leaf_names():
+#                     sp, seq = g.split("_")
+#                     d0[sp].append(seq)
+#                 d1 = defaultdict(list)
+#                 for g in ch[1].get_leaf_names():
+#                     sp, seq = g.split("_")
+#                     d1[sp].append(seq)
+#                 orthologues.append((d0, d1, empty_dict, empty_dict))
+#         elif len(ch) > 2:
+#             print("Non-binary node")
+#             print((n.get_leaf_names()))
+#     if qWrite:
+#         directory = os.path.split(treeFN)[0]
+#         WriteQfO2(orthologues, directory + "/../Orthologues_M3/" + os.path.split(treeFN)[1], qAppend=False)
+#     return orthologues
     
-def DoOrthologuesForOrthoFinder_Phyldog(ogSet, workingDirectory, GeneToSpecies, output_dir, reconTreesRenamedDir):    # Create directory structure
-    speciesDict = ogSet.SpeciesDict()
-    SequenceDict = ogSet.SequenceDict()
-    # Write directory and file structure
-    speciesIDs = ogSet.speciesToUse
-    nspecies = len(speciesIDs)
-    dResultsOrthologues = workingDirectory + "../Orthologues/"
-    for index1 in range(nspecies):
-        d = output_dir + "Orthologues_" + speciesDict[str(speciesIDs[index1])] + "/"
-        if not os.path.exists(d): os.mkdir(d)     
-        for index2 in range(nspecies):
-            if index2 == index1: continue
-            with open(d + '%s__v__%s.tsv' % (speciesDict[str(speciesIDs[index1])], speciesDict[str(speciesIDs[index2])]), util.csv_write_mode) as outfile:
-                writer1 = csv.writer(outfile, delimiter="\t")
-                writer1.writerow(("Orthogroup", speciesDict[str(speciesIDs[index1])], speciesDict[str(speciesIDs[index2])]))
-    sp_to_index = {str(sp):i for i, sp in enumerate(ogSet.speciesToUse)}
+# def DoOrthologuesForOrthoFinder_Phyldog(ogSet, workingDirectory, GeneToSpecies, output_dir, reconTreesRenamedDir):    # Create directory structure
+#     speciesDict = ogSet.SpeciesDict()
+#     SequenceDict = ogSet.SequenceDict()
+#     # Write directory and file structure
+#     speciesIDs = ogSet.speciesToUse
+#     nspecies = len(speciesIDs)
+#     dResultsOrthologues = workingDirectory + "../Orthologues/"
+#     for index1 in range(nspecies):
+#         d = output_dir + "Orthologues_" + speciesDict[str(speciesIDs[index1])] + "/"
+#         if not os.path.exists(d): os.mkdir(d)     
+#         for index2 in range(nspecies):
+#             if index2 == index1: continue
+#             with open(d + '%s__v__%s.tsv' % (speciesDict[str(speciesIDs[index1])], speciesDict[str(speciesIDs[index2])]), util.csv_write_mode) as outfile:
+#                 writer1 = csv.writer(outfile, delimiter="\t")
+#                 writer1.writerow(("Orthogroup", speciesDict[str(speciesIDs[index1])], speciesDict[str(speciesIDs[index2])]))
+#     sp_to_index = {str(sp):i for i, sp in enumerate(ogSet.speciesToUse)}
     
-    with OrthologsFiles(
-        dResultsOrthologues, 
-        speciesDict, 
-        ogSet.speciesToUse, 
-        nspecies, 
-        sp_to_index, 
-        save_space=True
-    ) as ologs_files_handles, putative_xenolog_file_handles:
-        iogs4 = ogSet.Get_iOGs4()
-        nOgs = len(ogSet.Get_iOGs4())
-        nOrthologues_SpPair = util.nOrtho_sp(nspecies) 
-        with open(files.FileHandler.GetDuplicationsFN(), util.csv_write_mode) as outfile:
-            dupWriter = csv.writer(outfile, delimiter="\t")
-            dupWriter.writerow(["Orthogroup", "Species Tree Node", "Gene Tree Node", "Support", "Type",	"Genes 1", "Genes 2"])
-            for iog in ogSet.Get_iOGs4():
-                recon_tree = files.FileHandler.GetPhyldogOGResultsTreeFN(iog)
-                orthologues = GetOrthologues_from_phyldog_tree(iog, recon_tree, GeneToSpecies, dupsWriter=dupWriter, seqIDs=ogSet.Spec_SeqDict(), spIDs=ogSet.SpeciesDict())
-                allOrthologues = [(iog, orthologues)]
-                # util.RenameTreeTaxa(recon_tree, reconTreesRenamedDir + "OG%07d_tree.txt" % iog, ogSet.Spec_SeqDict(), qSupport=False, qFixNegatives=True, label='n') 
-                util.RenameTreeTaxa(recon_tree, 
-                                    reconTreesRenamedDir + "OG%07d.txt" % iog, 
-                                    ogSet.Spec_SeqDict(), 
-                                    qSupport=False, qFixNegatives=True, label='n') 
-                if iog >= 0 and divmod(iog, 10 if nOgs <= 200 else 100 if nOgs <= 2000 else 1000)[1] == 0:
-                    util.PrintTime("Done %d of %d" % (iog, nOgs))
-                nOrthologues_SpPair += GetLinesForOlogFiles(allOrthologues, speciesDict, ogSet.speciesToUse, SequenceDict, False, fewer_open_files=False)
-    return nOrthologues_SpPair
+#     with OrthologsFiles(
+#         dResultsOrthologues, 
+#         speciesDict, 
+#         ogSet.speciesToUse, 
+#         nspecies, 
+#         sp_to_index, 
+#         save_space=True
+#     ) as ologs_files_handles, putative_xenolog_file_handles:
+#         iogs4 = ogSet.Get_iOGs4()
+#         nOgs = len(ogSet.Get_iOGs4())
+#         nOrthologues_SpPair = util.nOrtho_sp(nspecies) 
+#         with open(files.FileHandler.GetDuplicationsFN(), util.csv_write_mode) as outfile:
+#             dupWriter = csv.writer(outfile, delimiter="\t")
+#             dupWriter.writerow(["Orthogroup", "Species Tree Node", "Gene Tree Node", "Support", "Type",	"Genes 1", "Genes 2"])
+#             for iog in ogSet.Get_iOGs4():
+#                 recon_tree = files.FileHandler.GetPhyldogOGResultsTreeFN(iog)
+#                 orthologues = GetOrthologues_from_phyldog_tree(iog, recon_tree, GeneToSpecies, dupsWriter=dupWriter, seqIDs=ogSet.Spec_SeqDict(), spIDs=ogSet.SpeciesDict())
+#                 allOrthologues = [(iog, orthologues)]
+#                 # util.RenameTreeTaxa(recon_tree, reconTreesRenamedDir + "OG%07d_tree.txt" % iog, ogSet.Spec_SeqDict(), qSupport=False, qFixNegatives=True, label='n') 
+#                 util.RenameTreeTaxa(recon_tree, 
+#                                     reconTreesRenamedDir + "OG%07d.txt" % iog, 
+#                                     ogSet.Spec_SeqDict(), 
+#                                     qSupport=False, qFixNegatives=True, label='n') 
+#                 if iog >= 0 and divmod(iog, 10 if nOgs <= 200 else 100 if nOgs <= 2000 else 1000)[1] == 0:
+#                     util.PrintTime("Done %d of %d" % (iog, nOgs))
+#                 nOrthologues_SpPair += GetLinesForOlogFiles(allOrthologues, speciesDict, ogSet.speciesToUse, SequenceDict, False, fewer_open_files=False)
+#     return nOrthologues_SpPair
     
-def RootAllTrees():
-    speciesIDs = util.FirstWordExtractor("SpeciesIDs.txt").GetIDToNameDict()
-    species_tree_rooted = tree.Tree("SpeciesTree_ids_0_rooted_unresolved.txt")
-    GeneToSpecies = GeneToSpecies_dash
-    for fn in glob.glob("Trees_ids/OG*txt"):
-        print(("*** " + fn + " ***"))
-        t = tree.Tree(fn)
-        root = GetRoot(t, species_tree_rooted, GeneToSpecies)
-        if root == None: 
-            print(("Fail: " + fn))
-        else:
-            if root != t:
-                t.set_outgroup(root)
-            for n in t:
-                n.name = speciesIDs[n.name.split("_")[0]]
-            t.write(outfile="Trees_ids_rooted/" + os.path.split(fn)[1])
-    util.Success()
+# def RootAllTrees():
+#     speciesIDs = util.FirstWordExtractor("SpeciesIDs.txt").GetIDToNameDict()
+#     species_tree_rooted = tree.Tree("SpeciesTree_ids_0_rooted_unresolved.txt")
+#     GeneToSpecies = GeneToSpecies_dash
+#     for fn in glob.glob("Trees_ids/OG*txt"):
+#         print(("*** " + fn + " ***"))
+#         t = tree.Tree(fn)
+#         root = GetRoot(t, species_tree_rooted, GeneToSpecies)
+#         if root == None: 
+#             print(("Fail: " + fn))
+#         else:
+#             if root != t:
+#                 t.set_outgroup(root)
+#             for n in t:
+#                 n.name = speciesIDs[n.name.split("_")[0]]
+#             t.write(outfile="Trees_ids_rooted/" + os.path.split(fn)[1])
+#     util.Success()
 
-if __name__ == "__main__":
-#    RootAllTrees()
-    parser = argparse.ArgumentParser()
-    parser.add_argument("trees_dir")
-    parser.add_argument("rooted_species_tree")
-#    parser.add_argument("-p", "--prune", action='store_true')
-    parser.add_argument("-s", "--separator", choices=("dot", "dash", "second_dash", "3rd_dash", "hyphen"), help="Separator been species name and gene name in gene tree taxa")
-    args = parser.parse_args()
-    output_dir = os.path.split(args.trees_dir)[0]
-    qSingleTree = False
-    try:
-        tree_lib.Tree(args.trees_dir)
-        qSingleTree = True
-        print("Analysing single tree")
-    except:
-        try:
-            tree = tree_lib.Tree(args.trees_dir)
-            qSingleTree = True
-        except:
-            pass
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
+# if __name__ == "__main__":
+# #    RootAllTrees()
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("trees_dir")
+#     parser.add_argument("rooted_species_tree")
+# #    parser.add_argument("-p", "--prune", action='store_true')
+#     parser.add_argument("-s", "--separator", choices=("dot", "dash", "second_dash", "3rd_dash", "hyphen"), help="Separator been species name and gene name in gene tree taxa")
+#     args = parser.parse_args()
+#     output_dir = os.path.split(args.trees_dir)[0]
+#     qSingleTree = False
+#     try:
+#         tree_lib.Tree(args.trees_dir)
+#         qSingleTree = True
+#         print("Analysing single tree")
+#     except:
+#         try:
+#             tree = tree_lib.Tree(args.trees_dir)
+#             qSingleTree = True
+#         except:
+#             pass
+#     if not os.path.exists(output_dir):
+#         os.mkdir(output_dir)
     
-    GeneToSpecies = GetGeneToSpeciesMap(args)
-    output_dir = output_dir + "_Orthologues_M3/"
-    print(output_dir)
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
-    GetOrthologuesStandalone_Parallel(args.trees_dir, args.rooted_species_tree, GeneToSpecies, output_dir, qSingleTree)
-    # GetOrthologuesStandalone_Serial(args.trees_dir, args.rooted_species_tree, GeneToSpecies, output_dir, qSingleTree)
-#    RootTreeStandalone_Serial(args.trees_dir, args.rooted_species_tree, GeneToSpecies, output_dir, qSingleTree)
-    util.Success()
+#     GeneToSpecies = GetGeneToSpeciesMap(args)
+#     output_dir = output_dir + "_Orthologues_M3/"
+#     print(output_dir)
+#     if not os.path.exists(output_dir):
+#         os.mkdir(output_dir)
+#     GetOrthologuesStandalone_Parallel(args.trees_dir, args.rooted_species_tree, GeneToSpecies, output_dir, qSingleTree)
+#     # GetOrthologuesStandalone_Serial(args.trees_dir, args.rooted_species_tree, GeneToSpecies, output_dir, qSingleTree)
+# #    RootTreeStandalone_Serial(args.trees_dir, args.rooted_species_tree, GeneToSpecies, output_dir, qSingleTree)
+#     util.Success()
 

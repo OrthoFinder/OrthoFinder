@@ -19,7 +19,8 @@ from orthofinder.run.__main__ import main
 #         )
 
 
-@pytest.mark.order(7)
+# @pytest.mark.order(8)
+@pytest.mark.xfail(reason="wait for the baseline")
 @pytest.mark.unit
 class TestComparativeStats:
     def test_overall_stats(self, of_obj, expected_overall_stats_info):

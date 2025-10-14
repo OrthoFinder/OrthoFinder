@@ -53,17 +53,17 @@ class MSA(object):
         data = [1 for _ in range(self.n_non_gaps)]
         self.M = scipy.sparse.csr_matrix((data, (row_ind, col_ind)), shape=(self.n, self.length))
     
-    def write_msa(self, i_cols, outfn, nChar = 80):
-        with open(outfn, 'w') as outfile:
-            for name, posn, chars in zip(self.names, self.non_gap_pos, self.non_gaps):
-                outfile.write(">" + name + "\n")
-                seq = ("-" * posn[0]) + chars[0]
-                for ipos, ipos_m1, c in zip(posn[1:], posn[:-1], chars[1:]):
-                    seq += "-" * (ipos - ipos_m1 - 1) + c
-                seq += "-" * (self.length - posn[-1] -1)
-                seq = "".join([seq[i] for i in i_cols])
-                for i in range(0, len(seq), nChar):
-                    outfile.write(seq[i:i+nChar] + "\n")
+    # def write_msa(self, i_cols, outfn, nChar = 80):
+    #     with open(outfn, 'w') as outfile:
+    #         for name, posn, chars in zip(self.names, self.non_gap_pos, self.non_gaps):
+    #             outfile.write(">" + name + "\n")
+    #             seq = ("-" * posn[0]) + chars[0]
+    #             for ipos, ipos_m1, c in zip(posn[1:], posn[:-1], chars[1:]):
+    #                 seq += "-" * (ipos - ipos_m1 - 1) + c
+    #             seq += "-" * (self.length - posn[-1] -1)
+    #             seq = "".join([seq[i] for i in i_cols])
+    #             for i in range(0, len(seq), nChar):
+    #                 outfile.write(seq[i:i+nChar] + "\n")
 
 def main(infn, outfn, f=0.1, n_min=500, c=0.75, exe=False):
     if exe:
@@ -189,16 +189,16 @@ def copy_input_to_output(infn, outfn):
     if (not os.path.exists(outfn)) or (not os.path.samefile(infn, outfn)):
         shutil.copy(infn, outfn)
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("infn", help="Input alignment fasta file")
-    parser.add_argument("outfn", help="Output alignment fasta file")
-    parser.add_argument("gt", 
-                        type=float,
-                        help="Lower limit for fraction of non-gap characters")
-    parser.add_argument("min", type=int, help="Minimum number of columns to keep") 
-    parser.add_argument("-c", "--conserve", type=float, 
-                        default=0.0,
-                        help="Conserve at least this fraction of non-gap characters") 
-    args = parser.parse_args()
-    main(args.infn, args.outfn, args.gt, args.min, args.conserve)
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("infn", help="Input alignment fasta file")
+#     parser.add_argument("outfn", help="Output alignment fasta file")
+#     parser.add_argument("gt", 
+#                         type=float,
+#                         help="Lower limit for fraction of non-gap characters")
+#     parser.add_argument("min", type=int, help="Minimum number of columns to keep") 
+#     parser.add_argument("-c", "--conserve", type=float, 
+#                         default=0.0,
+#                         help="Conserve at least this fraction of non-gap characters") 
+#     args = parser.parse_args()
+#     main(args.infn, args.outfn, args.gt, args.min, args.conserve)

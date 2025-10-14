@@ -2,7 +2,7 @@ import os
 
 from orthofinder.utils import fasta_processor
 from orthofinder.utils import files, util, matrices, split_ortholog_files
-from orthofinder.run import run_commands, run_info, process_args, helpinfo
+from orthofinder.run import run_commands, run_info, process_args
 
 from orthofinder.tools import dendroblast
 from orthofinder.run.process_args import Options
@@ -13,12 +13,31 @@ from orthofinder.comparative_genomics.orthologues import ReconciliationAndOrthol
 from orthofinder.orthogroups import gathering
 from orthofinder.utils.util import CreateNewWorkingDirectory
 
+def _latest_output_dir(results_dir) -> str:
+    if isinstance(results_dir, list):
+        results_dir = results_dir[0]
+
+    results_dir = os.path.abspath(results_dir)
+
+    try:
+        entries = [
+            (os.stat(os.path.join(results_dir, name)).st_mtime,
+             os.path.join(results_dir, name))
+            for name in os.listdir(results_dir)
+        ]
+        return sorted(entries)[-1][1] if entries else ""
+    except FileNotFoundError:
+        return ""
+    except NotADirectoryError:
+        return results_dir
+
+
 class OrthoFinderTestFuncs:
 
     def __init__(
             self, 
             projects,
-            projects_results,
+            # projects_results,
             msa, 
             gene_tree, 
             recon_method, 
@@ -34,34 +53,19 @@ class OrthoFinderTestFuncs:
         self.options.nBlast = sequence_search_threads
         self.options.nProcessAlg = analysis_threads
 
-        # baseDirectoryName = os.path.join(projects, "OrthoFinder")
-        # if baseDirectoryName[-1] == os.sep:
-        #     baseDirectoryName += "Results_"
-        # else:
-        #     baseDirectoryName = baseDirectoryName + os.sep + "Results_"
-
-        # projects_results = CreateNewWorkingDirectory(
-        #     baseDirectoryName,
-        #     qDate=True,
-        #     search_program=None,
-        #     msa_program=None,
-        #     tree_program=None,
-        #     scorematrix=None,
-        #     gapopen=None,
-        #     gapextend=None,
-        #     extended_filename=False,
-        #     makedir=False
-        # )
+        results_dir = os.path.join(projects, "OrthoFinder")
+        projects_results = _latest_output_dir(results_dir)
+        self.projects_results = projects_results
 
         self.working_dir = os.path.join(projects_results, "WorkingDirectory")
         self.species_id_fn = os.path.join(self.working_dir, "SpeciesIDs.txt")
         self.sequence_id_fn = os.path.join(self.working_dir, "SequenceIDs.txt")
         self.ogs_all_fn = os.path.join(self.working_dir, "OGsAll.tsv")
         self.projects = projects
-        self.projects_results = projects_results
+        
         args = [
             "-f",
-            os.path.basename(projects),
+            os.path.basename(projects) + os.sep,
         ]
         self.args = args.copy()
 
@@ -75,8 +79,7 @@ class OrthoFinderTestFuncs:
             user_specified_M,
         ) = process_args.ProcessArgs(args)
 
-        # self.prog_caller = prog_caller
-        # helpinfo.PrintHelp(prog_caller)
+        self.prog_caller = prog_caller
 
         files.InitialiseFileHandler(
                 self.options, 

@@ -7,7 +7,23 @@ def create_path(arg):
         filepath += os.sep
     return filepath
 
+def _latest_output_dir(results_dir) -> str:
+    if isinstance(results_dir, list):
+        results_dir = results_dir[0]
 
+    results_dir = os.path.abspath(results_dir)
+
+    try:
+        entries = [
+            (os.stat(os.path.join(results_dir, name)).st_mtime,
+             os.path.join(results_dir, name))
+            for name in os.listdir(results_dir)
+        ]
+        return sorted(entries)[-1][1] if entries else ""
+    except FileNotFoundError:
+        return ""
+    except NotADirectoryError:
+        return results_dir
 
 
 # def get_dir_path(arg):

@@ -35,8 +35,8 @@ def update_output_files(
     }
 
     ## ------------------------ Fix OGs and OG Sequences -------------------------
-    hog_n0_file = files.FileHandler.WDHierarchicalOrthogroupsFNN0()
-    # hog_n0_file = files.FileHandler.HierarchicalOrthogroupsFNN0()
+    # hog_n0_file = files.FileHandler.WDHierarchicalOrthogroupsFNN0()
+    hog_n0_file = files.FileHandler.HierarchicalOrthogroupsFNN0()
     hogs_converter(hog_n0_file, sequence_id_dict, species_id_dict, species_names)
 
     seq_dir = files.FileHandler.GetResultsSeqsDir()
@@ -140,7 +140,7 @@ def update_output_files(
 #             }
 #             writer.writerow(new_row)
 
-    # os.replace(temp_file.name, hogs_n0_file)
+#     os.replace(temp_file.name, hogs_n0_file)
 
 def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_names, rm_N0_ids=True):
 

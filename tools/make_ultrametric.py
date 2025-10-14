@@ -9,7 +9,7 @@ import numpy as np
 if __name__ == "__main__" and __package__ is None:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.orthofinder.tools import tree
+from orthofinder.tools import tree
 from src.orthofinder.utils import util
 
 def AveDist(node):
