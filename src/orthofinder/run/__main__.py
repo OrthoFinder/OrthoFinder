@@ -562,44 +562,44 @@ def main(args=None):
                     speciesXML=speciesXML,
                 )
 
-        elif options.qStartFromGroups:
-            # 0.
-            check_blast = not options.qMSATrees
-            speciesInfoObj, _ = species_info.ProcessPreviousFiles(
-                continuationDir, options.qDoubleBlast, check_blast=check_blast
-            )
-            files.FileHandler.LogSpecies()
-            options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
+        # elif options.qStartFromGroups:
+        #     # 0.
+        #     check_blast = not options.qMSATrees
+        #     speciesInfoObj, _ = species_info.ProcessPreviousFiles(
+        #         continuationDir, options.qDoubleBlast, check_blast=check_blast
+        #     )
+        #     files.FileHandler.LogSpecies()
+        #     options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
 
-            ### 9
-            # speciesXML = (
-            #     species_info.GetXMLSpeciesInfo(speciesInfoObj, options)
-            #     if options.speciesXMLInfoFN
-            #     else None
-            # )
-            speciesXML = None
-            ### 8
-            speciesNamesDict = species_info.SpeciesNameDict(
-                files.FileHandler.GetSpeciesIDsFN()
-            )
+        #     ### 9
+        #     # speciesXML = (
+        #     #     species_info.GetXMLSpeciesInfo(speciesInfoObj, options)
+        #     #     if options.speciesXMLInfoFN
+        #     #     else None
+        #     # )
+        #     speciesXML = None
+        #     ### 8
+        #     speciesNamesDict = species_info.SpeciesNameDict(
+        #         files.FileHandler.GetSpeciesIDsFN()
+        #     )
 
-            GetOrthologues(
-                seqsInfo, speciesNamesDict, 
-                speciesInfoObj, 
-                options, 
-                prog_caller,
-                speciesXML=speciesXML,
-            )
+        #     GetOrthologues(
+        #         seqsInfo, speciesNamesDict, 
+        #         speciesInfoObj, 
+        #         options, 
+        #         prog_caller,
+        #         speciesXML=speciesXML,
+        #     )
 
-        elif options.qStartFromTrees:
-            speciesInfoObj, _ = species_info.ProcessPreviousFiles(
-                files.FileHandler.GetWorkingDirectory1_Read(),
-                options.qDoubleBlast,
-                check_blast=False,
-            )
-            files.FileHandler.LogSpecies()
-            options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
-            GetOrthologues_FromTrees(options)
+        # elif options.qStartFromTrees:
+        #     speciesInfoObj, _ = species_info.ProcessPreviousFiles(
+        #         files.FileHandler.GetWorkingDirectory1_Read(),
+        #         options.qDoubleBlast,
+        #         check_blast=False,
+        #     )
+        #     files.FileHandler.LogSpecies()
+        #     options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
+        #     GetOrthologues_FromTrees(options)
 
         elif options.qFastAdd:
             # Prepare previous directory as database
@@ -731,7 +731,7 @@ def main(args=None):
         util.print_traceback(e)
         # ptm = parallel_task_manager.ParallelTaskManager_singleton()
         ptm.Stop()
-        raise
+        sys.exit(1)
 
     except KeyboardInterrupt:
         printer.print("\nProgram terminated by user.", style="error")

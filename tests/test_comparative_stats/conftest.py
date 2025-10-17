@@ -21,8 +21,8 @@ def expected_og_nspecies_info(expected_overall_stats):
     return get_og_nspecies_info(expected_overall_stats)
 
 @pytest.fixture
-def of_obj(projects, msa, gene_tree, recon_method, sequence_search_threads, analysis_threads):
-    return OrthoFinderTestFuncs(projects, msa, gene_tree, recon_method, sequence_search_threads, analysis_threads)
+def of_obj(projects, msa, gene_tree_method, recon_method, sequence_search_threads, analysis_threads):
+    return OrthoFinderTestFuncs(projects, msa, gene_tree_method, recon_method, sequence_search_threads, analysis_threads)
 
 # @pytest.fixture
 # def hogs(projects_results):

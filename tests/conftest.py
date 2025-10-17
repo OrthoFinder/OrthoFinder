@@ -6,22 +6,70 @@ from typing import Optional, Union, List, Any
 import multiprocessing as mp
 from orthofinder.utils.util import CreateNewWorkingDirectory
 
+## ------- Default ExampleData ---------
 # HERE = Path(__file__).resolve()
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) # project root
+
 EXAMPLEDATA = os.path.join(ROOT, "ExampleData")
 EXAMPLE_RESULTS = os.path.join(ROOT, "ExampleData", "OrthoFinder")
 
-ORTHOFINDER = os.path.join(ROOT,"src")
+ORTHOFINDER = os.path.join(ROOT, "src")
 sys.path.insert(0, ORTHOFINDER)
 
 ASSIGN = os.path.join(ROOT, "ExampleData", "AdditionalSpecies")
-EXPECTED_RESULTS = os.path.join(ROOT, "tests", "expected_results")
+# EXPECTED_RESULTS = os.path.join(ROOT, "tests", "expected_results")
 
 if EXAMPLE_RESULTS[-1] != os.sep:
     EXAMPLE_RESULTS += os.sep 
 
 if ORTHOFINDER[-1] != os.sep:
     ORTHOFINDER += os.sep
+
+# exampledata_baseDirectoryName = os.path.join(ROOT, "ExampleData", "OrthoFinder", "Results_")
+
+# DEFAULT_PROJECTS_RESULTS = CreateNewWorkingDirectory(
+#     exampledata_baseDirectoryName,
+#     qDate=True,
+#     search_program=None,
+#     msa_program=None,
+#     tree_program=None,
+#     scorematrix=None,
+#     gapopen=None,
+#     gapextend=None,
+#     extended_filename=False,
+#     makedir=False
+# )
+
+DEFAULT_PROJECTS = EXAMPLEDATA
+# DEFAULT_PROJECTS_RESULTS = _latest_output_dir()  # used if --projects not supplied
+# working_dir = os.path.join(DEFAULT_PROJECTS_RESULTS, "WorkingDirectory")
+
+## ------------ Default testdata --------------
+TESTDATA = "proteome"
+TESTDATA_DNA = "dna"
+
+TESTDATA_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "data")) # tests root
+
+TESTDATA_CORE = os.path.join(TESTDATA_ROOT, TESTDATA, "Core")
+
+TESTDATA_ASSIGN = os.path.join(TESTDATA_ROOT, TESTDATA, "Assign")
+TESTDATA_SPECIES_TREE_CORE = os.path.join(TESTDATA_ROOT, TESTDATA, "species_tree.txt")
+TESTDATA_SPECIES_TREE_ASSIGN = os.path.join(TESTDATA_ROOT, TESTDATA, "species_tree_assign.txt")
+TESTDATA_RESULTS = os.path.join(TESTDATA_CORE, "OrthoFinder")
+
+TESTDATA_DNA_CORE = os.path.join(TESTDATA_ROOT, TESTDATA_DNA, "Genomes_Core")
+# TESTDATA_DNA_ASSIGN = os.path.join(TESTDATA_ROOT, TESTDATA_DNA, "Genomes_Assign")
+TESTDATA_DNA_RESULTS = os.path.join(TESTDATA_DNA_CORE, "OrthoFinder")
+
+if TESTDATA_RESULTS[-1] != os.sep:
+    TESTDATA_RESULTS += os.sep 
+
+if TESTDATA_DNA_RESULTS[-1] != os.sep:
+    TESTDATA_DNA_RESULTS += os.sep 
+
+
+EXPECTED_RESULTS = os.path.join(TESTDATA_ROOT, "proteome_expected_results")
+
 
 # exampledata_results_dir_list = sorted([
 #     (entry.stat().st_mtime, entry.path) 
@@ -39,30 +87,33 @@ if ORTHOFINDER[-1] != os.sep:
 #     except FileNotFoundError:
 #         return ""
 
-baseDirectoryName = os.path.join(ROOT, "ExampleData", "OrthoFinder", "Results_")
-
-DEFAULT_PROJECTS_RESULTS = CreateNewWorkingDirectory(
-    baseDirectoryName,
-    qDate=True,
-    search_program=None,
-    msa_program=None,
-    tree_program=None,
-    scorematrix=None,
-    gapopen=None,
-    gapextend=None,
-    extended_filename=False,
-    makedir=False
-)
-
-DEFAULT_PROJECTS = EXAMPLEDATA
-# DEFAULT_PROJECTS_RESULTS = _latest_output_dir()  # used if --projects not supplied
-working_dir = os.path.join(DEFAULT_PROJECTS_RESULTS, "WorkingDirectory")
+DEFAULT_PROJECTS = {
+    "exampledata":{
+        "proteome":
+        {
+            "core": EXAMPLEDATA,
+            "assign": ASSIGN,
+        },
+    },
+    "testdata": {
+        "proteome": {
+            "core": TESTDATA_CORE,
+            "assign": TESTDATA_ASSIGN,
+            "species_tree_core": TESTDATA_SPECIES_TREE_CORE,
+            "species_tree_assign": TESTDATA_SPECIES_TREE_ASSIGN
+        },
+        "dna":{
+            "core": TESTDATA_DNA_CORE,
+            # "assign": TESTDATA_DNA_ASSIGN,
+        }
+    }
+}
 
 def pytest_addoption(parser):
     parser.addoption(
         "--projects",
         action="store",
-        default=DEFAULT_PROJECTS,  
+        default=DEFAULT_PROJECTS["testdata"]["proteome"]["core"],  
         help="Comma-separated list of project paths (defaults to latest ExampleData/OrthoFinder run).",
     )
 
@@ -74,9 +125,30 @@ def pytest_addoption(parser):
     # )
 
     parser.addoption(
+        "--testdata",
+        action="store_false",
+        default=True,  
+        help="Decide whether or not to use the test dataset.",
+    )
+
+    parser.addoption(
+        "--dna",
+        action="store_true",
+        default=False,  
+        help="Whether or not the input is DNA.",
+    )
+
+    parser.addoption(
+        "--dna-projects",
+        action="store",
+        default=DEFAULT_PROJECTS["testdata"]["dna"]["core"],  
+        help="Comma-separated list of DNA project paths (defaults to latest ExampleData/OrthoFinder run).",
+    )
+
+    parser.addoption(
         "--assign",
         action="store",
-        default=ASSIGN, 
+        default=DEFAULT_PROJECTS["testdata"]["proteome"]["assign"], 
         help="Comma-separated list of additional species paths.",
     )
 
@@ -102,7 +174,7 @@ def pytest_addoption(parser):
     )
 
     parser.addoption(
-        "--gene-tree",
+        "--gene-tree-method",
         action="store",
         default="fasttree",  
         help="Gene tree program",
@@ -112,6 +184,20 @@ def pytest_addoption(parser):
 
     parser.addoption(
         "--species-tree",
+        action="store",
+        default=DEFAULT_PROJECTS["testdata"]["proteome"]["species_tree_core"],  
+        help="Species tree file",
+    )
+
+    parser.addoption(
+        "--species-tree-assign",
+        action="store",
+        default=DEFAULT_PROJECTS["testdata"]["proteome"]["species_tree_assign"], 
+        help="Species tree file for assign",
+    )
+
+    parser.addoption(
+        "--species-tree-method",
         action="store",
         default="astral-pro",  
         help="Species tree program",
@@ -186,14 +272,19 @@ def _broadcast_to_len(lst: list, target_len: int, name: str):
 def pytest_generate_tests(metafunc):
     requested = [name for name in (
         "projects",
+        "dna_projects",
+        "testdata",
+        "dna",
         # "projects_results",
         "assign",
         "expected_results",
         "cluster",
         "msa",
-        "gene_tree",
+        "gene_tree_method",
         "dendroblast",
         "species_tree",
+        "species_tree_assign",
+        "species_tree_method",
         "recon_method",
         "t",
         "a",
@@ -203,13 +294,27 @@ def pytest_generate_tests(metafunc):
 
     values_by_name = {
         "projects": _split_or_default(
-            metafunc.config.getoption("--projects"), default_value=DEFAULT_PROJECTS
+            metafunc.config.getoption("--projects"), 
+            default_value=DEFAULT_PROJECTS["testdata"]["proteome"]["core"]
+        ),
+
+        "dna_projects": _split_or_default(
+            metafunc.config.getoption("--dna-projects"), 
+            default_value=DEFAULT_PROJECTS["testdata"]["dna"]["core"]
+        ),
+
+        "testdata": _split_or_default(
+            metafunc.config.getoption("--testdata"), default_value=True
+        ),
+
+        "dna": _split_or_default(
+            metafunc.config.getoption("--dna"), default_value=False
         ),
         # "projects_results": _split_or_default(
         #     metafunc.config.getoption("--projects-results"), default_value=DEFAULT_PROJECTS_RESULTS
         # ),
         "assign": _split_or_default(
-            metafunc.config.getoption("--assign"), default_value=ASSIGN
+            metafunc.config.getoption("--assign"), default_value=DEFAULT_PROJECTS["testdata"]["proteome"]["assign"]
         ),
         "expected_results": _to_list(
             metafunc.config.getoption("--expected-results")
@@ -220,14 +325,23 @@ def pytest_generate_tests(metafunc):
         "msa": _split_or_default(
             metafunc.config.getoption("--msa"), default_value="famsa"
         ),
-        "gene_tree": _split_or_default(
-            metafunc.config.getoption("--gene-tree"), default_value="fasttree"
+        "gene_tree_method": _split_or_default(
+            metafunc.config.getoption("--gene-tree-method"), default_value="fasttree"
         ),
         "dendroblast": _split_or_default(
             metafunc.config.getoption("--dendroblast"), default_value=False  # ← keep as bool
         ),
+        "species_tree_method": _split_or_default(
+            metafunc.config.getoption("--species-tree-method"), default_value="astral-pro"
+        ),
+
         "species_tree": _split_or_default(
-            metafunc.config.getoption("--species-tree"), default_value="astral-pro"
+            metafunc.config.getoption("--species-tree"), 
+            default_value=DEFAULT_PROJECTS["testdata"]["proteome"]["species_tree_core"]
+        ),
+        "species_tree_assign": _split_or_default(
+            metafunc.config.getoption("--species-tree-assign"), 
+            default_value=DEFAULT_PROJECTS["testdata"]["proteome"]["species_tree_assign"]
         ),
         "recon_method": _split_or_default(
             metafunc.config.getoption("--recon-method"), default_value="of_recon"
@@ -299,6 +413,18 @@ def projects(request):
     return request.param
 
 @pytest.fixture(scope="session")
+def dna_projects(request):
+    return request.param
+
+@pytest.fixture(scope="session")
+def testdata(request):
+    return request.param
+
+@pytest.fixture(scope="session")
+def dna(request):
+    return request.param
+
+@pytest.fixture(scope="session")
 def assign(request):
     """Fixture giving the additional species path for a test run"""
     return request.param
@@ -319,7 +445,7 @@ def msa(request):
     return request.config.getoption("--msa")
 
 @pytest.fixture(scope="session")
-def gene_tree(request):
+def gene_tree_method(request):
     """Fixture giving the gene tree inference program (e.g., fasttree, iqtree, etc.)"""
     return request.param
 
@@ -329,8 +455,18 @@ def dendroblast(request):
     return request.param
 
 @pytest.fixture(scope="session")
-def species_tree(request):
+def species_tree_method(request):
     """Fixture giving the species tree inference program (e.g., astral-pro, etc.)"""
+    return request.param
+
+@pytest.fixture(scope="session")
+def species_tree(request):
+    """Fixture giving the species tree file for core"""
+    return request.param
+
+@pytest.fixture(scope="session")
+def species_tree_assign(request):
+    """Fixture giving the species tree file for assign"""
     return request.param
 
 @pytest.fixture(scope="session")
@@ -347,6 +483,14 @@ def sequence_search_threads(request):
 def analysis_threads(request):
     """Fixture giving the number of analysis threads"""
     return request.config.getoption("--a")
+
+# @pytest.fixture(scope="session")
+# def dna_assign(testdata, assign):
+#     if testdata:
+#         return DEFAULT_PROJECTS["testdata"]["dna"]["assign"]
+    
+#     else:
+#         return assign
 
 ### -----------------------------------------------------------------
 

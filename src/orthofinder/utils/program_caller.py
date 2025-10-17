@@ -484,95 +484,95 @@ class ProgramCaller(object):
                 for infn, outfn, ident, n in zip(infn_list, outfn_list, id_list, nSeqs)
             ]
 
-    # not used
-    def GetSearchCommands_DB(
-        self,
-        method_name,
-        infn_list,
-        outfn_list,
-        scorematrix=None,
-        gapopen=None,
-        gapextend=None,
-        method_threads=None,
-    ):
-        return [
-            self.GetSearchMethodCommand_DB(
-                method_name,
-                infn,
-                outfn,
-                scorematrix=scorematrix,
-                gapopen=gapopen,
-                gapextend=gapextend,
-                method_threads=method_threads,
-            )
-            for infn, outfn in zip(infn_list, outfn_list)
-        ]
+    # # not used
+    # def GetSearchCommands_DB(
+    #     self,
+    #     method_name,
+    #     infn_list,
+    #     outfn_list,
+    #     scorematrix=None,
+    #     gapopen=None,
+    #     gapextend=None,
+    #     method_threads=None,
+    # ):
+    #     return [
+    #         self.GetSearchMethodCommand_DB(
+    #             method_name,
+    #             infn,
+    #             outfn,
+    #             scorematrix=scorematrix,
+    #             gapopen=gapopen,
+    #             gapextend=gapextend,
+    #             method_threads=method_threads,
+    #         )
+    #         for infn, outfn in zip(infn_list, outfn_list)
+    #     ]
 
-    # not used
-    def GetSearchCommands_Search(
-        self,
-        method_name,
-        querryfn_list,
-        dblist,
-        outfn_list,
-        scorematrix=None,
-        gapopen=None,
-        gapextend=None,
-        method_threads=None,
-    ):
-        return [
-            self.GetSearchMethodCommand_Search(
-                method_name,
-                querryfn,
-                dbname,
-                outfn,
-                scorematrix=scorematrix,
-                gapopen=gapopen,
-                gapextend=gapextend,
-                method_threads=method_threads,
-            )
-            for querryfn, dbname, outfn in zip(querryfn_list, dblist, outfn_list)
-        ]
+    # # not used
+    # def GetSearchCommands_Search(
+    #     self,
+    #     method_name,
+    #     querryfn_list,
+    #     dblist,
+    #     outfn_list,
+    #     scorematrix=None,
+    #     gapopen=None,
+    #     gapextend=None,
+    #     method_threads=None,
+    # ):
+    #     return [
+    #         self.GetSearchMethodCommand_Search(
+    #             method_name,
+    #             querryfn,
+    #             dbname,
+    #             outfn,
+    #             scorematrix=scorematrix,
+    #             gapopen=gapopen,
+    #             gapextend=gapextend,
+    #             method_threads=method_threads,
+    #         )
+    #         for querryfn, dbname, outfn in zip(querryfn_list, dblist, outfn_list)
+    #     ]
 
-    # not used
-    def CallMSAMethod(
-        self,
-        method_name,
-        infilename,
-        outfilename,
-        identifier,
-        nSeqs=None,
-        method_threads=None,
-    ):
-        return self._CallMethod(
-            "msa",
-            method_name,
-            infilename,
-            outfilename,
-            identifier,
-            nSeqs=nSeqs,
-            method_threads=method_threads,
-        )
+    # # not used
+    # def CallMSAMethod(
+    #     self,
+    #     method_name,
+    #     infilename,
+    #     outfilename,
+    #     identifier,
+    #     nSeqs=None,
+    #     method_threads=None,
+    # ):
+    #     return self._CallMethod(
+    #         "msa",
+    #         method_name,
+    #         infilename,
+    #         outfilename,
+    #         identifier,
+    #         nSeqs=nSeqs,
+    #         method_threads=method_threads,
+    #     )
 
-    # not used
-    def CallTreeMethod(
-        self,
-        method_name,
-        infilename,
-        outfilename,
-        identifier,
-        nSeqs=None,
-        method_threads=None,
-    ):
-        return self._CallMethod(
-            "tree",
-            method_name,
-            infilename,
-            outfilename,
-            identifier,
-            nSeqs=nSeqs,
-            method_threads=method_threads,
-        )
+    # # not used
+    # def CallTreeMethod(
+    #     self,
+    #     method_name,
+    #     infilename,
+    #     outfilename,
+    #     identifier,
+    #     nSeqs=None,
+    #     method_threads=None,
+    # ):
+    #     return self._CallMethod(
+    #         "tree",
+    #         method_name,
+    #         infilename,
+    #         outfilename,
+    #         identifier,
+    #         nSeqs=nSeqs,
+    #         method_threads=method_threads,
+    #     )
 
     def CallSearchMethod_DB(
         self,

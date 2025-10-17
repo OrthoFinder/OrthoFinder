@@ -39,7 +39,7 @@ class OrthoFinderTestFuncs:
             projects,
             # projects_results,
             msa, 
-            gene_tree, 
+            gene_tree_method, 
             recon_method, 
             sequence_search_threads,
             analysis_threads,
@@ -48,7 +48,7 @@ class OrthoFinderTestFuncs:
         self.options = Options()
         self.options.qStartFromFasta = True
         self.options.msa_program = msa
-        self.options.tree_program = gene_tree
+        self.options.tree_program = gene_tree_method
         self.options.recon_method = recon_method
         self.options.nBlast = sequence_search_threads
         self.options.nProcessAlg = analysis_threads
@@ -65,7 +65,7 @@ class OrthoFinderTestFuncs:
         
         args = [
             "-f",
-            os.path.basename(projects) + os.sep,
+            projects,
         ]
         self.args = args.copy()
 

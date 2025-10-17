@@ -53,17 +53,17 @@ class MSA(object):
         data = [1 for _ in range(self.n_non_gaps)]
         self.M = scipy.sparse.csr_matrix((data, (row_ind, col_ind)), shape=(self.n, self.length))
     
-    # def write_msa(self, i_cols, outfn, nChar = 80):
-    #     with open(outfn, 'w') as outfile:
-    #         for name, posn, chars in zip(self.names, self.non_gap_pos, self.non_gaps):
-    #             outfile.write(">" + name + "\n")
-    #             seq = ("-" * posn[0]) + chars[0]
-    #             for ipos, ipos_m1, c in zip(posn[1:], posn[:-1], chars[1:]):
-    #                 seq += "-" * (ipos - ipos_m1 - 1) + c
-    #             seq += "-" * (self.length - posn[-1] -1)
-    #             seq = "".join([seq[i] for i in i_cols])
-    #             for i in range(0, len(seq), nChar):
-    #                 outfile.write(seq[i:i+nChar] + "\n")
+    def write_msa(self, i_cols, outfn, nChar = 80):
+        with open(outfn, 'w') as outfile:
+            for name, posn, chars in zip(self.names, self.non_gap_pos, self.non_gaps):
+                outfile.write(">" + name + "\n")
+                seq = ("-" * posn[0]) + chars[0]
+                for ipos, ipos_m1, c in zip(posn[1:], posn[:-1], chars[1:]):
+                    seq += "-" * (ipos - ipos_m1 - 1) + c
+                seq += "-" * (self.length - posn[-1] -1)
+                seq = "".join([seq[i] for i in i_cols])
+                for i in range(0, len(seq), nChar):
+                    outfile.write(seq[i:i+nChar] + "\n")
 
 def main(infn, outfn, f=0.1, n_min=500, c=0.75, exe=False):
     if exe:

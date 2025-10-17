@@ -208,3 +208,6 @@ requirements_dev.txt
 Species_*
 Core 
 Assign
+tests/data/proteome/Core/OrthoFinder
+tests/data/dna/Genomes_Core/OrthoFinder
+tests/data/dna/Genomes_Assign

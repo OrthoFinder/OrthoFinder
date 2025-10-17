@@ -172,7 +172,6 @@ class TreeNode(object):
     def _get_style(self):
         if self._img_style is None:
             self._set_style(None)
-           
         return self._img_style
 
     def _set_style(self, value):
@@ -283,12 +282,12 @@ class TreeNode(object):
         setattr(self, pr_name, pr_value)
         self.features.add(pr_name)
 
-    def add_features(self, **features):
-        """ 
-        Add or update several features. """
-        for fname, fvalue in features.items():
-            setattr(self, fname, fvalue)
-            self.features.add(fname)
+    # def add_features(self, **features):
+    #     """ 
+    #     Add or update several features. """
+    #     for fname, fvalue in features.items():
+    #         setattr(self, fname, fvalue)
+    #         self.features.add(fname)
 
     def del_feature(self, pr_name):
         """ 
@@ -339,34 +338,34 @@ class TreeNode(object):
             child.up = None
             return child
 
-    def add_sister(self, sister=None, name=None, dist=None):
-        """
-        Adds a sister to this node. If sister node is not supplied
-        as an argument, a new TreeNode instance will be created and
-        returned.
-        """
-        if self.up == None:
-            raise TreeError("A parent node is required to add a sister")
-        else:
-            return self.up.add_child(child=sister, name=name, dist=dist)
+    # def add_sister(self, sister=None, name=None, dist=None):
+    #     """
+    #     Adds a sister to this node. If sister node is not supplied
+    #     as an argument, a new TreeNode instance will be created and
+    #     returned.
+    #     """
+    #     if self.up == None:
+    #         raise TreeError("A parent node is required to add a sister")
+    #     else:
+    #         return self.up.add_child(child=sister, name=name, dist=dist)
 
-    def remove_sister(self, sister=None):
-        """
-        Removes a node's sister node. It has the same effect as
-        **`TreeNode.up.remove_child(sister)`**
+    # def remove_sister(self, sister=None):
+    #     """
+    #     Removes a node's sister node. It has the same effect as
+    #     **`TreeNode.up.remove_child(sister)`**
 
-        If a sister node is not supplied, the first sister will be deleted
-        and returned.
+    #     If a sister node is not supplied, the first sister will be deleted
+    #     and returned.
 
-        :argument sister: A node instance
+    #     :argument sister: A node instance
 
-        :return: The node removed
-        """
-        sisters = self.get_sisters()
-        if len(sisters)>0:
-            if sister==None:
-                sister = sisters.pop(0)
-            return self.up.remove_child(sister)
+    #     :return: The node removed
+    #     """
+    #     sisters = self.get_sisters()
+    #     if len(sisters)>0:
+    #         if sister==None:
+    #             sister = sisters.pop(0)
+    #         return self.up.remove_child(sister)
 
     def delete(self, prevent_nondicotomic=True, preserve_branch_length=False):
         """
@@ -513,12 +512,12 @@ class TreeNode(object):
                 n.delete(prevent_nondicotomic=False,
                          preserve_branch_length=preserve_branch_length)
 
-    def swap_children(self):
-        """
-        Swaps current children order.
-        """
-        if len(self.children)>1:
-            self.children.reverse()
+    # def swap_children(self):
+    #     """
+    #     Swaps current children order.
+    #     """
+    #     if len(self.children)>1:
+    #         self.children.reverse()
 
     # def prune_OLD(self, nodes):
     #     """
@@ -643,12 +642,12 @@ class TreeNode(object):
         return [n for n in self.iter_descendants(strategy=strategy, \
                                                  is_leaf_fn=is_leaf_fn)]
 
-    def delete_traverse(self):
-        for node in self.traverse("postorder"):
-            if not node.is_root():
-                node.up.remove_child(node)
-            # node.delete()
-            del node
+    # def delete_traverse(self):
+    #     for node in self.traverse("postorder"):
+    #         if not node.is_root():
+    #             node.up.remove_child(node)
+    #         # node.delete()
+    #         del node
 
     def traverse(self, strategy="levelorder", is_leaf_fn=None):
         """
@@ -676,15 +675,15 @@ class TreeNode(object):
         elif strategy=="postorder":
             return self._iter_descendants_postorder(is_leaf_fn=is_leaf_fn)
             
-    def _iter_descendants_postorder_recursive(self, is_leaf_fn=None):
-        """
-        Iterate over all desdecendant nodes.
-        """
-        if not is_leaf_fn or not is_leaf_fn(self):
-            for ch in self.children:
-                for node in ch._iter_descendants_postorder(is_leaf_fn=is_leaf_fn):
-                    yield node
-        yield self
+    # def _iter_descendants_postorder_recursive(self, is_leaf_fn=None):
+    #     """
+    #     Iterate over all desdecendant nodes.
+    #     """
+    #     if not is_leaf_fn or not is_leaf_fn(self):
+    #         for ch in self.children:
+    #             for node in ch._iter_descendants_postorder(is_leaf_fn=is_leaf_fn):
+    #                 yield node
+    #     yield self
     
     def iter_prepostorder(self, is_leaf_fn=None):
         """
@@ -782,24 +781,24 @@ class TreeNode(object):
         '''
         return [n for n in self.iter_ancestors()]
             
-    def describe(self):
-        """ 
-        Prints general information about this node and its
-        connections.
-        """
-        if len(self.get_tree_root().children)==2:
-            rooting = "Yes"
-        elif len(self.get_tree_root().children)>2:
-            rooting = "No"
-        else:
-            rooting = "Unknown"
-        max_node, max_dist = self.get_farthest_leaf()
-        cached_content = self.get_cached_content()
-        print("Number of leaf nodes:\t%d" % len(cached_content[self]))
-        print("Number of internal nodes:\t%d" % len(cached_content))
-        print("Rooted:\t%s" %rooting)
-        print("Most distant node:\t%s" %max_node.name)
-        print("Max. distance:\t%f" %max_dist)
+    # def describe(self):
+    #     """ 
+    #     Prints general information about this node and its
+    #     connections.
+    #     """
+    #     if len(self.get_tree_root().children)==2:
+    #         rooting = "Yes"
+    #     elif len(self.get_tree_root().children)>2:
+    #         rooting = "No"
+    #     else:
+    #         rooting = "Unknown"
+    #     max_node, max_dist = self.get_farthest_leaf()
+    #     cached_content = self.get_cached_content()
+    #     print("Number of leaf nodes:\t%d" % len(cached_content[self]))
+    #     print("Number of internal nodes:\t%d" % len(cached_content))
+    #     print("Rooted:\t%s" %rooting)
+    #     print("Most distant node:\t%s" %max_node.name)
+    #     print("Max. distance:\t%f" %max_dist)
         
     def write(self, features=None, outfile=None, format=0, is_leaf_fn=None,
               format_root_node=False):
@@ -947,11 +946,11 @@ class TreeNode(object):
             matching_nodes.append(n)
         return matching_nodes
 
-    def get_leaves_by_name(self,name):
-        """ 
-        Returns a list of leaf nodes matching a given name. 
-        """
-        return self.search_nodes(name=name, children=[])
+    # def get_leaves_by_name(self,name):
+    #     """ 
+    #     Returns a list of leaf nodes matching a given name. 
+    #     """
+    #     return self.search_nodes(name=name, children=[])
 
     def is_leaf(self):
         """ 
@@ -1015,79 +1014,79 @@ class TreeNode(object):
                 current = current.up
         return dist
 
-    def get_farthest_node(self, topology_only=False):
-        """
-        Returns the node's farthest descendant or ancestor node, and the
-        distance to it.
+    # def get_farthest_node(self, topology_only=False):
+    #     """
+    #     Returns the node's farthest descendant or ancestor node, and the
+    #     distance to it.
 
-        :argument False topology_only: If set to True, distance
-          between nodes will be referred to the number of nodes
-          between them. In other words, topological distance will be
-          used instead of branch length distances.
+    #     :argument False topology_only: If set to True, distance
+    #       between nodes will be referred to the number of nodes
+    #       between them. In other words, topological distance will be
+    #       used instead of branch length distances.
 
-        :return: A tuple containing the farthest node referred to the
-          current node and the distance to it.
+    #     :return: A tuple containing the farthest node referred to the
+    #       current node and the distance to it.
 
-        """
-        # Init fasthest node to current farthest leaf
-        farthest_node,farthest_dist = self.get_farthest_leaf(topology_only=topology_only)
-        prev    = self
-        if topology_only:
-            cdist = 0
-        else:
-            cdist = prev.dist
-        current = prev.up
-        while current is not None:
-            for ch in current.children:
-                if ch != prev:
-                    if not ch.is_leaf():
-                        fnode, fdist = ch.get_farthest_leaf(topology_only=topology_only)
-                    else:
-                        fnode = ch
-                        fdist = 0
-                    if topology_only:
-                        fdist += 1.0
-                    else:
-                        fdist += ch.dist
-                    if cdist+fdist > farthest_dist:
-                        farthest_dist = cdist + fdist
-                        farthest_node = fnode
-            prev = current
-            if topology_only:
-                cdist += 1
-            else:
-                cdist  += prev.dist
-            current = prev.up
-        return farthest_node, farthest_dist
+    #     """
+    #     # Init fasthest node to current farthest leaf
+    #     farthest_node,farthest_dist = self.get_farthest_leaf(topology_only=topology_only)
+    #     prev    = self
+    #     if topology_only:
+    #         cdist = 0
+    #     else:
+    #         cdist = prev.dist
+    #     current = prev.up
+    #     while current is not None:
+    #         for ch in current.children:
+    #             if ch != prev:
+    #                 if not ch.is_leaf():
+    #                     fnode, fdist = ch.get_farthest_leaf(topology_only=topology_only)
+    #                 else:
+    #                     fnode = ch
+    #                     fdist = 0
+    #                 if topology_only:
+    #                     fdist += 1.0
+    #                 else:
+    #                     fdist += ch.dist
+    #                 if cdist+fdist > farthest_dist:
+    #                     farthest_dist = cdist + fdist
+    #                     farthest_node = fnode
+    #         prev = current
+    #         if topology_only:
+    #             cdist += 1
+    #         else:
+    #             cdist  += prev.dist
+    #         current = prev.up
+    #     return farthest_node, farthest_dist
 
-    def get_farthest_leaf(self, topology_only=False):
-        """
-        Returns node's farthest descendant node (which is always a leaf), and the
-        distance to it.
+    # def get_farthest_leaf(self, topology_only=False):
+    #     """
+    #     Returns node's farthest descendant node (which is always a leaf), and the
+    #     distance to it.
 
-        :argument False topology_only: If set to True, distance
-          between nodes will be referred to the number of nodes
-          between them. In other words, topological distance will be
-          used instead of branch length distances.
+    #     :argument False topology_only: If set to True, distance
+    #       between nodes will be referred to the number of nodes
+    #       between them. In other words, topological distance will be
+    #       used instead of branch length distances.
 
-        :return: A tuple containing the farthest leaf referred to the
-          current node and the distance to it.
-        """
-        max_dist = 0.0
-        max_node = None
-        if self.is_leaf():
-            return self, 0.0
-        else:
-            for ch in self.children:
-                node, d = ch.get_farthest_leaf(topology_only=topology_only)
-                if topology_only:
-                    d += 1.0
-                else:
-                    d += ch.dist
-                if d>=max_dist:
-                    max_dist = d
-                    max_node = node
-            return max_node, max_dist
+    #     :return: A tuple containing the farthest leaf referred to the
+    #       current node and the distance to it.
+    #     """
+    #     max_dist = 0.0
+    #     max_node = None
+    #     if self.is_leaf():
+    #         return self, 0.0
+    #     else:
+    #         for ch in self.children:
+    #             node, d = ch.get_farthest_leaf(topology_only=topology_only)
+    #             if topology_only:
+    #                 d += 1.0
+    #             else:
+    #                 d += ch.dist
+    #             if d>=max_dist:
+    #                 max_dist = d
+    #                 max_node = node
+    #         return max_node, max_dist
 
     def get_closest_leaf(self, topology_only=False):
         """Returns node's closest descendant leaf and the distance to

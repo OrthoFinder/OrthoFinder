@@ -150,16 +150,28 @@ def GetOrthogroupOccupancyInfo(m):
     Args:
         m - orthogroup matrix
     """
+    if getattr(m, "ndim", None) is None or m.ndim < 2:
+        raise ValueError("m must be a 2D array/matrix")
     N = m.shape[1]
-    f = 1./N
-    fractions = []
-    nOrtho = []
-    for n in range(N):
-        F = 1.-n*f
-        fractions.append(F)
-        nOrtho.append(len(SingleCopy_WithProbabilityTest(F-1e-5, m)))
-    nOrtho = list(map(float, nOrtho))
+    if N == 0:
+        raise ValueError("Matrix has zero columns; cannot compute occupancy.")
+    eps = 1e-5
+    fractions = [1.0 - n / N for n in range(N)]              # length N
+    nOrtho = [float(len(SingleCopy_WithProbabilityTest(F - eps, m)))
+              for F in fractions]
+
     return fractions, nOrtho
+
+    # N = m.shape[1]
+    # f = 1./N
+    # fractions = []
+    # nOrtho = []
+    # for n in range(N):
+    #     F = 1.-n*f
+    #     fractions.append(F)
+    #     nOrtho.append(len(SingleCopy_WithProbabilityTest(F-1e-5, m)))
+    # nOrtho = list(map(float, nOrtho))
+    # return fractions, nOrtho
     
 def DetermineOrthogroupsForSpeciesTree(m, iogs4, nOGsMin=100, nSufficient=1000, increase_required=2.):
     """Orthogroups can be used if at least a fraction f of the species in the orthogroup are single copy, f is determined as described 

@@ -169,56 +169,56 @@ class __Files_new_dont_manually_create__(object):
                       scorematrix=scorematrix, gapopen=gapopen, gapextend=gapextend)
     
     
-    def StartFromTrees(self, 
-                       wd1_list, 
-                       wd2,
-                       base, 
-                       clustersFilename_pairs,
-                       speciesTreeFN, 
-                       qIsUSerSpeciesTree,
-                       user_name=None,
-                       search_program=None,
-                       msa_program=None,
-                       tree_program=None,
-                       scorematrix=None,
-                       gapopen=None,
-                       gapextend=None,
-                       extended_filename=False):
-        """
-        Convert user species tree here if necessary
-        For OF species tree copy it to location given by FileHandler
-        For user species tree, this must be done immediately by OF code
-        """
-        self.wd_base = wd1_list
-        self.wd_trees = wd2
-        if user_name == None:
-            self.rd1 = util.CreateNewWorkingDirectory(base + "Results_",
-                                                      search_program=search_program, 
-                                                      msa_program=msa_program,
-                                                      tree_program=tree_program,
-                                                      scorematrix=scorematrix,
-                                                      gapopen=gapopen,
-                                                      gapextend=gapextend,
-                                                      extended_filename=extended_filename)
-        else:
-            self.rd1 = util.CreateNewWorkingDirectory(base + "Results_" + user_name, 
-                                                      qDate=False,
-                                                      search_program=search_program,
-                                                      msa_program=msa_program,
-                                                      tree_program=tree_program,
-                                                      scorematrix=scorematrix,
-                                                      gapopen=gapopen,
-                                                      gapextend=gapextend,
-                                                      extended_filename=extended_filename)
-        self.wd_current = self.rd1 + "WorkingDirectory/"
-        os.mkdir(self.wd_current)
-        self.clustersFilename = clustersFilename_pairs[:-len("_id_pairs.txt")]
-        self.StartLog(search_program=search_program, msa_program=msa_program, tree_program=tree_program,
-                      scorematrix=scorematrix, gapopen=gapopen, gapextend=gapextend)
-        if not qIsUSerSpeciesTree:
-            shutil.copy(speciesTreeFN, self.GetSpeciesTreeIDsRootedFN())
-        self.WriteToLog("Species Tree: %s\n" % speciesTreeFN)
-        self.LogWorkingDirectoryTrees()
+    # def StartFromTrees(self, 
+    #                    wd1_list, 
+    #                    wd2,
+    #                    base, 
+    #                    clustersFilename_pairs,
+    #                    speciesTreeFN, 
+    #                    qIsUSerSpeciesTree,
+    #                    user_name=None,
+    #                    search_program=None,
+    #                    msa_program=None,
+    #                    tree_program=None,
+    #                    scorematrix=None,
+    #                    gapopen=None,
+    #                    gapextend=None,
+    #                    extended_filename=False):
+    #     """
+    #     Convert user species tree here if necessary
+    #     For OF species tree copy it to location given by FileHandler
+    #     For user species tree, this must be done immediately by OF code
+    #     """
+    #     self.wd_base = wd1_list
+    #     self.wd_trees = wd2
+    #     if user_name == None:
+    #         self.rd1 = util.CreateNewWorkingDirectory(base + "Results_",
+    #                                                   search_program=search_program, 
+    #                                                   msa_program=msa_program,
+    #                                                   tree_program=tree_program,
+    #                                                   scorematrix=scorematrix,
+    #                                                   gapopen=gapopen,
+    #                                                   gapextend=gapextend,
+    #                                                   extended_filename=extended_filename)
+    #     else:
+    #         self.rd1 = util.CreateNewWorkingDirectory(base + "Results_" + user_name, 
+    #                                                   qDate=False,
+    #                                                   search_program=search_program,
+    #                                                   msa_program=msa_program,
+    #                                                   tree_program=tree_program,
+    #                                                   scorematrix=scorematrix,
+    #                                                   gapopen=gapopen,
+    #                                                   gapextend=gapextend,
+    #                                                   extended_filename=extended_filename)
+    #     self.wd_current = self.rd1 + "WorkingDirectory/"
+    #     os.mkdir(self.wd_current)
+    #     self.clustersFilename = clustersFilename_pairs[:-len("_id_pairs.txt")]
+    #     self.StartLog(search_program=search_program, msa_program=msa_program, tree_program=tree_program,
+    #                   scorematrix=scorematrix, gapopen=gapopen, gapextend=gapextend)
+    #     if not qIsUSerSpeciesTree:
+    #         shutil.copy(speciesTreeFN, self.GetSpeciesTreeIDsRootedFN())
+    #     self.WriteToLog("Species Tree: %s\n" % speciesTreeFN)
+    #     self.LogWorkingDirectoryTrees()
                                          
     def CreateOutputDirectories(self, options, previous_files_locator, base_dir, fastaDir=None):
         if (options.qStartFromFasta and options.qStartFromBlast) or options.qFastAdd:
@@ -307,9 +307,9 @@ class __Files_new_dont_manually_create__(object):
     """ ========================================================================================== """
        
        
-    # RefactorDS - FileHandler
-    def SetNondefaultPickleDir(self, d):
-        self.pickleDir = d
+    # # RefactorDS - FileHandler
+    # def SetNondefaultPickleDir(self, d):
+    #     self.pickleDir = d
    
     def GetPickleDir(self):
         if self.nondefaultPickleDir != None: 
@@ -447,10 +447,10 @@ class __Files_new_dont_manually_create__(object):
         self.clustersFilename, self.iResultsVersion = util.GetUnusedFilename(filename_suggestion, ".txt")
         return self.clustersFilename, self.clustersFilename + "_id_pairs.txt"
         
-    def SetClustersFN(self, pairsFN):
-        self.clustersFilename = pairsFN[:-len("_id_pairs.txt")]
-        log = "Orthogroups used: %s\n\n" % self.clustersFilename
-        self.WriteToLog(log)
+    # def SetClustersFN(self, pairsFN):
+    #     self.clustersFilename = pairsFN[:-len("_id_pairs.txt")]
+    #     log = "Orthogroups used: %s\n\n" % self.clustersFilename
+    #     self.WriteToLog(log)
         
     def GetClustersFN(self):
         return self.clustersFilename + "_id_pairs.txt"
@@ -494,8 +494,8 @@ class __Files_new_dont_manually_create__(object):
         if not os.path.exists(d): os.mkdir(d)
         return d
     
-    def GetUserTreeFN(self):
-        return self.GetUserTreeDir() + "Gene_Trees.txt"
+    # def GetUserTreeFN(self):
+    #     return self.GetUserTreeDir() + "Gene_Trees.txt"
     
     def GetUserResolvedTreeFN(self):
         return self.GetUserResolvedTreeDir() + "Resolved_Gene_Trees.txt"
@@ -602,17 +602,17 @@ class __Files_new_dont_manually_create__(object):
 
     """ ========================================================================================== """
     
-    def GetHOGsTreeDir(self):
-        hog_tree_dir = self.wd_current + "HOG_Trees"
-        if not os.path.exists(hog_tree_dir): 
-            os.mkdir(hog_tree_dir)
-        return hog_tree_dir
+    # def GetHOGsTreeDir(self):
+    #     hog_tree_dir = self.wd_current + "HOG_Trees"
+    #     if not os.path.exists(hog_tree_dir): 
+    #         os.mkdir(hog_tree_dir)
+    #     return hog_tree_dir
 
-    def GetHOGMSADir(self):
-        hog_msa_dir = self.wd_current + "HOG_Alignments"
-        if not os.path.exists(hog_msa_dir): 
-            os.mkdir(hog_msa_dir)
-        return hog_msa_dir
+    # def GetHOGMSADir(self):
+    #     hog_msa_dir = self.wd_current + "HOG_Alignments"
+    #     if not os.path.exists(hog_msa_dir): 
+    #         os.mkdir(hog_msa_dir)
+    #     return hog_msa_dir
 
     def GetOGsTreeDir(self, qResults=False):
         if qResults:
@@ -636,23 +636,23 @@ class __Files_new_dont_manually_create__(object):
         else:
             raise NotImplemented() 
     
-    def GetWDOGsReconTreeDir(self):
-        d = self.wd_trees + "Resolved_Gene_Trees_1/" 
-        if not os.path.exists(d): os.mkdir(d)
-        return d
+    # def GetWDOGsReconTreeDir(self):
+    #     d = self.wd_trees + "Resolved_Gene_Trees_1/" 
+    #     if not os.path.exists(d): os.mkdir(d)
+    #     return d
 
     def GetOGsReconTreeFN(self, iOG):
         # return self.rd1 + "Resolved_Gene_Trees/OG%07d_tree.txt" % iOG
         # return self.wd_trees + "Resolved_Gene_Trees/OG%07d_tree.txt" % iOG
         return self.wd_trees + "Resolved_Gene_Trees/OG%07d.txt" % iOG
             
-    def GetPhyldogWorkingDirectory(self):
-        d = self.wd_current + "phyldog/"
-        if not os.path.exists(d): os.mkdir(d)
-        return d
+    # def GetPhyldogWorkingDirectory(self):
+    #     d = self.wd_current + "phyldog/"
+    #     if not os.path.exists(d): os.mkdir(d)
+    #     return d
             
-    def GetPhyldogOGResultsTreeFN(self, i):
-        return self.wd_current + "phyldog/OG%07d.ReconciledTree.txt" % i
+    # def GetPhyldogOGResultsTreeFN(self, i):
+    #     return self.wd_current + "phyldog/OG%07d.ReconciledTree.txt" % i
     
     """ ========================================================================================== """
          
@@ -796,11 +796,11 @@ class PreviousFilesLocator(object):
     def GetStartFromBlast(self):
         return self.wd_base_prev
 
-    def GetStartFromOGs(self):
-        return self.wd_base_prev, self.clustersFilename_pairs
+    # def GetStartFromOGs(self):
+    #     return self.wd_base_prev, self.clustersFilename_pairs
 
-    def GetStartFromTrees(self):
-        return self.wd_base_prev, self.clustersFilename_pairs, self.wd_trees, self.speciesTreeRootedIDsFN
+    # def GetStartFromTrees(self):
+    #     return self.wd_base_prev, self.clustersFilename_pairs, self.wd_trees, self.speciesTreeRootedIDsFN
         
 """ ************************************************************************************************************************* """
 

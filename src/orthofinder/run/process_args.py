@@ -887,8 +887,8 @@ def ProcessArgs(args):
     if not (
         options.qStartFromFasta
         or options.qStartFromBlast
-        or options.qStartFromGroups
-        or options.qStartFromTrees
+        # or options.qStartFromGroups
+        # or options.qStartFromTrees
         or options.qFastAdd
     ):
         print(
@@ -900,8 +900,8 @@ def ProcessArgs(args):
         if (
             options.qStartFromFasta
             or options.qStartFromBlast
-            or options.qStartFromGroups
-            or options.qStartFromTrees
+            # or options.qStartFromGroups
+            # or options.qStartFromTrees
         ):
             print(
                 "ERROR: Incompatible options used with --assign, cannot accept: '-f', '-b', '-fg' or '-ft'"
