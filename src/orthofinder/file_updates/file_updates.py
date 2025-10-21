@@ -61,9 +61,13 @@ def update_output_files(
     # ## -------------------------- Fix Resolved Gene Trees and Gene Trees -------------------------
     resolved_trees_working_dir = files.FileHandler.GetOGsReconTreeDir(qResults=True)
     resolved_trees_id_dir = files.FileHandler.GetResolvedTreeIDDir()
-    
-    align_dir = files.FileHandler.GetResultsAlignDir()
-    align_id_dir = files.FileHandler.GetAlignIDDir()
+    if exist_msa:
+        align_dir = files.FileHandler.GetResultsAlignDir()
+        align_id_dir = files.FileHandler.GetAlignIDDir()
+    else:
+        align_dir = None
+        align_id_dir = None
+
     
     old_hog_n0 = read_hog_file(hog_n0_file)
     hog_n0_over4genes = hog_file_over4genes(old_hog_n0, 2)
@@ -80,6 +84,7 @@ def update_output_files(
 
     tree_file_index = index_files(resolved_trees_working_dir, ".txt")
     fasta_file_index = index_files(align_id_dir, ".fa") if align_id_dir is not None else {}
+
     hog_index = {
         unique_og: [row for row in hog_n0_over4genes if unique_og in row["OG"]]
         for unique_og in unique_ogs
@@ -97,7 +102,8 @@ def update_output_files(
         tree_file_index,
         fasta_file_index,  
         align_dir=align_dir,
-        min_seq=options.min_seq
+        min_seq=options.min_seq,
+        exist_msa=exist_msa
     )
 
     util.clear_dir(resolved_trees_working_dir)

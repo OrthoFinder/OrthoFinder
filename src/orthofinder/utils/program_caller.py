@@ -54,71 +54,71 @@ TOKENS = threading.BoundedSemaphore(TOTAL_CORES)
 
 _METHODTHREAD_RE = re.compile(r"(?<![A-Za-z0-9_])(METHODTHREADS?|METHODTHREAD)(?![A-Za-z0-9_])")
 
-def _to_text_or_none(x):
-    if isinstance(x, str):
-        return x
-    if isinstance(x, bytes):
-        try:
-            return x.decode("utf-8", "ignore")
-        except Exception:
-            return None
-    return None 
+# def _to_text_or_none(x):
+#     if isinstance(x, str):
+#         return x
+#     if isinstance(x, bytes):
+#         try:
+#             return x.decode("utf-8", "ignore")
+#         except Exception:
+#             return None
+#     return None 
 
-def threads_from_cmd(cmd_maybe, method_threads: int) -> int:
-    s = _to_text_or_none(cmd_maybe)
-    if not s:
-        return 1
-    return int(method_threads) if _METHODTHREAD_RE.search(s) else 1
+# def threads_from_cmd(cmd_maybe, method_threads: int) -> int:
+#     s = _to_text_or_none(cmd_maybe)
+#     if not s:
+#         return 1
+#     return int(method_threads) if _METHODTHREAD_RE.search(s) else 1
 
-def _detect_cores():
-    try:
-        return len(os.sched_getaffinity(0))
-    except Exception:
-        return mp.cpu_count() or 1
+# def _detect_cores():
+#     try:
+#         return len(os.sched_getaffinity(0))
+#     except Exception:
+#         return mp.cpu_count() or 1
 
 
 _SPLIT_CMDS_RE = re.compile(r"\s*(?:;|&&|\|)\s*")
 _INPUT_FLAGS = {"-s", "--msa", "-q", "--query", "--in", "--input", "-align"}
 _FASTA_EXTS = (".fa", ".fasta", ".faa", ".aln", ".fa.gz", ".fasta.gz", ".faa.gz", ".aln.gz")
 
-def _tokens(cmd):
-    try:
-        return shlex.split(cmd, posix=True)
-    except Exception:
-        return cmd.split()
+# def _tokens(cmd):
+#     try:
+#         return shlex.split(cmd, posix=True)
+#     except Exception:
+#         return cmd.split()
 
-def _first_existing_path(tokens):
-    for t in tokens:
-        if t in {">", "1>", "2>"}:
-            break
-        if ("/" in t or t.lower().endswith(_FASTA_EXTS)) and os.path.exists(t):
-            return t
-    return None
+# def _first_existing_path(tokens):
+#     for t in tokens:
+#         if t in {">", "1>", "2>"}:
+#             break
+#         if ("/" in t or t.lower().endswith(_FASTA_EXTS)) and os.path.exists(t):
+#             return t
+#     return None
 
-def extract_input_path(cmd: str):
-    """Return the most likely INPUT path for this (possibly compound) command."""
-    for sub in _SPLIT_CMDS_RE.split(cmd):
-        toks = _tokens(sub)
-        if not toks:
-            continue
-        for i, t in enumerate(toks[:-1]):
-            if t in _INPUT_FLAGS and os.path.exists(toks[i+1]):
-                return toks[i+1]
-        prog = os.path.basename(toks[0]).lower()
-        if prog in {"famsa", "fasttree", "fasttreemp", "mafft", "mafft-memsave", "muscle"}:
-            inp = _first_existing_path(toks)
-            if inp: return inp
-    return None
+# def extract_input_path(cmd: str):
+#     """Return the most likely INPUT path for this (possibly compound) command."""
+#     for sub in _SPLIT_CMDS_RE.split(cmd):
+#         toks = _tokens(sub)
+#         if not toks:
+#             continue
+#         for i, t in enumerate(toks[:-1]):
+#             if t in _INPUT_FLAGS and os.path.exists(toks[i+1]):
+#                 return toks[i+1]
+#         prog = os.path.basename(toks[0]).lower()
+#         if prog in {"famsa", "fasttree", "fasttreemp", "mafft", "mafft-memsave", "muscle"}:
+#             inp = _first_existing_path(toks)
+#             if inp: return inp
+#     return None
 
 
-def _threads_by_size(path: str, base_threads: int) -> int:
-    try:
-        sz = os.path.getsize(path)
-    except Exception:
-        return 1
-    if sz <= 10000:        # < ~200 KB
-        return 1
-    return max(4, base_threads) 
+# def _threads_by_size(path: str, base_threads: int) -> int:
+#     try:
+#         sz = os.path.getsize(path)
+#     except Exception:
+#         return 1
+#     if sz <= 10000:        # < ~200 KB
+#         return 1
+#     return max(4, base_threads) 
 
 # try:
 #     longer_file = impresources.files(test_sequences) / "longer.txt"
@@ -219,116 +219,55 @@ class ProgramCaller(object):
         if configure_file == None:
             return
         if not os.path.exists(configure_file):
-            print(
-                (
-                    "WARNING: Configuration file, '%s', does not exist. No user-confgurable multiple sequence alignment or tree inference methods have been added.\n"
-                    % configure_file
-                )
-            )
+            print(("WARNING: Configuration file, '%s', does not exist. No user-confgurable multiple sequence alignment or tree inference methods have been added.\n" % configure_file))
             return
         with open(configure_file, "r") as infile:
             try:
                 d = json.load(infile)
             except ValueError:
-                print(
-                    (
-                        "WARNING: Incorrectly formatted configuration file %s"
-                        % configure_file
-                    )
-                )
-                print(
-                    "File is not in .json format. No user-confgurable multiple sequence alignment or tree inference methods have been added.\n"
-                )
+                print(("WARNING: Incorrectly formatted configuration file %s" % configure_file))
+                print("File is not in .json format. No user-confgurable multiple sequence alignment or tree inference methods have been added.\n")
                 return
             for name, v in d.items():
                 if name == "__comment":
                     continue
                 if " " in name:
-                    print(
-                        (
-                            "WARNING: Incorrectly formatted configuration file entry: %s"
-                            % name
-                        )
-                    )
+                    print(("WARNING: Incorrectly formatted configuration file entry: %s" % name))
                     print(("No space is allowed in name: '%s'" % name))
                     continue
 
                 if "program_type" not in v:
-                    print(
-                        (
-                            "WARNING: Incorrectly formatted configuration file entry: %s"
-                            % name
-                        )
-                    )
+                    print(("WARNING: Incorrectly formatted configuration file entry: %s" % name))
                     print("'program_type' entry is missing")
                 try:
                     if v["program_type"] == "msa":
                         if name in self.msa:
-                            print(
-                                (
-                                    "Multiple sequence alignment method '%s' has already been defined, skipping config file entry."
-                                    % name
-                                )
-                            )
+                            print(("Multiple sequence alignment method '%s' has already been defined, skipping config file entry." % name))
                         else:
                             self.msa[name] = Method(name, v)
                     elif v["program_type"] == "tree":
                         if name in self.tree:
-                            print(
-                                (
-                                    "Tree inference method '%s' has already been defined, skipping config file entry."
-                                    % name
-                                )
-                            )
+                            print(("Tree inference method '%s' has already been defined, skipping config file entry." % name))
                         else:
                             self.tree[name] = Method(name, v)
                     elif v["program_type"] == "search":
                         if ("db_cmd" not in v) or ("search_cmd" not in v):
-                            print(
-                                (
-                                    "WARNING: Incorrectly formatted configuration file entry: %s"
-                                    % name
-                                )
-                            )
+                            print(("WARNING: Incorrectly formatted configuration file entry: %s" % name))
                             print("'cmd_line' entry is missing")
                             raise InvalidEntryException
                         if name in self.search_db:
-                            print(
-                                (
-                                    "Sequence search method '%s' has already been defined, skipping config file entry."
-                                    % name
-                                )
-                            )
+                            print(("Sequence search method '%s' has already been defined, skipping config file entry." % name))
                         else:
-                            self.search_db[name] = Method(
-                                name, {"cmd_line": v["db_cmd"]}
-                            )
-                            self.search_search[name] = Method(
-                                name, {"cmd_line": v["search_cmd"]}
-                            )
+                            self.search_db[name] = Method(name, {"cmd_line": v["db_cmd"]})
+                            self.search_search[name] = Method(name, {"cmd_line": v["search_cmd"]})
                             if "ouput_filename" in v:
-                                print(
-                                    (
-                                        "WARNING: Incorrectly formatted configuration file entry: %s"
-                                        % name
-                                    )
-                                )
+                                print(("WARNING: Incorrectly formatted configuration file entry: %s" % name))
                                 print(
                                     "'ouput_filename' option is not supported for 'program_type' 'search'"
                                 )
                     else:
-                        print(
-                            (
-                                "WARNING: Incorrectly formatted configuration file entry: %s"
-                                % name
-                            )
-                        )
-                        print(
-                            (
-                                "'program_type' should be 'msa' or 'tree', got '%s'"
-                                % v["program_type"]
-                            )
-                        )
+                        print(("WARNING: Incorrectly formatted configuration file entry: %s" % name))
+                        print(("'program_type' should be 'msa' or 'tree', got '%s'" % v["program_type"]))
                 except InvalidEntryException:
                     pass
 
@@ -1200,15 +1139,15 @@ def RunCommand(command, method_threads, dynamic_threads=False, qPrintOnError=Fal
 
     base_cap = max(1, min(int(method_threads), TOTAL_CORES))
     if _METHODTHREAD_RE.search(command):
-        if dynamic_threads:
-            inp = extract_input_path(command)
-            if inp:
-                t_dyn = _threads_by_size(inp, TOTAL_CORES) 
-                threads_needed = min(t_dyn, base_cap)
-            else:
-                threads_needed = base_cap
-        else:
-            threads_needed = base_cap
+        # if dynamic_threads:
+        #     inp = extract_input_path(command)
+        #     if inp:
+        #         t_dyn = _threads_by_size(inp, TOTAL_CORES) 
+        #         threads_needed = min(t_dyn, base_cap)
+        #     else:
+        #         threads_needed = base_cap
+        # else:
+        threads_needed = base_cap
 
         if prog.startswith("diamond"):  # diamond makedb / blastp
             threads_needed = 1

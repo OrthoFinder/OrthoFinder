@@ -462,22 +462,22 @@ class ParallelTaskManager_singleton:
                 ParallelTaskManager_singleton.__Singleton()
             )
 
-    def RunParallel(self, func, args_list, nParallel):
-        """
-        Args:
-            cmd_list - list of commands or list of lists of commands (in which elements in inner list must be run in order)
-            nParallel - number of parallel threads to use
-            qShell - should the tasks be run in a shell
-        """
-        self.instance.message_to_spawner.put((func, args_list, nParallel))
-        while True:
-            try:
-                signal = self.instance.message_to_PTM.get()
-                if signal == "Done":
-                    return
-            except queue.Empty:
-                pass
-            time.sleep(1)
+    # def RunParallel(self, func, args_list, nParallel):
+    #     """
+    #     Args:
+    #         cmd_list - list of commands or list of lists of commands (in which elements in inner list must be run in order)
+    #         nParallel - number of parallel threads to use
+    #         qShell - should the tasks be run in a shell
+    #     """
+    #     self.instance.message_to_spawner.put((func, args_list, nParallel))
+    #     while True:
+    #         try:
+    #             signal = self.instance.message_to_PTM.get()
+    #             if signal == "Done":
+    #                 return
+    #         except queue.Empty:
+    #             pass
+    #         time.sleep(1)
 
     def Stop(self):
         """Warning, cannot be restarted"""

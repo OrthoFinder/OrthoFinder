@@ -13,7 +13,7 @@ try:
 except ImportError:
     ...
 
-from . import tree
+from . import tree, stag
 from ..utils import util, files, parallel_task_manager, program_caller
 from ..utils import blast_file_processor as BlastFileProcessor
 
@@ -236,12 +236,12 @@ class DendroBLASTTrees(object):
         del ogMatrices
         util.PrintUnderline("Inferring gene and species trees" if qSpeciesTree else "Inferring gene trees")
         program_caller.RunParallelCommands(self.nProcess_std, cmds_trees, qListOfList=True)
-        # if qSTAG:
-        #     # Trees must have been completed
-        #     print("")
-        #     spTreeFN_ids = files.FileHandler.GetSpeciesTreeUnrootedFN()
-        #     stag.Run_ForOrthoFinder(files.FileHandler.GetOGsTreeDir(), files.FileHandler.GetWorkingDirectory_Write(),
-        #                             self.ogSet.seqsInfo.speciesToUse, spTreeFN_ids)
+        if qSTAG:
+            # Trees must have been completed
+            print("")
+            spTreeFN_ids = files.FileHandler.GetSpeciesTreeUnrootedFN()
+            stag.Run_ForOrthoFinder(files.FileHandler.GetOGsTreeDir(), files.FileHandler.GetWorkingDirectory_Write(),
+                                    self.ogSet.seqsInfo.speciesToUse, spTreeFN_ids)
         if qSpeciesTree:
             util.RenameTreeTaxa(spTreeFN_ids, files.FileHandler.GetSpeciesTreeUnrootedFN(True), self.ogSet.SpeciesDict(),
                                 qSupport=False, qFixNegatives=True)

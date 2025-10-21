@@ -5,25 +5,6 @@ import traceback
 import pytest
 from orthofinder.run.__main__ import main
 
-FATAL_MARKERS = (
-    "Traceback (most recent call last)",
-    "CRITICAL",
-    "FATAL",
-    "Segmentation fault",
-    "Specified directory doesn't exist",
-    "NCBI C++ Exception",  # BLAST hard failure
-)
-
-NON_FATAL_PATTERNS = (
-    r"\b0 errors?\b",
-    r"\bno errors?\b",
-    r"\berror rate\b",
-    r"\bERRORS?:\s*0\b",
-)
-
-def clean_text(s: str) -> str:
-    # strip ANSI color codes
-    return re.sub(r"\x1b\[[0-9;]*m", "", s)
 
 
 def _run_main(args, capfd):

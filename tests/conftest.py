@@ -5,6 +5,7 @@ import helper
 from typing import Optional, Union, List, Any
 import multiprocessing as mp
 from orthofinder.utils.util import CreateNewWorkingDirectory
+from orthofinder.utils import files
 
 ## ------- Default ExampleData ---------
 # HERE = Path(__file__).resolve()
@@ -517,3 +518,19 @@ def expected_overall_stats(expected_results):
 #         "Orthogroups.txt"
 #     )
 
+
+@pytest.fixture(autouse=True)
+def reset_orthofinder_state():
+    """
+    Reset OrthoFinder's FileHandler global state between tests to avoid
+    'Changing WorkingDirectory1' errors when running multiple CLI calls
+    in-process.
+    """
+    attrs_to_clear = ("wd_base", "wd1", "wd2", "base_dir")
+    for attr in attrs_to_clear:
+        if hasattr(files.FileHandler, attr):
+            setattr(files.FileHandler, attr, "")
+    yield 
+    for attr in attrs_to_clear:
+        if hasattr(files.FileHandler, attr):
+            setattr(files.FileHandler, attr, "")

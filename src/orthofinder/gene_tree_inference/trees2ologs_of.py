@@ -43,41 +43,43 @@ def GeneToSpecies_dash(g):
   
 OrthoFinderIDs = GeneToSpecies_dash
   
-def GeneToSpecies_secondDash(g):
-  return "_".join(g.split("_", 2)[:2])
+# def GeneToSpecies_secondDash(g):
+#   return "_".join(g.split("_", 2)[:2])
   
-def GeneToSpecies_3rdDash(g):
-  return "_".join(g.split("_", 3)[:3])
+# def GeneToSpecies_3rdDash(g):
+#   return "_".join(g.split("_", 3)[:3])
   
-def GeneToSpecies_dot(g):
-  return g.split(".", 1)[0]
+# def GeneToSpecies_dot(g):
+#   return g.split(".", 1)[0]
   
-def GeneToSpecies_hyphen(g):
-  return g.split("-", 1)[0]  
+# def GeneToSpecies_hyphen(g):
+#   return g.split("-", 1)[0]  
 
 
 def SpeciesAndGene_dash(g):
   return g.split("_", 1)
     
-def SpeciesAndGene_secondDash(g):
-    a,b,c = g.split("_", 2)
-    return (a+"_"+b, c)
+# def SpeciesAndGene_secondDash(g):
+#     a,b,c = g.split("_", 2)
+#     return (a+"_"+b, c)
   
-def SpeciesAndGene_3rdDash(g):
-    a,b,c,d = g.split("_", 3)
-    return (a+"_"+b+"_"+c, d)
+# def SpeciesAndGene_3rdDash(g):
+#     a,b,c,d = g.split("_", 3)
+#     return (a+"_"+b+"_"+c, d)
   
-def SpeciesAndGene_dot(g):
-  return g.split(".", 1)
+# def SpeciesAndGene_dot(g):
+#   return g.split(".", 1)
   
-def SpeciesAndGene_hyphen(g):
-  return g.split("-", 1)
+# def SpeciesAndGene_hyphen(g):
+#   return g.split("-", 1)
   
-SpeciesAndGene_lookup = {GeneToSpecies_dash:SpeciesAndGene_dash, 
-                        GeneToSpecies_secondDash:SpeciesAndGene_secondDash,
-                        GeneToSpecies_3rdDash:SpeciesAndGene_3rdDash,
-                        GeneToSpecies_dot:SpeciesAndGene_dot,
-                        GeneToSpecies_hyphen:SpeciesAndGene_hyphen}
+SpeciesAndGene_lookup = {
+    GeneToSpecies_dash:SpeciesAndGene_dash, 
+    # GeneToSpecies_secondDash:SpeciesAndGene_secondDash,
+    # GeneToSpecies_3rdDash:SpeciesAndGene_3rdDash,
+    # GeneToSpecies_dot:SpeciesAndGene_dot,
+    # GeneToSpecies_hyphen:SpeciesAndGene_hyphen
+}
     
 class RootMap(object):
     def __init__(self, setA, setB, GeneToSpecies):
@@ -514,14 +516,14 @@ SpeciesTree_rooted_ids.txt and Trees_ids/%s_tree_id.txt from WorkingDirectory/" 
         raise
 
 
-def get_highest_nodes(nodes, comp_nodes):
-    """
-    Returns the nodes closest to the root
-    Args:
-        nodes - the list of nodes to examine
-        comp_nodes - dict:NX -> ( {closer to root}, {further from root} )
-    """
-    return  {n for n in nodes if not any(n in comp_nodes[n2][1] for n2 in nodes)}
+# def get_highest_nodes(nodes, comp_nodes):
+#     """
+#     Returns the nodes closest to the root
+#     Args:
+#         nodes - the list of nodes to examine
+#         comp_nodes - dict:NX -> ( {closer to root}, {further from root} )
+#     """
+#     return  {n for n in nodes if not any(n in comp_nodes[n2][1] for n2 in nodes)}
 
 
 def get_comparable_nodes(sp_tree):
@@ -649,28 +651,28 @@ def GetRoots(tree, species_tree_rooted, GeneToSpecies):
         return [] # This shouldn't occur
     return [sorted(zip(scores_list, roots_list), key=lambda x: x[0], reverse=True)[0][1]]
                 
-def WriteQfO2(orthologues_list_pairs_list, outfilename, qAppend = True):
-    """ takes a list where each entry is a pair, (genes1, genes2), which are orthologues of one another
-    """
-    with open(outfilename, 'a' if qAppend else 'w') as outfile:
-        for gs1, gs2, _, _ in orthologues_list_pairs_list:
-            for sp1, genes1 in gs1.items():
-                for sp2, genes2 in gs2.items():
-                    for g1 in genes1:
-                        for g2 in genes2:
-                            outfile.write("%s_%s\t%s_%s\n" % (sp1, g1, sp2, g2))
+# def WriteQfO2(orthologues_list_pairs_list, outfilename, qAppend = True):
+#     """ takes a list where each entry is a pair, (genes1, genes2), which are orthologues of one another
+#     """
+#     with open(outfilename, 'a' if qAppend else 'w') as outfile:
+#         for gs1, gs2, _, _ in orthologues_list_pairs_list:
+#             for sp1, genes1 in gs1.items():
+#                 for sp2, genes2 in gs2.items():
+#                     for g1 in genes1:
+#                         for g2 in genes2:
+#                             outfile.write("%s_%s\t%s_%s\n" % (sp1, g1, sp2, g2))
     
-def GetGeneToSpeciesMap(args):
-    GeneToSpecies = GeneToSpecies_dash
-    if args.separator and args.separator == "dot":
-        GeneToSpecies = GeneToSpecies_dot  
-    elif args.separator and args.separator == "second_dash":
-        GeneToSpecies = GeneToSpecies_secondDash  
-    elif args.separator and args.separator == "3rd_dash":
-        GeneToSpecies = GeneToSpecies_3rdDash  
-    elif args.separator and args.separator == "hyphen":
-        GeneToSpecies = GeneToSpecies_hyphen  
-    return GeneToSpecies
+# def GetGeneToSpeciesMap(args):
+#     GeneToSpecies = GeneToSpecies_dash
+#     if args.separator and args.separator == "dot":
+#         GeneToSpecies = GeneToSpecies_dot  
+#     elif args.separator and args.separator == "second_dash":
+#         GeneToSpecies = GeneToSpecies_secondDash  
+#     elif args.separator and args.separator == "3rd_dash":
+#         GeneToSpecies = GeneToSpecies_3rdDash  
+#     elif args.separator and args.separator == "hyphen":
+#         GeneToSpecies = GeneToSpecies_hyphen  
+#     return GeneToSpecies
   
 def OverlapSize(node, GeneToSpecies, suspect_genes):  
     descendents = [{GeneToSpecies(l) for l in n.get_leaf_names()}.difference(suspect_genes) for n in node.get_children()]
@@ -1032,22 +1034,22 @@ def GetSpeciesNeighbours(t):
     neighbours = {sp:{other:n for n,others in enumerate(lev) for other in others} for sp, lev in levels.items()}
     return neighbours
 
-def RootAndGetOrthologues_from_tree(iog, tree_fn, species_tree_rooted, GeneToSpecies, neighbours, qWrite=False, qNoRecon=False):
-    rooted_tree_ids, qHaveSupport = CheckAndRootTree(tree_fn, species_tree_rooted, GeneToSpecies) # this can be parallelised easily
-    if rooted_tree_ids is None: return
-    orthologues, recon_tree, suspect_genes, dups = GetOrthologues_from_tree(iog, rooted_tree_ids, species_tree_rooted, GeneToSpecies, neighbours, qNoRecon=qNoRecon)
-    if qWrite:
-        directory = os.path.split(tree_fn)[0]
-        WriteQfO2(orthologues, directory + "_Orthologues_M3/" + os.path.split(tree_fn)[1], qAppend=False)
+# def RootAndGetOrthologues_from_tree(iog, tree_fn, species_tree_rooted, GeneToSpecies, neighbours, qWrite=False, qNoRecon=False):
+#     rooted_tree_ids, qHaveSupport = CheckAndRootTree(tree_fn, species_tree_rooted, GeneToSpecies) # this can be parallelised easily
+#     if rooted_tree_ids is None: return
+#     orthologues, recon_tree, suspect_genes, dups = GetOrthologues_from_tree(iog, rooted_tree_ids, species_tree_rooted, GeneToSpecies, neighbours, qNoRecon=qNoRecon)
+#     if qWrite:
+#         directory = os.path.split(tree_fn)[0]
+#         WriteQfO2(orthologues, directory + "_Orthologues_M3/" + os.path.split(tree_fn)[1], qAppend=False)
 
-def Worker_RootAndGetOrthologues_from_tree(iog, tree_fn, species_tree_rooted, GeneToSpecies, neighbours, result_queue):
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        try:
-            RootAndGetOrthologues_from_tree(iog, tree_fn, species_tree_rooted, GeneToSpecies, neighbours)
-            result_queue.put((iog, "success"))
-        except Exception as e:
-            result_queue.put((iog, e))
+# def Worker_RootAndGetOrthologues_from_tree(iog, tree_fn, species_tree_rooted, GeneToSpecies, neighbours, result_queue):
+#     with warnings.catch_warnings():
+#         warnings.simplefilter("ignore")
+#         try:
+#             RootAndGetOrthologues_from_tree(iog, tree_fn, species_tree_rooted, GeneToSpecies, neighbours)
+#             result_queue.put((iog, "success"))
+#         except Exception as e:
+#             result_queue.put((iog, e))
 
 
 # def GetOrthologuesStandalone_Parallel(trees_dir, species_tree_rooted_fn, GeneToSpecies, output_dir, qSingleTree):
@@ -1862,7 +1864,7 @@ def RunOrthologsParallel(
                 nOrtho = results_queue.get()  # block until an item is available
                 if nOrtho is False:
                     print("ERROR in parallel process, exiting.")
-                    print(traceback.format_exc())
+                    print(traceback.print_exc())
                     util.Fail()
                 nOrthologues_SpPair += nOrtho
                 n_remain -= 1
@@ -1911,7 +1913,7 @@ def RunOrthologsParallel(
                     print("ERROR in parallel process, exiting.")
                     for proc in runningProcesses:
                         proc.terminate()
-                    print(traceback.format_exc())
+                    print(traceback.print_exc())
                     util.Fail()
                 else:
                     nOrthologues_SpPair += nOrtho

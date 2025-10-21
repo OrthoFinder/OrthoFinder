@@ -1,8 +1,6 @@
-import sys
 import os
 import re
 import pytest
-from contextlib import redirect_stderr
 import helper
 
 # # if msa != "famsa":
@@ -18,343 +16,348 @@ import helper
 # # if gene_tree_method != "fasttree":
 # #     args += ["-T", gene_tree_method]
 
-@pytest.mark.order(1)
-def test_orthofinder_dendroblast_run(projects, gene_tree_method, capfd):
 
-    args = ["-f", projects, "-M", "dendroblast"]
+class TestOrthoFinderRuns:
+    @pytest.mark.order(1)
+    def test_orthofinder_dendroblast_run(self, projects, gene_tree_method, capfd):
+
+        args = ["-f", projects, "-M", "dendroblast"]
+        
+        if gene_tree_method != "fasttree":
+            args += ["-T", gene_tree_method]
+
+        code, out, err, text = helper._run_main(args, capfd)
+        assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
+
+        fatal_patterns = (
+            r"(?mi)^\s*ERROR:\s",              
+            r"(?m)^\s*Traceback \(most recent call last\):",    
+            r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
+            r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
+        )
+        
+        assert not any(re.search(p, text) for p in fatal_patterns), text
+
+    @pytest.mark.order(2)
+    def test_orthofinder_mafft_run(self, projects, gene_tree_method, capfd):
+        args = ["-f", projects, "-A", "mafft", "-t", "2", "-a", "4"]
+
+        if gene_tree_method != "fasttree":
+            args += ["-T", gene_tree_method]
+
+        code, out, err, text = helper._run_main(args, capfd)
+        assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
+
+        fatal_patterns = (
+            r"(?mi)^\s*ERROR:\s",              
+            r"(?m)^\s*Traceback \(most recent call last\):",    
+            r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
+            r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
+        )
+        assert not any(re.search(p, text) for p in fatal_patterns), text
+
     
-    if gene_tree_method != "fasttree":
-        args += ["-T", gene_tree_method]
-
-    code, out, err, text = helper._run_main(args, capfd)
-    assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
-
-    fatal_patterns = (
-        r"(?mi)^\s*ERROR:\s",              
-        r"(?m)^\s*Traceback \(most recent call last\):",    
-        r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
-        r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
-    )
-    assert not any(re.search(p, text) for p in fatal_patterns), text
-
-@pytest.mark.order(2)
-def test_orthofinder_mafft_run(projects, gene_tree_method, capfd):
-    args = ["-f", projects, "-A", "mafft", "-t", "2", "-a", "4"]
-
-    if gene_tree_method != "fasttree":
-        args += ["-T", gene_tree_method]
+    @pytest.mark.order(3)
+    def test_orthofinder_assign_run(self, projects, assign, gene_tree_method, capfd):
+        results_dir = os.path.join(projects, "OrthoFinder")
+        projects_results = helper._latest_output_dir(results_dir)
+        args = ["--core", projects_results, "--assign",  assign, "-nk", 2]
 
-    code, out, err, text = helper._run_main(args, capfd)
-    assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
+        if gene_tree_method != "fasttree":
+            args += ["-T", gene_tree_method]
 
-    fatal_patterns = (
-        r"(?mi)^\s*ERROR:\s",              
-        r"(?m)^\s*Traceback \(most recent call last\):",    
-        r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
-        r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
-    )
-    assert not any(re.search(p, text) for p in fatal_patterns), text
+        code, out, err, text = helper._run_main(args, capfd)
+        assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
 
- 
-@pytest.mark.order(3)
-def test_orthofinder_assign_run(projects, assign, gene_tree_method, capfd):
-    results_dir = os.path.join(projects, "OrthoFinder")
-    projects_results = helper._latest_output_dir(results_dir)
-    args = ["--core", projects_results, "--assign",  assign, "-nk", 2]
+        fatal_patterns = (
+            r"(?mi)^\s*ERROR:\s",              
+            r"(?m)^\s*Traceback \(most recent call last\):",    
+            r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
+            r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
+        )
+        assert not any(re.search(p, text) for p in fatal_patterns), text
 
-    if gene_tree_method != "fasttree":
-        args += ["-T", gene_tree_method]
 
-    code, out, err, text = helper._run_main(args, capfd)
-    assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
+    @pytest.mark.order(4)
+    def test_orthofinder_assign_with_species_tree_run(self, projects, assign, species_tree_assign, gene_tree_method, capfd):
+        results_dir = os.path.join(projects, "OrthoFinder")
+        projects_results = helper._latest_output_dir(results_dir, fileno=-2)
+        args = ["--core", projects_results, "--assign",  assign, "-nk", 2, "-s", species_tree_assign]
 
-    fatal_patterns = (
-        r"(?mi)^\s*ERROR:\s",              
-        r"(?m)^\s*Traceback \(most recent call last\):",    
-        r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
-        r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
-    )
-    assert not any(re.search(p, text) for p in fatal_patterns), text
+        if gene_tree_method != "fasttree":
+            args += ["-T", gene_tree_method]
 
-
-@pytest.mark.order(4)
-def test_orthofinder_assign_with_species_tree_run(projects, assign, species_tree_assign, gene_tree_method, capfd):
-    results_dir = os.path.join(projects, "OrthoFinder")
-    projects_results = helper._latest_output_dir(results_dir, fileno=-2)
-    args = ["--core", projects_results, "--assign",  assign, "-nk", 2, "-s", species_tree_assign]
+        code, out, err, text = helper._run_main(args, capfd)
+        assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
 
-    if gene_tree_method != "fasttree":
-        args += ["-T", gene_tree_method]
+        fatal_patterns = (
+            r"(?mi)^\s*ERROR:\s",              
+            r"(?m)^\s*Traceback \(most recent call last\):",    
+            r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
+            r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
+        )
+        assert not any(re.search(p, text) for p in fatal_patterns), text
 
-    code, out, err, text = helper._run_main(args, capfd)
-    assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
-
-    fatal_patterns = (
-        r"(?mi)^\s*ERROR:\s",              
-        r"(?m)^\s*Traceback \(most recent call last\):",    
-        r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
-        r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
-    )
-    assert not any(re.search(p, text) for p in fatal_patterns), text
 
 
+    @pytest.mark.order(5)
+    def test_orthofinder_famsa_species_tree_run(self, projects, gene_tree_method, species_tree, capfd):
+        args = ["-f", projects, "-s", species_tree]
 
-@pytest.mark.order(5)
-def test_orthofinder_famsa_species_tree_run(projects, gene_tree_method, species_tree, capfd):
-    args = ["-f", projects, "-s", species_tree]
+        if gene_tree_method != "fasttree":
+            args += ["-T", gene_tree_method]
 
-    if gene_tree_method != "fasttree":
-        args += ["-T", gene_tree_method]
+        code, out, err, text = helper._run_main(args, capfd)
+        assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
 
-    code, out, err, text = helper._run_main(args, capfd)
-    assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
-
-    fatal_patterns = (
-        r"(?mi)^\s*ERROR:\s",              
-        r"(?m)^\s*Traceback \(most recent call last\):",    
-        r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
-        r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
-    )
-    assert not any(re.search(p, text) for p in fatal_patterns), text
+        fatal_patterns = (
+            r"(?mi)^\s*ERROR:\s",              
+            r"(?m)^\s*Traceback \(most recent call last\):",    
+            r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
+            r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
+        )
+        assert not any(re.search(p, text) for p in fatal_patterns), text
 
 
-@pytest.mark.order(6)
-def test_orthofinder_prepare_blast_run(projects, gene_tree_method, capfd):
-    args = ["-f", projects, "-op"]
+    @pytest.mark.order(6)
+    def test_orthofinder_prepare_blast_run(self, projects, gene_tree_method, capfd):
+        args = ["-f", projects, "-op", "--save-blast-commands"]
 
-    if gene_tree_method != "fasttree":
-        args += ["-T", gene_tree_method]
+        if gene_tree_method != "fasttree":
+            args += ["-T", gene_tree_method]
 
-    code, out, err, text = helper._run_main(args, capfd)
-    assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
+        code, out, err, text = helper._run_main(args, capfd)
+        assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
 
-    fatal_patterns = (
-        r"(?mi)^\s*ERROR:\s",              
-        r"(?m)^\s*Traceback \(most recent call last\):",    
-        r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
-        r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
-    )
-    assert not any(re.search(p, text) for p in fatal_patterns), text
+        fatal_patterns = (
+            r"(?mi)^\s*ERROR:\s",              
+            r"(?m)^\s*Traceback \(most recent call last\):",    
+            r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
+            r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
+        )
+        assert not any(re.search(p, text) for p in fatal_patterns), text
 
 
+    @pytest.mark.order(7)
+    def test_orthofinder_start_from_blast_run(self, projects, gene_tree_method, capfd):
 
-# # @pytest.mark.order(2)
-# # def test_orthofinder_start_from_blast_run(projects, gene_tree_method, capfd):
-
-# #     results_dir = os.path.join(projects, "OrthoFinder")
-# #     projects_results = helper._latest_output_dir(results_dir)
-# #     args = ["-f", os.path.basename(projects), "-b",  projects_results]
+        results_dir = os.path.join(projects, "OrthoFinder")
+        projects_results = helper._latest_output_dir(results_dir)
+        args = ["-b",  projects_results, "--restart-of-blast"]
+
+        if gene_tree_method != "fasttree":
+            args += ["-T", gene_tree_method]
 
-# #     if gene_tree_method != "fasttree":
-# #         args += ["-T", gene_tree_method]
+        code, out, err, text = helper._run_main(args, capfd)
+        assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
 
-    # try:
-    #     ret = main(args)
-    #     assert ret is None
-    # except SystemExit as e:
-    #     assert e.code == 0  # treat clean exit as success
-
-    # out, err = capfd.readouterr()
-    # assert "ERROR" not in err
-
-@pytest.mark.order(7)
-def test_orthofinder_old_version_run(projects, gene_tree_method, capfd):
-    args = ["-f", projects, "--old-version"]
-
-    code, out, err, text = helper._run_main(args, capfd)
-    assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
-
-    fatal_patterns = (
-        r"(?mi)^\s*ERROR:\s",              
-        r"(?m)^\s*Traceback \(most recent call last\):",    
-        r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
-        r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
-    )
-    assert not any(re.search(p, text) for p in fatal_patterns), text
-
-
-@pytest.mark.order(8)
-def test_orthofinder_no_file_fix_run(projects, gene_tree_method, capfd):
-    args = ["-f", projects, "--no-fix-files"]
-
-    if gene_tree_method != "fasttree":
-        args += ["-T", gene_tree_method]
-
-    code, out, err, text = helper._run_main(args, capfd)
-    assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
-
-    fatal_patterns = (
-        r"(?mi)^\s*ERROR:\s",              
-        r"(?m)^\s*Traceback \(most recent call last\):",    
-        r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
-        r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
-    )
-    assert not any(re.search(p, text) for p in fatal_patterns), text
-
-
-@pytest.mark.order(9)
-def test_orthofinder_blast_run(projects, gene_tree_method, capfd):
-    args = ["-f", projects, "-S", "blast"]
-
-    if gene_tree_method != "fasttree":
-        args += ["-T", gene_tree_method]
-
-    code, out, err, text = helper._run_main(args, capfd)
-    assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
-
-    fatal_patterns = (
-        r"(?mi)^\s*ERROR:\s",              
-        r"(?m)^\s*Traceback \(most recent call last\):",    
-        r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
-        r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
-    )
-    assert not any(re.search(p, text) for p in fatal_patterns), text
-
-
-
-@pytest.mark.order(10)
-def test_orthofinder_dna_run(dna_projects, capfd):
-    args = ["-f", dna_projects, "-d", "--astral"]
-
-    code, out, err, text = helper._run_main(args, capfd)
-    assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
-
-    fatal_patterns = (
-        r"(?mi)^\s*ERROR:\s",              
-        r"(?m)^\s*Traceback \(most recent call last\):",    
-        r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
-        r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
-    )
-    assert not any(re.search(p, text) for p in fatal_patterns), text
-
-@pytest.mark.skip(reason="Need to update the dataset")
-@pytest.mark.order(10)
-def test_orthofinder_dna_run(dna_projects, capfd):
-    args = ["-f", dna_projects, "-d", "--astral"]
-    code, out, err, text = helper._run_main(args, capfd)
-    assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
-
-    fatal_patterns = (
-        r"(?mi)^\s*ERROR:\s",              
-        r"(?m)^\s*Traceback \(most recent call last\):",    
-        r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
-        r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
-    )
-    assert not any(re.search(p, text) for p in fatal_patterns), text
-
-
-
-# # @pytest.mark.order(10)
-# # def test_orthofinder_dna_assign_run(dna_projects, dna_assign, capfd):
-# #     results_dir = os.path.join(dna_projects, "OrthoFinder")
-# #     projects_results = helper._latest_output_dir(results_dir)
-# #     args = ["--core", projects_results, "-d", "--assign", dna_assign, "-nk", 2]
-
-# #     try:
-# #         ret = main(args)
-# #     except SystemExit as e:
-# #         # success if code is 0 OR None
-# #         code = e.code
-# #         if isinstance(code, int):
-# #             assert code == 0
-# #         else:
-# #             assert code is None  # sys.exit() or sys.exit(None)
-# #     else:
-# #         # success path where main returns normally
-# #         assert ret is None
-# #     out, err = capfd.readouterr()
-# #     text = helper.clean_text(out + "\n" + err)  # strip ANSI, etc.
-# #     err_msg = re.search(r"(?mi)^\s*ERROR:\s", text)
-# #     assert "Traceback (most recent call last)" not in err, text
-# #     assert not err_msg, text
-
-
-@pytest.mark.order(11)
-def test_orthofinder_oneway_search_run(projects, gene_tree_method, capfd):
-    args = ["-f", projects, "-1", "-z", "-y"]
-
-    if gene_tree_method != "fasttree":
-        args += ["-T", gene_tree_method]
-
-    code, out, err, text = helper._run_main(args, capfd)
-    assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
-
-    fatal_patterns = (
-        r"(?mi)^\s*ERROR:\s",              
-        r"(?m)^\s*Traceback \(most recent call last\):",    
-        r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
-        r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
-    )
-    assert not any(re.search(p, text) for p in fatal_patterns), text
-
-@pytest.mark.skip(reason="The test dataset is too small")
-@pytest.mark.order(12)
-def test_orthofinder_iqtree_run(projects, capfd):
-    args = ["-f", projects, "-T", "iqtree3"]
-
-    code, out, err, text = helper._run_main(args, capfd)
-    assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
-
-    fatal_patterns = (
-        r"(?mi)^\s*ERROR:\s",              
-        r"(?m)^\s*Traceback \(most recent call last\):",    
-        r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
-        r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
-    )
-    assert not any(re.search(p, text) for p in fatal_patterns), text
-
-
-@pytest.mark.order(13)
-def test_orthofinder_fasttree_fastest_run(projects, capfd):
-    args = ["-f", projects, "-T", "fasttree_fastest"]
-
-    code, out, err, text = helper._run_main(args, capfd)
-    assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
-
-    fatal_patterns = (
-        r"(?mi)^\s*ERROR:\s",              
-        r"(?m)^\s*Traceback \(most recent call last\):",    
-        r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
-        r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
-    )
-    assert not any(re.search(p, text) for p in fatal_patterns), text
-
-
-@pytest.mark.skip(reason="The test dataset is too small")
-@pytest.mark.order(14)
-def test_orthofinder_raxml_run(projects, capfd):
-    args = ["-f", projects, "-T", "raxml"]
-
-    code, out, err, text = helper._run_main(args, capfd)
-    assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
-
-    fatal_patterns = (
-        r"(?mi)^\s*ERROR:\s",              
-        r"(?m)^\s*Traceback \(most recent call last\):",    
-        r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
-        r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
-    )
-    assert not any(re.search(p, text) for p in fatal_patterns), text
-
-
-
-@pytest.mark.order(15)
-def test_orthofinder_famsa_run(projects, gene_tree_method, capfd):
-    args = ["-f", projects]
-
-    if gene_tree_method != "fasttree":
-        args += ["-T", gene_tree_method]
-
-    code, out, err, text = helper._run_main(args, capfd)
-    assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
-
-    fatal_patterns = (
-        r"(?mi)^\s*ERROR:\s",              
-        r"(?m)^\s*Traceback \(most recent call last\):",    
-        r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
-        r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
-    )
-    assert not any(re.search(p, text) for p in fatal_patterns), text
+        fatal_patterns = (
+            r"(?mi)^\s*ERROR:\s",              
+            r"(?m)^\s*Traceback \(most recent call last\):",    
+            r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
+            r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
+        )
+        assert not any(re.search(p, text) for p in fatal_patterns), text
+
+
+    @pytest.mark.order(8)
+    def test_orthofinder_old_version_run(self, projects, capfd):
+        args = ["-f", projects, "--old-version"]
+
+        code, out, err, text = helper._run_main(args, capfd)
+        assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
+
+        fatal_patterns = (
+            r"(?mi)^\s*ERROR:\s",              
+            r"(?m)^\s*Traceback \(most recent call last\):",    
+            r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
+            r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
+        )
+        assert not any(re.search(p, text) for p in fatal_patterns), text
+
+
+    @pytest.mark.order(9)
+    def test_orthofinder_no_file_fix_run(self, projects, gene_tree_method, capfd):
+        args = ["-f", projects, "--no-fix-files"]
+
+        if gene_tree_method != "fasttree":
+            args += ["-T", gene_tree_method]
+
+        code, out, err, text = helper._run_main(args, capfd)
+        assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
+
+        fatal_patterns = (
+            r"(?mi)^\s*ERROR:\s",              
+            r"(?m)^\s*Traceback \(most recent call last\):",    
+            r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
+            r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
+        )
+        assert not any(re.search(p, text) for p in fatal_patterns), text
+
+
+    @pytest.mark.order(10)
+    def test_orthofinder_blast_run(self, projects, gene_tree_method, capfd):
+        args = ["-f", projects, "-S", "blast"]
+
+        if gene_tree_method != "fasttree":
+            args += ["-T", gene_tree_method]
+
+        code, out, err, text = helper._run_main(args, capfd)
+        assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
+
+        fatal_patterns = (
+            r"(?mi)^\s*ERROR:\s",              
+            r"(?m)^\s*Traceback \(most recent call last\):",    
+            r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
+            r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
+        )
+        assert not any(re.search(p, text) for p in fatal_patterns), text
+
+
+
+    @pytest.mark.order(11)
+    def test_orthofinder_dna_run(self, dna_projects, capfd):
+        args = ["-f", dna_projects, "-d", "--astral"]
+
+        code, out, err, text = helper._run_main(args, capfd)
+        assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
+
+        fatal_patterns = (
+            r"(?mi)^\s*ERROR:\s",              
+            r"(?m)^\s*Traceback \(most recent call last\):",    
+            r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
+            r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
+        )
+        assert not any(re.search(p, text) for p in fatal_patterns), text
+
+    @pytest.mark.skip(reason="Need to update the dataset")
+    @pytest.mark.order(12)
+    def test_orthofinder_dna_run(self, dna_projects, capfd):
+        args = ["-f", dna_projects, "-d", "--astral"]
+        code, out, err, text = helper._run_main(args, capfd)
+        assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
+
+        fatal_patterns = (
+            r"(?mi)^\s*ERROR:\s",              
+            r"(?m)^\s*Traceback \(most recent call last\):",    
+            r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
+            r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
+        )
+        assert not any(re.search(p, text) for p in fatal_patterns), text
+
+
+
+    # # @pytest.mark.order(10)
+    # # def test_orthofinder_dna_assign_run(dna_projects, dna_assign, capfd):
+    # #     results_dir = os.path.join(dna_projects, "OrthoFinder")
+    # #     projects_results = helper._latest_output_dir(results_dir)
+    # #     args = ["--core", projects_results, "-d", "--assign", dna_assign, "-nk", 2]
+
+    # #     try:
+    # #         ret = main(args)
+    # #     except SystemExit as e:
+    # #         # success if code is 0 OR None
+    # #         code = e.code
+    # #         if isinstance(code, int):
+    # #             assert code == 0
+    # #         else:
+    # #             assert code is None  # sys.exit() or sys.exit(None)
+    # #     else:
+    # #         # success path where main returns normally
+    # #         assert ret is None
+    # #     out, err = capfd.readouterr()
+    # #     text = helper.clean_text(out + "\n" + err)  # strip ANSI, etc.
+    # #     err_msg = re.search(r"(?mi)^\s*ERROR:\s", text)
+    # #     assert "Traceback (most recent call last)" not in err, text
+    # #     assert not err_msg, text
+
+
+    @pytest.mark.order(13)
+    def test_orthofinder_oneway_search_run(self, projects, gene_tree_method, capfd):
+        args = ["-f", projects, "-1", "-z", "-y"]
+
+        if gene_tree_method != "fasttree":
+            args += ["-T", gene_tree_method]
+
+        code, out, err, text = helper._run_main(args, capfd)
+        assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
+
+        fatal_patterns = (
+            r"(?mi)^\s*ERROR:\s",              
+            r"(?m)^\s*Traceback \(most recent call last\):",    
+            r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
+            r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
+        )
+        assert not any(re.search(p, text) for p in fatal_patterns), text
+
+    @pytest.mark.skip(reason="The test dataset is too small")
+    @pytest.mark.order(14)
+    def test_orthofinder_iqtree_run(self, projects, capfd):
+        args = ["-f", projects, "-T", "iqtree3"]
+
+        code, out, err, text = helper._run_main(args, capfd)
+        assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
+
+        fatal_patterns = (
+            r"(?mi)^\s*ERROR:\s",              
+            r"(?m)^\s*Traceback \(most recent call last\):",    
+            r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
+            r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
+        )
+        assert not any(re.search(p, text) for p in fatal_patterns), text
+
+
+    @pytest.mark.order(15)
+    def test_orthofinder_fasttree_fastest_run(self, projects, capfd):
+        args = ["-f", projects, "-T", "fasttree_fastest"]
+
+        code, out, err, text = helper._run_main(args, capfd)
+        assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
+
+        fatal_patterns = (
+            r"(?mi)^\s*ERROR:\s",              
+            r"(?m)^\s*Traceback \(most recent call last\):",    
+            r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
+            r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
+        )
+        assert not any(re.search(p, text) for p in fatal_patterns), text
+
+
+    @pytest.mark.skip(reason="The test dataset is too small")
+    @pytest.mark.order(16)
+    def test_orthofinder_raxml_run(self, projects, capfd):
+        args = ["-f", projects, "-T", "raxml"]
+
+        code, out, err, text = helper._run_main(args, capfd)
+        assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
+
+        fatal_patterns = (
+            r"(?mi)^\s*ERROR:\s",              
+            r"(?m)^\s*Traceback \(most recent call last\):",    
+            r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
+            r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
+        )
+        assert not any(re.search(p, text) for p in fatal_patterns), text
+
+
+
+    @pytest.mark.order(17)
+    def test_orthofinder_famsa_run(self, projects, gene_tree_method, capfd):
+        args = ["-f", projects]
+
+        if gene_tree_method != "fasttree":
+            args += ["-T", gene_tree_method]
+
+        code, out, err, text = helper._run_main(args, capfd)
+        assert code == 0, f"Exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
+
+        fatal_patterns = (
+            r"(?mi)^\s*ERROR:\s",              
+            r"(?m)^\s*Traceback \(most recent call last\):",    
+            r'(?m)^\s*File ".*", line \d+, in \S+',    # Python stack frame lines
+            r"(?m)^[A-Za-z_]\w*Error:\s",    # e.g., ValueError:
+        )
+        assert not any(re.search(p, text) for p in fatal_patterns), text
 
 
 

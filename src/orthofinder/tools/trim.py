@@ -66,14 +66,14 @@ class MSA(object):
                     outfile.write(seq[i:i+nChar] + "\n")
 
 def main(infn, outfn, f=0.1, n_min=500, c=0.75, exe=False):
-    if exe:
-        run_exe(infn, outfn, f, n_min, c)
-    else:
-        run_in_process(infn, outfn, f, n_min, c)
+    # if exe:
+    #     run_exe(infn, outfn, f, n_min, c)
+    # else:
+    run_in_process(infn, outfn, f, n_min, c)
 
-def run_exe(infn, outfn, f, n_min, c):
-    """run trim in a separate process not forked from current process"""
-    subprocess.run(["python", __file__, "-c", str(c), infn, outfn, str(f), str(n_min)])
+# def run_exe(infn, outfn, f, n_min, c):
+#     """run trim in a separate process not forked from current process"""
+#     subprocess.run(["python", __file__, "-c", str(c), infn, outfn, str(f), str(n_min)])
 
 
 def run_in_process(infn, outfn, f, n_min, c):

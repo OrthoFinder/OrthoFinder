@@ -258,43 +258,44 @@ class __Files_new_dont_manually_create__(object):
                                                       gapextend=options.gapextend,
                                                       extended_filename=options.extended_filename)  
             
-        elif options.qStartFromGroups:
-            wd1, clustersFilename_pairs = previous_files_locator.GetStartFromOGs()
-            self.StartFromOrthogroupsOrSequenceSearch(wd1, 
-                                                      base_dir,
-                                                      clustersFilename_pairs, 
-                                                      user_name=options.name,
-                                                      search_program=options.search_program,
-                                                      msa_program=options.msa_program,
-                                                      tree_program=options.tree_program,
-                                                      scorematrix=options.score_matrix,
-                                                      gapopen=options.gapopen,
-                                                      gapextend=options.gapextend,
-                                                      extended_filename=options.extended_filename)
-        elif options.qStartFromTrees:
-            wd1, clustersFilename_pairs, wd_trees, speciesTreeFN = previous_files_locator.GetStartFromTrees()
-            if options.speciesTreeFN != None:
-                qIsUserSpeciesTree = True
-                speciesTreeFN = options.speciesTreeFN
-            elif speciesTreeFN != None:
-                qIsUserSpeciesTree = False
-            else:
-                print("ERROR: Could not find species tree")
-                util.Fail()
-            self.StartFromTrees(wd1, 
-                                wd_trees,
-                                base_dir, 
-                                clustersFilename_pairs,
-                                speciesTreeFN, 
-                                qIsUserSpeciesTree,
-                                user_name=options.name,
-                                search_program=options.search_program,
-                                msa_program=options.msa_program,
-                                tree_program=options.tree_program,
-                                scorematrix=options.score_matrix,
-                                gapopen=options.gapopen,
-                                gapextend=options.gapextend,
-                                extended_filename=options.extended_filename)
+        # elif options.qStartFromGroups:
+        #     wd1, clustersFilename_pairs = previous_files_locator.GetStartFromOGs()
+        #     self.StartFromOrthogroupsOrSequenceSearch(wd1, 
+        #                                               base_dir,
+        #                                               clustersFilename_pairs, 
+        #                                               user_name=options.name,
+        #                                               search_program=options.search_program,
+        #                                               msa_program=options.msa_program,
+        #                                               tree_program=options.tree_program,
+        #                                               scorematrix=options.score_matrix,
+        #                                               gapopen=options.gapopen,
+        #                                               gapextend=options.gapextend,
+        #                                               extended_filename=options.extended_filename)
+        # elif options.qStartFromTrees:
+        #     wd1, clustersFilename_pairs, wd_trees, speciesTreeFN = previous_files_locator.GetStartFromTrees()
+        #     if options.speciesTreeFN != None:
+        #         qIsUserSpeciesTree = True
+        #         speciesTreeFN = options.speciesTreeFN
+        #     elif speciesTreeFN != None:
+        #         qIsUserSpeciesTree = False
+        #     else:
+        #         print("ERROR: Could not find species tree")
+        #         util.Fail()
+        #     self.StartFromTrees(wd1, 
+        #                         wd_trees,
+        #                         base_dir, 
+        #                         clustersFilename_pairs,
+        #                         speciesTreeFN, 
+        #                         qIsUserSpeciesTree,
+        #                         user_name=options.name,
+        #                         search_program=options.search_program,
+        #                         msa_program=options.msa_program,
+        #                         tree_program=options.tree_program,
+        #                         scorematrix=options.score_matrix,
+        #                         gapopen=options.gapopen,
+        #                         gapextend=options.gapextend,
+        #                         extended_filename=options.extended_filename)
+
         if (options.qStartFromGroups or options.qStartFromTrees) and previous_files_locator.species_ids_lines != None:
             # In only these cases, it's possible that the SpeciesIDs.txt file is out of sync and the version in the previous log should be used instead
             self.CreateCorrectedSpeciesIDsFile(previous_files_locator.species_ids_lines)
@@ -613,6 +614,10 @@ class __Files_new_dont_manually_create__(object):
     #     if not os.path.exists(hog_msa_dir): 
     #         os.mkdir(hog_msa_dir)
     #     return hog_msa_dir
+
+    def GetBALSATCommandFN(self):
+        commands_fn = os.path.join(self.wd_current, "blast_commands.txt")
+        return commands_fn
 
     def GetOGsTreeDir(self, qResults=False):
         if qResults:
@@ -1091,7 +1096,7 @@ def InitialiseFileHandler(
     else:
         if working_dir[-1] != os.sep:
             working_dir += os.sep
-        FileHandler.wd_base.append(working_dir)
+        FileHandler.wd_base = [working_dir]
         FileHandler.wd_current = working_dir
         FileHandler.rd1 = os.path.dirname(working_dir)
         FileHandler.wd_trees = working_dir

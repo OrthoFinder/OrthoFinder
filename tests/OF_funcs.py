@@ -1,35 +1,15 @@
 import os 
-
+import helper 
 from orthofinder.utils import fasta_processor
-from orthofinder.utils import files, util, matrices, split_ortholog_files
-from orthofinder.run import run_commands, run_info, process_args
+from orthofinder.utils import files, util
+from orthofinder.run import process_args
 
-from orthofinder.tools import dendroblast
 from orthofinder.run.process_args import Options
 from orthofinder.file_updates.ogs import OrthoGroupsSet
 from orthofinder.file_updates.file_updates import read_hog_file
 from orthofinder.run.species_info import SpeciesNameDict
 from orthofinder.comparative_genomics.orthologues import ReconciliationAndOrthologues
-from orthofinder.orthogroups import gathering
-from orthofinder.utils.util import CreateNewWorkingDirectory
 
-def _latest_output_dir(results_dir) -> str:
-    if isinstance(results_dir, list):
-        results_dir = results_dir[0]
-
-    results_dir = os.path.abspath(results_dir)
-
-    try:
-        entries = [
-            (os.stat(os.path.join(results_dir, name)).st_mtime,
-             os.path.join(results_dir, name))
-            for name in os.listdir(results_dir)
-        ]
-        return sorted(entries)[-1][1] if entries else ""
-    except FileNotFoundError:
-        return ""
-    except NotADirectoryError:
-        return results_dir
 
 
 class OrthoFinderTestFuncs:
@@ -54,7 +34,7 @@ class OrthoFinderTestFuncs:
         self.options.nProcessAlg = analysis_threads
 
         results_dir = os.path.join(projects, "OrthoFinder")
-        projects_results = _latest_output_dir(results_dir)
+        projects_results = helper._latest_output_dir(results_dir)
         self.projects_results = projects_results
 
         self.working_dir = os.path.join(projects_results, "WorkingDirectory")

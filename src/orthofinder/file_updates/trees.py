@@ -4,18 +4,57 @@ import numpy as np
 import multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor
 import ete4
+import tempfile
+import traceback
 
-
-def write_tree(hog_name, subtree, resolved_trees_id_dir):
+def write_tree(hog_name, newick_string, resolved_trees_id_dir):
     try:
+        os.makedirs(resolved_trees_id_dir, exist_ok=True)
         tree_id_file = os.path.join(resolved_trees_id_dir, hog_name + ".txt")
-        # tree_string = subtree.write(outfile=None, format=5)
-        tree_string = subtree.write(outfile=None, parser=5)
-        with open(tree_id_file, "wb") as f:
-            f.write(tree_string.encode("utf-8"))
-    except Exception as e:
-        print(f"ERROR writing tree {hog_name}: {e}")
 
+        if newick_string is None:
+            raise ValueError("Empty or None tree string for HOG " + hog_name)
+
+        if isinstance(newick_string, str):
+            data = newick_string.encode('utf-8')
+        elif isinstance(newick_string, bytes):
+            data = newick_string
+        else:
+            raise TypeError(f"Unexpected type for newick_string: {type(newick_string)}")
+        
+        with tempfile.NamedTemporaryFile('wb', dir=resolved_trees_id_dir, delete=False) as tmp:
+            tmp.write(data)
+            tmp.flush()
+            os.fsync(tmp.fileno())
+            tmp_name = tmp.name
+        os.replace(tmp_name, tree_id_file)
+    except Exception as e:
+        
+        print(f"ERROR writing tree {hog_name}: {e}\n{traceback.format_exc()}")
+
+
+
+# def write_tree(hog_name, subtree, resolved_trees_id_dir):
+#     try:
+#         tree_id_file = os.path.join(resolved_trees_id_dir, hog_name + ".txt")
+#         # tree_string = subtree.write(outfile=None, format=5)
+#         tree_string = subtree.write(outfile=None, parser=5)
+#     #     with open(tree_id_file, "wb") as f:
+#     #         f.write(tree_string.encode("utf-8"))
+#     # except Exception as e:
+#     #     print(f"ERROR writing tree {hog_name}: {e}")
+#         if tree_string is None:
+#             raise ValueError("ETE write() returned None")
+#         if isinstance(tree_string, str):
+#             data = tree_string.encode('utf-8')
+#         else:
+#             data = tree_string  # assume bytes
+#         with open(tree_id_file, "wb") as f:
+#             f.write(data)
+#             f.flush()
+#             os.fsync(f.fileno())
+#     except Exception as e:
+#         print(f"ERROR writing tree {hog_name}: {e}")
 
 def read_fasta(file_path):
     genes_dict = {}
@@ -58,9 +97,9 @@ def write_fasta(align_dir, hog_name, sequences, idDict):
         print(f"ERROR writing FASTA for {hog_name}: {e}")
 
 
-def read_files(unique_og, spec_seq_id_dict, tree_file_index, fasta_file_index):
+def read_files(unique_og, spec_seq_id_dict, tree_file_index, fasta_file_index, exist_msa=True):
     gene_tree = None
-    gene_dict = None
+    gene_dict = {}
 
     if unique_og in tree_file_index:
         try:
@@ -88,7 +127,8 @@ def read_files(unique_og, spec_seq_id_dict, tree_file_index, fasta_file_index):
             print(f"ERROR reading FASTA for {unique_og}: {e}")
             raise
     else:
-        print(f"WARNING: FASTA file not found for {unique_og}")
+        if exist_msa:
+            print(f"WARNING: FASTA file not found for {unique_og}")
 
     return (unique_og, gene_tree, gene_dict)
 
@@ -126,7 +166,8 @@ def process_task(read_queue, process_queue, hog_index, name_dict, species_names,
                     if not subtree_nodes:
                         print(f"WARNING: Parent node '{parent_node}' not found in gene tree for {unique_og}, HOG {hog_name}")
                         continue
-                    subtree = subtree_nodes[0]
+                    
+                    subtree = subtree_nodes[0].copy()
                     # subtree = subtree_nodes
                 # current_leaves = [leaf.name for leaf in subtree.get_leaves() if leaf.name]
                 current_leaves = [leaf.name for leaf in subtree.leaves() if leaf.name]
@@ -145,9 +186,11 @@ def process_task(read_queue, process_queue, hog_index, name_dict, species_names,
                     raise
 
                 pruned_alignments = None
-                if gene_dict is not None:
+                if gene_dict:
                     pruned_alignments = {gene: gene_dict[gene] for gene in expected_leaves if gene in gene_dict}
-                results.append((hog_name, subtree, pruned_alignments))
+                newick = subtree.write(outfile=None, parser=5)
+                results.append((hog_name, newick, pruned_alignments))
+                # results.append((hog_name, subtree, pruned_alignments))
 
             process_queue.put(results)
     except Exception as e:
@@ -156,7 +199,7 @@ def process_task(read_queue, process_queue, hog_index, name_dict, species_names,
     return
 
 
-def writer_task(process_queue, min_seq, idDict, resolved_trees_id_dir, align_dir, stop_event):
+def writer_task(process_queue, min_seq, idDict, resolved_trees_id_dir, align_dir, stop_event, exist_msa=True):
     try:
         while not stop_event.is_set():
             try:
@@ -168,24 +211,25 @@ def writer_task(process_queue, min_seq, idDict, resolved_trees_id_dir, align_dir
                 break
 
             for hog_name, subtree, pruned_alignments in task:
-                if pruned_alignments is None:
-                    continue
-                if len(pruned_alignments) >= min_seq:
+                if exist_msa:
                     write_tree(hog_name, subtree, resolved_trees_id_dir)
-                if align_dir is not None and pruned_alignments is not None:
-                    write_fasta(align_dir, hog_name, pruned_alignments, idDict)
+                    if pruned_alignments is not None and len(pruned_alignments) >= min_seq:
+                        if align_dir is not None:
+                            write_fasta(align_dir, hog_name, pruned_alignments, idDict)
+                else:
+                    write_tree(hog_name, subtree, resolved_trees_id_dir)
     except Exception as e:
         print(f"ERROR in writer_task: {e}")
         os._exit(1)
     return
 
 
-def threaded_reader(read_queue, unique_ogs, spec_seq_id_dict, tree_file_index, fasta_file_index, n_threads=4, stop_event=None):
+def threaded_reader(read_queue, unique_ogs, spec_seq_id_dict, tree_file_index, fasta_file_index, n_threads=4, stop_event=None, exist_msa=True):
     try:
         def worker(unique_og):
             if stop_event is not None and stop_event.is_set():
                 return
-            task = read_files(unique_og, spec_seq_id_dict, tree_file_index, fasta_file_index)
+            task = read_files(unique_og, spec_seq_id_dict, tree_file_index, fasta_file_index, exist_msa=exist_msa)
             read_queue.put(task)
         with ThreadPoolExecutor(max_workers=n_threads) as executor:
             executor.map(worker, unique_ogs)
@@ -207,7 +251,8 @@ def post_ogs_processing(
     tree_file_index,
     fasta_file_index,            
     align_dir=None,   
-    min_seq=4       
+    min_seq=4,
+    exist_msa=True,    
 ):
     if nprocess >= 128:
         n_reader_threads = min(max(nprocess // 4, 2), 32)
@@ -224,7 +269,7 @@ def post_ogs_processing(
 
     file_reader = mp.Process(
         target=threaded_reader,
-        args=(read_queue, unique_ogs, spec_seq_id_dict, tree_file_index, fasta_file_index, n_reader_threads, stop_event)
+        args=(read_queue, unique_ogs, spec_seq_id_dict, tree_file_index, fasta_file_index, n_reader_threads, stop_event, exist_msa)
     )
     file_reader.start()
 
@@ -241,7 +286,7 @@ def post_ogs_processing(
     for _ in range(n_writer_processes):
         writer_process = mp.Process(
             target=writer_task,
-            args=(process_queue, min_seq, idDict, resolved_trees_id_dir, align_dir, stop_event)
+            args=(process_queue, min_seq, idDict, resolved_trees_id_dir, align_dir, stop_event, exist_msa)
         )
         writer_process.start()
         writer_processes.append(writer_process)

@@ -518,11 +518,41 @@ def main(args=None):
                 )
 
         elif options.qStartFromBlast:
+
+            ## ---------------------
+            commands_fn = os.path.join(
+                files.FileHandler.GetWorkingDirectory1_Read()[0], "blast_commands.txt"
+            )
+            commands = []
+            with open(commands_fn) as reader:
+                for line in reader:
+                    commands.append(line.strip())
+
+            print("Using %d thread(s)" % options.nBlast)
+            util.PrintTime("This may take some time...")
+            program_caller.RunParallelCommands(
+                options.nBlast, commands,
+                method_threads=options.method_threads, 
+                method_threads_large=options.method_threads_large,
+                method_threads_small=options.method_threads_small,
+                threshold=options.threshold,
+                cmd_order=options.cmd_order, 
+                tasksize=None,
+                qListOfList=False,
+                q_print_on_error=True, 
+                q_always_print_stderr=False,
+                old_version=options.old_version,
+                dynamic_threads=options.dynamic_threads
+            )
+            ## ------------------------------------
+
+
             # 0.
             speciesInfoObj, _ = species_info.ProcessPreviousFiles(
                 files.FileHandler.GetWorkingDirectory1_Read(), options.qDoubleBlast
             )
             files.FileHandler.LogSpecies()
+
             print(
                 "Using previously calculated BLAST results in %s"
                 % (files.FileHandler.GetWorkingDirectory1_Read()[0])

@@ -568,8 +568,7 @@ def OrthologuesWorkflow(
             # util.clear_dir(align_dir)
         write_hog_tree = True
         write_to_rd = False
-
-
+    
     InferOrthologs(
         ogSet, 
         rooted_sp_tree, 
@@ -593,6 +592,10 @@ def OrthologuesWorkflow(
         write_to_rd=write_to_rd,
     )
 
+    # if qStopAfterTrees:
+    #     print("OrthoFinder stops after tree...")
+    #     util.Success()
+
     if options.fix_files:
         util.PrintTime("Converting MSA/Trees")
         ogSet = file_updates.update_output_files(
@@ -610,9 +613,8 @@ def OrthologuesWorkflow(
             i_og_restart=i_og_restart,
             exist_msa=options.qMSATrees,
         )
-
+       
         util.PrintTime("Done updating MSA/Trees")
-
         InferOrthologs(
             ogSet, 
             rooted_sp_tree, 

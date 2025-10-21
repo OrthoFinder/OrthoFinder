@@ -77,6 +77,11 @@ def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller,
     if options.qStopAfterPrepare:
         for command in commands:
             print(command)
+
+        if options.save_blast_commands:
+            with open(files.FileHandler.GetBALSATCommandFN(), "w") as writer:
+                for command in commands:
+                    writer.write(command + "\n")
         util.Success()
     print("Using %d thread(s)" % options.nBlast)
     util.PrintTime("This may take some time...")
