@@ -27,7 +27,7 @@ except ImportError:
 from ..tools import tree as tree_lib
 from . import resolve
 from ..utils import util, files, parallel_task_manager
-
+import re
 
 PY2 = sys.version_info <= (3,)
 
@@ -1089,55 +1089,158 @@ def GetSpeciesNeighbours(t):
 #         # Now need to root the tree first
 #         RootAndGetOrthologues_from_tree(0, treeFn, species_tree_rooted, GeneToSpecies, neighbours)        
 
+# class OrthologsFiles(object):
+#     """wrapper to open all the orthologs files as once"""
+#     def __init__(
+#             self, 
+#             directory, 
+#             speciesDict, 
+#             iSpeciesToUse, 
+#             nSpecies, 
+#             sp_to_index, 
+#             save_space, 
+#             fewer_open_files=False,
+#             read_only=False,
+#             putative_xenolog_dir=None,
+#     ):
+#         self.d = directory
+#         self.speciesDict = speciesDict
+#         self.iSpeciesToUse = iSpeciesToUse
+#         self.nSpecies = nSpecies
+#         self.sp_to_index = sp_to_index
+#         if putative_xenolog_dir:
+#             self.dPutativeXenologs = putative_xenolog_dir
+#         else:
+#             self.dPutativeXenologs = files.FileHandler.GetPutativeXenelogsDir()
+#         if self.dPutativeXenologs[-1] != os.sep:
+#             self.dPutativeXenologs += os.sep
+#         self.ortholog_file_handles = [[None for _ in self.iSpeciesToUse] for _ in self.iSpeciesToUse]
+#         self.xenolog_file_handles = [None for _ in self.iSpeciesToUse]
+#         self.fewer_open_files = fewer_open_files
+#         self.save_space = save_space
+#         self.read_only = read_only
+
+#     def __enter__(self):
+
+#         if self.read_only:
+#             mode = "r"
+#         else:
+#             mode = util.csv_append_mode
+
+#         for i in xrange(self.nSpecies):
+#             sp0 = str(self.iSpeciesToUse[i])
+#             self.xenolog_file_handles[i] = open(self.dPutativeXenologs + "%s.tsv" % self.speciesDict[sp0], mode)
+#             strsp0 = sp0 + "_"
+#             isp0 = self.sp_to_index[sp0]
+#             d0 = os.path.join(self.d, "Orthologues_" + self.speciesDict[sp0])
+#             if d0[-1] != os.sep:
+#                 d0 += os.sep
+#             if self.fewer_open_files or self.save_space:
+#                 othologs_file_handle = util.file_open(os.path.join(self.d, self.speciesDict[sp0] + '.tsv'), mode, self.save_space)
+#                 self.ortholog_file_handles[i] = [othologs_file_handle for _ in xrange(self.nSpecies)]
+#             else:
+#                 for j in xrange(i, self.nSpecies):
+#                     sp1 = str(self.iSpeciesToUse[j])
+#                     if sp1 == sp0: continue
+#                     strsp1 = sp1 + "_"
+#                     isp1 = self.sp_to_index[sp1]
+#                     d1 = os.path.join(self.d, "Orthologues_" + self.speciesDict[sp1]) 
+#                     if d1[-1] != os.sep:
+#                         d1 += os.sep
+#                     self.ortholog_file_handles[i][j] = open(d0 + '%s__v__%s.tsv' % (self.speciesDict[sp0], self.speciesDict[sp1]), mode)
+#                     self.ortholog_file_handles[j][i] = open(d1 + '%s__v__%s.tsv' % (self.speciesDict[sp1], self.speciesDict[sp0]), mode)
+#         return self.ortholog_file_handles, self.xenolog_file_handles
+
+#     def __exit__(self, type, value, traceback):
+#         for fh in self.xenolog_file_handles:
+#             fh.close()
+#         for fh_list in self.ortholog_file_handles:
+#             for fh in fh_list:
+#                 if fh is not None:
+#                     fh.close()
+
 class OrthologsFiles(object):
-    """wrapper to open all the orthologs files as once"""
+    """Open ortholog files. In read_only mode, never create/truncate; only open existing files with 'r'."""
     def __init__(
-            self, 
-            directory, 
-            speciesDict, 
-            iSpeciesToUse, 
-            nSpecies, 
-            sp_to_index, 
-            save_space, 
-            fewer_open_files=False
+        self,
+        directory,
+        speciesDict,
+        iSpeciesToUse,
+        nSpecies,
+        sp_to_index,
+        save_space,
+        fewer_open_files=False,
+        read_only=False,
+        putative_xenolog_dir=None,
     ):
         self.d = directory
         self.speciesDict = speciesDict
         self.iSpeciesToUse = iSpeciesToUse
         self.nSpecies = nSpecies
         self.sp_to_index = sp_to_index
-        self.dPutativeXenologs = files.FileHandler.GetPutativeXenelogsDir()
-        self.ortholog_file_handles = [[None for _ in self.iSpeciesToUse] for _ in self.iSpeciesToUse]
-        self.xenolog_file_handles = [None for _ in self.iSpeciesToUse]
         self.fewer_open_files = fewer_open_files
         self.save_space = save_space
+        self.read_only = read_only
+
+        self.dPutativeXenologs = putative_xenolog_dir or files.FileHandler.GetPutativeXenelogsDir()
+        if self.dPutativeXenologs and self.dPutativeXenologs[-1] != os.sep:
+            self.dPutativeXenologs += os.sep
+
+        self.ortholog_file_handles = [[None for _ in self.iSpeciesToUse] for _ in self.iSpeciesToUse]
+        self.xenolog_file_handles = [None for _ in self.iSpeciesToUse]
 
     def __enter__(self):
-        for i in xrange(self.nSpecies):
+        def open_ro(path):
+            return open(path, "r") if os.path.exists(path) else None
+
+        def open_append(path):
+            # append/write path used ONLY when not read_only
+            return open(path, util.csv_append_mode)
+
+        for i in range(self.nSpecies):
             sp0 = str(self.iSpeciesToUse[i])
-            self.xenolog_file_handles[i] = open(self.dPutativeXenologs + "%s.tsv" % self.speciesDict[sp0], util.csv_append_mode)
-            strsp0 = sp0 + "_"
-            isp0 = self.sp_to_index[sp0]
-            d0 = self.d + "Orthologues_" + self.speciesDict[sp0] + "/"
+            sp0_name = self.speciesDict[sp0]
+
+            xeno_path = os.path.join(self.dPutativeXenologs, f"{sp0_name}.tsv")
+            self.xenolog_file_handles[i] = open_ro(xeno_path) if self.read_only else open_append(xeno_path)
+
             if self.fewer_open_files or self.save_space:
-                othologs_file_handle = util.file_open(self.d + self.speciesDict[sp0] + '.tsv', util.csv_append_mode, self.save_space)
-                self.ortholog_file_handles[i] = [othologs_file_handle for _ in xrange(self.nSpecies)]
+                sp_path = os.path.join(self.d, f"{sp0_name}.tsv")
+                if self.read_only:
+                    fh = open_ro(sp_path)          
+                else:
+                    fh = util.file_open(sp_path, util.csv_append_mode, self.save_space)
+                self.ortholog_file_handles[i] = [fh for _ in range(self.nSpecies)]
             else:
-                for j in xrange(i, self.nSpecies):
+                d0 = os.path.join(self.d, f"Orthologues_{sp0_name}") + os.sep
+                for j in range(i, self.nSpecies):
                     sp1 = str(self.iSpeciesToUse[j])
-                    if sp1 == sp0: continue
-                    strsp1 = sp1 + "_"
-                    isp1 = self.sp_to_index[sp1]
-                    d1 = self.d + "Orthologues_" + self.speciesDict[sp1] + "/"
-                    self.ortholog_file_handles[i][j] = open(d0 + '%s__v__%s.tsv' % (self.speciesDict[sp0], self.speciesDict[sp1]), util.csv_append_mode)
-                    self.ortholog_file_handles[j][i] = open(d1 + '%s__v__%s.tsv' % (self.speciesDict[sp1], self.speciesDict[sp0]), util.csv_append_mode)
+                    if sp1 == sp0:
+                        continue
+                    sp1_name = self.speciesDict[sp1]
+                    d1 = os.path.join(self.d, f"Orthologues_{sp1_name}") + os.sep
+
+                    p_ij = os.path.join(d0, f"{sp0_name}__v__{sp1_name}.tsv")
+                    p_ji = os.path.join(d1, f"{sp1_name}__v__{sp0_name}.tsv")
+
+                    if self.read_only:
+                        fh_ij = open_ro(p_ij)
+                        fh_ji = open_ro(p_ji)
+                    else:
+                        fh_ij = open_append(p_ij)
+                        fh_ji = open_append(p_ji)
+
+                    self.ortholog_file_handles[i][j] = fh_ij
+                    self.ortholog_file_handles[j][i] = fh_ji
+
         return self.ortholog_file_handles, self.xenolog_file_handles
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         for fh in self.xenolog_file_handles:
-            fh.close()
-        for fh_list in self.ortholog_file_handles:
-            for fh in fh_list:
+            if fh is not None:
+                fh.close()
+        for row in self.ortholog_file_handles:
+            for fh in row:
                 if fh is not None:
                     fh.close()
 
@@ -1284,9 +1387,9 @@ def DoOrthologuesForOrthoFinder(
                 write_hog_tree=write_hog_tree,
                 fix_files=fix_files
             )
-
+            
+            
             total_tasks = len(iogs4)
-
             if n_parallel == 1:
                 progressbar, task = util.get_progressbar(total_tasks)
                 progressbar.start()
@@ -1294,11 +1397,11 @@ def DoOrthologuesForOrthoFinder(
                 completed_tasks = 0
                 nOrthologues_SpPair = util.nOrtho_sp(nspecies)
                 dummy_lock = mp.Lock()
+                # orthologues_dict = defaultdict(lambda: defaultdict(list))
                 for iog in iogs4:
                     completed_tasks += 1
                     if (completed_tasks + 1) % update_cycle == 0:
                         progressbar.update(task, advance=update_cycle)
-
                     results = ta.AnalyseTree(iog) 
                     if results is None:
                         continue
@@ -1309,6 +1412,23 @@ def DoOrthologuesForOrthoFinder(
                     if fewer_open_files:
                         for i in range(nspecies):
                             if len(olog_lines[i][0]) > 0:
+                                # species_name = os.path.basename(ta.ologs_files_handles[i][0].name).rsplit(".", 1)[0]
+                                # print(species_name)
+
+                                # line = re.split(r"[\t\n]+", olog_lines[i][0].strip())
+                                # ogname = set([line[i] for i in range(0, len(line), 4)]).pop()
+                                # ologs = [line[i+1:i+4] for i in range(0, len(line), 4)]
+                                # ologs_set_list = [
+                                #     [olog[0], set(re.split(r"[,\s;]+", olog[1])), set(re.split(r"[,\s;]+", olog[2]))]
+                                #     for olog in ologs
+                                # ]
+                                # # print(species_name, ogname, ologs_set_list)
+                                # if species_name not in orthologues_dict:
+                                #     orthologues_dict[species_name][ogname] = ologs_set_list
+                                # elif species_name in orthologues_dict:
+                                #     # if ologs_set_list not in orthologues_dict[species_name][ogname]:
+                                #     orthologues_dict[species_name][ogname].extend(ologs_set_list)
+
                                 WriteOlogLinesToFile(
                                     ta.ologs_files_handles[i][0], 
                                     olog_lines[i][0], 
@@ -1361,6 +1481,7 @@ def DoOrthologuesForOrthoFinder(
                     write_hog_tree=write_hog_tree,
                     fix_files=fix_files
                 )
+
     except IOError as e:
         if str(e).startswith("[Errno 24] Too many open files"):
             util.number_open_files_exception_advice(len(ogSet.speciesToUse), True)
@@ -1514,6 +1635,7 @@ class TreeAnalyser(object):
                 olog_sus_lines, 
                 fewer_open_files=self.fewer_open_files
             )
+
             GetHOGs_from_tree(
                 iog, 
                 recon_tree, 

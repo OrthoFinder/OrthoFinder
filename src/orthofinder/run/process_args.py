@@ -139,6 +139,7 @@ class Options(object):  #
         self.n_skip = 50
         self.save_blast_commands = False
         self.restart_of_blast = False
+        self.rm_hog_n0 = True
 
     def what(self):
         for k, v in self.__dict__.items():
@@ -648,6 +649,9 @@ def ProcessArgs(args):
 
         elif arg == "--no-fix-files":
             options.fix_files = False
+
+        elif arg == "-rmn0":
+            options.rm_hog_n0 = False
 
         # elif arg == "-x" or arg == "--orthoxml":
         #     if options.speciesXMLInfoFN:

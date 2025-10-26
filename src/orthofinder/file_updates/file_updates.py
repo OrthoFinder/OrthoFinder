@@ -251,8 +251,15 @@ def index_files(id_dir, extension=".fa"):
     if id_dir is None:
         return file_index
     if os.path.exists(id_dir):
-        for entry in os.scandir(id_dir):
-            if entry.is_file() and entry.name.endswith(extension) and entry.name.startswith("OG"):
-                key = entry.name[:-len(extension)]
-                file_index[key] = entry.path
+        if os.path.isdir(id_dir):
+            for entry in os.scandir(id_dir):
+                if entry.is_file() and entry.name.endswith(extension) and entry.name.startswith("OG"):
+                    key = entry.name[:-len(extension)]
+                    file_index[key] = entry.path
+        else:
+            with open(id_dir) as reader:
+                for line in reader:
+                    key, val = line.strip().split(": ", 1)
+                    file_index[key] = val
+    
     return file_index

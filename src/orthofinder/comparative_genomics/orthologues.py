@@ -194,8 +194,47 @@ def TwoAndThreeGeneOrthogroups(
     ):
     speciesDict = ogSet.SpeciesDict()
     sequenceDict = ogSet.SequenceDict()
-    ogs = ogSet.OGsAll()
+    # ogs = ogSet.OGsAll()
     nOrthologues_SpPair = util.nOrtho_sp(len(ogSet.speciesToUse))
+
+    all_orthologues, nspecies, sp_to_index, olog_lines_tot, olog_sus_lines_tot = AllOrthologues(ogSet)
+
+    with trees2ologs_of.OrthologsFiles(
+        resultsDir, 
+        speciesDict, 
+        ogSet.speciesToUse, 
+        nspecies,
+        sp_to_index, 
+        save_space, 
+        fewer_open_files
+    ) as (olog_files_handles, suspect_genes_file_handles):
+
+        nOrthologues_SpPair += trees2ologs_of.GetLinesForOlogFiles(
+            all_orthologues, 
+            speciesDict, 
+            ogSet.speciesToUse, 
+            sequenceDict, 
+            False, 
+            olog_lines_tot, 
+            olog_sus_lines_tot, 
+            fewer_open_files=fewer_open_files
+        )
+        # olog_sus_lines_tot will be empty
+        lock_dummy = mp.Lock()
+        for i in range(nspecies):
+            for j in range(nspecies):
+                trees2ologs_of.WriteOlogLinesToFile(
+                    olog_files_handles[i][j], 
+                    olog_lines_tot[i][j], 
+                    lock_dummy,
+                    write_hog_tree=write_hog_tree,
+                    fix_files=fix_files
+                )
+    return nOrthologues_SpPair
+
+
+def AllOrthologues(ogSet):
+    ogs = ogSet.OGsAll()
     all_orthologues = []
     d_empty = defaultdict(list)
     for iog, og in enumerate(ogs):
@@ -241,24 +280,10 @@ def TwoAndThreeGeneOrthogroups(
         all_orthologues.append((iog, orthologues))
     nspecies = len(ogSet.speciesToUse)
     sp_to_index = {str(sp):i for i, sp in enumerate(ogSet.speciesToUse)}
-    with trees2ologs_of.OrthologsFiles(resultsDir, speciesDict, ogSet.speciesToUse, nspecies,
-                                       sp_to_index, save_space, fewer_open_files) as (olog_files_handles, suspect_genes_file_handles):
-        olog_lines_tot = [["" for j in range(nspecies)] for i in range(nspecies)]
-        olog_sus_lines_tot = ["" for i in range(nspecies)]
-        nOrthologues_SpPair += trees2ologs_of.GetLinesForOlogFiles(all_orthologues, speciesDict, ogSet.speciesToUse, sequenceDict, 
-                                                                   False, olog_lines_tot, olog_sus_lines_tot, fewer_open_files=fewer_open_files)
-        # olog_sus_lines_tot will be empty
-        lock_dummy = mp.Lock()
-        for i in range(nspecies):
-            for j in range(nspecies):
-                trees2ologs_of.WriteOlogLinesToFile(
-                    olog_files_handles[i][j], 
-                    olog_lines_tot[i][j], 
-                    lock_dummy,
-                    write_hog_tree=write_hog_tree,
-                    fix_files=fix_files
-                )
-    return nOrthologues_SpPair
+    olog_lines_tot = [["" for j in range(nspecies)] for i in range(nspecies)]
+    olog_sus_lines_tot = ["" for i in range(nspecies)]
+    return all_orthologues, nspecies, sp_to_index, olog_lines_tot, olog_sus_lines_tot
+
     
 def ReconciliationAndOrthologues(
         recon_method,
@@ -595,7 +620,6 @@ def OrthologuesWorkflow(
     # if qStopAfterTrees:
     #     print("OrthoFinder stops after tree...")
     #     util.Success()
-
     if options.fix_files:
         util.PrintTime("Converting MSA/Trees")
         ogSet = file_updates.update_output_files(
@@ -645,9 +669,10 @@ def OrthologuesWorkflow(
         ids_dict = ogSet.SequenceDict()
 
         if options.fix_files:
-            # os.remove(files.FileHandler.OGsAllIDFN())
-            os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
-            shutil.rmtree(files.FileHandler.GetResolvedTreeIDDir())
+            if options.rm_hog_n0:
+                os.remove(files.FileHandler.OGsAllIDFN())
+                os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
+                shutil.rmtree(files.FileHandler.GetResolvedTreeIDDir())
 
         stats.Stats(ogs, species_dict, speciesToUse, files.FileHandler.iResultsVersion, fastaWriter, ids_dict)
     else:

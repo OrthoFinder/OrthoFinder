@@ -503,12 +503,7 @@ def analysis_threads(request):
 #         "Statistics_Overall.tsv"
 #     )
 
-@pytest.fixture(scope="session")
-def expected_overall_stats(expected_results):
-    return os.path.join(
-        helper.create_path(expected_results),
-        "Statistics_Overall.tsv"
-    )
+
 
 # @pytest.fixture(scope="session")
 # def orthogroups(projects_results):

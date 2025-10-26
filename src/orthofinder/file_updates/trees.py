@@ -98,28 +98,87 @@ def write_fasta(align_dir, hog_name, sequences, idDict):
 
 
 def read_files(unique_og, spec_seq_id_dict, tree_file_index, fasta_file_index, exist_msa=True):
-    gene_tree = None
-    gene_dict = {}
+   
+    gene_tree = read_tree_file(unique_og, tree_file_index, spec_seq_id_dict)
+    gene_dict = read_fasta_file(unique_og, fasta_file_index, exist_msa=True)
+    return (unique_og, gene_tree, gene_dict)
 
+    # gene_tree = None
+    # gene_dict = {}
+
+    # if unique_og in tree_file_index:
+    #     try:
+    #         with open(tree_file_index[unique_og], "r") as file:
+    #             tree_data = file.read().strip()
+    #             gene_tree = ete4.Tree(tree_data, parser=1) #quoted_node_names=True, format=1
+    #             for leaf in gene_tree.leaves(): #.iter_leaves():
+    #                 original = leaf.name
+    #                 if original is None or not original.strip():
+    #                     print(f"Warning: Null or empty leaf name in tree {unique_og}")
+    #                     continue
+    #                 if original not in spec_seq_id_dict:
+    #                     print(f"Warning: Leaf name '{original}' not found in mapping dictionary for {unique_og}")
+    #                 leaf.name = spec_seq_id_dict.get(original, original)
+    #     except Exception as e:
+    #         print(f"ERROR reading tree for {unique_og}: {e}")
+    #         raise
+    # else:
+    #     print(f"WARNING: Tree file not found for {unique_og}")
+
+    # if unique_og in fasta_file_index:
+    #     try:
+    #         gene_dict = read_fasta(fasta_file_index[unique_og])
+    #     except Exception as e:
+    #         print(f"ERROR reading FASTA for {unique_og}: {e}")
+    #         raise
+    # else:
+    #     if exist_msa:
+    #         print(f"WARNING: FASTA file not found for {unique_og}")
+
+    # return (unique_og, gene_tree, gene_dict)
+
+
+def check_path(s):
+    s = s.strip().strip('"').strip("'")
+    
+    return (
+        os.path.exists(s) or
+        '/' in s or '\\' in s or
+        os.path.dirname(s) != ''
+    )
+
+def update_leaves(unique_og, gene_tree, spec_seq_id_dict=None):
+    for leaf in gene_tree.leaves(): #.iter_leaves():
+        original = leaf.name
+        if original is None or not original.strip():
+            print(f"Warning: Null or empty leaf name in tree {unique_og}")
+            continue
+        if spec_seq_id_dict is not None and original not in spec_seq_id_dict:
+            print(f"Warning: Leaf name '{original}' not found in mapping dictionary for {unique_og}")
+        if spec_seq_id_dict is not None:
+            leaf.name = spec_seq_id_dict.get(original, original)
+    return gene_tree
+
+def read_tree_file(unique_og, tree_file_index, spec_seq_id_dict=None):
+    gene_tree = None
     if unique_og in tree_file_index:
         try:
-            with open(tree_file_index[unique_og], "r") as file:
-                tree_data = file.read().strip()
-                gene_tree = ete4.Tree(tree_data, parser=1) #quoted_node_names=True, format=1
-                for leaf in gene_tree.leaves(): #.iter_leaves():
-                    original = leaf.name
-                    if original is None or not original.strip():
-                        print(f"Warning: Null or empty leaf name in tree {unique_og}")
-                        continue
-                    if original not in spec_seq_id_dict:
-                        print(f"Warning: Leaf name '{original}' not found in mapping dictionary for {unique_og}")
-                    leaf.name = spec_seq_id_dict.get(original, original)
+            if check_path(tree_file_index[unique_og]):
+                with open(tree_file_index[unique_og], "r") as file:
+                    tree_data = file.read().strip()
+                    gene_tree = ete4.Tree(tree_data, parser=1) #quoted_node_names=True, format=1
+            else:
+                gene_tree = ete4.Tree(tree_file_index[unique_og], parser=1)
+            gene_tree = update_leaves(unique_og, gene_tree, spec_seq_id_dict=spec_seq_id_dict)
         except Exception as e:
             print(f"ERROR reading tree for {unique_og}: {e}")
             raise
     else:
         print(f"WARNING: Tree file not found for {unique_og}")
+    return gene_tree
 
+def read_fasta_file(unique_og, fasta_file_index, exist_msa=True):
+    gene_dict = {}
     if unique_og in fasta_file_index:
         try:
             gene_dict = read_fasta(fasta_file_index[unique_og])
@@ -129,8 +188,7 @@ def read_files(unique_og, spec_seq_id_dict, tree_file_index, fasta_file_index, e
     else:
         if exist_msa:
             print(f"WARNING: FASTA file not found for {unique_og}")
-
-    return (unique_og, gene_tree, gene_dict)
+    return gene_dict
 
 
 def process_task(read_queue, process_queue, hog_index, name_dict, species_names, stop_event):

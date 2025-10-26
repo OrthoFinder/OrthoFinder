@@ -19,16 +19,15 @@ from orthofinder.run.__main__ import main
 #         )
 
 
-# @pytest.mark.order(8)
-@pytest.mark.xfail(reason="wait for the baseline")
-@pytest.mark.unit
-class TestComparativeStats:
-    def test_overall_stats(self, of_obj, expected_overall_stats_info):
+@pytest.mark.order(22)
+class TestcComparativeStats:
+    def test_overall_stats(self, of_and_expected_stats_overall):
         """
         Validate high-level statistics of an OrthoFinder run against the expected baseline.
         Uses pytest-check so all checks run even if one fails.
         """
         print("Validating high-level OrthoFinder statistics")
+        of_obj, expected_overall_stats_info = of_and_expected_stats_overall
 
         # --- Number of species ---
         print("[1] Number of species")
@@ -263,8 +262,10 @@ class TestComparativeStats:
             expected_n,
             f"[17] Number of single-copy orthogroups should be {expected_n}, you got {project_n}"
         )
-    
-    def test_number_of_species_in_orthogroup(self, of_obj, expected_og_nspecies_info):
+
+    def test_number_of_species_in_orthogroup(self, of_and_expected_ogs_nspecies):
+        of_obj, expected_og_nspecies_info = of_and_expected_ogs_nspecies
+
         sequence_info_obj = of_obj.get_sequence_info_obj()
         ogset_obj = of_obj.get_og_obj()
         ogs = add_unassigned_genes(ogset_obj.AllOGs(), ogset_obj.AllUsedSequenceIDs())
@@ -285,13 +286,4 @@ class TestComparativeStats:
                 expected_n,
                 f"Number of orthogroups with {i} species should be {expected_n}, you got {project_n}"
             )
-
-    # def test_orthofinder_run(self, of_obj):
-    #     try:
-    #         print(of_obj.args)
-    #         main(of_obj.args)
-    #         return True
-    #     except:
-    #         return False
-
 

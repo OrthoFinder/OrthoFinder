@@ -1,7 +1,7 @@
 import pytest 
 from orthofinder.run import helpinfo
 
-@pytest.mark.order(18)
+@pytest.mark.order(21)
 @pytest.mark.unit
 def test_print_help_info(of_obj, capsys):
     helpinfo.PrintHelp(of_obj.prog_caller)

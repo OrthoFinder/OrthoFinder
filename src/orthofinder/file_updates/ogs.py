@@ -88,17 +88,16 @@ def post_hogs_processing(
     # treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idDict, False) # Set to False, only update the Orthogroup_Sequneces 
     
     if not q_incremental:
-        # stats.Stats(ogs, speciesNamesDict, speciesInfoObj.speciesToUse, files.FileHandler.iResultsVersion)
-        if options.speciesXMLInfoFN:
-            MCL.WriteOrthoXML(
-                speciesXML,
-                new_ogs,
-                seqsInfo.nSeqsPerSpecies,
-                idsDict,
-                resultsBaseFilename + ".orthoxml",
-                speciesInfoObj.speciesToUse,
-            )
-        print("")
+        ## stats.Stats(ogs, speciesNamesDict, speciesInfoObj.speciesToUse, files.FileHandler.iResultsVersion)
+        # if options.speciesXMLInfoFN:
+        #     MCL.WriteOrthoXML(
+        #         speciesXML,
+        #         new_ogs,
+        #         seqsInfo.nSeqsPerSpecies,
+        #         idsDict,
+        #         resultsBaseFilename + ".orthoxml",
+        #         speciesInfoObj.speciesToUse,
+        #     )
         # util.PrintTime("Done orthogroups")
         files.FileHandler.LogOGs()
 

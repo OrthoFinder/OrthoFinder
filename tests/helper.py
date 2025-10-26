@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import traceback
+from collections import defaultdict
 import pytest
 from orthofinder.run.__main__ import main
 
@@ -62,9 +63,47 @@ def _latest_output_dir(results_dir, fileno=-1) -> str:
         return results_dir
 
 
+def _index_of_orthologues(of_orthologues):
+    per_species_triplets = defaultdict(set)
+    per_species_locations = defaultdict(lambda: defaultdict(set))
+
+    for species, og_map in of_orthologues.items():
+        for og_id, entries in og_map.items():
+            for e in entries:
+                per_species_triplets[species].add(e)
+                per_species_locations[species][e].add(og_id)
+
+    return per_species_triplets, per_species_locations
 
 
+def _index_duplications(dup_dict):
 
+    def _norm_label(s: str) -> str:
+        for dash in ["\u2010", "\u2011", "\u2012", "\u2013", "\u2014", "\u2212"]:
+            s = s.replace(dash, "-")
+        s = s.strip()
+        return "Non-Terminal" if s.lower().startswith("non") else "Terminal"
+
+    def _norm_id(x: str) -> str:
+        return " ".join(x.split())
+
+    def _norm_triplet(t):
+        label, A, B = t
+        A = frozenset(_norm_id(x) for x in A)
+        B = frozenset(_norm_id(x) for x in B)
+        label = _norm_label(label)
+        return (label, A, B)
+
+    trips = set()
+    locations = defaultdict(set)
+
+    for og_id, entries in dup_dict.items():
+        for e in entries:
+            t = _norm_triplet(e)
+            trips.add(t)
+            locations[t].add(og_id)
+
+    return trips, locations
 
 # def get_dir_path(arg):
 #     directory = os.path.abspath(arg)
