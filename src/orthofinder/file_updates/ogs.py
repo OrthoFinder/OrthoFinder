@@ -147,6 +147,16 @@ def read_hogs_to_matrix(input_path):
 #     offset = speciesStartingIndices[speciesToUse.index(iSpecies)]
 #     return iSeq + offset  
 
+def IDFullDict(idsFilenames, func=util.FirstWordExtractor):
+
+    fullDict = dict()
+    for idsFilename in idsFilenames:
+        idExtract = func(idsFilename)
+        idDict = idExtract.GetIDToNameDict()
+        fullDict.update(idDict)
+
+    return fullDict
+
 
 class Seq(object):
     def __init__(self, seqInput):
@@ -390,11 +400,14 @@ class MCL:
         ):
         outputFN = resultsBaseFilename + ".txt"
         try:
-            fullDict = dict()
-            for idsFilename in idsFilenames:
-                idExtract = util.FirstWordExtractor(idsFilename)
-                idDict = idExtract.GetIDToNameDict()
-                fullDict.update(idDict)
+            # fullDict = dict()
+            # for idsFilename in idsFilenames:
+            #     idExtract = util.FirstWordExtractor(idsFilename)
+            #     idDict = idExtract.GetIDToNameDict()
+            #     fullDict.update(idDict)
+
+
+            fullDict = IDFullDict(idsFilenames, func=util.FirstWordExtractor)
             MCL.CreateOGs(ogs, outputFN, fullDict)
         except KeyError as e:
             sys.stderr.write("ERROR: Sequence ID not found in %s\n" % idsFilename)
@@ -408,11 +421,12 @@ class MCL:
             else:
                 print("Tried to use only the first part of the accession in order to list the sequences in each orthogroup\nmore concisely but these were not unique. The full accession line will be used instead.\n")
                 try:
-                    fullDict = dict()
-                    for idsFilename in idsFilenames:
-                        idExtract = util.FullAccession(idsFilename)
-                        idDict = idExtract.GetIDToNameDict()
-                        fullDict.update(idDict)
+                    # fullDict = dict()
+                    # for idsFilename in idsFilenames:
+                    #     idExtract = util.FullAccession(idsFilename)
+                    #     idDict = idExtract.GetIDToNameDict()
+                    #     fullDict.update(idDict)
+                    fullDict = IDFullDict(idsFilenames, func=util.FullAccession)
                     MCL.CreateOGs(ogs, outputFN, fullDict)
                 except:
                     err_text = "ERROR: %s contains a duplicate ID. " % (idsFilename)

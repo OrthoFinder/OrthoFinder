@@ -588,8 +588,8 @@ class __Files_new_dont_manually_create__(object):
             return wd_hog_dir + "%s.tsv" % sp_node_name
         
     
-    # def WDHierarchicalOrthogroupsFNN0(self):
-    #     return self.GetWorkingDirectory_Write() + "HOGs/N0.tsv"
+    def WDHierarchicalOrthogroupsFNN0(self):
+        return os.path.join(self.GetWorkingDirectory_Write(), "N0.tsv")
     
     def HierarchicalOrthogroupsFNN0(self):
         hog_dir = self.rd1 + "Phylogenetic_Hierarchical_Orthogroups/"

@@ -105,6 +105,15 @@ def _index_duplications(dup_dict):
 
     return trips, locations
 
+def _index_of_orthogroups(orthogroups_dict):
+    all_ogs_set = set()
+    per_ogs_locations = {}
+
+    for ogname, ogs in orthogroups_dict.items():
+        all_ogs_set.add(ogs)
+        per_ogs_locations[ogs] = ogname
+    return all_ogs_set, per_ogs_locations
+
 # def get_dir_path(arg):
 #     directory = os.path.abspath(arg)
 #     if not os.path.isfile(directory) and directory[-1] != os.sep:

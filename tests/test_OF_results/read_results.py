@@ -2,7 +2,7 @@ import os
 import re
 # import glob 
 from ete4 import Tree
-import json
+
 
 node_pattern = re.compile(r"^n(\d+)$", re.IGNORECASE)
 
@@ -92,6 +92,7 @@ def get_expected_results(expected_results_dir):
                 if os.path.isfile(test_item):
                     filename, extension = item.rsplit(".", 1)
                     filename = filename.lower()
+                    # ------------ Reconciliaton tree ----------------
                     if "resolved_gene_tree" in filename:
                         with open(test_item) as reader:
                             for line in reader:
@@ -99,22 +100,26 @@ def get_expected_results(expected_results_dir):
                                     continue
                                 og, targets = line.strip().split(":", 1)
                                 EXPECTED_RESULTS[cat_dir.lower()]["resolved_gene_trees"][og] = set(re.split(r"[,\s;]+", targets.strip()))
-                    
+                    # --------------- Orthogroups -------------------
                     elif "orthogroup" in filename:
                         with open(test_item) as reader:
                             for line in reader:
                                 if len(line.strip()) == 0 or "#" in line:
                                     continue
-                                if "txt" in extension:
-                                    og, targets = line.strip().split(":", 1)
-                                    EXPECTED_RESULTS[cat_dir.lower()]["orthogroups"][og] = set(re.split(r"[,\s;]+", targets.strip()))
-                                elif "tsv" in extension:
-                                    if "Orthogroup" in line or "#" in line:
-                                        continue
-                                    line = re.split(r"[,\s;]+", line.strip())
-                                    
-                                    EXPECTED_RESULTS[cat_dir.lower()]["orthogroups"][line[0]] = set(line[1:])
+                                # if "txt" in extension:
+                                #     og, targets = line.strip().split(":", 1)
+                                #     EXPECTED_RESULTS[cat_dir.lower()]["orthogroups"][og] = set(re.split(r"[,\s;]+", targets.strip()))
+                                # elif "tsv" in extension:
+                                if "Orthogroup" in line or "#" in line:
+                                    continue
+                                line = re.split(r"[,\s;]+", line.strip())
                     
+                                EXPECTED_RESULTS[cat_dir.lower()]["orthogroups"][line[0]] = \
+                                tuple(
+                                    frozenset(re.split(r"[,\s;]+", l.strip()))
+                                    for l in line[1:]
+                                )
+                    # --------------- Duplications -------------------
                     elif "duplication" in filename:
                         with open(test_item) as reader:
                             for line in reader:
@@ -139,7 +144,7 @@ def get_expected_results(expected_results_dir):
                                             frozenset(re.split(r"[,\s;]+", line[-1].strip()))
                                         )
                                     )
-                    
+                    # --------------- Stats overall -------------------
                     elif "statistics_overall" in filename:
                         overall_stats_info, og_nspecies = get_stats_info(test_item)
                         
@@ -147,6 +152,7 @@ def get_expected_results(expected_results_dir):
                         EXPECTED_RESULTS[cat_dir.lower()]["statistics_overall"]["og_nspecies"] = og_nspecies
 
                 elif os.path.isdir(test_item):
+                    # --------------- Orthologues -------------------
                     if item.lower() == "orthologues":
                         for file in os.listdir(test_item):
                             file_path = os.path.join(test_item, file)
@@ -168,6 +174,7 @@ def get_expected_results(expected_results_dir):
                                             )
 
                     elif item.lower() == "hogs":
+                        # --------------- Hogs -------------------
                         for file in os.listdir(test_item):
                             file_path = os.path.join(test_item, file)
                             rootname = file.rsplit(".", 1)[0]
@@ -191,11 +198,10 @@ def get_expected_results(expected_results_dir):
                                         EXPECTED_RESULTS[cat_dir.lower()]["hogs"][base_node].append(
                                             frozenset(list(filter(None, line[3:])))
                                         )
-
+#     print(EXPECTED_RESULTS)
     return EXPECTED_RESULTS
                                         
-                            
-#     # print(json.dumps(EXPECTED_RESULTS, sort_keys=True, indent=4))
-#     print(EXPECTED_RESULTS)
+                        
+
 # if __name__ == "__main__":
 #     get_expected_results()

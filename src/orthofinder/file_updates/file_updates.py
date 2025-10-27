@@ -1,5 +1,6 @@
 from . import ogs, trees
 import os
+import shutil
 import tempfile
 import csv
 from collections import defaultdict
@@ -21,22 +22,15 @@ def update_output_files(
         i_og_restart=0,
         exist_msa=True,
     ):
-
-    sequence_id_dict = defaultdict(set)
-    for key, value in id_sequence_dict.items():
-        sequence_id_dict[value].add(key)
-
+     
     iSps = list(map(str, sorted(species_to_use)))   # list of strings
     species_names = [sp_ids[i] for i in iSps]
-
-    species_id_dict = {
-        val: key 
-        for key, val in sp_ids.items()
-    }
+    species_id_dict, sequence_id_dict = id_converter(sp_ids, id_sequence_dict)
 
     ## ------------------------ Fix OGs and OG Sequences -------------------------
-    # hog_n0_file = files.FileHandler.WDHierarchicalOrthogroupsFNN0()
+    old_hog_n0_file = files.FileHandler.WDHierarchicalOrthogroupsFNN0()
     hog_n0_file = files.FileHandler.HierarchicalOrthogroupsFNN0()
+    shutil.copy2(hog_n0_file, old_hog_n0_file)
     hogs_converter(hog_n0_file, sequence_id_dict, species_id_dict, species_names)
 
     seq_dir = files.FileHandler.GetResultsSeqsDir()
@@ -51,6 +45,7 @@ def update_output_files(
         speciesXML,
         q_incremental=q_incremental,
     )
+
     spec_seq_id_dict = {
         val: key
         for key, val in idDict.items()
@@ -263,3 +258,16 @@ def index_files(id_dir, extension=".fa"):
                     file_index[key] = val
     
     return file_index
+
+
+def id_converter(sp_ids, id_sequence_dict):
+    sequence_id_dict = defaultdict(set)
+    for key, value in id_sequence_dict.items():
+        sequence_id_dict[value].add(key)
+
+    species_id_dict = {
+        val: key 
+        for key, val in sp_ids.items()
+    }
+
+    return species_id_dict, sequence_id_dict

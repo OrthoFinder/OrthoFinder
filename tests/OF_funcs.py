@@ -9,27 +9,13 @@ from orthofinder.utils import files, util
 from orthofinder.run import process_args
 from orthofinder.tools import tree, stride
 from orthofinder.run.process_args import Options
-from orthofinder.file_updates.ogs import OrthoGroupsSet
+from orthofinder.file_updates.ogs import OrthoGroupsSet, update_ogs, IDFullDict
 from orthofinder.file_updates.trees import read_tree_file
-from orthofinder.file_updates.file_updates import read_hog_file, hog_file_over4genes, index_files
+from orthofinder.file_updates.file_updates import id_converter, hogs_converter, read_hog_file, hog_file_over4genes, index_files
 from orthofinder.run.species_info import SpeciesNameDict, ProcessPreviousFiles
 from orthofinder.comparative_genomics.orthologues import AllOrthologues, ReconciliationAndOrthologues
 from orthofinder.gene_tree_inference.trees2ologs_of import GetLinesForOlogFiles, OrthologsFiles, GetSpeciesNeighbours, GeneToSpecies_dash, TreeAnalyser, CheckAndRootTree, GetOrthologues_from_tree, GetLinesForOlogFiles
 
-
-def _read_species_names(species_id_fn: str):
-
-    names = []
-    if species_id_fn and os.path.exists(species_id_fn):
-        with open(species_id_fn, "r") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                if ": " in line:
-                    _, name = line.split(": ", 1)
-                    names.append(name)
-    return names
 
 
 class OrthoFinderTestFuncs:
@@ -379,6 +365,56 @@ class OrthoFinderTestFuncs:
                 )
 
         return duplication_dict
+
+    def get_orthogroups(self):
+        old_hog_n0_file = os.path.join(self.current_working_dir, "N0.tsv")
+        ogSet = self.get_og_obj()
+        species_id_dict, sequence_id_dict = id_converter(ogSet.SpeciesDict(),  ogSet.SequenceDict())
+        species_to_use = ogSet.speciesToUse
+        sp_ids = ogSet.SpeciesDict()
+        iSps = list(map(str, sorted(species_to_use)))   # list of strings
+        species_names = [sp_ids[i] for i in iSps]
+
+        seqsInfo = self.get_sequence_info_obj()
+        speciesInfoObj = self.get_species_info_obj()
+        speciesNamesDict = self.get_species_name_dict()
+        all_seq_ids = ogSet.AllUsedSequenceIDs()
+        hogs_converter(old_hog_n0_file, sequence_id_dict, species_id_dict, species_names)
+        new_ogs, name_dictionary =  update_ogs(old_hog_n0_file)
+        all_assigned = set([g for og in new_ogs for g in og])
+        unassigned = set(all_seq_ids).difference(all_assigned)
+        single_ogs_list = [{g,} for g in unassigned]
+        new_ogs.extend(single_ogs_list)
+        idsFilenames = [self.sequence_id_fn]
+        try:
+            idToNameDict = IDFullDict(idsFilenames, func=util.FirstWordExtractor)
+        except:
+            idToNameDict = IDFullDict(idsFilenames, func=util.FullAccession)
+
+        nSpecies = len(speciesNamesDict)
+        
+        ogs_names = [[idToNameDict[seq] for seq in og] for og in new_ogs]
+        ogs_ints = [[list(map(int, sequence.split("_"))) for sequence in og] for og in new_ogs]
+
+        orthogroups_dict = {}
+        for iOg, (og, og_names) in enumerate(zip(ogs_ints, ogs_names)):
+            ogDict = defaultdict(list)
+            og_id = "OG%07d" % iOg
+            
+            for (iSpecies, iSequence), name in zip(og, og_names):
+                ogDict[speciesInfoObj.speciesToUse.index(iSpecies)].append(name)
+            
+            orthogroups_list = [
+                (species_id, frozenset(genes))
+                for species_id, genes in ogDict.items()
+            ]
+            sorted_orthogroups_list = sorted(orthogroups_list)
+            _, orthogroups_set = zip(*sorted_orthogroups_list)
+            orthogroups_dict[og_id] = tuple(orthogroups_set)
+        
+        return orthogroups_dict
+
+        
 
 
     # def get_orthologues(self):

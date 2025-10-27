@@ -78,7 +78,6 @@ def of_and_expected_recon_tree(request, of_obj, of_obj_assign, expected_results_
         return of_obj_assign, expected_results_dict["assign"]["resolved_gene_trees"]
 
 
-
 @pytest.fixture(params=["core", "assign"], ids=["core", "assign"])
 def of_and_expected_orthologues(request, of_obj, of_obj_assign, expected_results_dict):
     if request.param == "core":
@@ -93,6 +92,14 @@ def of_and_expected_duplications(request, of_obj, of_obj_assign, expected_result
         return of_obj, expected_results_dict["core"]["duplications"]
     else:
         return of_obj_assign, expected_results_dict["assign"]["duplications"]
+
+
+@pytest.fixture(params=["core", "assign"], ids=["core", "assign"])
+def of_and_expected_orthogroups(request, of_obj, of_obj_assign, expected_results_dict):
+    if request.param == "core":
+        return of_obj, expected_results_dict["core"]["orthogroups"]
+    else:
+        return of_obj_assign, expected_results_dict["assign"]["orthogroups"]
 
 
 

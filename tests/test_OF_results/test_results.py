@@ -61,14 +61,13 @@ def test_duplications(of_and_expected_duplications):
     of_obj, expected_dup_map = of_and_expected_duplications
 
     actual_dup_map = of_obj.get_duplications()
-
     actual_triplets, actual_locs = helper._index_duplications(actual_dup_map)
     expected_triplets, expected_locs = helper._index_duplications(expected_dup_map)
     missing = [t for t in expected_triplets if t not in actual_triplets]
     if missing:
         lines = []
         for label, A, B in missing:
-            lines.append(f"Missing duplication: label={label}, Gene1={sorted(A)}, Gene1={sorted(B)}")
+            lines.append(f"Missing duplication: label={label}, Genes1={sorted(A)}, Genes2={sorted(B)}")
         raise AssertionError("Some expected duplications were not found:\n" + "\n".join(lines))
 
     reloc = []
@@ -80,4 +79,37 @@ def test_duplications(of_and_expected_duplications):
     if reloc:
         print("\n[INFO] Duplications present under different OG IDs:")
         for (label, A, B), exp_ogs, act_ogs in reloc:
-            print(f"  label={label}, A={sorted(A)}, B={sorted(B)} | expected {exp_ogs}, found {act_ogs}")
+            print(f"label={label}, Genes1={sorted(A)}, Genes2={sorted(B)} | expected {exp_ogs}, found {act_ogs}")
+
+
+@pytest.mark.order(25)
+def test_orthogroups(of_and_expected_orthogroups):
+    of_obj, expected_orthogrups = of_and_expected_orthogroups
+    orthogroups_dict = of_obj.get_orthogroups()
+    expected_orthogroups_count = len(expected_orthogrups)
+    
+    actual_ogs, actual_locs = helper._index_of_orthogroups(orthogroups_dict)
+    expected_ogs, expected_locs = helper._index_of_orthogroups(expected_orthogrups)
+
+    missing = [t for t in expected_ogs if t not in actual_ogs]
+    if missing:
+        lines = []
+        for label, A, B in missing:
+            lines.append(f"Missing orthogroups: label={label}, Genes1={sorted(A)}, Genes2={sorted(B)}")
+        raise AssertionError("Some expected Orthogroups were not found:\n" + "\n".join(lines))
+
+    reloc = []
+    for k, t in expected_orthogrups.items():
+        exp_ogs = expected_locs.get(t, set())
+        act_ogs = actual_locs.get(t, set())
+        if exp_ogs and act_ogs and exp_ogs != act_ogs:
+            reloc.append((t, sorted(exp_ogs), sorted(act_ogs)))
+    if reloc:
+        print("\n[INFO] Orthogroups present under different OG IDs:")
+        for (label, A, B), exp_ogs, act_ogs in reloc:
+            print(f"label={label}, Genes1={sorted(A)}, Genes2={sorted(B)} | expected {exp_ogs}, found {act_ogs}")
+
+
+
+
+

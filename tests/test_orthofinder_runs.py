@@ -338,9 +338,6 @@ class TestOrthoFinderRuns:
         assert not any(re.search(p, text) for p in fatal_patterns), text
 
 
-
-
-
     @pytest.mark.order(17)
     def test_orthofinder_assign_with_species_tree_run(self, projects, assign, species_tree_assign, gene_tree_method, capfd):
         results_dir = os.path.join(projects, "OrthoFinder")
