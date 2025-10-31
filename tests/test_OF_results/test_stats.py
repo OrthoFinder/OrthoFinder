@@ -3,23 +3,9 @@ import pytest
 import pytest_check as check
 import numpy as np
 from orthofinder.comparative_genomics.stats import add_unassigned_genes, OrthogroupsMatrix
-from orthofinder.run.__main__ import main
-
-# class TestComparativeStats:
-#     def test_number_of_species(
-#         self,
-#         project_overall_stats_info,
-#         expected_overall_stats_info,
-#     ):
-#         project_n = project_overall_stats_info["Number of species"]
-#         expected_n = expected_overall_stats_info["Number of species"]
-#         assert project_n == expected_n, (
-#             f"Number of species from the project is {project_n}, "
-#             f"but we expect {expected_n} species"
-#         )
 
 
-@pytest.mark.order(22)
+@pytest.mark.order(20)
 class TestcComparativeStats:
     def test_overall_stats(self, of_and_expected_stats_overall):
         """

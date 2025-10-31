@@ -30,7 +30,13 @@ def update_output_files(
     ## ------------------------ Fix OGs and OG Sequences -------------------------
     old_hog_n0_file = files.FileHandler.WDHierarchicalOrthogroupsFNN0()
     hog_n0_file = files.FileHandler.HierarchicalOrthogroupsFNN0()
-    shutil.copy2(hog_n0_file, old_hog_n0_file)
+    for file in os.listdir(files.FileHandler.GetResultHOGDir()):
+        if file.startswith("N"):
+            shutil.copy2(
+                os.path.join(files.FileHandler.GetResultHOGDir(), file),  
+                files.FileHandler.GetLegacyHOGDir()
+            )
+            
     hogs_converter(hog_n0_file, sequence_id_dict, species_id_dict, species_names)
 
     seq_dir = files.FileHandler.GetResultsSeqsDir()

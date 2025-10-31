@@ -2,10 +2,42 @@ import os
 import sys
 import re
 import traceback
+import json
 from collections import defaultdict
 import pytest
 from orthofinder.run.__main__ import main
+from orthofinder.run.process_args import GetFileArgument
 
+
+def read_config_file(configure_file, user_config_file=None):
+    
+    if user_config_file is not None:
+        configure_file = user_config_file
+    
+    of_config_dict = {}
+    configure_file = GetFileArgument(configure_file)    
+    with open(configure_file, "r") as infile:
+        try:
+            d = json.load(infile)
+        except ValueError:
+            print(("WARNING: Incorrectly formatted configuration file %s" % configure_file))
+            print("File is not in .json format. No user-confgurable multiple sequence alignment or tree inference methods have been added.\n")
+            return
+        for name, val_dict in d.items():
+            if name == "__comment":
+                continue
+            if " " in name:
+                print(("WARNING: Incorrectly formatted configuration file entry: %s" % name))
+                print(("No space is allowed in name: '%s'" % name))
+                continue
+            if not isinstance(val_dict, dict) or len(val_dict) == 0:
+                continue
+            of_config_dict[name] = {}
+            for k, v in val_dict.items():
+                if not isinstance(v, str) or len(v) == 0:
+                    continue
+                of_config_dict[name][k] = v
+    return of_config_dict
 
 
 def _run_main(args, capfd):
@@ -43,6 +75,21 @@ def create_path(arg):
     if not os.path.isfile(filepath) and filepath[-1] != os.sep:
         filepath += os.sep
     return filepath
+
+def _find_output_dir(results_dir, test_filename) -> str:
+    if isinstance(results_dir, list):
+        results_dir = results_dir[0]
+
+    results_dir = os.path.abspath(results_dir)
+
+    try:
+        for name in os.listdir(results_dir):
+            if test_filename == name.split(".")[0]:
+                return os.path.join(results_dir, name)
+    except FileNotFoundError:
+        return ""
+    except NotADirectoryError:
+        return results_dir
 
 def _latest_output_dir(results_dir, fileno=-1) -> str:
     if isinstance(results_dir, list):
@@ -114,22 +161,15 @@ def _index_of_orthogroups(orthogroups_dict):
         per_ogs_locations[ogs] = ogname
     return all_ogs_set, per_ogs_locations
 
-# def get_dir_path(arg):
-#     directory = os.path.abspath(arg)
-#     if not os.path.isfile(directory) and directory[-1] != os.sep:
-#         directory += os.sep
-#     if not os.path.exists(directory):
-#         print("Specified directory doesn't exist: %s" % directory)
-#         sys.exit(1)
-#     return directory
+def _index_of_hogs(hogs_dict):
+    all_hogs_set = set()
+    per_hog_og = {}
+    per_hog_node = {}
+    for ogname, node_hogs in hogs_dict.items():
+        for node, hogs in node_hogs.items():
+            for hog in hogs:
+                all_hogs_set.add(hog)
+                per_hog_node[hog] = node
+                per_hog_og[hog] = ogname
 
-# def get_file_path(arg):
-#     file_path = os.path.abspath(arg)
-#     directory = os.path.dirname(file_path)
-#     if not os.path.exists(directory):
-#         print("Directory points to the file doesn't exist: %s" % directory)
-#         sys.exit(1)
-#     if not os.path.isfile(file_path):
-#         print("Specified file doesn't exist: %s" % file_path)
-#         sys.exit(1)
-#     return file_path
+    return all_hogs_set, per_hog_og, per_hog_node

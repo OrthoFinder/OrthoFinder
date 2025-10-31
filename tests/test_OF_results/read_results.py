@@ -1,5 +1,6 @@
 import os
 import re
+from collections import defaultdict
 # import glob 
 from ete4 import Tree
 
@@ -83,7 +84,7 @@ def get_expected_results(expected_results_dir):
     # files = glob.glob(expected_results_dir, recursive = True)
     # for file in files:
     #     print(file)
-
+    # expected_results_dir = r"./tests/data/proteome_expected_results"
     for cat_dir in os.listdir(expected_results_dir):
         test_category = cat_dir.lower()
         for item in os.listdir(os.path.join(expected_results_dir, cat_dir)):
@@ -165,7 +166,7 @@ def get_expected_results(expected_results_dir):
                                         EXPECTED_RESULTS[cat_dir.lower()]["orthologues"][base_species] = {}
                                     else:
                                         if line[0] not in EXPECTED_RESULTS[cat_dir.lower()]["orthologues"][base_species]:
-
+                                             
                                             EXPECTED_RESULTS[cat_dir.lower()]["orthologues"][base_species][line[0]] = \
                                                 [(line[1], frozenset(re.split(r"[,\s;]+", line[2])),  frozenset(re.split(r"[,\s;]+", line[-1])))]
                                         else:
@@ -175,6 +176,7 @@ def get_expected_results(expected_results_dir):
 
                     elif item.lower() == "hogs":
                         # --------------- Hogs -------------------
+                        EXPECTED_RESULTS[cat_dir.lower()]["hogs"] = defaultdict(lambda: defaultdict(list))
                         for file in os.listdir(test_item):
                             file_path = os.path.join(test_item, file)
                             rootname = file.rsplit(".", 1)[0]
@@ -188,20 +190,36 @@ def get_expected_results(expected_results_dir):
 
                             if base_node is None:
                                 base_node = rootname
-
+        
                             with open(file_path) as reader:
                                 for line in reader:
+                                    if line.lower().startswith("hog") or len(line) < 4 or "#" in line:
+                                        continue 
                                     line = re.split(r"[\t]+", line.strip())
-                                    if "HOG" in line or len(line) < 4 or "#" in line:
-                                        EXPECTED_RESULTS[cat_dir.lower()]["hogs"][base_node] = []
-                                    else:
-                                        EXPECTED_RESULTS[cat_dir.lower()]["hogs"][base_node].append(
-                                            frozenset(list(filter(None, line[3:])))
+                                    ogname = line[1]
+                                    # if ogname not in EXPECTED_RESULTS[cat_dir.lower()]["hogs"] and \
+                                    #     base_node not in EXPECTED_RESULTS[cat_dir.lower()]["hogs"][ogname]:
+                                    #     EXPECTED_RESULTS[cat_dir.lower()]["hogs"][ogname][base_node] = [
+                                    #         tuple(
+                                    #             frozenset(re.split(r"[,\s;]+", l.strip()))
+                                    #             for l in line[3:]
+                                    #             if len(l) != 0
+                                    #         )
+                                    #     ]
+                                    # elif ogname in EXPECTED_RESULTS[cat_dir.lower()]["hogs"] and \
+                                    #     base_node in EXPECTED_RESULTS[cat_dir.lower()]["hogs"][ogname]:
+                                    EXPECTED_RESULTS[cat_dir.lower()]["hogs"][ogname][base_node].append(
+                                        tuple(
+                                            frozenset(re.split(r"[,\s;]+", l.strip()))
+                                            for l in line[3:]
+                                            if len(l) != 0
                                         )
-#     print(EXPECTED_RESULTS)
+                                    )
+    # print(EXPECTED_RESULTS["core"]["hogs"])
+    # print()
+    # print(EXPECTED_RESULTS["assign"]["hogs"])
     return EXPECTED_RESULTS
                                         
                         
-
-# if __name__ == "__main__":
-#     get_expected_results()
+if __name__ == "__main__":
+    get_expected_results()

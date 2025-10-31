@@ -18,7 +18,7 @@ def test_recon_tree(of_and_expected_recon_tree):
     assert len(leaf_names_list) == 0 or len(test_gene_list) == 0, "No reconciliation tree was found"
     for leaf_names, gene_tree in zip(leaf_names_list, test_gene_list):
         assert expected_recon_tree.issubset(leaf_names), "????"
-        assert test_gene_tree.check_monophyly(expected_recon_tree)[0], "????"
+        assert gene_tree.check_monophyly(expected_recon_tree)[0], "????"
 
 
 @pytest.mark.order(24)
@@ -86,7 +86,6 @@ def test_duplications(of_and_expected_duplications):
 def test_orthogroups(of_and_expected_orthogroups):
     of_obj, expected_orthogrups = of_and_expected_orthogroups
     orthogroups_dict = of_obj.get_orthogroups()
-    expected_orthogroups_count = len(expected_orthogrups)
     
     actual_ogs, actual_locs = helper._index_of_orthogroups(orthogroups_dict)
     expected_ogs, expected_locs = helper._index_of_orthogroups(expected_orthogrups)
@@ -110,6 +109,45 @@ def test_orthogroups(of_and_expected_orthogroups):
             print(f"label={label}, Genes1={sorted(A)}, Genes2={sorted(B)} | expected {exp_ogs}, found {act_ogs}")
 
 
+@pytest.mark.order(26)
+def test_phylogenetic_hierarchical_orthogroups(of_and_expected_hogs):
+    of_obj, expected_hogs_dict = of_and_expected_hogs
+    of_hogs_dict = of_obj.get_hogs()
+    
+    expected_hogs, expected_og_locs, expected_node_locs = helper._index_of_hogs(expected_hogs_dict)
+    actual_hogs, actual_og_locs, actual_node_locs = helper._index_of_hogs(of_hogs_dict)
+    
+    missing = [hog for hog in expected_hogs if hog not in actual_hogs]
 
+    if missing:
+        lines = []
+        for og in missing:
+            lines.append(f"Missing : phylogenetic hierarchical orthogroups {og}")
+        raise AssertionError("Some expected phylogenetic hierarchical orthogroups were not found:\n" + "\n".join(lines))
+    
+    og_reloc = []
+    node_reloc = []  
+            
+    for hog in expected_hogs:
+        ogname = expected_og_locs[hog]
+        node = expected_node_locs[hog]
+        actual_og = actual_og_locs[hog]
+        actaul_node = actual_node_locs[hog]
+        
+        if actual_og != ogname:
+            og_reloc.append((ogname, actaul_og, sorted(hog)))
+        
+        if node != actaul_node:
+            node_reloc.append((node, actaul_node, sorted(hog)))
+            
 
-
+    if og_reloc:
+        print("\n[INFO] Expected hylogenetic hierarchical orthogroups found under different OG IDs:")
+        for ogname, actaul_og, hogs in og_reloc:
+            print(f"{hogs} from {actaul_og}: expected in {ogname}")
+    
+    if node_reloc:
+        print("\n[INFO] Expected hylogenetic hierarchical orthogroups found under different Node IDs:")
+        for node, actaul_node, hogs in node_reloc:
+            print(f"{hogs} from {actaul_node}: expected in {node}")
+    

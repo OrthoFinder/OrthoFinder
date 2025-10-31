@@ -469,6 +469,16 @@ class __Files_new_dont_manually_create__(object):
     
     def GetSeqsIDDir(self):
         return self.wd_current + "Sequences_ids/"
+    
+    def GetLegacyDir(self):
+        d = os.path.join(self.wd_current, "Legacy")
+        if not os.path.exists(d): os.mkdir(d)
+        return d
+    
+    def GetLegacyHOGDir(self):
+        legacy_dir = os.path.join(self.GetLegacyDir(), "HOGs")
+        if not os.path.exists(legacy_dir): os.mkdir(legacy_dir)
+        return legacy_dir
         
     def GetResultsAlignDir(self):
         return self.rd1 + "MultipleSequenceAlignments/"
@@ -586,10 +596,15 @@ class __Files_new_dont_manually_create__(object):
             if not os.path.exists(wd_hog_dir):
                 os.makedirs(wd_hog_dir, exist_ok=True)
             return wd_hog_dir + "%s.tsv" % sp_node_name
-        
+     
+    def GetResultHOGDir(self):
+        hog_dir = self.rd1 + "Phylogenetic_Hierarchical_Orthogroups/"
+        if not os.path.exists(hog_dir):
+            os.makedirs(hog_dir, exist_ok=True)
+        return hog_dir
     
     def WDHierarchicalOrthogroupsFNN0(self):
-        return os.path.join(self.GetWorkingDirectory_Write(), "N0.tsv")
+        return os.path.join(self.GetLegacyDir(), "N0.tsv")
     
     def HierarchicalOrthogroupsFNN0(self):
         hog_dir = self.rd1 + "Phylogenetic_Hierarchical_Orthogroups/"
@@ -600,6 +615,14 @@ class __Files_new_dont_manually_create__(object):
     
     def OGsAllIDFN(self):
         return self.wd_current + "OGsAll.tsv"
+    
+    def OGsIDFN(self, fixed=False, extension=".tsv"):
+        if fixed:
+            return os.path.join(self.GetLegacyDir(), "Fixed_Orthogroups_id" + extension)
+        else:
+            return os.path.join(self.GetLegacyDir(), "Orthogroups_id" + extension)
+
+        
 
     """ ========================================================================================== """
     

@@ -410,13 +410,13 @@ class MCL:
             fullDict = IDFullDict(idsFilenames, func=util.FirstWordExtractor)
             MCL.CreateOGs(ogs, outputFN, fullDict)
         except KeyError as e:
-            sys.stderr.write("ERROR: Sequence ID not found in %s\n" % idsFilename)
+            sys.stderr.write("ERROR: Sequence ID not found in %s\n" % idsFilenames)
             sys.stderr.write(str(e) + "\n")
-            files.FileHandler.LogFailAndExit(("ERROR: Sequence ID not found in %s\n" % idsFilename) + str(e) + "\n")
+            files.FileHandler.LogFailAndExit(("ERROR: Sequence ID not found in %s\n" % idsFilenames) + str(e) + "\n")
         except RuntimeError as error:
             print(str(error))
             if str(error).startswith("ERROR"):
-                err_text = "ERROR: %s contains a duplicate ID. " % (idsFilename)
+                err_text = "ERROR: %s contains a duplicate ID. " % (idsFilenames)
                 files.FileHandler.LogFailAndExit(err_text)
             else:
                 print("Tried to use only the first part of the accession in order to list the sequences in each orthogroup\nmore concisely but these were not unique. The full accession line will be used instead.\n")
@@ -429,7 +429,7 @@ class MCL:
                     fullDict = IDFullDict(idsFilenames, func=util.FullAccession)
                     MCL.CreateOGs(ogs, outputFN, fullDict)
                 except:
-                    err_text = "ERROR: %s contains a duplicate ID. " % (idsFilename)
+                    err_text = "ERROR: %s contains a duplicate ID. " % (idsFilenames)
                     files.FileHandler.LogFailAndExit(err_text)
         return fullDict
 
@@ -444,27 +444,36 @@ class MCL:
     ):
 
         nSpecies = len(speciesNamesDict)
-
+        
+        ogs_ids = [[seq for seq in og] for og in ogs]
         ogs_names = [[idToNameDict[seq] for seq in og] for og in ogs]
         ogs_ints = [[list(map(int, sequence.split("_"))) for sequence in og] for og in ogs]
 
         # write out
+        orthogroups_id_fn = files.FileHandler.OGsIDFN(fixed=True)
         outputFilename = resultsBaseFilename + ".tsv"
         outputFilename_counts = resultsBaseFilename + ".GeneCount.tsv"
         singleGeneFilename = resultsBaseFilename + "_UnassignedGenes.tsv"
         with open(outputFilename, util.csv_write_mode) as outputFile, \
+            open(orthogroups_id_fn, util.csv_write_mode) as ogidfile, \
             open(singleGeneFilename, util.csv_write_mode) as singleGeneFile, \
-                open(outputFilename_counts, util.csv_write_mode) as outFile_counts:
+            open(outputFilename_counts, util.csv_write_mode) as outFile_counts:
+            
+            ogid_filewriter = csv.writer(ogidfile, delimiter="\t")
             fileWriter = csv.writer(outputFile, delimiter="\t")
+            
             fileWriter_counts = csv.writer(outFile_counts, delimiter="\t")
             singleGeneWriter = csv.writer(singleGeneFile, delimiter="\t")
-            for writer in [fileWriter, singleGeneWriter]:
+            for writer in [ogid_filewriter, fileWriter, singleGeneWriter]:
                 row = ["Orthogroup"] + [speciesNamesDict[index] for index in speciesToUse]
                 writer.writerow(row)
             fileWriter_counts.writerow(row + ['Total'])
-            for iOg, (og, og_names) in enumerate(zip(ogs_ints, ogs_names)):
+
+            for iOg, (og, og_names, og_ids) in enumerate(zip(ogs_ints, ogs_names, ogs_ids)):
                 ogDict = defaultdict(list)
+                ogIDDict = defaultdict(list)
                 row = ["OG%07d" % iOg]
+                id_row = ["OG%07d" % iOg]
                 thisOutputWriter = fileWriter
                 # separate it into sequences from each species
                 if len(og) == 1:
@@ -472,10 +481,13 @@ class MCL:
                     row[speciesToUse.index(og[0][0]) + 1] = og_names[0]
                     thisOutputWriter = singleGeneWriter
                 else:
-                    for (iSpecies, iSequence), name in zip(og, og_names):
+                    for (iSpecies, iSequence), name, ids in zip(og, og_names, og_ids):
                         ogDict[speciesToUse.index(iSpecies)].append(name)
+                        ogIDDict[speciesToUse.index(iSpecies)].append(ids)
                     for iSpecies in range(nSpecies):
                         row.append(", ".join(sorted(ogDict[iSpecies])))
+                        id_row.append(", ".join(sorted(ogIDDict[iSpecies])))
+                    ogid_filewriter.writerow(id_row)
                     counts = Counter([iSpecies for iSpecies, _ in og])
                     counts_row = [counts[iSpecies] for iSpecies in speciesToUse]
                     fileWriter_counts.writerow(row[:1] + counts_row + [sum(counts_row)])

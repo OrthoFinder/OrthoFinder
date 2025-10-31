@@ -135,11 +135,12 @@ class Options(object):  #
         self.config = None
         self.min_seq = 4
         self.astral = False
+        self.species_tree_program = "stag" # astral
         self.dynamic_threads = False
         self.n_skip = 50
         self.save_blast_commands = False
         self.restart_of_blast = False
-        self.rm_hog_n0 = True
+        self.rm_legacy = True
 
     def what(self):
         for k, v in self.__dict__.items():
@@ -594,8 +595,13 @@ def ProcessArgs(args):
         elif arg == "--old-version":
             options.old_version = True
 
-        elif arg == "--astral":
-            options.astral = True
+        elif arg == "-ST" or arg == "--species-tree-program":
+            if len(args) == 0:
+                print("Missing option for command line argument %s\n" % arg)
+                util.Fail()
+            arg = args.pop(0)
+            if arg == "astral":
+                options.astral = True
 
         elif arg == "--save-blast-commands":
             options.save_blast_commands = True
@@ -650,8 +656,8 @@ def ProcessArgs(args):
         elif arg == "--no-fix-files":
             options.fix_files = False
 
-        elif arg == "-rmn0":
-            options.rm_hog_n0 = False
+        elif arg == "-rmlg":
+            options.rm_legacy = False
 
         # elif arg == "-x" or arg == "--orthoxml":
         #     if options.speciesXMLInfoFN:
@@ -765,7 +771,7 @@ def ProcessArgs(args):
                 print("Valid options are 'dendroblast' and 'msa'\n")
                 util.Fail()
 
-        elif arg == "-A" or arg == "--msa_program":
+        elif arg == "-A" or arg == "--msa-program":
             choices = ["mafft"] + prog_caller.ListMSAMethods()
             switch_used = arg
             if len(args) == 0:
@@ -780,7 +786,7 @@ def ProcessArgs(args):
                 print("Valid options are: {%s}\n" % (", ".join(choices)))
                 util.Fail()
 
-        elif arg == "-T" or arg == "--tree_program":
+        elif arg == "-T" or arg == "--tree-program":
             choices = ["fasttree"] + prog_caller.ListTreeMethods()
             switch_used = arg
             if len(args) == 0:

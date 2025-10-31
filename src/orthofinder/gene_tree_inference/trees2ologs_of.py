@@ -2094,7 +2094,9 @@ def SortParallelFiles(
     hog_type = [(fn, "h") for fn in glob.glob(os.path.dirname(files.FileHandler.GetHierarchicalOrthogroupsFN("N0.tsv")) + "/*")]
     if write_hog_tree:
         hog_type.append((files.FileHandler.GetWorkingDirectory_Write() + "N0.ids.tsv", "h"))
-    
+    else:
+        hog_type.append((os.path.join(files.FileHandler.GetLegacyHOGDir(), "N0.ids.tsv"), "h"))
+        
     other_type = []
     if not write_hog_tree or not fix_files:
         species = [speciesDict[str(sp1)] for sp1 in speciesToUse]

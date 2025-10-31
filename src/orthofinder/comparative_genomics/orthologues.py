@@ -621,6 +621,11 @@ def OrthologuesWorkflow(
     #     print("OrthoFinder stops after tree...")
     #     util.Success()
     if options.fix_files:
+        shutil.copy2(
+            files.FileHandler.GetWorkingDirectory_Write() + "N0.ids.tsv",
+            os.path.join(files.FileHandler.GetLegacyHOGDir(), "N0.ids.tsv")
+        )
+        
         util.PrintTime("Converting MSA/Trees")
         ogSet = file_updates.update_output_files(
             ogSet.SpeciesDict(),
@@ -669,10 +674,11 @@ def OrthologuesWorkflow(
         ids_dict = ogSet.SequenceDict()
 
         if options.fix_files:
-            if options.rm_hog_n0:
+            if options.rm_legacy:
                 os.remove(files.FileHandler.OGsAllIDFN())
                 os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
                 shutil.rmtree(files.FileHandler.GetResolvedTreeIDDir())
+                shutil.rmtree(files.FileHandler.GetLegacyDir())
 
         stats.Stats(ogs, species_dict, speciesToUse, files.FileHandler.iResultsVersion, fastaWriter, ids_dict)
     else:

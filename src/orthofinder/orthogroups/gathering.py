@@ -291,7 +291,7 @@ def post_clustering_orthogroups(
     ogs = mcl.GetPredictedOGs(clustersFilename_pairs)
     resultsBaseFilename = files.FileHandler.GetOrthogroupResultsFNBase()
 
-
+    # if not options.fix_files:
     util.PrintUnderline("Writing orthogroups to file")
     idsDict = mcl.MCL.WriteOrthogroupFiles(
         ogs,
@@ -299,7 +299,18 @@ def post_clustering_orthogroups(
         resultsBaseFilename,
         clustersFilename_pairs,
     )
-
+    # else:
+    #     try:
+    #         idsDict = mcl.IDFullDict(
+    #             [files.FileHandler.GetSequenceIDsFN()], 
+    #             func=util.FirstWordExtractor
+    #         )
+    #     except:
+    #         idsDict = mcl.IDFullDict(
+    #             [files.FileHandler.GetSequenceIDsFN()], 
+    #             func=util.FullAccession
+    #         )
+    
     ## --------- this doesn't need to run at this point with the new process --------
     if not options.fix_files:
         if not q_incremental:

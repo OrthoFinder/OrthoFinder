@@ -1,14 +1,20 @@
 import os
 import sys
 import pytest
+from collections import deque 
 import helper
 from typing import Optional, Union, List, Any
 import multiprocessing as mp
 from orthofinder.utils.util import CreateNewWorkingDirectory
 from orthofinder.utils import files
 
+## ---------------- TEST OrthoFinder Commands ----------------
+OF_BASELINE_OPTIONS = [
+    "famsa_species_tree", 
+    "famsa_species_tree_assign"
+]
+
 ## ------- Default ExampleData ---------
-# HERE = Path(__file__).resolve()
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) # project root
 
 EXAMPLEDATA = os.path.join(ROOT, "ExampleData")
@@ -70,23 +76,8 @@ if TESTDATA_DNA_RESULTS[-1] != os.sep:
 
 
 EXPECTED_RESULTS = os.path.join(TESTDATA_ROOT, "proteome_expected_results")
+COMMANDS_CONFIG = os.path.abspath(os.path.join(os.path.dirname(__file__), "of_run_commands.json")) # tests root
 
-
-# exampledata_results_dir_list = sorted([
-#     (entry.stat().st_mtime, entry.path) 
-#     for entry in os.scandir(EXAMPLE_RESULTS)
-# ])
-
-# latest_output_dir = exampledata_results_dir_list[-1][1]
-# working_dir = os.path.join(latest_output_dir, "WorkingDirectory")
-
-
-# def _latest_output_dir() -> str:
-#     try:
-#         entries = sorted((e.stat().st_mtime, e.path) for e in os.scandir(EXAMPLE_RESULTS))
-#         return entries[-1][1] if entries else ""
-#     except FileNotFoundError:
-#         return ""
 
 DEFAULT_PROJECTS = {
     "exampledata":{
@@ -110,20 +101,35 @@ DEFAULT_PROJECTS = {
     }
 }
 
+
 def pytest_addoption(parser):
+    parser.addoption(
+        "--run-all",
+        action="store_false",
+        default=False,  
+        help="Decide wether or not to test all available OrthoFinder command options.",
+    )
+
+    
+    parser.addoption(
+        "--run-options",
+        action="store",
+        default=None,
+        help="Comma-separated list of available OrthoFinder runs command options.",
+    )
+    parser.addoption(
+        "--user-config",
+        action="store",
+        default=None,
+        help="Comma-separated list of available OrthoFinder runs command options json file.",
+    )
+ 
     parser.addoption(
         "--projects",
         action="store",
         default=DEFAULT_PROJECTS["testdata"]["proteome"]["core"],  
         help="Comma-separated list of project paths (defaults to latest ExampleData/OrthoFinder run).",
     )
-
-    # parser.addoption(
-    #     "--projects-results",
-    #     action="store",
-    #     default=DEFAULT_PROJECTS_RESULTS, 
-    #     help="Comma-separated list of project result paths (defaults to latest ExampleData/OrthoFinder run).",
-    # )
 
     parser.addoption(
         "--testdata",
@@ -161,29 +167,6 @@ def pytest_addoption(parser):
     )
 
     parser.addoption(
-        "--cluster",
-        action="store",
-        default="mcl",  
-        help="Clustering program",
-    )
-
-    parser.addoption(
-        "--msa",
-        action="store",
-        default="famsa",  
-        help="MSA program",
-    )
-
-    parser.addoption(
-        "--gene-tree-method",
-        action="store",
-        default="fasttree",  
-        help="Gene tree program",
-    )
-
-    parser.addoption("--dendroblast", action="store_true", default=False, help="Non-MSA program")
-
-    parser.addoption(
         "--species-tree",
         action="store",
         default=DEFAULT_PROJECTS["testdata"]["proteome"]["species_tree_core"],  
@@ -196,26 +179,6 @@ def pytest_addoption(parser):
         default=DEFAULT_PROJECTS["testdata"]["proteome"]["species_tree_assign"], 
         help="Species tree file for assign",
     )
-
-    parser.addoption(
-        "--species-tree-method",
-        action="store",
-        default="astral-pro",  
-        help="Species tree program",
-    )
-
-    parser.addoption(
-        "--recon-method",
-        action="store",
-        default="of_recon",  
-        help="Rreconciliation method",
-    )
-
-    parser.addoption("--t", action="store", type=int, default=mp.cpu_count(),
-                     help="Number of parallel sequence search threads")
-    parser.addoption("--a", action="store", type=int,
-                     default=min(16, max(1, int(mp.cpu_count() / 8))),
-                     help="Number of parallel analysis threads")
 
 
 def _to_list(value: Optional[Union[str, int, bool]]) -> List[Any]:
@@ -272,28 +235,35 @@ def _broadcast_to_len(lst: list, target_len: int, name: str):
 
 def pytest_generate_tests(metafunc):
     requested = [name for name in (
+        "run_all",
+        "run_options",
+        "user_config",
         "projects",
         "dna_projects",
         "testdata",
-        "dna",
-        # "projects_results",
         "assign",
         "expected_results",
-        "cluster",
-        "msa",
-        "gene_tree_method",
-        "dendroblast",
         "species_tree",
         "species_tree_assign",
-        "species_tree_method",
-        "recon_method",
-        "t",
-        "a",
     ) if name in metafunc.fixturenames]
     if not requested:
         return
 
     values_by_name = {
+        
+        "run_all": _split_or_default(
+            metafunc.config.getoption("--run-all"), 
+            default_value=False,  
+        ),
+        
+        "run_options": _split_or_default(
+            metafunc.config.getoption("--run-options"), 
+             default_value=None
+        ),
+        "user_config": _split_or_default(
+            metafunc.config.getoption("--user-config"), 
+             default_value=None
+        ),
         "projects": _split_or_default(
             metafunc.config.getoption("--projects"), 
             default_value=DEFAULT_PROJECTS["testdata"]["proteome"]["core"]
@@ -311,31 +281,12 @@ def pytest_generate_tests(metafunc):
         "dna": _split_or_default(
             metafunc.config.getoption("--dna"), default_value=False
         ),
-        # "projects_results": _split_or_default(
-        #     metafunc.config.getoption("--projects-results"), default_value=DEFAULT_PROJECTS_RESULTS
-        # ),
         "assign": _split_or_default(
             metafunc.config.getoption("--assign"), default_value=DEFAULT_PROJECTS["testdata"]["proteome"]["assign"]
         ),
         "expected_results": _to_list(
             metafunc.config.getoption("--expected-results")
         ),
-        "cluster": _split_or_default(
-            metafunc.config.getoption("--cluster"), default_value="mcl"
-        ),
-        "msa": _split_or_default(
-            metafunc.config.getoption("--msa"), default_value="famsa"
-        ),
-        "gene_tree_method": _split_or_default(
-            metafunc.config.getoption("--gene-tree-method"), default_value="fasttree"
-        ),
-        "dendroblast": _split_or_default(
-            metafunc.config.getoption("--dendroblast"), default_value=False  # ← keep as bool
-        ),
-        "species_tree_method": _split_or_default(
-            metafunc.config.getoption("--species-tree-method"), default_value="astral-pro"
-        ),
-
         "species_tree": _split_or_default(
             metafunc.config.getoption("--species-tree"), 
             default_value=DEFAULT_PROJECTS["testdata"]["proteome"]["species_tree_core"]
@@ -344,16 +295,7 @@ def pytest_generate_tests(metafunc):
             metafunc.config.getoption("--species-tree-assign"), 
             default_value=DEFAULT_PROJECTS["testdata"]["proteome"]["species_tree_assign"]
         ),
-        "recon_method": _split_or_default(
-            metafunc.config.getoption("--recon-method"), default_value="of_recon"
-        ),
-        "sequence_search_threads": _split_or_default(
-            metafunc.config.getoption("--t"), default_value=mp.cpu_count()
-        ),
-        "analysis_threads": _split_or_default(
-            metafunc.config.getoption("--a"),
-            default_value=min(16, max(1, int(mp.cpu_count() / 8)))
-        ),
+
     }
 
     # decide base_len (first requested arg with >1, else first non-empty)
@@ -373,41 +315,6 @@ def pytest_generate_tests(metafunc):
     metafunc.parametrize(tuple(requested), params, scope="session")
 
 ### ------------------- CLI input --------------------------------
-
-# @pytest.fixture(scope="session")
-# def projects(request):
-#     """Fixture giving the current project path for a test run"""
-#     return request.config.getoption("--projects")
-
-# @pytest.fixture(scope="session")
-# def projects_results(projects):
-#     """Fixture giving the projects results path for a test run"""
-
-#     baseDirectoryName = os.path.join(projects, "OrthoFinder")
-#     if baseDirectoryName[-1] == os.sep:
-#         baseDirectoryName += "Results_"
-#     else:
-#         baseDirectoryName = baseDirectoryName + os.sep + "Results_"
-
-#     results_dir = CreateNewWorkingDirectory(
-#         baseDirectoryName,
-#         qDate=True,
-#         search_program=None,
-#         msa_program=None,
-#         tree_program=None,
-#         scorematrix=None,
-#         gapopen=None,
-#         gapextend=None,
-#         extended_filename=False,
-#         makedir=False
-#     )
-
-#     return results_dir
-
-# @pytest.fixture(scope="session")
-# def projects_results(request, projects):
-#     """Fixture giving the projects results path for a test run"""
-#     return request.config.getoption("--projects-results")
 
 @pytest.fixture(scope="session")
 def projects(request):
@@ -485,34 +392,80 @@ def analysis_threads(request):
     """Fixture giving the number of analysis threads"""
     return request.config.getoption("--a")
 
-# @pytest.fixture(scope="session")
-# def dna_assign(testdata, assign):
-#     if testdata:
-#         return DEFAULT_PROJECTS["testdata"]["dna"]["assign"]
-    
-#     else:
-#         return assign
 
-### -----------------------------------------------------------------
+@pytest.fixture(scope="session")
+def run_all(request):
+    """Fixture giving the decision to test all OrthoFinder options"""
+    return request.param
 
-# @pytest.fixture(scope="session")
-# def project_overall_stats(projects_results):
-#     return os.path.join(
-#         helper.create_path(projects_results),
-#         "Comparative_Genomics_Statistics",
-#         "Statistics_Overall.tsv"
-#     )
+@pytest.fixture(scope="session")
+def run_options(request):
+    return request.param
 
+@pytest.fixture(scope="session")
+def baseline_options():
+    return OF_BASELINE_OPTIONS
 
+@pytest.fixture(scope="session")
+def user_config(request):
+    return request.param
 
-# @pytest.fixture(scope="session")
-# def orthogroups(projects_results):
-#     return os.path.join(
-#         helper.create_path(projects_results),
-#         "Orthogroups",
-#         "Orthogroups.txt"
-#     )
+@pytest.fixture(scope="session")
+def of_command_dict(user_config, run_all, run_options, baseline_options):
+    of_commands = helper.read_config_file(COMMANDS_CONFIG, user_config)
+    if run_all:
+        return of_commands
+    elif run_options:
+        filtered_commands = {
+            k1: {
+                k2: v2
+                for k2, v2 in v1.items()  
+                if k2 in run_options + baseline_options
+            }
+            for k1, v1 in of_commands.items()
+        }
 
+        return filtered_commands
+    else:
+        return  {
+            k1: {
+                k2: v2
+                for k2, v2 in v1.items()  
+                if k2 in baseline_options
+            }
+            for k1, v1 in of_commands.items()
+        }
+        
+
+@pytest.fixture(scope="session")
+def baseline_arg_dict(baseline_options):
+    of_commands = helper.read_config_file(COMMANDS_CONFIG)
+    of_args_dict ={}
+    for k1, v1 in of_commands.items():
+        for k2, v2 in v1.items(): 
+            if k2 in baseline_options:
+                if len(v2) != 0 and isinstance(v2, str):
+                    args = v2.strip().split()
+                    if "-A" in args:
+                        
+                        of_args_dict["msa"] = args[args.index("-A") + 1]
+                        
+                    elif "-M" in args:
+                        of_args_dict["msa"] = None 
+                        
+                    if "-T" in args:
+                        of_args_dict["gene_tree_method"] = args[args.index("-T") + 1]
+
+                    if "-ST" in args:
+                        of_args_dict["species_tree_method"] = args[args.index("-ST") + 1]
+                    
+                    if "-t" in args:
+                        of_args_dict["sequence_search_threads"] = args[args.index("-t") + 1]
+                        
+                    if "-a" in args:
+                        of_args_dict["analysis_threads"] = args[args.index("-a") + 1]
+    return of_args_dict
+                    
 
 @pytest.fixture(autouse=True)
 def reset_orthofinder_state():

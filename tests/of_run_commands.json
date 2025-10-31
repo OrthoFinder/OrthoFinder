@@ -1,0 +1,30 @@
+{
+    "__comment": "INPUT : The full path of the input filename for proteomes (fasta file of sequences for and msa method, multiple sequence alignment fasta file for tree method)",
+    "__comment": "DAN_INPUT : The full path of the input filename for genome data",
+    "__comment": "CORE_RESULTS :  Path to the directory containing the core run results",
+    "__comment": "SPECIES_TREE : Path to the species tree file",
+
+    "Core": {
+        "blast": "orthofinder -f INPUT -S blast",
+        "dendroblast": "orthofinder -f INPUT -M dendroblast",
+        "mafft": "orthofinder -f INPUT -A mafft",
+        "multiprocessing": "orthofinder -f INPUT -t 4 -a 4",
+        "iqtree3": "orthofinder -f INPUT -T iqtree3",
+        "fasttree_fastest": "orthofinder -f INPUT -T fasttree_fastest",
+        "raxml": "orthofinder -f INPUT -T raxml",
+        "astral": "orthofinder -f INPUT -ST astral",
+        "oneway_search": "orthofinder -f INPUT -1 -z -y",
+        "no_fix_files": "orthofinder -f INPUT --no-fix-files",
+        "old-version": "orthofinder -f INPUT --old-version",
+        "dna": "orthofinder -f DNA_INPUT -d",
+        "prepare_blast": "orthofinder -f INPUT -op --save-blast-commands",
+        "famsa": "orthofinder -f INPUT",
+        "famsa_species_tree": "orthofinder -f INPUT -s SPECIES_TREE -rmgt -rmrgt -rmlg --save-space"
+    },
+    "Assign": {
+        "prepare_blast_restart": "orthofinder -b CORE_RESULTS --restart-of-blast",
+        "famsa_assign": "orthofinder --core CORE_RESULTS --assign INPUT",
+        "famsa_species_tree_assign": "orthofinder --core CORE_RESULTS --assign INPUT -s SPECIES_TREE -rmgt -rmrgt -rmlg --save-space"
+    }
+
+}
