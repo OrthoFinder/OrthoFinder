@@ -206,8 +206,5 @@ setup.py
 requirements_dev.txt
 *expected
 Species_*
-Core 
-Assign
-tests/data/proteome/Core/OrthoFinder
-tests/data/dna/Genomes_Core/OrthoFinder
-tests/data/dna/Genomes_Assign
+tests/data/dna/Genomes_Assign/
+tests/data/dna/Genomes_Core/OrthoFinder/
