@@ -58,13 +58,13 @@ class OrthoFinderTestFuncs:
             self.current_results_dir = self.assign_results
             self.current_working_dir = self.assign_working_dir
 
-            args = ["--core", self.core_results, "--assign", self.assign]
+            args = ["--core", self.core_results, "--assign", self.assign, "--no-print-info"]
             if species_tree_assign:
                 args += ["-s", species_tree_assign]
         else:
             self.current_results_dir = self.core_results
             self.current_working_dir = self.core_working_dir
-            args = ["-f", self.projects]
+            args = ["-f", self.projects, "--no-print-info"]
             if species_tree:
                 args += ["-s", species_tree]
 

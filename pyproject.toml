@@ -55,6 +55,7 @@ dev = [
     "pytest-cov",
     "pytest-check",
     "pytest-order",
+    "pytest-subtests",
     "setuptools>=77",
     "setuptools_scm>=8",
     "packaging>=24.2",
@@ -113,7 +114,6 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "disabled: marks tests as disabled (deselect with '-m \"not disabled\"')",
     "regression: marks a test as a regression test",
-    "unit: marks a test as a unit test",
 ]
 
 

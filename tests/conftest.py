@@ -1,6 +1,7 @@
 import os
 import sys
 import pytest
+import copy
 from collections import deque 
 import helper
 from typing import Optional, Union, List, Any
@@ -105,11 +106,10 @@ DEFAULT_PROJECTS = {
 def pytest_addoption(parser):
     parser.addoption(
         "--run-all",
-        action="store_false",
+        action="store_true",
         default=False,  
         help="Decide wether or not to test all available OrthoFinder command options.",
     )
-
     
     parser.addoption(
         "--run-options",
@@ -130,21 +130,7 @@ def pytest_addoption(parser):
         default=DEFAULT_PROJECTS["testdata"]["proteome"]["core"],  
         help="Comma-separated list of project paths (defaults to latest ExampleData/OrthoFinder run).",
     )
-
-    parser.addoption(
-        "--testdata",
-        action="store_false",
-        default=True,  
-        help="Decide whether or not to use the test dataset.",
-    )
-
-    parser.addoption(
-        "--dna",
-        action="store_true",
-        default=False,  
-        help="Whether or not the input is DNA.",
-    )
-
+    
     parser.addoption(
         "--dna-projects",
         action="store",
@@ -201,241 +187,81 @@ def _to_list(value: Optional[Union[str, int, bool]]) -> List[Any]:
     # fallback
     return [value]
 
-def _split_or_default(value: Optional[Union[str, int, bool]],
-                      default_value: Optional[Union[str, int, bool]]) -> List[Any]:
-    """
-    Use value if present (after normalization); otherwise use default.
-    Both paths return lists.
-    """
-    lst = _to_list(value)
-    if lst:
-        return lst
-    return _to_list(default_value)
-
-def _broadcast_to_len(lst: list, target_len: int, name: str):
-    """
-    Broadcast list `lst` to length `target_len`:
-      - empty -> [None] * target_len
-      - len==1 -> repeat
-      - len==target_len -> as is
-      - else -> error
-    """
-    if target_len <= 0:
-        return lst
-    if not lst:
-        return [None] * target_len
-    if len(lst) == 1:
-        return lst * target_len
-    if len(lst) == target_len:
-        return lst
-    raise pytest.usage_error(
-        f"Length mismatch for '{name}': got {len(lst)} values, need {target_len}. "
-        f"Provide 1 value to broadcast or {target_len} values to align."
-    )
-
-def pytest_generate_tests(metafunc):
-    requested = [name for name in (
-        "run_all",
-        "run_options",
-        "user_config",
-        "projects",
-        "dna_projects",
-        "testdata",
-        "assign",
-        "expected_results",
-        "species_tree",
-        "species_tree_assign",
-    ) if name in metafunc.fixturenames]
-    if not requested:
-        return
-
-    values_by_name = {
-        
-        "run_all": _split_or_default(
-            metafunc.config.getoption("--run-all"), 
-            default_value=False,  
-        ),
-        
-        "run_options": _split_or_default(
-            metafunc.config.getoption("--run-options"), 
-             default_value=None
-        ),
-        "user_config": _split_or_default(
-            metafunc.config.getoption("--user-config"), 
-             default_value=None
-        ),
-        "projects": _split_or_default(
-            metafunc.config.getoption("--projects"), 
-            default_value=DEFAULT_PROJECTS["testdata"]["proteome"]["core"]
-        ),
-
-        "dna_projects": _split_or_default(
-            metafunc.config.getoption("--dna-projects"), 
-            default_value=DEFAULT_PROJECTS["testdata"]["dna"]["core"]
-        ),
-
-        "testdata": _split_or_default(
-            metafunc.config.getoption("--testdata"), default_value=True
-        ),
-
-        "dna": _split_or_default(
-            metafunc.config.getoption("--dna"), default_value=False
-        ),
-        "assign": _split_or_default(
-            metafunc.config.getoption("--assign"), default_value=DEFAULT_PROJECTS["testdata"]["proteome"]["assign"]
-        ),
-        "expected_results": _to_list(
-            metafunc.config.getoption("--expected-results")
-        ),
-        "species_tree": _split_or_default(
-            metafunc.config.getoption("--species-tree"), 
-            default_value=DEFAULT_PROJECTS["testdata"]["proteome"]["species_tree_core"]
-        ),
-        "species_tree_assign": _split_or_default(
-            metafunc.config.getoption("--species-tree-assign"), 
-            default_value=DEFAULT_PROJECTS["testdata"]["proteome"]["species_tree_assign"]
-        ),
-
-    }
-
-    # decide base_len (first requested arg with >1, else first non-empty)
-    base_len = 1
-    for n in requested:
-        if len(values_by_name[n]) > 1:
-            base_len = len(values_by_name[n])
-            break
-    if base_len == 1:
-        for n in requested:
-            if values_by_name[n]:
-                base_len = len(values_by_name[n])
-                break
-
-    aligned_lists = [_broadcast_to_len(values_by_name[n], base_len, n) for n in requested]
-    params = list(zip(*aligned_lists))
-    metafunc.parametrize(tuple(requested), params, scope="session")
-
 ### ------------------- CLI input --------------------------------
-
 @pytest.fixture(scope="session")
 def projects(request):
-    return request.param
+    return request.config.getoption("--projects")
+
+@pytest.fixture(scope="session")
+def user_config(pytestconfig):
+    return pytestconfig.getoption("--user-config")
 
 @pytest.fixture(scope="session")
 def dna_projects(request):
-    return request.param
-
-@pytest.fixture(scope="session")
-def testdata(request):
-    return request.param
-
-@pytest.fixture(scope="session")
-def dna(request):
-    return request.param
+    return request.config.getoption("--dna-projects")
 
 @pytest.fixture(scope="session")
 def assign(request):
     """Fixture giving the additional species path for a test run"""
-    return request.param
+    return request.config.getoption("--assign")
 
 @pytest.fixture(scope="session")
 def expected_results(request):
     """Fixture giving the expected results path for a test run"""
-    return request.param
-
-@pytest.fixture(scope="session")
-def cluster(request):
-    """Fixture giving the clustering program used (e.g., mcl, etc.)"""
-    return request.param
-
-@pytest.fixture(scope="session")
-def msa(request):
-    """Fixture giving the MSA program (e.g., famsa, mafft, etc.)"""
-    return request.config.getoption("--msa")
-
-@pytest.fixture(scope="session")
-def gene_tree_method(request):
-    """Fixture giving the gene tree inference program (e.g., fasttree, iqtree, etc.)"""
-    return request.param
-
-@pytest.fixture(scope="session")
-def dendroblast(request):
-    """Fixture indicating whether dendroblast (non-MSA) mode is enabled"""
-    return request.param
-
-@pytest.fixture(scope="session")
-def species_tree_method(request):
-    """Fixture giving the species tree inference program (e.g., astral-pro, etc.)"""
-    return request.param
+    return request.config.getoption("--expected-results")
 
 @pytest.fixture(scope="session")
 def species_tree(request):
     """Fixture giving the species tree file for core"""
-    return request.param
+    return request.config.getoption("--species-tree")
 
 @pytest.fixture(scope="session")
 def species_tree_assign(request):
     """Fixture giving the species tree file for assign"""
-    return request.param
+    return request.config.getoption("--species-tree-assign")
 
-@pytest.fixture(scope="session")
-def recon_method(request):
-    """Fixture giving the reconciliation program (e.g., of_recon, etc.)"""
-    return request.param
-
-@pytest.fixture(scope="session")
-def sequence_search_threads(request):
-    """Fixture giving the number of parallel sequence search threads"""
-    return request.config.getoption("--t")
-
-@pytest.fixture(scope="session")
-def analysis_threads(request):
-    """Fixture giving the number of analysis threads"""
-    return request.config.getoption("--a")
-
-
-@pytest.fixture(scope="session")
-def run_all(request):
-    """Fixture giving the decision to test all OrthoFinder options"""
-    return request.param
-
-@pytest.fixture(scope="session")
-def run_options(request):
-    return request.param
 
 @pytest.fixture(scope="session")
 def baseline_options():
-    return OF_BASELINE_OPTIONS
+    return OF_BASELINE_OPTIONS 
 
-@pytest.fixture(scope="session")
-def user_config(request):
-    return request.param
 
-@pytest.fixture(scope="session")
-def of_command_dict(user_config, run_all, run_options, baseline_options):
+def _load_of_command_dict_from_cli(config):
+    user_config = config.getoption("--user-config")
+    run_all = bool(config.getoption("--run-all"))
+    run_opts_s = config.getoption("--run-options") or ""
+    run_opts = [x for x in run_opts_s.split(",") if x]
+
     of_commands = helper.read_config_file(COMMANDS_CONFIG, user_config)
+
     if run_all:
         return of_commands
-    elif run_options:
-        filtered_commands = {
-            k1: {
-                k2: v2
-                for k2, v2 in v1.items()  
-                if k2 in run_options + baseline_options
-            }
-            for k1, v1 in of_commands.items()
-        }
 
-        return filtered_commands
-    else:
-        return  {
-            k1: {
-                k2: v2
-                for k2, v2 in v1.items()  
-                if k2 in baseline_options
-            }
-            for k1, v1 in of_commands.items()
-        }
-        
+    base = {cat: {n: cmd for n, cmd in cmds.items() if n in OF_BASELINE_OPTIONS}
+            for cat, cmds in of_commands.items()}
+    if run_opts:
+        sel = {cat: {n: cmd for n, cmd in cmds.items() if n in run_opts}
+               for cat, cmds in of_commands.items()}
+        for cat, cmds in sel.items():
+            base.setdefault(cat, {}).update(cmds)
+    return base
+
+def pytest_generate_tests(metafunc):
+    if "core_case" in metafunc.fixturenames or "assign_case" in metafunc.fixturenames:
+        of_cmds = _load_of_command_dict_from_cli(metafunc.config)
+
+        core = [(name, arg)  for cat, cmds in of_cmds.items()
+                               if "assign" not in cat.lower()
+                               for name, arg in cmds.items()]
+        assign = [(name, arg) for cat, cmds in of_cmds.items()
+                               if "core" not in cat.lower()
+                               for name, arg in cmds.items()]
+
+        if "core_case" in metafunc.fixturenames:
+            metafunc.parametrize("core_case", core, ids=[f"core::{n}" for n, _ in core], scope="session")
+        if "assign_case" in metafunc.fixturenames:
+            metafunc.parametrize("assign_case", assign, ids=[f"assign::{n}" for n, _ in assign], scope="session")
+
 
 @pytest.fixture(scope="session")
 def baseline_arg_dict(baseline_options):
@@ -458,12 +284,6 @@ def baseline_arg_dict(baseline_options):
 
                     if "-ST" in args:
                         of_args_dict["species_tree_method"] = args[args.index("-ST") + 1]
-                    
-                    if "-t" in args:
-                        of_args_dict["sequence_search_threads"] = args[args.index("-t") + 1]
-                        
-                    if "-a" in args:
-                        of_args_dict["analysis_threads"] = args[args.index("-a") + 1]
     return of_args_dict
                     
 
@@ -482,3 +302,6 @@ def reset_orthofinder_state():
     for attr in attrs_to_clear:
         if hasattr(files.FileHandler, attr):
             setattr(files.FileHandler, attr, "")
+            
+            
+        

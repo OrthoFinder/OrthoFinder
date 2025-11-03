@@ -141,6 +141,7 @@ class Options(object):  #
         self.save_blast_commands = False
         self.restart_of_blast = False
         self.rm_legacy = True
+        self.print_info = True
 
     def what(self):
         for k, v in self.__dict__.items():
@@ -594,6 +595,9 @@ def ProcessArgs(args):
 
         elif arg == "--old-version":
             options.old_version = True
+            
+        elif arg == "--no-print-info":
+            options.print_info = False
 
         elif arg == "-ST" or arg == "--species-tree-program":
             if len(args) == 0:
@@ -1011,21 +1015,24 @@ def ProcessArgs(args):
             % options.search_program
         )
         util.Fail()
-
-    print()
-    util.PrintTime(f"Starting [dark_goldenrod]OrthoFinder[/dark_goldenrod] v[deep_sky_blue2]{__version__}[/deep_sky_blue2]")
-    print(
-        "%d thread(s) for highly parallel tasks (BLAST searches etc.)" % options.nBlast
-    )
-    print("%d thread(s) for [dark_goldenrod]OrthoFinder[/dark_goldenrod] algorithm\n" % options.nProcessAlg)
-
+        
+    if options.print_info:
+        print()
+        util.PrintTime(f"Starting [dark_goldenrod]OrthoFinder[/dark_goldenrod] v[deep_sky_blue2]{__version__}[/deep_sky_blue2]")
+        print(
+            "%d thread(s) for highly parallel tasks (BLAST searches etc.)" % options.nBlast
+        )
+        print("%d thread(s) for [dark_goldenrod]OrthoFinder[/dark_goldenrod] algorithm\n" % options.nProcessAlg)
+        
     if options.qFastAdd and not q_selected_msa_options:
-        print("INFO: For --assign defaulting to 'famsa' to reduce RAM usage\n")
+        if options.print_info:
+            print("INFO: For --assign defaulting to 'famsa' to reduce RAM usage\n")
         # options.msa_program = "mafft_memsave"
         options.msa_program = "famsa"
 
     if options.qFastAdd and not q_selected_tree_options:
-        print( "INFO: For --assign defaulting to 'FastTree -fastest' to reduce RAM usage\n")
+        if options.print_info:
+            print( "INFO: For --assign defaulting to 'FastTree -fastest' to reduce RAM usage\n")
         options.tree_program = "fasttree_fastest"
         # options.tree_program = "veryfasttree"
 ### ---------------------------------------------------------    

@@ -9,6 +9,49 @@ from orthofinder.run.__main__ import main
 from orthofinder.run.process_args import GetFileArgument
 
 
+def run_orthofinder_core_case(name, argstr, input_proj, dna_projects, species_tree, capfd):
+    s = argstr.strip().replace("INPUT", input_proj)\
+                      .replace("DNA_INPUT", dna_projects)\
+                      .replace("SPECIES_TREE", species_tree)
+                      
+    args = s.split()[1:] + ["-n", name]
+
+    code, out, err, text = _run_main(args, capfd)
+    assert code == 0, f"{name}: exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
+
+    fatal_patterns = (
+        r"(?mi)^\s*ERROR:\s",
+        r"(?m)^\s*Traceback \(most recent call last\):",
+        r'(?m)^\s*File ".*", line \d+, in \S+',
+        r"(?m)^[A-Za-z_]\w*Error:\s",
+    )
+    assert not any(re.search(p, text) for p in fatal_patterns), text
+
+
+def run_orthofinder_assign_case(name, argstr, input_proj, assign, species_tree_assign, capfd):
+    
+    results_dir = os.path.join(input_proj, "OrthoFinder")
+    projects_results = _find_output_dir(results_dir, "Results_" + name.rsplit("_", 1)[0])
+    
+    s = argstr.strip().replace("INPUT", assign)\
+                      .replace("CORE_RESULTS", projects_results)\
+                      .replace("SPECIES_TREE", species_tree_assign)
+                      
+    args = s.split()[1:] + ["-n", name]
+
+    code, out, err, text = _run_main(args, capfd)
+    assert code == 0, f"{name}: exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
+
+    fatal_patterns = (
+        r"(?mi)^\s*ERROR:\s",
+        r"(?m)^\s*Traceback \(most recent call last\):",
+        r'(?m)^\s*File ".*", line \d+, in \S+',
+        r"(?m)^[A-Za-z_]\w*Error:\s",
+    )
+    assert not any(re.search(p, text) for p in fatal_patterns), text
+
+
+
 def read_config_file(configure_file, user_config_file=None):
     
     if user_config_file is not None:

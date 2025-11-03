@@ -5,26 +5,27 @@
     "__comment": "SPECIES_TREE : Path to the species tree file",
 
     "Core": {
-        "blast": "orthofinder -f INPUT -S blast",
-        "dendroblast": "orthofinder -f INPUT -M dendroblast",
-        "mafft": "orthofinder -f INPUT -A mafft",
-        "multiprocessing": "orthofinder -f INPUT -t 4 -a 4",
-        "iqtree3": "orthofinder -f INPUT -T iqtree3",
-        "fasttree_fastest": "orthofinder -f INPUT -T fasttree_fastest",
-        "raxml": "orthofinder -f INPUT -T raxml",
-        "astral": "orthofinder -f INPUT -ST astral",
-        "oneway_search": "orthofinder -f INPUT -1 -z -y",
-        "no_fix_files": "orthofinder -f INPUT --no-fix-files",
-        "old-version": "orthofinder -f INPUT --old-version",
-        "dna": "orthofinder -f DNA_INPUT -d",
-        "prepare_blast": "orthofinder -f INPUT -op --save-blast-commands",
-        "famsa": "orthofinder -f INPUT",
-        "famsa_species_tree": "orthofinder -f INPUT -s SPECIES_TREE -rmgt -rmrgt -rmlg --save-space"
+        "blast": "orthofinder -f INPUT -S blast --no-print-info",
+        "mmseqs": "orthofinder -f INPUT -S mmseqs --no-print-info",
+        "dendroblast": "orthofinder -f INPUT -M dendroblast --no-print-info",
+        "mafft": "orthofinder -f INPUT -A mafft --no-print-info",
+        "multiprocessing": "orthofinder -f INPUT -t 4 -a 4 --no-print-info",
+        "iqtree3": "orthofinder -f INPUT -T iqtree3 --no-print-info",
+        "fasttree_fastest": "orthofinder -f INPUT -T fasttree_fastest --no-print-info",
+        "raxml": "orthofinder -f INPUT -T raxml --no-print-info",
+        "astral": "orthofinder -f INPUT -ST astral --no-print-info",
+        "oneway_search": "orthofinder -f INPUT -1 -z -y --no-print-info",
+        "no_fix_files": "orthofinder -f INPUT --no-fix-files --no-print-info",
+        "old-version": "orthofinder -f INPUT --old-version --no-print-info",
+        "dna": "orthofinder -f DNA_INPUT -d --no-print-info",
+        "prepare_blast": "orthofinder -f INPUT -op --save-blast-commands --no-print-info",
+        "famsa": "orthofinder -f INPUT --no-print-info",
+        "famsa_species_tree": "orthofinder -f INPUT -s SPECIES_TREE -rmgt -rmrgt -rmlg --save-space --no-print-info"
     },
     "Assign": {
-        "prepare_blast_restart": "orthofinder -b CORE_RESULTS --restart-of-blast",
-        "famsa_assign": "orthofinder --core CORE_RESULTS --assign INPUT",
-        "famsa_species_tree_assign": "orthofinder --core CORE_RESULTS --assign INPUT -s SPECIES_TREE -rmgt -rmrgt -rmlg --save-space"
+        "prepare_blast_restart": "orthofinder -b CORE_RESULTS --restart-of-blast --no-print-info",
+        "famsa_assign": "orthofinder --core CORE_RESULTS --assign INPUT --no-print-info",
+        "famsa_species_tree_assign": "orthofinder --core CORE_RESULTS --assign INPUT -s SPECIES_TREE -rmgt -rmrgt -rmlg --save-space --no-print-info"
     }
 
 }

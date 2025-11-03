@@ -5,7 +5,7 @@ import numpy as np
 from orthofinder.comparative_genomics.stats import add_unassigned_genes, OrthogroupsMatrix
 
 
-@pytest.mark.order(20)
+@pytest.mark.order(9)
 class TestcComparativeStats:
     def test_overall_stats(self, of_and_expected_stats_overall):
         """

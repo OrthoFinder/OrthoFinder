@@ -2,7 +2,7 @@
 import pytest
 import helper
 
-@pytest.mark.order(23)
+@pytest.mark.order(4)
 def test_recon_tree(of_and_expected_recon_tree):
     of_obj, expected_recon_tree = of_and_expected_recon_tree
     of_gene_tree_dict = of_obj.get_recon_gene_trees()
@@ -21,7 +21,7 @@ def test_recon_tree(of_and_expected_recon_tree):
         assert gene_tree.check_monophyly(expected_recon_tree)[0], "????"
 
 
-@pytest.mark.order(24)
+@pytest.mark.order(5)
 def test_orthologues(of_and_expected_orthologues):
     of_obj, expected = of_and_expected_orthologues
     of_orthologues = of_obj.get_orthologues()
@@ -56,7 +56,7 @@ def test_orthologues(of_and_expected_orthologues):
             )
         raise AssertionError("Some expected orthologues were not found:\n" + "\n".join(msgs))
 
-@pytest.mark.order(24)
+@pytest.mark.order(6)
 def test_duplications(of_and_expected_duplications):
     of_obj, expected_dup_map = of_and_expected_duplications
 
@@ -82,7 +82,7 @@ def test_duplications(of_and_expected_duplications):
             print(f"label={label}, Genes1={sorted(A)}, Genes2={sorted(B)} | expected {exp_ogs}, found {act_ogs}")
 
 
-@pytest.mark.order(25)
+@pytest.mark.order(7)
 def test_orthogroups(of_and_expected_orthogroups):
     of_obj, expected_orthogrups = of_and_expected_orthogroups
     orthogroups_dict = of_obj.get_orthogroups()
@@ -109,7 +109,7 @@ def test_orthogroups(of_and_expected_orthogroups):
             print(f"label={label}, Genes1={sorted(A)}, Genes2={sorted(B)} | expected {exp_ogs}, found {act_ogs}")
 
 
-@pytest.mark.order(26)
+@pytest.mark.order(8)
 def test_phylogenetic_hierarchical_orthogroups(of_and_expected_hogs):
     of_obj, expected_hogs_dict = of_and_expected_hogs
     of_hogs_dict = of_obj.get_hogs()
