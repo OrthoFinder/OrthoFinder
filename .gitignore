@@ -203,7 +203,6 @@ DEVNOTES.md
 CONDUCT.md
 OrthoFinder-manual.pdf
 setup.py
-requirements_dev.txt
 *expected
 Species_*
 tests/data/dna/Genomes_Assign/
