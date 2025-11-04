@@ -55,7 +55,7 @@ dev = [
     "pytest-cov",
     "pytest-check",
     "pytest-order",
-    "pytest-subtests",
+    # "pytest-subtests",
     "setuptools>=77",
     "setuptools_scm>=8",
     "packaging>=24.2",

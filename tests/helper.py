@@ -119,16 +119,25 @@ def create_path(arg):
         filepath += os.sep
     return filepath
 
-def _find_output_dir(results_dir, test_filename) -> str:
+def _find_output_dir(results_dir, test_filename, fileno=-1) -> str:
     if isinstance(results_dir, list):
         results_dir = results_dir[0]
 
     results_dir = os.path.abspath(results_dir)
 
     try:
-        for name in os.listdir(results_dir):
-            if test_filename == name.split(".")[0]:
-                return os.path.join(results_dir, name)
+        available_paths = [
+            os.path.join(results_dir, name)
+            for name in os.listdir(results_dir)
+            if test_filename == name.split(".")[0].rsplit("_", 1)[0]
+        ]
+                
+        entries = [
+            (os.stat(path).st_mtime, path)
+            for path in available_paths
+            if path is not None 
+        ]
+        return sorted(entries)[fileno][1] if entries else ""
     except FileNotFoundError:
         return ""
     except NotADirectoryError:
