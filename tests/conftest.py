@@ -117,6 +117,14 @@ def pytest_addoption(parser):
         default=None,
         help="Comma-separated list of available OrthoFinder runs command options.",
     )
+    
+    parser.addoption(
+        "--skip-runs",
+        action="store",
+        default=None,
+        help="Comma-separated list of available OrthoFinder runs command options.",
+    )
+    
     parser.addoption(
         "--user-config",
         action="store",
@@ -231,6 +239,9 @@ def _load_of_command_dict_from_cli(config):
     run_all = bool(config.getoption("--run-all"))
     run_opts_s = config.getoption("--run-options") or ""
     run_opts = [x for x in run_opts_s.split(",") if x]
+    skip_runs = config.getoption("--skip-runs") or ""
+    skip_run_opts = [x for x in skip_runs.split(",") if x]
+    
 
     of_commands = helper.read_config_file(COMMANDS_CONFIG, user_config)
 
@@ -241,6 +252,11 @@ def _load_of_command_dict_from_cli(config):
             for cat, cmds in of_commands.items()}
     if run_opts:
         sel = {cat: {n: cmd for n, cmd in cmds.items() if n in run_opts}
+               for cat, cmds in of_commands.items()}
+        for cat, cmds in sel.items():
+            base.setdefault(cat, {}).update(cmds)
+    if skip_run_opts:
+        sel = {cat: {n: cmd for n, cmd in cmds.items() if n not in skip_run_opts}
                for cat, cmds in of_commands.items()}
         for cat, cmds in sel.items():
             base.setdefault(cat, {}).update(cmds)
