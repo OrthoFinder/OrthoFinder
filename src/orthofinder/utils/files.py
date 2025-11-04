@@ -162,7 +162,7 @@ class __Files_new_dont_manually_create__(object):
                                                       extended_filename=extended_filename)
         self.wd_current = self.rd1 + "WorkingDirectory/"
         os.mkdir(self.wd_current)
-        with open(self.rd1 + "Log.txt", 'w'):
+        with open(os.path.join(self.rd1, "Log.txt"), 'w'):
             pass
         self.wd_trees = self.wd_current
         self.StartLog(search_program=search_program, msa_program=msa_program, tree_program=tree_program,
@@ -712,7 +712,7 @@ class __Files_new_dont_manually_create__(object):
         prepend = ""
         if qWithTime:
             prepend = str(datetime.datetime.now()).rsplit(".", 1)[0] + " : "
-        with open(results_dir + "Log.txt", 'a') as outfile:
+        with open(os.path.join(results_dir,"Log.txt"), 'a') as outfile:
             outfile.write(prepend + text)
     
     def StartLog(self, search_program=None, msa_program=None, tree_program=None, 
@@ -841,10 +841,10 @@ class PreviousFilesLocator_new(PreviousFilesLocator):
             # there are no files to find
             return
         if not self._IsNewDirStructure(continuationDir): raise Unprocessable("Input directory structure is not processable as new structure")
-        self._ProcessLog(continuationDir + "/Log.txt")
+        self._ProcessLog(os.path.join(continuationDir, "Log.txt"))
     
     def _IsNewDirStructure(self, inputDir):
-        return os.path.exists(inputDir + "/Log.txt") 
+        return os.path.exists(os.path.join(inputDir, "Log.txt"))
     
     def _ProcessLog(self, logFN):
         """
