@@ -1,4 +1,5 @@
 import os
+import re
 from ..utils import util, files, program_caller
 from ..utils.util import printer
 from ..comparative_genomics import orthologues
@@ -142,6 +143,7 @@ class Options(object):  #
         self.restart_of_blast = False
         self.rm_legacy = True
         self.print_info = True
+        self.fd_limit = None
 
     def what(self):
         for k, v in self.__dict__.items():
@@ -575,7 +577,21 @@ def ProcessArgs(args):
             except:
                 print(f"Incorrect argument {arg} for the minmum number of sequence. Values must be an integer equal to or greater than 4.")
                 util.Fail()
-        
+                
+        elif arg == "-fd":
+            try:
+                arg = args.pop(0)
+                soft, hard = re.split(r"[,\s;]+", arg)
+                soft = int(soft)
+                hard = int(hard)
+                if soft > hard:
+                    temp = soft
+                    soft, hard = hard, temp
+                options.fd_limit = (soft, hard) if soft > 0 and hard > 0 else None
+            except:
+                print(f"Incorrect argument {arg} for the minmum number of sequence.")
+                util.Fail()
+                
         # elif arg == "--friendly":
             
         #     console = Console()

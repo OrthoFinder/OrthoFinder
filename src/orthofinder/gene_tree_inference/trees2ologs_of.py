@@ -13,7 +13,7 @@ import os
 import sys
 import csv
 import glob
-import argparse
+import resource
 import operator
 import itertools
 import traceback
@@ -1310,7 +1310,8 @@ def DoOrthologuesForOrthoFinder(
         print_info=True,
         exist_msa=True,
         write_hog_tree=True,
-        fix_files=True
+        fix_files=True,
+        fd_limit=None,
     ):
     try:
         # Create directory structure
@@ -1479,7 +1480,8 @@ def DoOrthologuesForOrthoFinder(
                     n_ologs_cache=100,
                     old_version=old_version,
                     write_hog_tree=write_hog_tree,
-                    fix_files=fix_files
+                    fix_files=fix_files,
+                    fd_limit=fd_limit
                 )
 
     except IOError as e:
@@ -1935,6 +1937,20 @@ def Worker_RunOrthologsMethod_New(
 
     finally:
         results_queue.put(None) 
+        
+def set_file_descriptor_limit(fd_limit: int) -> None:
+    try:
+        new_soft_limit, new_hard_limit = fd_limit
+        soft_limit, hard_limit = resource.getrlimit(resource.RLIMIT_NOFILE)
+        print(f"Current file descriptor limits: soft={soft_limit}, hard={hard_limit}")
+        resource.setrlimit(resource.RLIMIT_NOFILE, (new_soft_limit, new_hard_limit))
+        print(f"New file descriptor limits: soft={new_soft_limit}, hard={new_hard_limit}")
+    except AttributeError:
+        print("File descriptor limit functions not available on this platform.")
+    except ValueError as e:
+        print(f"Invalid limit value: {e}")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
 
 def RunOrthologsParallel(
         tree_analyser, 
@@ -1946,12 +1962,21 @@ def RunOrthologsParallel(
         n_ologs_cache=100,
         old_version=False,
         write_hog_tree=False,
-        fix_files=False
+        fix_files=False,
+        fd_limit=None,
     ):
     """
     Run the ortholog analysis in parallel using multiprocessing.
     Tracks progress dynamically using a progress bar.
     """
+    if fd_limit is not None:
+        if sys.platform.startswith('linux') or sys.platform == 'darwin':
+            set_file_descriptor_limit(fd_limit)
+        else:
+            warnings.warn(f"File descriptor limit adjustment is not supported on {sys.platform}.")
+
+    
+    
     if old_version:
         results_queue = mp.Queue()
         # Should use PTM?

@@ -300,7 +300,8 @@ def ReconciliationAndOrthologues(
         exist_msa=True,
         write_hog_tree=True,
         fix_files=True,
-        write_to_rd=True
+        write_to_rd=True,
+        fd_limit=None,
     ):
     """
     ogSet - info about the orthogroups, species etc.
@@ -390,6 +391,7 @@ def ReconciliationAndOrthologues(
             exist_msa=exist_msa,
             write_hog_tree=write_hog_tree,
             fix_files=fix_files,
+            fd_limit=fd_limit
     )
     if print_info:
         util.PrintTime("Done of orthologues")
@@ -437,7 +439,8 @@ def OrthologuesFromTrees(
         old_version=False,
         exist_msa=True,
         write_hog_tree=True,
-        fix_files=True
+        fix_files=True,
+        fd_limit=None,
     ):
     """
     userSpeciesTree_fn - None if not supplied otherwise rooted tree using user species names (not orthofinder IDs)
@@ -473,7 +476,8 @@ def OrthologuesFromTrees(
         old_version=old_version,
         exist_msa=exist_msa,
         write_hog_tree=write_hog_tree,
-        fix_files=fix_files
+        fix_files=fix_files,
+        fd_limit=fd_limit
     )
 
     if not write_hog_tree or not fix_files:
@@ -615,6 +619,7 @@ def OrthologuesWorkflow(
         write_hog_tree=write_hog_tree,
         fix_files=options.fix_files,
         write_to_rd=write_to_rd,
+        fd_limit=options.fd_limit
     )
 
     # if qStopAfterTrees:
@@ -666,6 +671,7 @@ def OrthologuesWorkflow(
             write_hog_tree=False,
             fix_files=options.fix_files,
             write_to_rd=True,
+            fd_limit=options.fd_limit
         )
 
         fastaWriter = trees_msa.FastaWriter(files.FileHandler.GetSpeciesSeqsDir(), speciesToUse)
@@ -824,6 +830,7 @@ def InferOrthologs(
         fix_files=True,
         working_dir="",
         write_to_rd=True,
+        fd_limit=None
     ):
     """ C. Gene tree rooting & orthologs"""
 
@@ -860,7 +867,8 @@ def InferOrthologs(
         exist_msa=exist_msa,
         write_hog_tree=write_hog_tree,
         fix_files=fix_files,
-        write_to_rd=write_to_rd
+        write_to_rd=write_to_rd,
+        fd_limit=fd_limit
     )
     # util.PrintTime("Done Recon")
 
