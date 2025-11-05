@@ -3,8 +3,13 @@
     "__comment": "DAN_INPUT : The full path of the input filename for genome data",
     "__comment": "CORE_RESULTS :  Path to the directory containing the core run results",
     "__comment": "SPECIES_TREE : Path to the species tree file",
+    "__comment": "USER_CONFIG : Path to the user config file",
 
     "Core": {
+        "user_config": "orthofinder -f INPUT --config USER_CONFIG",
+        "methodthreads_minseq": "orthofinder -f INPUT -mt 2 -ms 5",
+        "v2_scores_output_extension": "orthofinder -f INPUT --scores-v2 -efn",
+        "stop_after_orthogroups": "orthofinder -f INPUT -og",
         "blast": "orthofinder -f INPUT -S blast --no-print-info",
         "mmseqs": "orthofinder -f INPUT -S mmseqs --no-print-info",
         "dendroblast": "orthofinder -f INPUT -M dendroblast --no-print-info",
@@ -16,7 +21,7 @@
         "astral": "orthofinder -f INPUT -ST astral --no-print-info",
         "oneway_search": "orthofinder -f INPUT -1 -z -y --no-print-info",
         "no_fix_files": "orthofinder -f INPUT --no-fix-files --no-print-info",
-        "old-version": "orthofinder -f INPUT --old-version --no-print-info",
+        "old_version": "orthofinder -f INPUT --old-version --no-print-info",
         "dna": "orthofinder -f DNA_INPUT -d --no-print-info",
         "prepare_blast": "orthofinder -f INPUT -op --save-blast-commands --no-print-info",
         "famsa": "orthofinder -f INPUT --no-print-info",

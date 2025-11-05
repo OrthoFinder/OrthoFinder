@@ -25,6 +25,7 @@
 # For any enquiries send an email to David Emms
 # david_emms@hotmail.comhor: david
 import os
+import sys
 import csv
 import shutil
 from collections import Counter, defaultdict
@@ -275,9 +276,11 @@ def AllOrthologues(ogSet):
                 orthologues = [(d0, d1, d_empty, d_empty)]
             else: 
                 continue # no orthologues
+            
+            all_orthologues.append((iog, orthologues))
+            
         elif n >= ogSet.min_seq:
             continue
-        all_orthologues.append((iog, orthologues))
     nspecies = len(ogSet.speciesToUse)
     sp_to_index = {str(sp):i for i, sp in enumerate(ogSet.speciesToUse)}
     olog_lines_tot = [["" for j in range(nspecies)] for i in range(nspecies)]
@@ -647,7 +650,10 @@ def OrthologuesWorkflow(
             i_og_restart=i_og_restart,
             exist_msa=options.qMSATrees,
         )
-       
+        if options.qStopAfterGroups:
+            print(f"OrthoFinder stopped after writing Orthogroups to file.")
+            sys.exit()
+            
         util.PrintTime("Done updating MSA/Trees")
         InferOrthologs(
             ogSet, 

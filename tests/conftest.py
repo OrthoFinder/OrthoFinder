@@ -17,7 +17,7 @@ OF_BASELINE_OPTIONS = [
 
 ## ------- Default ExampleData ---------
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) # project root
-
+OF_USER_CONFIG = os.path.join(ROOT, "user_config.json")
 EXAMPLEDATA = os.path.join(ROOT, "ExampleData")
 EXAMPLE_RESULTS = os.path.join(ROOT, "ExampleData", "OrthoFinder")
 
@@ -126,12 +126,20 @@ def pytest_addoption(parser):
     )
     
     parser.addoption(
-        "--user-config",
+        "--user-testconfig",
         action="store",
         default=None,
-        help="Comma-separated list of available OrthoFinder runs command options json file.",
+        help="OrthoFinder runs command options json file.",
     )
- 
+
+    parser.addoption(
+        "--user-ofconfig",
+        action="store",
+        default=OF_USER_CONFIG,
+        help="OrthoFinder external software command json file.",
+    )
+    
+
     parser.addoption(
         "--projects",
         action="store",
@@ -201,8 +209,8 @@ def projects(request):
     return request.config.getoption("--projects")
 
 @pytest.fixture(scope="session")
-def user_config(pytestconfig):
-    return pytestconfig.getoption("--user-config")
+def user_ofconfig(pytestconfig):
+    return pytestconfig.getoption("--user-ofconfig")
 
 @pytest.fixture(scope="session")
 def dna_projects(request):
@@ -234,8 +242,9 @@ def baseline_options():
     return OF_BASELINE_OPTIONS 
 
 
+
 def _load_of_command_dict_from_cli(config):
-    user_config = config.getoption("--user-config")
+    user_config = config.getoption("--user-testconfig")
     run_all = bool(config.getoption("--run-all"))
     run_opts_s = config.getoption("--run-options") or ""
     run_opts = [x for x in run_opts_s.split(",") if x]

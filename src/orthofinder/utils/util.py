@@ -26,6 +26,8 @@
 import gzip
 import os
 import sys
+import csv 
+import glob
 import numpy as np
 import datetime
 from collections import namedtuple
@@ -835,3 +837,32 @@ def clear_dir(of3_dir):
                 except Exception as e:
                     printer.print(f'Failed to delete {entry.path}. Reason: {e}', style="error")
 
+
+def split_ortholog_files(d_ologs, q_compress=False):
+    if not d_ologs.endswith("/"):
+        d_ologs += "/"
+    filenames = list(glob.glob(d_ologs + "*.tsv") + glob.glob(d_ologs + "*.tsv.gz"))
+    species = [
+        os.path.splitext(os.path.splitext(os.path.basename(fn))[0])[0] if fn.endswith(".gz") else os.path.splitext(os.path.basename(fn))[0]
+        for fn in filenames]
+    for fn, sp0 in zip(filenames, species):
+        d_out = d_ologs + "Orthologues_" + sp0 + "/"
+        if not os.path.exists(d_out):
+            os.mkdir(d_out)
+        file_handles = []
+        csv_writers = {}
+        for sp1 in species:
+            if sp0 == sp1:
+                continue
+            if q_compress:
+                file_handles.append(gzip.open(d_out + '%s__v__%s.tsv.gz' % (sp0, sp1), csv_write_mode))
+            else:
+                file_handles.append(open(d_out + '%s__v__%s.tsv' % (sp0, sp1), csv_write_mode))
+            csv_writers[sp1] = csv.writer(file_handles[-1], delimiter="\t")
+            csv_writers[sp1].writerow(("Orthogroup", sp0, sp1))
+        with gzip.open(fn, csv_read_mode) if fn.endswith(".gz") else open(fn, csv_read_mode) as infile:
+            reader = csv.reader(infile, delimiter="\t")
+            next(reader)  # skip header
+            for row in reader:
+                if len(row) == 4: # OG,species,genes1,genes2
+                    csv_writers[row[1]].writerow(row[:1] + row[2:])

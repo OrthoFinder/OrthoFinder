@@ -56,7 +56,7 @@ from ..utils import (
     files,
     util,
     program_caller,
-    split_ortholog_files,
+    # split_ortholog_files,
     fasta_processor,
 )
 from ..orthogroups import gathering, orthogroups_set
@@ -462,7 +462,7 @@ def main(args=None):
                 speciesXML,
             )
             # 9.
-            if not options.qStopAfterGroups:
+            if options.fix_files or not options.qStopAfterGroups:
                 GetOrthologues(
                     seqsInfo, speciesNamesDict, 
                     speciesInfoObj, 
@@ -506,8 +506,8 @@ def main(args=None):
                 speciesNamesDict, 
                 speciesXML,
             )
-            # 9.
-            if not options.qStopAfterGroups:
+            # 9.4
+            if options.fix_files or not options.qStopAfterGroups:
                 GetOrthologues(
                     seqsInfo, 
                     speciesNamesDict, 
@@ -583,7 +583,7 @@ def main(args=None):
                 speciesXML,
             )
             # 9
-            if not options.qStopAfterGroups:
+            if options.fix_files or not options.qStopAfterGroups:
                 GetOrthologues(
                     seqsInfo, speciesNamesDict, 
                     speciesInfoObj, 
@@ -592,44 +592,57 @@ def main(args=None):
                     speciesXML=speciesXML,
                 )
 
-        # elif options.qStartFromGroups:
-        #     # 0.
-        #     check_blast = not options.qMSATrees
-        #     speciesInfoObj, _ = species_info.ProcessPreviousFiles(
-        #         continuationDir, options.qDoubleBlast, check_blast=check_blast
-        #     )
-        #     files.FileHandler.LogSpecies()
-        #     options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
+        elif options.qStartFromGroups:
+            # 0.
+            check_blast = not options.qMSATrees
+            speciesInfoObj, _ = species_info.ProcessPreviousFiles(
+                continuationDir, options.qDoubleBlast, check_blast=check_blast
+            )
+            files.FileHandler.LogSpecies()
+            options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
 
-        #     ### 9
-        #     # speciesXML = (
-        #     #     species_info.GetXMLSpeciesInfo(speciesInfoObj, options)
-        #     #     if options.speciesXMLInfoFN
-        #     #     else None
-        #     # )
-        #     speciesXML = None
-        #     ### 8
-        #     speciesNamesDict = species_info.SpeciesNameDict(
-        #         files.FileHandler.GetSpeciesIDsFN()
-        #     )
+            ### 9
+            # speciesXML = (
+            #     species_info.GetXMLSpeciesInfo(speciesInfoObj, options)
+            #     if options.speciesXMLInfoFN
+            #     else None
+            # )
+            speciesXML = None
+            ### 8
+            speciesNamesDict = species_info.SpeciesNameDict(
+                files.FileHandler.GetSpeciesIDsFN()
+            )
+            seqsInfo = util.GetSeqsInfo(
+                files.FileHandler.GetWorkingDirectory1_Read(),
+                speciesInfoObj.speciesToUse,
+                speciesInfoObj.nSpAll,
+            )
+            
+            gathering.DoOrthogroups(
+                options, 
+                speciesInfoObj, 
+                seqsInfo, 
+                speciesNamesDict, 
+                speciesXML,
+            )
+            
+            GetOrthologues(
+                seqsInfo, speciesNamesDict, 
+                speciesInfoObj, 
+                options, 
+                prog_caller,
+                speciesXML=speciesXML,
+            )
 
-        #     GetOrthologues(
-        #         seqsInfo, speciesNamesDict, 
-        #         speciesInfoObj, 
-        #         options, 
-        #         prog_caller,
-        #         speciesXML=speciesXML,
-        #     )
-
-        # elif options.qStartFromTrees:
-        #     speciesInfoObj, _ = species_info.ProcessPreviousFiles(
-        #         files.FileHandler.GetWorkingDirectory1_Read(),
-        #         options.qDoubleBlast,
-        #         check_blast=False,
-        #     )
-        #     files.FileHandler.LogSpecies()
-        #     options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
-        #     GetOrthologues_FromTrees(options)
+        elif options.qStartFromTrees:
+            speciesInfoObj, _ = species_info.ProcessPreviousFiles(
+                files.FileHandler.GetWorkingDirectory1_Read(),
+                options.qDoubleBlast,
+                check_blast=False,
+            )
+            files.FileHandler.LogSpecies()
+            options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
+            GetOrthologues_FromTrees(options)
 
         elif options.qFastAdd:
             # Prepare previous directory as database
@@ -710,7 +723,7 @@ def main(args=None):
                     options.speciesTreeFN = files.FileHandler.GetSpeciesTreeResultsFN(
                         None, True
                     )
-            if not options.qStopAfterGroups:
+            if options.fix_files or not options.qStopAfterGroups:
                 GetOrthologues(
                     seqsInfo, speciesNamesDict, 
                     speciesInfoObj, 
@@ -725,7 +738,7 @@ def main(args=None):
             ptm.Stop()
         if not options.save_space and not options.qFastAdd:
             # split up the orthologs into one file per species-pair
-            split_ortholog_files.split_ortholog_files(
+            util.split_ortholog_files(
                 files.FileHandler.GetOrthologuesDirectory()
             )
 

@@ -415,19 +415,19 @@ def ProcessArgs(args):
             options.qFastAdd = True
             continuationDir = GetDirectoryArgument(arg, args)
 
-        # elif arg == "-fg" or arg == "--from-groups":
-        #     if options.qStartFromGroups:
-        #         print("Repeated argument: -fg/--from-groups\n")
-        #         util.Fail()
-        #     options.qStartFromGroups = True
-        #     continuationDir = GetDirectoryArgument(arg, args)
+        elif arg == "-fg" or arg == "--from-groups":
+            if options.qStartFromGroups:
+                print("Repeated argument: -fg/--from-groups\n")
+                util.Fail()
+            options.qStartFromGroups = True
+            continuationDir = GetDirectoryArgument(arg, args)
 
-        # elif arg == "-ft" or arg == "--from-trees":
-        #     if options.qStartFromTrees:
-        #         print("Repeated argument: -ft/--from-trees\n")
-        #         util.Fail()
-        #     options.qStartFromTrees = True
-        #     continuationDir = GetDirectoryArgument(arg, args)
+        elif arg == "-ft" or arg == "--from-trees":
+            if options.qStartFromTrees:
+                print("Repeated argument: -ft/--from-trees\n")
+                util.Fail()
+            options.qStartFromTrees = True
+            continuationDir = GetDirectoryArgument(arg, args)
 
         elif arg == "-t" or arg == "--threads":
             if len(args) == 0:
@@ -835,14 +835,14 @@ def ProcessArgs(args):
         #         print("Valid options are: {%s}\n" % (", ".join(choices)))
         #         util.Fail()
 
-        elif arg == "-p":
-            pickleDir_nonDefault = GetDirectoryArgument(arg, args)
+        # elif arg == "-p":
+        #     pickleDir_nonDefault = GetDirectoryArgument(arg, args)
 
         elif arg == "-op" or arg == "--only-prepare":
             options.qStopAfterPrepare = True
 
-        # elif arg == "-og" or arg == "--only-groups":
-        #     options.qStopAfterGroups = False
+        elif arg == "-og" or arg == "--only-groups":
+            options.qStopAfterGroups = True
 
         # elif arg == "-os" or arg == "--only-seqs":
         #     options.qStopAfterSeqs = False
@@ -925,8 +925,8 @@ def ProcessArgs(args):
     if not (
         options.qStartFromFasta
         or options.qStartFromBlast
-        # or options.qStartFromGroups
-        # or options.qStartFromTrees
+        or options.qStartFromGroups
+        or options.qStartFromTrees
         or options.qFastAdd
     ):
         print(
@@ -938,8 +938,8 @@ def ProcessArgs(args):
         if (
             options.qStartFromFasta
             or options.qStartFromBlast
-            # or options.qStartFromGroups
-            # or options.qStartFromTrees
+            or options.qStartFromGroups
+            or options.qStartFromTrees
         ):
             print(
                 "ERROR: Incompatible options used with --assign, cannot accept: '-f', '-b', '-fg' or '-ft'"
@@ -961,49 +961,49 @@ def ProcessArgs(args):
             )
             util.Fail()
 
-    # if options.qStartFromFasta and (
-    #     options.qStartFromTrees or options.qStartFromGroups
-    # ):
-    #     print(
-    #         "ERROR: Incompatible arguments, -f (start from fasta files) and"
-    #         + (
-    #             " -fg (start from orthogroups)"
-    #             if options.qStartFromGroups
-    #             else " -ft (start from trees)"
-    #         )
-    #     )
-    #     util.Fail()
+    if options.qStartFromFasta and (
+        options.qStartFromTrees or options.qStartFromGroups
+    ):
+        print(
+            "ERROR: Incompatible arguments, -f (start from fasta files) and"
+            + (
+                " -fg (start from orthogroups)"
+                if options.qStartFromGroups
+                else " -ft (start from trees)"
+            )
+        )
+        util.Fail()
 
-    # if options.qStartFromBlast and (
-    #     options.qStartFromTrees or options.qStartFromGroups
-    # ):
-    #     print(
-    #         "ERROR: Incompatible arguments, -b (start from pre-calcualted BLAST results) and"
-    #         + (
-    #             " -fg (start from orthogroups)"
-    #             if options.qStartFromGroups
-    #             else " -ft (start from trees)"
-    #         )
-    #     )
-    #     util.Fail()
+    if options.qStartFromBlast and (
+        options.qStartFromTrees or options.qStartFromGroups
+    ):
+        print(
+            "ERROR: Incompatible arguments, -b (start from pre-calcualted BLAST results) and"
+            + (
+                " -fg (start from orthogroups)"
+                if options.qStartFromGroups
+                else " -ft (start from trees)"
+            )
+        )
+        util.Fail()
 
-    # if options.qStartFromTrees and options.qStartFromGroups:
-    #     print(
-    #         "ERROR: Incompatible arguments, -fg (start from orthogroups) and -ft (start from trees)"
-    #     )
-    #     util.Fail()
+    if options.qStartFromTrees and options.qStartFromGroups:
+        print(
+            "ERROR: Incompatible arguments, -fg (start from orthogroups) and -ft (start from trees)"
+        )
+        util.Fail()
 
-    # if options.qStopAfterSeqs and (not options.qMSATrees):
-    #     print(
-    #         "ERROR: Argument '-os' (stop after sequences) also requires option '-M msa'"
-    #     )
-    #     util.Fail()
+    if options.qStopAfterSeqs and (not options.qMSATrees):
+        print(
+            "ERROR: Argument '-os' (stop after sequences) also requires option '-M msa'"
+        )
+        util.Fail()
 
-    # if options.qStopAfterAlignments and (not options.qMSATrees):
-    #     print(
-    #         "ERROR: Argument '-oa' (stop after alignments) also requires option '-M msa'"
-    #     )
-    #     util.Fail()
+    if options.qStopAfterAlignments and (not options.qMSATrees):
+        print(
+            "ERROR: Argument '-oa' (stop after alignments) also requires option '-M msa'"
+        )
+        util.Fail()
 
     if (q_selected_msa_options or q_selected_tree_options) and (
         not options.qMSATrees and not options.qPhyldog

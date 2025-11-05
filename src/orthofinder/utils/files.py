@@ -169,56 +169,56 @@ class __Files_new_dont_manually_create__(object):
                       scorematrix=scorematrix, gapopen=gapopen, gapextend=gapextend)
     
     
-    # def StartFromTrees(self, 
-    #                    wd1_list, 
-    #                    wd2,
-    #                    base, 
-    #                    clustersFilename_pairs,
-    #                    speciesTreeFN, 
-    #                    qIsUSerSpeciesTree,
-    #                    user_name=None,
-    #                    search_program=None,
-    #                    msa_program=None,
-    #                    tree_program=None,
-    #                    scorematrix=None,
-    #                    gapopen=None,
-    #                    gapextend=None,
-    #                    extended_filename=False):
-    #     """
-    #     Convert user species tree here if necessary
-    #     For OF species tree copy it to location given by FileHandler
-    #     For user species tree, this must be done immediately by OF code
-    #     """
-    #     self.wd_base = wd1_list
-    #     self.wd_trees = wd2
-    #     if user_name == None:
-    #         self.rd1 = util.CreateNewWorkingDirectory(base + "Results_",
-    #                                                   search_program=search_program, 
-    #                                                   msa_program=msa_program,
-    #                                                   tree_program=tree_program,
-    #                                                   scorematrix=scorematrix,
-    #                                                   gapopen=gapopen,
-    #                                                   gapextend=gapextend,
-    #                                                   extended_filename=extended_filename)
-    #     else:
-    #         self.rd1 = util.CreateNewWorkingDirectory(base + "Results_" + user_name, 
-    #                                                   qDate=False,
-    #                                                   search_program=search_program,
-    #                                                   msa_program=msa_program,
-    #                                                   tree_program=tree_program,
-    #                                                   scorematrix=scorematrix,
-    #                                                   gapopen=gapopen,
-    #                                                   gapextend=gapextend,
-    #                                                   extended_filename=extended_filename)
-    #     self.wd_current = self.rd1 + "WorkingDirectory/"
-    #     os.mkdir(self.wd_current)
-    #     self.clustersFilename = clustersFilename_pairs[:-len("_id_pairs.txt")]
-    #     self.StartLog(search_program=search_program, msa_program=msa_program, tree_program=tree_program,
-    #                   scorematrix=scorematrix, gapopen=gapopen, gapextend=gapextend)
-    #     if not qIsUSerSpeciesTree:
-    #         shutil.copy(speciesTreeFN, self.GetSpeciesTreeIDsRootedFN())
-    #     self.WriteToLog("Species Tree: %s\n" % speciesTreeFN)
-    #     self.LogWorkingDirectoryTrees()
+    def StartFromTrees(self, 
+                       wd1_list, 
+                       wd2,
+                       base, 
+                       clustersFilename_pairs,
+                       speciesTreeFN, 
+                       qIsUSerSpeciesTree,
+                       user_name=None,
+                       search_program=None,
+                       msa_program=None,
+                       tree_program=None,
+                       scorematrix=None,
+                       gapopen=None,
+                       gapextend=None,
+                       extended_filename=False):
+        """
+        Convert user species tree here if necessary
+        For OF species tree copy it to location given by FileHandler
+        For user species tree, this must be done immediately by OF code
+        """
+        self.wd_base = wd1_list
+        self.wd_trees = wd2
+        if user_name == None:
+            self.rd1 = util.CreateNewWorkingDirectory(base + "Results_",
+                                                      search_program=search_program, 
+                                                      msa_program=msa_program,
+                                                      tree_program=tree_program,
+                                                      scorematrix=scorematrix,
+                                                      gapopen=gapopen,
+                                                      gapextend=gapextend,
+                                                      extended_filename=extended_filename)
+        else:
+            self.rd1 = util.CreateNewWorkingDirectory(base + "Results_" + user_name, 
+                                                      qDate=False,
+                                                      search_program=search_program,
+                                                      msa_program=msa_program,
+                                                      tree_program=tree_program,
+                                                      scorematrix=scorematrix,
+                                                      gapopen=gapopen,
+                                                      gapextend=gapextend,
+                                                      extended_filename=extended_filename)
+        self.wd_current = self.rd1 + "WorkingDirectory/"
+        os.mkdir(self.wd_current)
+        self.clustersFilename = clustersFilename_pairs[:-len("_id_pairs.txt")]
+        self.StartLog(search_program=search_program, msa_program=msa_program, tree_program=tree_program,
+                      scorematrix=scorematrix, gapopen=gapopen, gapextend=gapextend)
+        if not qIsUSerSpeciesTree:
+            shutil.copy(speciesTreeFN, self.GetSpeciesTreeIDsRootedFN())
+        self.WriteToLog("Species Tree: %s\n" % speciesTreeFN)
+        self.LogWorkingDirectoryTrees()
                                          
     def CreateOutputDirectories(self, options, previous_files_locator, base_dir, fastaDir=None):
         if (options.qStartFromFasta and options.qStartFromBlast) or options.qFastAdd:
@@ -258,43 +258,43 @@ class __Files_new_dont_manually_create__(object):
                                                       gapextend=options.gapextend,
                                                       extended_filename=options.extended_filename)  
             
-        # elif options.qStartFromGroups:
-        #     wd1, clustersFilename_pairs = previous_files_locator.GetStartFromOGs()
-        #     self.StartFromOrthogroupsOrSequenceSearch(wd1, 
-        #                                               base_dir,
-        #                                               clustersFilename_pairs, 
-        #                                               user_name=options.name,
-        #                                               search_program=options.search_program,
-        #                                               msa_program=options.msa_program,
-        #                                               tree_program=options.tree_program,
-        #                                               scorematrix=options.score_matrix,
-        #                                               gapopen=options.gapopen,
-        #                                               gapextend=options.gapextend,
-        #                                               extended_filename=options.extended_filename)
-        # elif options.qStartFromTrees:
-        #     wd1, clustersFilename_pairs, wd_trees, speciesTreeFN = previous_files_locator.GetStartFromTrees()
-        #     if options.speciesTreeFN != None:
-        #         qIsUserSpeciesTree = True
-        #         speciesTreeFN = options.speciesTreeFN
-        #     elif speciesTreeFN != None:
-        #         qIsUserSpeciesTree = False
-        #     else:
-        #         print("ERROR: Could not find species tree")
-        #         util.Fail()
-        #     self.StartFromTrees(wd1, 
-        #                         wd_trees,
-        #                         base_dir, 
-        #                         clustersFilename_pairs,
-        #                         speciesTreeFN, 
-        #                         qIsUserSpeciesTree,
-        #                         user_name=options.name,
-        #                         search_program=options.search_program,
-        #                         msa_program=options.msa_program,
-        #                         tree_program=options.tree_program,
-        #                         scorematrix=options.score_matrix,
-        #                         gapopen=options.gapopen,
-        #                         gapextend=options.gapextend,
-        #                         extended_filename=options.extended_filename)
+        elif options.qStartFromGroups:
+            wd1, clustersFilename_pairs = previous_files_locator.GetStartFromOGs()
+            self.StartFromOrthogroupsOrSequenceSearch(wd1, 
+                                                      base_dir,
+                                                      clustersFilename_pairs, 
+                                                      user_name=options.name,
+                                                      search_program=options.search_program,
+                                                      msa_program=options.msa_program,
+                                                      tree_program=options.tree_program,
+                                                      scorematrix=options.score_matrix,
+                                                      gapopen=options.gapopen,
+                                                      gapextend=options.gapextend,
+                                                      extended_filename=options.extended_filename)
+        elif options.qStartFromTrees:
+            wd1, clustersFilename_pairs, wd_trees, speciesTreeFN = previous_files_locator.GetStartFromTrees()
+            if options.speciesTreeFN != None:
+                qIsUserSpeciesTree = True
+                speciesTreeFN = options.speciesTreeFN
+            elif speciesTreeFN != None:
+                qIsUserSpeciesTree = False
+            else:
+                print("ERROR: Could not find species tree")
+                util.Fail()
+            self.StartFromTrees(wd1, 
+                                wd_trees,
+                                base_dir, 
+                                clustersFilename_pairs,
+                                speciesTreeFN, 
+                                qIsUserSpeciesTree,
+                                user_name=options.name,
+                                search_program=options.search_program,
+                                msa_program=options.msa_program,
+                                tree_program=options.tree_program,
+                                scorematrix=options.score_matrix,
+                                gapopen=options.gapopen,
+                                gapextend=options.gapextend,
+                                extended_filename=options.extended_filename)
 
         if (options.qStartFromGroups or options.qStartFromTrees) and previous_files_locator.species_ids_lines != None:
             # In only these cases, it's possible that the SpeciesIDs.txt file is out of sync and the version in the previous log should be used instead
@@ -824,11 +824,11 @@ class PreviousFilesLocator(object):
     def GetStartFromBlast(self):
         return self.wd_base_prev
 
-    # def GetStartFromOGs(self):
-    #     return self.wd_base_prev, self.clustersFilename_pairs
+    def GetStartFromOGs(self):
+        return self.wd_base_prev, self.clustersFilename_pairs
 
-    # def GetStartFromTrees(self):
-    #     return self.wd_base_prev, self.clustersFilename_pairs, self.wd_trees, self.speciesTreeRootedIDsFN
+    def GetStartFromTrees(self):
+        return self.wd_base_prev, self.clustersFilename_pairs, self.wd_trees, self.speciesTreeRootedIDsFN
         
 """ ************************************************************************************************************************* """
 

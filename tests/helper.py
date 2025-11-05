@@ -9,10 +9,11 @@ from orthofinder.run.__main__ import main
 from orthofinder.run.process_args import GetFileArgument
 
 
-def run_orthofinder_core_case(name, argstr, input_proj, dna_projects, species_tree, capfd):
+def run_orthofinder_core_case(name, argstr, input_proj, dna_projects, species_tree, user_ofconfig, capfd):
     s = argstr.strip().replace("INPUT", input_proj)\
                       .replace("DNA_INPUT", dna_projects)\
-                      .replace("SPECIES_TREE", species_tree)
+                      .replace("SPECIES_TREE", species_tree)\
+                      .replace("USER_CONFIG", user_ofconfig)
                       
     args = s.split()[1:] + ["-n", name]
 
@@ -28,14 +29,15 @@ def run_orthofinder_core_case(name, argstr, input_proj, dna_projects, species_tr
     assert not any(re.search(p, text) for p in fatal_patterns), text
 
 
-def run_orthofinder_assign_case(name, argstr, input_proj, assign, species_tree_assign, capfd):
+def run_orthofinder_assign_case(name, argstr, input_proj, assign, species_tree_assign, user_ofconfig, capfd):
     
     results_dir = os.path.join(input_proj, "OrthoFinder")
     projects_results = _find_output_dir(results_dir, "Results_" + name.rsplit("_", 1)[0])
     
     s = argstr.strip().replace("INPUT", assign)\
                       .replace("CORE_RESULTS", projects_results)\
-                      .replace("SPECIES_TREE", species_tree_assign)
+                      .replace("SPECIES_TREE", species_tree_assign)\
+                      .replace("USER_CONFIG", user_ofconfig)
                       
     args = s.split()[1:] + ["-n", name]
 
