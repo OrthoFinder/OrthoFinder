@@ -105,7 +105,7 @@ class __Files_new_dont_manually_create__(object):
                                                       gapopen=gapopen,
                                                       gapextend=gapextend,
                                                       extended_filename=extended_filename)
-        self.wd_current = self.rd1 + "WorkingDirectory/"
+        self.wd_current = os.path.join(self.rd1, "WorkingDirectory/") + os.sep
         os.mkdir(self.wd_current)
         self.wd_base = [self.wd_current]        
         if old_wd_base_list != None:
@@ -160,7 +160,7 @@ class __Files_new_dont_manually_create__(object):
                                                       gapopen=gapopen,
                                                       gapextend=gapextend,
                                                       extended_filename=extended_filename)
-        self.wd_current = self.rd1 + "WorkingDirectory/"
+        self.wd_current = os.path.join(self.rd1, "WorkingDirectory")  + os.sep
         os.mkdir(self.wd_current)
         with open(os.path.join(self.rd1, "Log.txt"), 'w'):
             pass
@@ -210,14 +210,15 @@ class __Files_new_dont_manually_create__(object):
                                                       gapopen=gapopen,
                                                       gapextend=gapextend,
                                                       extended_filename=extended_filename)
-        self.wd_current = self.rd1 + "WorkingDirectory/"
+        self.wd_current = os.path.join(self.rd1, "WorkingDirectory") + os.sep
         os.mkdir(self.wd_current)
         self.clustersFilename = clustersFilename_pairs[:-len("_id_pairs.txt")]
         self.StartLog(search_program=search_program, msa_program=msa_program, tree_program=tree_program,
                       scorematrix=scorematrix, gapopen=gapopen, gapextend=gapextend)
-        if not qIsUSerSpeciesTree:
-            shutil.copy(speciesTreeFN, self.GetSpeciesTreeIDsRootedFN())
-        self.WriteToLog("Species Tree: %s\n" % speciesTreeFN)
+        # if not qIsUSerSpeciesTree:
+        #     shutil.copy(speciesTreeFN, self.GetSpeciesTreeIDsRootedFN())
+        # self.WriteToLog("Species Tree: %s\n" % speciesTreeFN)
+        self.WriteToLog("Unrooted Species Tree: %s\n" % speciesTreeFN)
         self.LogWorkingDirectoryTrees()
                                          
     def CreateOutputDirectories(self, options, previous_files_locator, base_dir, fastaDir=None):
@@ -481,14 +482,16 @@ class __Files_new_dont_manually_create__(object):
         return legacy_dir
         
     def GetResultsAlignDir(self):
-        return self.rd1 + "MultipleSequenceAlignments/"
+        msa_dir = os.path.join(self.rd1, "MultipleSequenceAlignments/")
+        if not os.path.exists(msa_dir): os.mkdir(msa_dir)
+        return msa_dir
     
     def GetAlignIDDir(self):
-        return self.wd_current + "Alignments_ids/"
+        return os.path.join(self.wd_current,  "Alignments_ids/")
         
     def GetResultsTreesDir(self):
         # return self.rd1 + "Gene_Trees/"
-        return self.wd_trees + "Gene_Trees/"
+        return os.path.join(self.wd_trees, "Gene_Trees/")
 
     def GetUserTreeDir(self):
         d = self.rd1 + "Gene_Trees/"
@@ -836,7 +839,8 @@ class PreviousFilesLocator_new(PreviousFilesLocator):
     def __init__(self, options, continuationDir):
         PreviousFilesLocator.__init__(self)
         if not continuationDir.endswith("/"): continuationDir += "/"
-        self.home_for_results = continuationDir + "../"
+        # self.home_for_results = continuationDir + "../"
+        self.home_for_results = os.path.abspath(continuationDir + "../") + os.sep
         if (options.qStartFromFasta and not options.qStartFromBlast):
             # there are no files to find
             return
@@ -896,11 +900,12 @@ class PreviousFilesLocator_new(PreviousFilesLocator):
                         path, d_wd = os.path.split(self.wd_trees[:-1])
                         path, d_res = os.path.split(path)
                         self.wd_trees = os.path.split(logFN)[0] + ("/../%s/%s/" % (d_res, d_wd))
+                        self.wd_trees = os.path.abspath(self.wd_trees)
                         if not os.path.exists(self.wd_trees):
                             print("ERROR: Missing directory: %s" % self.wd_trees)
                             util.Fail()
-                    self.speciesTreeRootedIDsFN = self.wd_trees + "SpeciesTree_rooted_ids.txt" 
-                        
+                    # self.speciesTreeRootedIDsFN = self.wd_trees + "SpeciesTree_rooted_ids.txt" 
+                    self.speciesTreeRootedIDsFN = os.path.join(self.wd_trees, "SpeciesTree_unrooted_ids.txt")
 
     @staticmethod           
     def GetWDBaseChain(wd_base_anchor):
@@ -913,6 +918,7 @@ class PreviousFilesLocator_new(PreviousFilesLocator):
                     path, d_wd = os.path.split(wd[:-1])
                     path, d_res = os.path.split(path)
                     wd = wd_base_anchor + ("/../../%s/%s/" % (d_res, d_wd))
+                    wd = os.path.abspath(wd)
                 chain.append(wd)
         return chain
                 

@@ -21,6 +21,7 @@ def update_output_files(
         q_incremental=False,
         i_og_restart=0,
         exist_msa=True,
+        prev_wd=None,
     ):
      
     iSps = list(map(str, sorted(species_to_use)))   # list of strings
@@ -69,7 +70,8 @@ def update_output_files(
         align_dir = None
         align_id_dir = None
 
-    
+    if prev_wd is not None:
+        align_id_dir = os.path.join(prev_wd, "Alignments_ids")
     old_hog_n0 = read_hog_file(hog_n0_file)
     hog_n0_over4genes = hog_file_over4genes(old_hog_n0, 2)
 

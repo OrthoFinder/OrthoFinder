@@ -505,6 +505,7 @@ def GetRoot(speciesTreeFN, treesDir, GeneToSpeciesMap, nProcessors, qWriteDupTre
                     ******* The Main method ******* 
     """
     qHaveBranchSupport = False
+    print(speciesTreeFN)
     try:
         speciesTree = tree.Tree(speciesTreeFN, format=2)
         qHaveBranchSupport = True

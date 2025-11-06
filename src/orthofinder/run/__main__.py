@@ -354,20 +354,20 @@ def BetweenCoreOrthogroupsWorkflow(
     return clustersFilename_pairs, i_og_restart
 
 
-def GetOrthologues_FromTrees(options):
-    orthologues.OrthologuesFromTrees(
-        options.min_seq,
-        options.recon_method,
-        options.nBlast,
-        options.nProcessAlg,
-        options.speciesTreeFN,
-        options.qAddSpeciesToIDs,
-        options.qSplitParaClades,
-        options.fewer_open_files,
-        old_version=options.old_version,
-        exist_msa=options.qMSATrees,
-        fix_files=options.fix_files
-    )
+# def GetOrthologues_FromTrees(options):
+#     orthologues.OrthologuesFromTrees(
+#         options.min_seq,
+#         options.recon_method,
+#         options.nBlast,
+#         options.nProcessAlg,
+#         options.speciesTreeFN,
+#         options.qAddSpeciesToIDs,
+#         options.qSplitParaClades,
+#         options.fewer_open_files,
+#         old_version=options.old_version,
+#         exist_msa=options.qMSATrees,
+#         fix_files=options.fix_files
+#     )
 
 
 def main(args=None):
@@ -642,7 +642,56 @@ def main(args=None):
             )
             files.FileHandler.LogSpecies()
             options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
-            GetOrthologues_FromTrees(options)
+            # GetOrthologues_FromTrees(options)
+            
+            # orthologues.OrthologuesFromTrees(
+            #     options.min_seq,
+            #     options.recon_method,
+            #     options.nBlast,
+            #     options.nProcessAlg,
+            #     options.speciesTreeFN,
+            #     options.qAddSpeciesToIDs,
+            #     options.qSplitParaClades,
+            #     options.fewer_open_files,
+            #     old_version=options.old_version,
+            #     exist_msa=options.qMSATrees,
+            #     fix_files=options.fix_files
+            # )
+            
+            speciesNamesDict = species_info.SpeciesNameDict(
+                files.FileHandler.GetSpeciesIDsFN()
+            )
+            seqsInfo = util.GetSeqsInfo(
+                files.FileHandler.GetWorkingDirectory1_Read(),
+                speciesInfoObj.speciesToUse,
+                speciesInfoObj.nSpAll,
+            )
+            
+            
+            orthologues.OrthologuesFromGeneTrees(
+                seqsInfo, 
+                speciesNamesDict, 
+                speciesInfoObj, 
+                options,
+                speciesInfoObj.speciesToUse,
+                speciesInfoObj.nSpAll,
+                options.recon_method,
+                options.nBlast,
+                options.nProcessAlg,
+                options.qAddSpeciesToIDs,
+                options.fewer_open_files,
+                options.old_version,
+                options.speciesTreeFN,
+                options.qStopAfterSeqs,
+                options.qStopAfterAlignments,
+                options.qStopAfterTrees,
+                options.qMSATrees,
+                options.qPhyldog,
+                options.name,
+                options.qSplitParaClades,
+                save_space=options.save_space,
+                root_from_previous=False,
+            )
 
         elif options.qFastAdd:
             # Prepare previous directory as database
