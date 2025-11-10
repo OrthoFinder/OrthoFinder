@@ -10,6 +10,7 @@
         "methodthreads_minseq": "orthofinder -f INPUT -mt 2 -ms 5",
         "v2_scores_output_extension": "orthofinder -f INPUT --scores-v2 -efn",
         "stop_after_orthogroups": "orthofinder -f INPUT -og",
+        "stop_after_genetrees": "orthofinder -f INPUT -ot",
         "blast": "orthofinder -f INPUT -S blast --no-print-info",
         "mmseqs": "orthofinder -f INPUT -S mmseqs --no-print-info",
         "dendroblast": "orthofinder -f INPUT -M dendroblast --no-print-info",
@@ -28,6 +29,8 @@
         "famsa_species_tree": "orthofinder -f INPUT -s SPECIES_TREE -rmgt -rmrgt -rmlg --save-space --no-print-info"
     },
     "Assign": {
+        "stop_after_genetrees_restart": "orthofinder -ft CORE_RESULTS",
+        "stop_from_orthogroups_restart": "orthofinder -fg CORE_RESULTS",
         "prepare_blast_restart": "orthofinder -b CORE_RESULTS --restart-of-blast --no-print-info",
         "famsa_assign": "orthofinder --core CORE_RESULTS --assign INPUT --no-print-info",
         "famsa_species_tree_assign": "orthofinder --core CORE_RESULTS --assign INPUT -s SPECIES_TREE -rmgt -rmrgt -rmlg --save-space --no-print-info"
