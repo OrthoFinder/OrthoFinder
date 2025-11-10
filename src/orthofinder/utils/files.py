@@ -466,7 +466,9 @@ class __Files_new_dont_manually_create__(object):
         return d        
         
     def GetResultsSeqsDir(self):
-        return self.rd1 + "Orthogroup_Sequences/"
+        d = self.rd1 + "Orthogroup_Sequences/"
+        if not os.path.exists(d): os.mkdir(d)
+        return d
     
     def GetSeqsIDDir(self):
         return self.wd_current + "Sequences_ids/"
@@ -505,6 +507,11 @@ class __Files_new_dont_manually_create__(object):
 
     def GetResolvedTreeIDDir(self):
         d = self.wd_current + "Resolved_Gene_Trees_ids/"
+        if not os.path.exists(d): os.mkdir(d)
+        return d
+    
+    def GetResultsSpeciesTreeDir(self):
+        d = self.rd1 + "Species_Tree/"
         if not os.path.exists(d): os.mkdir(d)
         return d
     
@@ -549,9 +556,9 @@ class __Files_new_dont_manually_create__(object):
             
     def GetSpeciesTreeUnrootedFN(self, qAccessions=False):
         if qAccessions:
-            return self.wd_trees + "SpeciesTree_unrooted.txt"
+            return os.path.join(self.wd_trees, "SpeciesTree_unrooted.txt")
         else: 
-            return self.wd_trees + "SpeciesTree_unrooted_ids.txt"  
+            return os.path.join(self.wd_trees, "SpeciesTree_unrooted_ids.txt")
                         
     def GetSpeciesTreeIDsRootedFN(self):
         return self.wd_current + "SpeciesTree_rooted_ids.txt"
@@ -776,16 +783,27 @@ class __Files_new_dont_manually_create__(object):
         d = self.rd1 + "Orthogroups/"
         if not os.path.exists(d): os.mkdir(d)
         return d + "Orthogroups" + ("" if self.iResultsVersion == 0 else "_%d" % self.iResultsVersion)
-        
+    
+    def GetOrthogroupResultsDir(self):
+        d = self.rd1 + "Orthogroups/"
+        if not os.path.exists(d): os.mkdir(d)
+        return d
+    
     def GetOGsStatsResultsDirectory(self):
         d = self.rd1 + "Comparative_Genomics_Statistics/"
         if not os.path.exists(d): os.mkdir(d)
         return d
-        
-    def GetDuplicationsFN(self):
+    
+    def GetResultsDuplicationsDir(self):
         d = self.rd1 + "Gene_Duplication_Events/"
         if not os.path.exists(d): os.mkdir(d)
-        return d + "Duplications.tsv"
+        return d
+        
+    def GetDuplicationsFN(self):
+        # d = self.rd1 + "Gene_Duplication_Events/"
+        # if not os.path.exists(d): os.mkdir(d)
+        return os.path.join(self.GetResultsDuplicationsDir(), "Duplications.tsv")
+        # return d + "Duplications.tsv"
     
     def GetSuspectGenesDir(self):
         d = self.rd1 + "Phylogenetically_Misplaced_Genes/"

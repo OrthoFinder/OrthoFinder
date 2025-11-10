@@ -278,8 +278,8 @@ def CreateConcatenatedAlignment(ogsToUse_ids, ogs, alignment_filename_function, 
             for i in range(0, len(seq), nChar):
                 outfile.write("".join(seq[i:i+nChar]) + "\n")
             
-def trim_fn(fn):
-    trim.main(fn, fn, 0.1, 500, 0.75, False)
+def trim_fn(fn, msa_min_seq):
+    trim.main(fn, fn, msa_min_seq, 0.1, 500, 0.75, False)
 
 """ 
 -----------------------------------------------------------------------------
@@ -372,6 +372,7 @@ class TreesForOrthogroups(object):
             astral=False,
             dynamic_threads=False,
             n_skip=50,
+            msa_min_seq=10,
         ):
 
         print_on_error = True
@@ -491,7 +492,7 @@ class TreesForOrthogroups(object):
             if qTrim:
                 for i in iOgsForSpeciesTree:
                     orig_commands_and_filenames.append([alignCommands_and_filenames[i], 
-                                                (trim_fn, alignmentFilesToUse[i]), 
+                                                (trim_fn, (alignmentFilesToUse[i], msa_min_seq)), 
                                                 treeCommands_and_filenames[i]])
             else:
                 for i in iOgsForSpeciesTree:
@@ -550,7 +551,7 @@ class TreesForOrthogroups(object):
                 continue
             if qTrim:
                 commands_and_filenames.append([alignCommands_and_filenames[iog_to_align_index[iog]],
-                                              (trim_fn, alignmentFilesToUse[iog_to_align_index[iog]]),
+                                              (trim_fn, (alignmentFilesToUse[iog_to_align_index[iog]], msa_min_seq)),
                                               treeCommands_and_filenames[i]])
             else:
                 commands_and_filenames.append([alignCommands_and_filenames[iog_to_align_index[iog]],

@@ -567,11 +567,22 @@ def OrthologuesWorkflow(
         options.fix_files,
         options.astral,
         options.dynamic_threads,
-        n_skip=options.n_skip
+        n_skip=options.n_skip,
+        msa_min_seq=options.msa_min_seq
     )
     
     if qStopAfterTrees:
-        print("OrthoFinder stops after gene tree...")
+        print()
+        print(f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] stopped after gene tree...")
+        shutil.rmtree(files.FileHandler.GetResultsSeqsDir())
+        shutil.rmtree(files.FileHandler.GetOrthogroupResultsDir())
+        # shutil.rmtree(files.FileHandler.GetResultsSpeciesTreeDir())
+        # shutil.rmtree(files.FileHandler.GetResultHOGDir())
+        # shutil.rmtree(files.FileHandler.GetPutativeXenelogsDir())
+        shutil.rmtree(files.FileHandler.GetOrthologuesDirectory())
+        shutil.rmtree(files.FileHandler.GetResultsAlignDir())
+        # shutil.rmtree(files.FileHandler.GetResultsDuplicationsDir())
+        
         util.Success()
     
     if return_obj is None:
@@ -656,8 +667,15 @@ def OrthologuesWorkflow(
             exist_msa=options.qMSATrees,
         )
         if options.qStopAfterGroups:
-            print(f"OrthoFinder stopped after writing Orthogroups to file.")
-            sys.exit()
+            print()
+            print(f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] stopped after writing Orthogroups to file.")
+            shutil.rmtree(files.FileHandler.GetResultsSpeciesTreeDir())
+            shutil.rmtree(files.FileHandler.GetResultHOGDir())
+            shutil.rmtree(files.FileHandler.GetPutativeXenelogsDir())
+            shutil.rmtree(files.FileHandler.GetOrthologuesDirectory())
+            shutil.rmtree(files.FileHandler.GetResultsAlignDir())
+            shutil.rmtree(files.FileHandler.GetResultsDuplicationsDir())
+            util.Success()
             
         util.PrintTime("Done updating MSA/Trees")
         InferOrthologs(
@@ -1026,8 +1044,15 @@ def OrthologuesFromGeneTrees(
             prev_wd=prev_wd
         )
         if options.qStopAfterGroups:
-            print(f"OrthoFinder stopped after writing Orthogroups to file.")
-            sys.exit()
+            print()
+            print(f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] stopped after writing Orthogroups to file.")
+            shutil.rmtree(files.FileHandler.GetResultsSpeciesTreeDir())
+            shutil.rmtree(files.FileHandler.GetResultHOGDir())
+            shutil.rmtree(files.FileHandler.GetPutativeXenelogsDir())
+            shutil.rmtree(files.FileHandler.GetOrthologuesDirectory())
+            shutil.rmtree(files.FileHandler.GetResultsAlignDir())
+            shutil.rmtree(files.FileHandler.GetDuplicationsFN())
+            util.Success()
             
         util.PrintTime("Done updating MSA/Trees")
         InferOrthologs(

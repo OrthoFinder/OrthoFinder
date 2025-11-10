@@ -1089,7 +1089,7 @@ def Worker_RunCommands_And_Move(
             if isinstance(command, types.FunctionType):
                 # This will block the process, but it is ok for trimming, it takes minimal time
                 fn = command
-                fn(fns)
+                fn(*fns)
                 return_code = 0
             else:
                 if not isinstance(command, str):

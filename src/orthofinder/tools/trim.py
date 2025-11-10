@@ -3,7 +3,7 @@
 import os
 import sys
 import shutil
-import argparse
+# import argparse
 import itertools
 import subprocess
 import numpy as np
@@ -65,18 +65,18 @@ class MSA(object):
                 for i in range(0, len(seq), nChar):
                     outfile.write(seq[i:i+nChar] + "\n")
 
-def main(infn, outfn, f=0.1, n_min=500, c=0.75, exe=False):
+def main(infn, outfn, msa_min_seq=10, f=0.1, n_min=500, c=0.75, exe=False):
     # if exe:
     #     run_exe(infn, outfn, f, n_min, c)
     # else:
-    run_in_process(infn, outfn, f, n_min, c)
+    run_in_process(infn, outfn, msa_min_seq, f, n_min, c)
 
 # def run_exe(infn, outfn, f, n_min, c):
 #     """run trim in a separate process not forked from current process"""
 #     subprocess.run(["python", __file__, "-c", str(c), infn, outfn, str(f), str(n_min)])
 
 
-def run_in_process(infn, outfn, f, n_min, c):
+def run_in_process(infn, outfn, msa_min_seq, f, n_min, c):
     """
     Trim the alignment file. Auto reduce f parameter if required. OrthoFinder default
     parameters are used by default.
@@ -106,16 +106,18 @@ def run_in_process(infn, outfn, f, n_min, c):
     except:
         print("ERROR, cannot write to output file: %s" % outfn)
         sys.exit()
+
     msa = MSA(infn)   
+    n = msa.n
     # print(infn)
-    if msa.length <= n_min:
+    if msa.length <= n_min or n <= msa_min_seq:
         copy_input_to_output(infn, outfn)
         # print("Already below min length: %d" % msa.length)
         return
     # vectorised is far quicker
     # M = np.array([list(seq) for seq in msa.seqs.values()])
     # drop msa at this point
-    n = msa.n
+
     length = msa.length
     maxGap = (1.-f)*n
     aa_counts = msa.M.sum(axis=0)[0]   # per column
@@ -126,16 +128,37 @@ def run_in_process(infn, outfn, f, n_min, c):
     n_keep = i_keep[0].size     # it's an I, J tuple
     aa_after = sum(aa_counts[i_keep])
     # Check we have kept enough columns and characters
+
     if n_keep < n_min or aa_after < c*aa_before:
         # print("%0.3f: %d columns, %0.1f%% of characters retained" % (f, n_keep, 100.*aa_after/aa_before))
         f, i_keep = get_satifactory_f(gap_counts, aa_counts, n, f, n_min, c)
-    n_keep = i_keep[0].size
-    if n_keep == length:
+        
+    #print(msa.M)
+    #print(n)
+    trim = False
+    seq_data = msa.M
+    to_keep = i_keep[0]
+    ### This will take to long for large alignments...
+    for i in range(0,n):
+        index = (seq_data[i,].tocoo().col)
+        if True in np.in1d(index, to_keep):
+            trim = True
+        else:
+            trim  = False
+            break
+
+    n_keep = to_keep.size
+    if n_keep == length or trim == False:
         copy_input_to_output(infn, outfn)
     # M = M[:, i_keep[0]]
     # s,t = M.shape
     # aa_after = s * t - (M == '-').sum()
-    msa.write_msa(i_keep[0], outfn)
+    #msa.write_msa(np.arange(0,length), outfn)
+    if trim == True:
+        msa.write_msa(i_keep[0], outfn)
+        #f, i_keep = get_satifactory_f(gap_counts, aa_counts, n, 1/n, n_min, c)
+        #msa.write_msa(i_keep[0], outfn)       
+
     # write_msa(M, names, outfn)
     # print("%0.3f: %d->%d, %0.1f%% characters retained. Trimmed %s" % (f, length, i_keep[0].size, 100.*aa_after/aa_before, infn))
 

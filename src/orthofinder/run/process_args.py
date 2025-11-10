@@ -135,6 +135,7 @@ class Options(object):  #
         self.fix_files = True
         self.config = None
         self.min_seq = 4
+        self.msa_min_seq = 10
         self.astral = False
         self.species_tree_program = "stag" # astral
         self.dynamic_threads = False
@@ -577,6 +578,13 @@ def ProcessArgs(args):
             except:
                 print(f"Incorrect argument {arg} for the minmum number of sequence. Values must be an integer equal to or greater than 4.")
                 util.Fail()
+        elif arg == "--msa-min-seq":
+            try:
+                arg = int(args.pop(0))
+                options.msa_min_seq = arg if arg >= 0 else options.msa_min_seq
+            except:
+                print(f"Incorrect argument {arg} for the minmum number of sequence MSA analysis. Values must be an integer equal to or greater than 4.")
+                util.Fail()            
                 
         elif arg == "-fd":
             try:
@@ -620,7 +628,7 @@ def ProcessArgs(args):
                 print("Missing option for command line argument %s\n" % arg)
                 util.Fail()
             arg = args.pop(0)
-            if arg == "astral":
+            if "astral" in arg.lower():
                 options.astral = True
 
         elif arg == "--save-blast-commands":
