@@ -50,9 +50,8 @@ class OrthoFinderTestFuncs:
         
         self.core_results = helper._find_output_dir(core_results_dir, test_filename="Results_" + baseline_options[0])
         self.core_working_dir = os.path.join(self.core_results, "WorkingDirectory")
-
         if self.assign:
-            self.assign_results = helper._find_output_dir(core_results_dir, test_filename="Results_" + baseline_options[1])
+            self.assign_results = helper._find_output_dir(core_results_dir, test_filename="Results_" + baseline_options[1], find_core=False)
             self.assign_working_dir = os.path.join(self.assign_results, "WorkingDirectory")
 
             self.current_results_dir = self.assign_results
@@ -142,11 +141,11 @@ class OrthoFinderTestFuncs:
             return speciesInfoObj
 
         wd_scope_for_species = [self.assign_working_dir, self.core_working_dir]
-        self.active_wd_list = [self.core_working_dir, self.assign_working_dir]  # used elsewhere (order as you prefer)
+        self.active_wd_list = [self.core_working_dir, self.assign_working_dir] 
 
         with self._use_fh_wds(wd_scope_for_species):
             speciesInfoObj, _ = ProcessPreviousFiles(
-                wd_scope_for_species,
+                self.active_wd_list,
                 self.options.qDoubleBlast,
                 check_blast=False,
             )
@@ -171,7 +170,7 @@ class OrthoFinderTestFuncs:
             species_id_fn=self.species_id_fn,
             sequence_id_fn=self.sequence_id_fn,
             ogs_all_fn=self.ogs_all_fn,        # core OGsAll.tsv in assign mode
-            results_dir=self.current_results_dir,
+            # results_dir=self.current_results_dir,
         )
         return ogSet
 

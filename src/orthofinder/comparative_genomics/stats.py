@@ -103,14 +103,14 @@ def OrthogroupsMatrix(iSpecies, properOGs):
     return ogMatrix
 
 
-def Stats_SpeciesOverlaps(fn, speciesNamesDict, iSpecies, speciesPresence):
-    """ Number of orthogroups in which each species-pair is present. Called by Stats"""
-    with open(fn, util.csv_write_mode) as outfile:
-        writer = csv.writer(outfile, delimiter="\t")
-        writer.writerow([""] + [speciesNamesDict[index] for index in iSpecies])
-        for iSp in iSpecies:
-            overlap = [len([1 for og in speciesPresence if (iSp in og and jSp in og)]) for jSp in iSpecies]
-            writer.writerow([speciesNamesDict[iSp]] + overlap)
+# def Stats_SpeciesOverlaps(fn, speciesNamesDict, iSpecies, speciesPresence):
+#     """ Number of orthogroups in which each species-pair is present. Called by Stats"""
+#     with open(fn, util.csv_write_mode) as outfile:
+#         writer = csv.writer(outfile, delimiter="\t")
+#         writer.writerow([""] + [speciesNamesDict[index] for index in iSpecies])
+#         for iSp in iSpecies:
+#             overlap = [len([1 for og in speciesPresence if (iSp in og and jSp in og)]) for jSp in iSpecies]
+#             writer.writerow([speciesNamesDict[iSp]] + overlap)
 
 
 def Stats_SizeTable(writer_sum, writer_sp, properOGs, allGenesCounter, iSpecies, speciesPresence):
@@ -302,8 +302,8 @@ def Stats(ogs, speciesNamesDict, iSpecies, iResultsVersion, fastaWriter, ids_dic
 
         # Sizes
         Stats_SizeTable(writer_sum, writer_sp, properOGs, allGenesCounter, iSpecies, speciesPresence)
-        Stats_SpeciesOverlaps(filename_overlap, speciesNamesDict, iSpecies, speciesPresence)
-    
+        # Stats_SpeciesOverlaps(filename_overlap, speciesNamesDict, iSpecies, speciesPresence)
+    # 
     util.PrintTime("Done writing files")
     print("\n[bold]Summary: [/bold]")
     summaryText1 = f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] assigned [deep_sky_blue2]{nAssigned}[/deep_sky_blue2] genes ({pAssigned:0.1f}% of total) to [deep_sky_blue2]{nOgs}[/deep_sky_blue2] orthogroups. "

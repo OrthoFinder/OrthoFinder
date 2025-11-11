@@ -10,11 +10,12 @@ from orthofinder.run.process_args import GetFileArgument
 
 
 def run_orthofinder_core_case(name, argstr, input_proj, dna_projects, species_tree, user_ofconfig, capfd):
-    s = argstr.strip().replace("INPUT", input_proj)\
-                      .replace("DNA_INPUT", dna_projects)\
+
+    s = argstr.strip().replace("DNA_INPUT", dna_projects)\
+                      .replace("INPUT", input_proj)\
                       .replace("SPECIES_TREE", species_tree)\
                       .replace("USER_CONFIG", user_ofconfig)
-                      
+                 
     args = s.split()[1:] + ["-n", name]
 
     code, out, err, text = _run_main(args, capfd)
@@ -32,8 +33,9 @@ def run_orthofinder_core_case(name, argstr, input_proj, dna_projects, species_tr
 def run_orthofinder_assign_case(name, argstr, input_proj, assign, species_tree_assign, user_ofconfig, capfd):
     
     results_dir = os.path.join(input_proj, "OrthoFinder")
-    projects_results = _find_output_dir(results_dir, "Results_" + name.rsplit("_", 1)[0])
-    
+    core_name = name.replace("_assign", "").replace("_restart", "")
+    projects_results = _find_output_dir(results_dir, "Results_" + core_name)
+
     s = argstr.strip().replace("INPUT", assign)\
                       .replace("CORE_RESULTS", projects_results)\
                       .replace("SPECIES_TREE", species_tree_assign)\
@@ -121,24 +123,29 @@ def create_path(arg):
         filepath += os.sep
     return filepath
 
-def _find_output_dir(results_dir, test_filename, fileno=-1) -> str:
+def _find_output_dir(results_dir, test_filename, fileno=-1, find_core=True) -> str:
     if isinstance(results_dir, list):
         results_dir = results_dir[0]
 
     results_dir = os.path.abspath(results_dir)
-
+    available_paths = []
     try:
-        available_paths = [
-            os.path.join(results_dir, name)
-            for name in os.listdir(results_dir)
-            if test_filename == name.split(".")[0].rsplit("_", 1)[0]
-        ]
+
+        for name in os.listdir(results_dir):
+            if find_core:
+                name = name.replace("_assign", "").replace("_restart", "")
+                if test_filename in name:
+                    available_paths.append(os.path.join(results_dir, name))
+            else:
+                if test_filename in name:
+                    available_paths.append(os.path.join(results_dir, name))
                 
         entries = [
             (os.stat(path).st_mtime, path)
             for path in available_paths
             if path is not None 
         ]
+
         return sorted(entries)[fileno][1] if entries else ""
     except FileNotFoundError:
         return ""

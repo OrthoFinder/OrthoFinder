@@ -317,7 +317,7 @@ def read_hogs(din, hog_name, ids_rev=None):
     elif ids_rev is None:
         return []
     else:
-        fn = din + "Phylogenetic_Hierarchical_Orthogroups/%s.tsv" % hog_name
+        fn = os.path.join(din, "Phylogenetic_Hierarchical_Orthogroups/%s.tsv" % hog_name)
     if not os.path.exists(fn):
         print("ERROR: %s does not exist" % fn)
         raise RuntimeError

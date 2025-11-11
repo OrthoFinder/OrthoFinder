@@ -1,32 +1,12 @@
 import os
 import pytest
 from read_results import get_expected_results
-from OF_funcs import OrthoFinderTestFuncs
+
 
 @pytest.fixture(scope="class")
 def expected_results_dict(expected_results):
     return get_expected_results(expected_results)
 
-
-@pytest.fixture
-def of_obj(projects, baseline_arg_dict, baseline_options, species_tree):
-    return OrthoFinderTestFuncs(
-        projects, 
-        baseline_arg_dict,
-        baseline_options, 
-        species_tree=species_tree, 
-    )
-
-@pytest.fixture
-def of_obj_assign(projects, baseline_arg_dict, baseline_options, assign, species_tree, species_tree_assign):
-    return OrthoFinderTestFuncs(
-        projects, 
-        baseline_arg_dict,
-        baseline_options, 
-        assign,  
-        species_tree, 
-        species_tree_assign,
-    )
 
 @pytest.fixture(params=["core", "assign"], ids=["core", "assign"])
 def of_and_expected_stats_overall(request, of_obj, of_obj_assign, expected_results_dict):

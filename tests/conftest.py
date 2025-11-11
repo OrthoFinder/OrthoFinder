@@ -6,8 +6,9 @@ from collections import deque
 import helper
 from typing import Optional, Union, List, Any
 import multiprocessing as mp
-from orthofinder.utils.util import CreateNewWorkingDirectory
+# from orthofinder.utils.util import CreateNewWorkingDirectory
 from orthofinder.utils import files
+from OF_funcs import OrthoFinderTestFuncs
 
 ## ---------------- TEST OrthoFinder Commands ----------------
 OF_BASELINE_OPTIONS = [
@@ -330,3 +331,22 @@ def reset_orthofinder_state():
             
             
         
+@pytest.fixture(scope="session")
+def of_obj(projects, baseline_arg_dict, baseline_options, species_tree):
+    return OrthoFinderTestFuncs(
+        projects, 
+        baseline_arg_dict,
+        baseline_options, 
+        species_tree=species_tree, 
+    )
+
+@pytest.fixture(scope="session")
+def of_obj_assign(projects, baseline_arg_dict, baseline_options, assign, species_tree, species_tree_assign):
+    return OrthoFinderTestFuncs(
+        projects, 
+        baseline_arg_dict,
+        baseline_options, 
+        assign,  
+        species_tree, 
+        species_tree_assign,
+    )

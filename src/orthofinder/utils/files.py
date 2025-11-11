@@ -595,20 +595,20 @@ class __Files_new_dont_manually_create__(object):
 
     def GetHierarchicalOrthogroupsFN(self, sp_node_name, q_results=True, extension=""):
         if q_results and not extension:
-            hog_dir = self.rd1 + "Phylogenetic_Hierarchical_Orthogroups/"
+            hog_dir = os.path.join(self.rd1, "Phylogenetic_Hierarchical_Orthogroups/")
             if not os.path.exists(hog_dir):
                 os.makedirs(hog_dir, exist_ok=True)
             return hog_dir + "%s.tsv" % sp_node_name
         elif extension == ".ids":
             return self.GetWorkingDirectory_Write() + "%s.tsv" % sp_node_name
         else:
-            wd_hog_dir = self.rd1 + "Phylogenetic_Hierarchical_Orthogroups/"
+            wd_hog_dir = os.path.join(self.rd1, "Phylogenetic_Hierarchical_Orthogroups/")
             if not os.path.exists(wd_hog_dir):
                 os.makedirs(wd_hog_dir, exist_ok=True)
             return wd_hog_dir + "%s.tsv" % sp_node_name
      
     def GetResultHOGDir(self):
-        hog_dir = self.rd1 + "Phylogenetic_Hierarchical_Orthogroups/"
+        hog_dir = os.path.join(self.rd1, "Phylogenetic_Hierarchical_Orthogroups/")
         if not os.path.exists(hog_dir):
             os.makedirs(hog_dir, exist_ok=True)
         return hog_dir
@@ -617,7 +617,7 @@ class __Files_new_dont_manually_create__(object):
         return os.path.join(self.GetLegacyDir(), "N0.tsv")
     
     def HierarchicalOrthogroupsFNN0(self):
-        hog_dir = self.rd1 + "Phylogenetic_Hierarchical_Orthogroups/"
+        hog_dir = os.path.join(self.rd1, "Phylogenetic_Hierarchical_Orthogroups/")
         if not os.path.exists(hog_dir):
             os.makedirs(hog_dir, exist_ok=True)
 
@@ -711,18 +711,16 @@ class __Files_new_dont_manually_create__(object):
             
 # RefactorDS - FileHandler 
     """ Standard Methods ========================================================================================== """  
-    def LogFailAndExit(self, text="", results_dir=""):
+    def LogFailAndExit(self, text=""):
         if text != "": print(text)
-        self.WriteToLog("\nERROR: An error occurred\n" + text, results_dir=results_dir)
+        self.WriteToLog("\nERROR: An error occurred\n" + text)
         util.Fail()
              
-    def WriteToLog(self, text, qWithTime=False, results_dir=""):
-        if not results_dir:
-            results_dir = self.rd1
+    def WriteToLog(self, text, qWithTime=False):
         prepend = ""
         if qWithTime:
             prepend = str(datetime.datetime.now()).rsplit(".", 1)[0] + " : "
-        with open(os.path.join(results_dir,"Log.txt"), 'a') as outfile:
+        with open(os.path.join(self.rd1, "Log.txt"), 'a') as outfile:
             outfile.write(prepend + text)
     
     def StartLog(self, search_program=None, msa_program=None, tree_program=None, 

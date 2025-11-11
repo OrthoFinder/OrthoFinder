@@ -204,7 +204,6 @@ class OrthoGroupsSet(object):
             species_id_fn="",
             sequence_id_fn="",
             ogs_all_fn="",
-            results_dir="",
         ):
 
         if not species_id_fn:
@@ -222,7 +221,6 @@ class OrthoGroupsSet(object):
         else:
             self.ogs_all_fn = ogs_all_fn
         
-        self.results_dir = results_dir 
         self.speciesIDsEx = util.FullAccession(self.species_id_fn)
         self._Spec_SeqIDs = None
         self._extractor = idExtractor
@@ -247,7 +245,7 @@ class OrthoGroupsSet(object):
             except RuntimeError as error:
                 print(str(error))
                 if str(error).startswith("ERROR"): 
-                    files.FileHandler.LogFailAndExit(results_dir=self.results_dir)
+                    files.FileHandler.LogFailAndExit()
                 else:
                     print("Tried to use only the first part of the accession in order to list the sequences in each orthogroup")
                     print("more concisely but these were not unique. The full accession line will be used instead.\n")

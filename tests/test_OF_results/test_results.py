@@ -41,10 +41,10 @@ def test_orthologues(of_and_expected_orthologues):
                     actual_ogs = per_species_locations[species][e]
                     if og_expected not in actual_ogs:
                         relocations.append((species, og_expected, e, sorted(actual_ogs)))
-    if relocations:
-        print("\n[INFO] Expected triplets found under different OG IDs:")
-        for species, og_exp, e, ogs in relocations:
-            print(f"{species}: expected in {og_exp}, actually in {', '.join(ogs)} — {e}")
+    # if relocations:
+    #     print("\n[INFO] Expected triplets found under different OG IDs:")
+    #     for species, og_exp, e, ogs in relocations:
+    #         print(f"{species}: expected in {og_exp}, actually in {', '.join(ogs)} — {e}")
 
     if missing:
         msgs = []
@@ -76,10 +76,10 @@ def test_duplications(of_and_expected_duplications):
         act_ogs = actual_locs.get(t, set())
         if exp_ogs and act_ogs and exp_ogs != act_ogs:
             reloc.append((t, sorted(exp_ogs), sorted(act_ogs)))
-    if reloc:
-        print("\n[INFO] Duplications present under different OG IDs:")
-        for (label, A, B), exp_ogs, act_ogs in reloc:
-            print(f"label={label}, Genes1={sorted(A)}, Genes2={sorted(B)} | expected {exp_ogs}, found {act_ogs}")
+    # if reloc:
+    #     print("\n[INFO] Duplications present under different OG IDs:")
+    #     for (label, A, B), exp_ogs, act_ogs in reloc:
+    #         print(f"label={label}, Genes1={sorted(A)}, Genes2={sorted(B)} | expected {exp_ogs}, found {act_ogs}")
 
 
 @pytest.mark.order(7)
@@ -103,10 +103,10 @@ def test_orthogroups(of_and_expected_orthogroups):
         act_ogs = actual_locs.get(t, set())
         if exp_ogs and act_ogs and exp_ogs != act_ogs:
             reloc.append((t, sorted(exp_ogs), sorted(act_ogs)))
-    if reloc:
-        print("\n[INFO] Orthogroups present under different OG IDs:")
-        for (label, A, B), exp_ogs, act_ogs in reloc:
-            print(f"label={label}, Genes1={sorted(A)}, Genes2={sorted(B)} | expected {exp_ogs}, found {act_ogs}")
+    # if reloc:
+    #     print("\n[INFO] Orthogroups present under different OG IDs:")
+    #     for (label, A, B), exp_ogs, act_ogs in reloc:
+    #         print(f"label={label}, Genes1={sorted(A)}, Genes2={sorted(B)} | expected {exp_ogs}, found {act_ogs}")
 
 
 @pytest.mark.order(8)
@@ -135,19 +135,19 @@ def test_phylogenetic_hierarchical_orthogroups(of_and_expected_hogs):
         actaul_node = actual_node_locs[hog]
         
         if actual_og != ogname:
-            og_reloc.append((ogname, actaul_og, sorted(hog)))
+            og_reloc.append((ogname, actual_og, sorted(hog)))
         
         if node != actaul_node:
             node_reloc.append((node, actaul_node, sorted(hog)))
             
 
-    if og_reloc:
-        print("\n[INFO] Expected hylogenetic hierarchical orthogroups found under different OG IDs:")
-        for ogname, actaul_og, hogs in og_reloc:
-            print(f"{hogs} from {actaul_og}: expected in {ogname}")
+    # if og_reloc:
+    #     print("\n[INFO] Expected hylogenetic hierarchical orthogroups found under different OG IDs:")
+    #     for ogname, actaul_og, hogs in og_reloc:
+    #         print(f"{hogs} from {actaul_og}: expected in {ogname}")
     
-    if node_reloc:
-        print("\n[INFO] Expected hylogenetic hierarchical orthogroups found under different Node IDs:")
-        for node, actaul_node, hogs in node_reloc:
-            print(f"{hogs} from {actaul_node}: expected in {node}")
+    # if node_reloc:
+    #     print("\n[INFO] Expected hylogenetic hierarchical orthogroups found under different Node IDs:")
+    #     for node, actaul_node, hogs in node_reloc:
+    #         print(f"{hogs} from {actaul_node}: expected in {node}")
     

@@ -28,6 +28,7 @@
 import os
 import sys
 import csv
+from functools import partial
 import glob
 #import shelve
 try:
@@ -419,26 +420,76 @@ Parallelisation wrappers
 ================================================================================================================================
 """
 
-def SupportedHierachies_wrapper(treeName, GeneToSpecies, species, dict_clades, clade_names, qWriteDupTrees=False):
-    if not os.path.exists(treeName): return [], []
+# def SupportedHierachies_wrapper(
+#     treeName, 
+#     GeneToSpecies, 
+#     species, 
+#     dict_clades, 
+#     clade_names, 
+#     qWriteDupTrees=False
+# ):
+#     if not os.path.exists(treeName): return [], []
+#     try:
+#         t = tree.Tree(treeName, format=1)
+#     except:
+#         return [], []
+#     G = set(t.get_leaf_names())
+#     S = set(map(GeneToSpecies, G))
+#     if not S.issubset(species):
+#         print(("ERROR in %s" % treeName))
+#         print("Some genes cannot be mapped to species in the species tree")
+#         print((S.difference(species)))
+#         return None
+#     if len(S) < 3:
+#         return defaultdict(int), []
+#     result = SupportedHierachies(t, G, S, GeneToSpecies, species, dict_clades, clade_names, treeName, qWriteDupTrees)
+#     return result
+    
+# def SupportedHierachies_wrapper2(args):
+#     return SupportedHierachies_wrapper(*args)
+
+def SupportedHierachies_wrapper(
+    treeName, 
+    GeneToSpecies, 
+    species, 
+    dict_clades, 
+    clade_names, 
+    qWriteDupTrees=False
+):
+    if not os.path.exists(treeName):
+        return None
+
     try:
         t = tree.Tree(treeName, format=1)
-    except:
-        return [], []
+    except Exception:
+        return None
+
     G = set(t.get_leaf_names())
     S = set(map(GeneToSpecies, G))
+
     if not S.issubset(species):
         print(("ERROR in %s" % treeName))
         print("Some genes cannot be mapped to species in the species tree")
         print((S.difference(species)))
         return None
+
     if len(S) < 3:
-        return defaultdict(int), []
-    result = SupportedHierachies(t, G, S, GeneToSpecies, species, dict_clades, clade_names, treeName, qWriteDupTrees)
-    return result
-    
-def SupportedHierachies_wrapper2(args):
-    return SupportedHierachies_wrapper(*args)
+        return defaultdict(int), set()
+
+    supported, genesPostDup = SupportedHierachies(
+        t,
+        G,
+        S,
+        GeneToSpecies,
+        species,
+        dict_clades,
+        clade_names,
+        treeName,
+        qWriteDupTrees,
+    )
+
+    del t
+    return supported, genesPostDup
     
 """
 End of Parallelisation wrappers
@@ -500,6 +551,50 @@ def ParsimonyRoot(allSpecies, clades, supported_clusters_counter):
                 roots.append(clade)
     return roots, nSupport
 
+
+def batched(iterable, batch_size):
+    it = iter(iterable)
+    while True:
+        batch = list(itertools.islice(it, batch_size))
+        if not batch:
+            break
+        yield batch
+
+def process_trees(
+    treesDir,
+    nProcessors,
+    GeneToSpeciesMap,
+    species,
+    dict_clades,
+    clade_names,
+    qWriteDupTrees=False,
+):
+    agg_supported = defaultdict(int)
+    agg_genesPostDup = set()
+
+    tree_files = glob.iglob(treesDir + "/*")
+
+    worker_func = partial(
+        SupportedHierachies_wrapper,
+        GeneToSpecies=GeneToSpeciesMap,
+        species=species,
+        dict_clades=dict_clades,
+        clade_names=clade_names,
+        qWriteDupTrees=qWriteDupTrees,
+    )
+
+    # for batch in batched(tree_files, 1000): 
+    with mp.Pool(nProcessors, maxtasksperchild=1) as pool:
+        for result in pool.imap_unordered(worker_func, tree_files, chunksize=10):
+            if result is None:
+                continue
+            supported, genesPostDup = result
+            for k, v in supported.items():
+                agg_supported[k] += v
+            agg_genesPostDup |= genesPostDup
+
+    return agg_supported, agg_genesPostDup
+
 def GetRoot(speciesTreeFN, treesDir, GeneToSpeciesMap, nProcessors, qWriteDupTrees=False, qWriteRootedTree=False):
     """ 
                     ******* The Main method ******* 
@@ -514,16 +609,40 @@ def GetRoot(speciesTreeFN, treesDir, GeneToSpeciesMap, nProcessors, qWriteDupTre
         except:
             print("ERROR: Species tree inference failed")
     species, dict_clades, clade_names = AnalyseSpeciesTree(speciesTree)
-    pool = mp.Pool(nProcessors, maxtasksperchild=1)       
-    list_of_dicts = pool.map(SupportedHierachies_wrapper2, [(fn, GeneToSpeciesMap, species, dict_clades, clade_names, qWriteDupTrees) for fn in glob.glob(treesDir + "/*")])
-    pool.close()
+    # pool = mp.Pool(nProcessors, maxtasksperchild=1)       
+    # list_of_dicts = pool.map(
+    #     SupportedHierachies_wrapper, 
+    #     [
+    #         (
+    #             fn, 
+    #             GeneToSpeciesMap, 
+    #             species, dict_clades, 
+    #             clade_names, 
+    #             qWriteDupTrees
+    #         ) 
+    #         for fn in glob.glob(treesDir + "/*")
+    #     ]
+    # )
+    # pool.close()
+    
+    agg_supported, agg_genesPostDup = process_trees(
+        treesDir,
+        nProcessors,
+        GeneToSpeciesMap,
+        species,
+        dict_clades,
+        clade_names,
+        qWriteDupTrees=qWriteDupTrees,
+    )
+    
     clusters = Counter()
     all_stride_dup_genes = set()
-    for l, stride_dup_genes in list_of_dicts:
-        if l == None:
-            sys.exit()
-        clusters.update(l)
-        all_stride_dup_genes.update(stride_dup_genes)
+    l, stride_dup_genes = agg_supported, agg_genesPostDup
+    # for l, stride_dup_genes in list_of_dicts:
+    if l == None:
+        sys.exit()
+    clusters.update(l)
+    all_stride_dup_genes.update(stride_dup_genes)
     roots, nSupport = ParsimonyRoot(species, list(dict_clades.keys()), clusters)
     roots = list(set(roots))
     speciesTrees_rootedFNs =[]

@@ -1,6 +1,6 @@
 {
     "__comment": "INPUT : The full path of the input filename for proteomes (fasta file of sequences for and msa method, multiple sequence alignment fasta file for tree method)",
-    "__comment": "DAN_INPUT : The full path of the input filename for genome data",
+    "__comment": "DNA_INPUT : The full path of the input filename for genome data",
     "__comment": "CORE_RESULTS :  Path to the directory containing the core run results",
     "__comment": "SPECIES_TREE : Path to the species tree file",
     "__comment": "USER_CONFIG : Path to the user config file",
