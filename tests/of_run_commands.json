@@ -19,7 +19,7 @@
         "iqtree3": "orthofinder -f INPUT -T iqtree3 --no-print-info",
         "fasttree_fastest": "orthofinder -f INPUT -T fasttree_fastest --no-print-info",
         "raxml": "orthofinder -f INPUT -T raxml --no-print-info",
-        "astral": "orthofinder -f INPUT -ST astral --no-print-info",
+        "astral": "orthofinder -f INPUT -ST astral -nk 2 --no-print-info",
         "oneway_search": "orthofinder -f INPUT -1 -z -y --no-print-info",
         "no_fix_files": "orthofinder -f INPUT --no-fix-files --no-print-info",
         "old_version": "orthofinder -f INPUT --old-version --no-print-info",
@@ -30,9 +30,9 @@
     },
     "Assign": {
         "stop_after_genetrees_restart": "orthofinder -ft CORE_RESULTS",
-        "stop_from_orthogroups_restart": "orthofinder -fg CORE_RESULTS",
+        "stop_after_orthogroups_restart": "orthofinder -fg CORE_RESULTS",
         "prepare_blast_restart": "orthofinder -b CORE_RESULTS --restart-of-blast --no-print-info",
-        "famsa_assign": "orthofinder --core CORE_RESULTS --assign INPUT --no-print-info",
+        "famsa_assign": "orthofinder --core CORE_RESULTS --assign INPUT -nk 2 --no-print-info",
         "famsa_species_tree_assign": "orthofinder --core CORE_RESULTS --assign INPUT -s SPECIES_TREE -rmgt -rmrgt -rmlg --save-space --no-print-info"
     }
 

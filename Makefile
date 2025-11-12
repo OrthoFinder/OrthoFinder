@@ -14,7 +14,7 @@ PYTHON_VERSION ?= python3
 ORTHOFINDER_ENV_DEFAULT := of3_env
 ENV_NAME ?= $(ORTHOFINDER_ENV_DEFAULT)
 
-ORTHOFINDER_DEFAULT_VERSION := 3.0.1b1
+ORTHOFINDER_DEFAULT_VERSION := 3.1.0
 ORTHOFINDER_VERSION ?= $(ORTHOFINDER_DEFAULT_VERSION)
 
 DIAMOND_DEFAULT_VERSION := 2.1.11
@@ -52,6 +52,9 @@ IQTREE_VERSION ?= $(IQTREE_DEFAULT_VERSION)
 
 BLAST_DEFAULT_VERSION := 2.16.0
 BLAST_VERSION ?= $(BLAST_DEFAULT_VERSION)
+
+MMSEQS_DEFAULT_VERSION := 17.b804f
+MMSEQS_VESION ?= $(MMSEQS_DEFAULT_VERSION)
 
 
 SYSTEM_WIDE ?= false
@@ -147,7 +150,15 @@ RAXMLNG_BINARY := $(BINARY_INSTALL_DIR)/raxml-ng
 MUSCLE_REPO := https://github.com/rcedgar/muscle.git
 MUSCLE_BINARY := $(BINARY_INSTALL_DIR)/muscle
 
-# URLs for IQ-TREE urlS
+
+
+# URLs for MMSEQS
+MMSEQS_LINUX := https://mmseqs.com/latest/mmseqs-linux-avx2.tar.gz
+MMSEQS_MACOS := https://mmseqs.com/latest/mmseqs-osx-universal.tar.gz
+MMSEQS_BINARY := $(BINARY_INSTALL_DIR)/mmseqs
+
+
+# URLs for IQ-TREE
 IQTREE_LINUX_UNIVERSAL := https://github.com/iqtree/iqtree3/releases/download/v3.0.1/iqtree-3.0.1-Linux.tar.gz
 IQTREE_LINUX_INTEL := https://github.com/iqtree/iqtree3/releases/download/v3.0.1/iqtree-3.0.1-Linux-intel.tar.gz
 IQTREE_LINUX_ARM := https://github.com/iqtree/iqtree3/releases/download/v3.0.1/iqtree-3.0.1-Linux-arm.tar.gz
@@ -159,7 +170,7 @@ IQTREE_MACOS_ARM := https://github.com/iqtree/iqtree3/releases/download/v3.0.1/i
 IQTREE_BINARY := $(BINARY_INSTALL_DIR)/iqtree3
 
 
-# URLs for BLAST urlS
+# URLs for BLAST
 BLAST_LINUX=https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.17.0+-x64-linux.tar.gz
 BLAST_MACOS=https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.17.0+-x64-macosx.tar.gz
 BLAST_MACOS_UNIVERSAL=https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.17.0+-universal-macosx.tar.gz
@@ -352,6 +363,20 @@ conda_install_muscle: create_conda_env
 		echo "MUSCLE version $(MUSCLE_VERSION) installed successfully."
 	elif [ "$$muscle_exists" = "1" ]; then \
 		echo "MUSCLE already exist globally: $$(command -v muscle). Skipping installation."; \
+	fi; \
+
+conda_install_mmseqs: create_conda_env
+	@echo "Checking global paths for MMseqs2..."; \
+	mmseqs_exists=$$(command -v mmseqs > /dev/null && echo 1 || echo 0); \
+
+	if [ "$(FORCE)" = "true" ] || [ "$$mmseqs_exists" = "0" ]; then \
+		echo "Installing MMseqs2 version $(MMSEQS_VERSION) in $(ENV_NAME)..."; \
+		. $(shell conda info --base)/etc/profile.d/conda.sh && \
+		conda activate $(ENV_NAME) && \
+		conda install bioconda::mmseqs2=$(MMSEQS_VERSION) -y || { echo "Error: Failed to install MMseqs2. Exiting."; exit 1; }; \
+		echo "MMseqs2 version $(MMSEQS_VERSION) installed successfully."
+	elif [ "$$mmseqs_exists" = "1" ]; then \
+		echo "MMseqs2 already exist globally: $$(command -v mmseqs). Skipping installation."; \
 	fi; \
 
 conda_install_blast: create_conda_env
@@ -676,7 +701,7 @@ install_mafft: make_usr_bin
 
 install_iqtree3: make_usr_bin
 	@echo "Checking global paths for IQ-TREE3..."; \
-	iqtree2_exists=$$(command -v iqtree3 > /dev/null && echo 1 || echo 0); \
+	iqtree3_exists=$$(command -v iqtree3 > /dev/null && echo 1 || echo 0); \
 
 	if [ "$(FORCE)" = "true" ] || [ "$$iqtree3_exists" = "0" ]; then \
 		echo "Detecting system architecture..."; \
@@ -738,6 +763,58 @@ install_iqtree3: make_usr_bin
 		echo "IQ-TREE3 already exists at: $$iqtree3_path. Skipping installation."; \
 	fi
 
+
+install_mmseqs: make_usr_bin
+	@echo "Checking global paths for MMseqs..."; \
+	mmseqs_exists=$$(command -v mmseqs > /dev/null && echo 1 || echo 0); \
+
+	if [ "$(FORCE)" = "true" ] || [ "$$mmseqs_exists" = "0" ]; then \
+		echo "Detecting system architecture..."; \
+		OS=$$(uname -s); ARCH=$$(uname -m); \
+		if [ "$$OS" = "Linux" ]; then \
+			MMSEQS_URL=$(MMSEQS_LINUX); \
+		elif [ "$$OS" = "Darwin" ]; then \
+			MMSEQS_URL=$(MMSEQS_MACOS); \
+		else \
+			echo "Error: Unsupported operating system: $$OS"; exit 1; \
+		fi; \
+		echo "Downloading MMseqs2 from $$MMSEQS_URL..."; \
+		temp_dir=$$(mktemp -d); \
+		download_path=$$temp_dir/mmseqs-src; \
+		if [ "$(QUIET)" = "true" ]; then \
+			wget -O $$download_path $$MMSEQS_URL > /dev/null 2>&1 || { echo "Error: Failed to download MMseqs2."; rm -rf $$temp_dir; exit 1; }; \
+		else \
+			wget -O $$download_path $$MMSEQS_URL || { echo "Error: Failed to download MMseqs2."; rm -rf $$temp_dir; exit 1; }; \
+		fi; \
+		echo "Extracting MMseqs2..."; \
+		if echo "$$MMSEQS_URL" | grep -q '.tar.gz'; then \
+			if [ "$(QUIET)" = "true" ]; then \
+				tar -xzf $$download_path -C $$temp_dir > /dev/null 2>&1 || { echo "Error: Failed to extract MMseqs2 tar.gz file."; rm -rf $$temp_dir; exit 1; }; \
+			else \
+				tar -xzf $$download_path -C $$temp_dir || { echo "Error: Failed to extract MMseqs2 tar.gz file."; rm -rf $$temp_dir; exit 1; }; \
+			fi; \
+		elif echo "$$MMSEQS_URL" | grep -q '.zip'; then \
+			if [ "$(QUIET)" = "true" ]; then \
+				unzip -o $$download_path -d $$temp_dir > /dev/null 2>&1 || { echo "Error: Failed to extract MMseqs2 zip file."; rm -rf $$temp_dir; exit 1; }; \
+			else \
+				unzip -o $$download_path -d $$temp_dir || { echo "Error: Failed to extract MMseqs2 zip file."; rm -rf $$temp_dir; exit 1; }; \
+			fi; \
+		else \
+			echo "Error: Unknown file format for MMseqs2."; rm -rf $$temp_dir; exit 1; \
+		fi; \
+		echo "Locating extracted MMseqs2 binary..."; \
+		mmseqs_binary=$$(find $$temp_dir -type f -name "mmseqs*" -executable | head -1); \
+		if [ -z "$$mmseqs_binary" ]; then \
+			echo "Error: MMseqs2 binary not found after extraction."; rm -rf $$temp_dir; exit 1; \
+		fi; \
+		echo "Moving MMseqs2 binary to $(BINARY_INSTALL_DIR)..."; \
+		$(SUDO_PREFIX) mv $$mmseqs_binary $(BINARY_INSTALL_DIR) || { echo "Error: Failed to move MMseqs2 binary."; rm -rf $$temp_dir; exit 1; }; \
+		rm -rf $$temp_dir; \
+		echo "MMseqs2 installation completed successfully."; \
+	else \
+		mmseqs_path=$$(command -v mmseqs); \
+		echo "MMseqs2 already exists at: $$mmseqs_path. Skipping installation."; \
+	fi
 
 install_raxml: make_usr_bin
 	@echo "Checking global paths for RAxML..."; \
