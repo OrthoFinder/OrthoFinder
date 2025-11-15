@@ -123,25 +123,45 @@ nSeqsPerSpecies: Dict[int, int] - indexed by OrthoFinder species ID, info on all
 
 # Get Info from seqs IDs file?
 def GetSeqsInfo(inputDirectory_list, speciesToUse, nSpAll):
+    inputDirectory_list = list(inputDirectory_list)
+    speciesToUse = list(speciesToUse)
     seqStartingIndices = [0]
     nSeqs = 0
-    nSeqsPerSpecies = dict()
+    nSeqsPerSpecies = {}
+
     for iFasta in range(nSpAll):
+        fastaFilename = None
+
         for d in inputDirectory_list:
-            fastaFilename = os.path.join(d, "Species%d.fa" % iFasta) 
-            if os.path.exists(fastaFilename):
+            candidate = os.path.join(d, f"Species{iFasta}.fa")
+            if os.path.exists(candidate):
+                fastaFilename = candidate
                 break
+
+        if fastaFilename is None:
+            if iFasta in speciesToUse:
+                raise FileNotFoundError(
+                    f"Species{iFasta}.fa not found in any of the input "
+                    f"directories: {inputDirectory_list}"
+                )
+            continue
         n = 0
         with open(fastaFilename) as infile:
             for line in infile:
-                if len(line) > 1 and line[0] == ">":
+                if line.startswith(">"):
                     n += 1
+
         nSeqsPerSpecies[iFasta] = n
+
         if iFasta in speciesToUse:
             nSeqs += n
             seqStartingIndices.append(nSeqs)
-    seqStartingIndices = seqStartingIndices[:-1]
+
+    if seqStartingIndices:
+        seqStartingIndices = seqStartingIndices[:-1]
+
     nSpecies = len(speciesToUse)
+
     return SequencesInfo(
         nSeqs=nSeqs,
         nSpecies=nSpecies,
@@ -149,6 +169,36 @@ def GetSeqsInfo(inputDirectory_list, speciesToUse, nSpAll):
         seqStartingIndices=seqStartingIndices,
         nSeqsPerSpecies=nSeqsPerSpecies,
     )
+
+
+    # seqStartingIndices = [0]
+    # nSeqs = 0
+    # nSeqsPerSpecies = dict()
+    # for iFasta in range(nSpAll):
+    #     for d in inputDirectory_list:
+    #         fastaFilename = os.path.join(d, "Species%d.fa" % iFasta) 
+    #         if os.path.exists(fastaFilename):
+    #             break
+    #     n = 0
+    #     with open(fastaFilename) as infile:
+    #         for line in infile:
+    #             if len(line) > 1 and line[0] == ">":
+    #                 n += 1
+    #     nSeqsPerSpecies[iFasta] = n
+    #     if iFasta in speciesToUse:
+    #         nSeqs += n
+    #         seqStartingIndices.append(nSeqs)
+
+    # seqStartingIndices = seqStartingIndices[:-1]
+    # nSpecies = len(speciesToUse)
+
+    # return SequencesInfo(
+    #     nSeqs=nSeqs,
+    #     nSpecies=nSpecies,
+    #     speciesToUse=speciesToUse,
+    #     seqStartingIndices=seqStartingIndices,
+    #     nSeqsPerSpecies=nSeqsPerSpecies,
+    # )
 
 
 def SeqsInfoRecompute(seqs_info_orig, new_species_to_use):
@@ -399,8 +449,10 @@ def GetSpeciesToUse(speciesIDsFN):
                 nSkipped += 1
             else:
                 iSp, spName = line.split(": ")
-                speciesToUse.append(int(iSp))
-                speciesToUse_names.append(spName)
+                if spName not in speciesToUse_names:
+                    speciesToUse.append(int(iSp))
+                    speciesToUse_names.append(spName)
+
     return speciesToUse, len(speciesToUse) + nSkipped, speciesToUse_names
 
 

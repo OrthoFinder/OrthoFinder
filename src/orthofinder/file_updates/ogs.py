@@ -56,6 +56,7 @@ def post_hogs_processing(
             resultsBaseFilename,
         )
 
+
     # Write Orthogroup FASTA files
     ogSet = OrthoGroupsSet(
         options.min_seq,
@@ -220,7 +221,7 @@ class OrthoGroupsSet(object):
             self.ogs_all_fn = files.FileHandler.OGsAllIDFN()
         else:
             self.ogs_all_fn = ogs_all_fn
-        
+
         self.speciesIDsEx = util.FullAccession(self.species_id_fn)
         self._Spec_SeqIDs = None
         self._extractor = idExtractor

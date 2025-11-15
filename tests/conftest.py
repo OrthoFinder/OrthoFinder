@@ -10,6 +10,8 @@ import multiprocessing as mp
 from orthofinder.utils import files
 from OF_funcs import OrthoFinderTestFuncs
 
+os.environ["ORTHOFINDER_TEST_ISOLATE"] = "1"
+
 ## ---------------- TEST OrthoFinder Commands ----------------
 OF_BASELINE_OPTIONS = [
     "famsa_species_tree", 
@@ -102,7 +104,11 @@ DEFAULT_PROJECTS = {
         }
     }
 }
-
+DIRECT_CATS = {"direct", "direct_run", "direct_runs", "others"}
+CORE_CATS = {"core", "corerun", "core_run", "core_runs"}
+STOPAFTER_CATS = {"stopafter", "stop", "stopafter_run", "stopafter_runs"}
+ASSIGN_CATS = {"assign", "assignrun", "assign_run", "assign_runs"}
+RESTART_CATS = {"restart", "restartstopafter", "restarts", "restart_run", "restart_runs"}
 
 def pytest_addoption(parser):
     parser.addoption(
@@ -110,6 +116,13 @@ def pytest_addoption(parser):
         action="store_true",
         default=False,  
         help="Decide wether or not to test all available OrthoFinder command options.",
+    )
+
+    parser.addoption(
+        "--skip-of-test",
+        action="store_true",
+        default=False,  
+        help="Decide wether or not to test OrthoFinder results with the expected results.",
     )
     
     parser.addoption(
@@ -201,13 +214,13 @@ def _to_list(value: Optional[Union[str, int, bool]]) -> List[Any]:
         return [x for x in value.split(",") if x] if value else []
     if isinstance(value, (int, bool)):
         return [value]
-    # fallback
     return [value]
 
 ### ------------------- CLI input --------------------------------
 @pytest.fixture(scope="session")
 def projects(request):
     return request.config.getoption("--projects")
+
 
 @pytest.fixture(scope="session")
 def user_ofconfig(pytestconfig):
@@ -242,46 +255,128 @@ def species_tree_assign(request):
 def baseline_options():
     return OF_BASELINE_OPTIONS 
 
-
-
 def _load_of_command_dict_from_cli(config):
     user_config = config.getoption("--user-testconfig")
     run_all = bool(config.getoption("--run-all"))
     run_opts_s = config.getoption("--run-options") or ""
-    run_opts = [x for x in run_opts_s.split(",") if x]
-    skip_runs = config.getoption("--skip-runs") or ""
-    skip_run_opts = [x for x in skip_runs.split(",") if x]
-    
+    skip_runs_s = config.getoption("--skip-runs") or ""
+
+    run_opts = {x.strip() for x in run_opts_s.split(",") if x.strip()}
+    skip_run_opts = {x.strip() for x in skip_runs_s.split(",") if x.strip()}
 
     of_commands = helper.read_config_file(COMMANDS_CONFIG, user_config)
 
     if run_all:
         return of_commands
 
-    base = {cat: {n: cmd for n, cmd in cmds.items() if n in OF_BASELINE_OPTIONS}
-            for cat, cmds in of_commands.items()}
-    if run_opts:
-        sel = {cat: {n: cmd for n, cmd in cmds.items() if n in run_opts}
-               for cat, cmds in of_commands.items()}
-        for cat, cmds in sel.items():
-            base.setdefault(cat, {}).update(cmds)
+    base = {}
+    for cat, cmds in of_commands.items():
+        kept = {n: cmd for n, cmd in cmds.items() if n in OF_BASELINE_OPTIONS}
+        if kept:
+            base[cat] = kept
+    
+    filtered = {}
+    for cat, cmds in of_commands.items():
+        kept = {n: cmd for n, cmd in cmds.items() if n not in skip_run_opts}
+        if kept:
+            filtered[cat] = kept
+    
     if skip_run_opts:
-        sel = {cat: {n: cmd for n, cmd in cmds.items() if n not in skip_run_opts}
-               for cat, cmds in of_commands.items()}
-        for cat, cmds in sel.items():
-            base.setdefault(cat, {}).update(cmds)
+        return filtered
+
+    if run_opts:
+        selected = {}
+        for cat, cmds in filtered.items():
+            kept = {n: cmd for n, cmd in cmds.items() if n in run_opts}
+            if kept:
+                selected[cat] = kept
+
+        if selected:
+            return selected
+
     return base
 
+
+# def _load_of_command_dict_from_cli(config):
+#     user_config = config.getoption("--user-testconfig")
+#     run_all = bool(config.getoption("--run-all"))
+#     run_opts_s = config.getoption("--run-options") or ""
+#     run_opts = [x for x in run_opts_s.split(",") if x]
+#     skip_runs = config.getoption("--skip-runs") or ""
+#     skip_run_opts = [x for x in skip_runs.split(",") if x]
+    
+
+#     of_commands = helper.read_config_file(COMMANDS_CONFIG, user_config)
+
+#     if run_all:
+#         return of_commands
+
+#     base = {cat: {n: cmd for n, cmd in cmds.items() if n in OF_BASELINE_OPTIONS}
+#             for cat, cmds in of_commands.items()}
+#     if run_opts:
+#         sel = {cat: {n: cmd for n, cmd in cmds.items() if n in run_opts}
+#                for cat, cmds in of_commands.items()}
+#         for cat, cmds in sel.items():
+#             base.setdefault(cat, {}).update(cmds)
+#     if skip_run_opts:
+#         sel = {cat: {n: cmd for n, cmd in cmds.items() if n not in skip_run_opts}
+#                for cat, cmds in of_commands.items()}
+#         for cat, cmds in sel.items():
+#             base.setdefault(cat, {}).update(cmds)
+#     return base
+
 def pytest_generate_tests(metafunc):
-    if "core_case" in metafunc.fixturenames or "assign_case" in metafunc.fixturenames:
+    if "core_case" in metafunc.fixturenames or \
+        "assign_case" in metafunc.fixturenames or \
+        "direct_case" in metafunc.fixturenames or \
+        "stopafter_case" in metafunc.fixturenames or \
+        "restart_case" in metafunc.fixturenames:
+        
         of_cmds = _load_of_command_dict_from_cli(metafunc.config)
 
-        core = [(name, arg)  for cat, cmds in of_cmds.items()
-                               if "assign" not in cat.lower()
-                               for name, arg in cmds.items()]
-        assign = [(name, arg) for cat, cmds in of_cmds.items()
-                               if "core" not in cat.lower()
-                               for name, arg in cmds.items()]
+        direct = [
+            (name, arg)
+            for cat, cmds in of_cmds.items()
+            if cat.lower() in DIRECT_CATS
+            for name, arg in cmds.items()          
+        ]
+        
+        stopafter = [
+            (name, arg)
+            for cat, cmds in of_cmds.items()
+            if cat.lower() in STOPAFTER_CATS
+            for name, arg in cmds.items()
+        ]
+
+        restart = [
+            (name, arg)
+            for cat, cmds in of_cmds.items()
+            if cat.lower() in RESTART_CATS
+            for name, arg in cmds.items()
+        ]
+
+        core = [
+            (name, arg)
+            for cat, cmds in of_cmds.items()
+            if cat.lower() in CORE_CATS
+            for name, arg in cmds.items()
+        ]
+
+        assign = [
+            (name, arg)
+            for cat, cmds in of_cmds.items()
+            if cat.lower() in ASSIGN_CATS
+            for name, arg in cmds.items()
+        ]
+
+        if "direct_case" in metafunc.fixturenames:
+            metafunc.parametrize("direct_case", direct, ids=[f"direct::{n}" for n, _ in direct], scope="session")
+
+        if "stopafter_case" in metafunc.fixturenames:
+            metafunc.parametrize("stopafter_case", stopafter, ids=[f"stopafter::{n}" for n, _ in stopafter], scope="session")
+
+        if "restart_case" in metafunc.fixturenames:
+            metafunc.parametrize("restart_case", restart, ids=[f"restart::{n}" for n, _ in restart], scope="session")
 
         if "core_case" in metafunc.fixturenames:
             metafunc.parametrize("core_case", core, ids=[f"core::{n}" for n, _ in core], scope="session")
@@ -320,7 +415,7 @@ def reset_orthofinder_state():
     'Changing WorkingDirectory1' errors when running multiple CLI calls
     in-process.
     """
-    attrs_to_clear = ("wd_base", "wd1", "wd2", "base_dir")
+    attrs_to_clear = ("wd_base_prev", "home_for_results", "wd_base", "wd_current", "wd_trees", "wd1", "wd2", "rd1", "base_dir")
     for attr in attrs_to_clear:
         if hasattr(files.FileHandler, attr):
             setattr(files.FileHandler, attr, "")
@@ -328,9 +423,7 @@ def reset_orthofinder_state():
     for attr in attrs_to_clear:
         if hasattr(files.FileHandler, attr):
             setattr(files.FileHandler, attr, "")
-            
-            
-        
+
 @pytest.fixture(scope="session")
 def of_obj(projects, baseline_arg_dict, baseline_options, species_tree):
     return OrthoFinderTestFuncs(

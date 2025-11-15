@@ -1,6 +1,8 @@
 import os
 import pytest
 from read_results import get_expected_results
+# from OF_funcs import OrthoFinderTestFuncs
+
 
 
 @pytest.fixture(scope="class")
@@ -61,3 +63,5 @@ def of_and_expected_hogs(request, of_obj, of_obj_assign, expected_results_dict):
         return of_obj, expected_results_dict["core"]["hogs"]
     else:
         return of_obj_assign, expected_results_dict["assign"]["hogs"]
+
+

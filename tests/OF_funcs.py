@@ -4,7 +4,7 @@ import re
 from collections import defaultdict
 
 import helper
-from orthofinder.utils import files, util
+from orthofinder.utils import files, util, fasta_processor
 from orthofinder.run import process_args
 from orthofinder.tools import tree, stride
 from orthofinder.run.process_args import Options
@@ -95,6 +95,7 @@ class OrthoFinderTestFuncs:
         # ---------- Caching / run state ----------
         self._species_cache = None          # caches speciesInfoObj
         self.active_wd_list = None          # WDs actually used this run
+        # self.wd_scope_list = None
         self.added_any_new  = False         # whether assign added new species
 
     # ---------------- helpers ----------------
@@ -117,7 +118,7 @@ class OrthoFinderTestFuncs:
         wds = [wd if wd.endswith(os.sep) else wd + os.sep for wd in wds]
         snap = self._snapshot_fh()
         files.FileHandler.wd_base = wds
-        files.FileHandler.wd_current = wds[0]
+        files.FileHandler.wd_current = wds[-1]
         files.FileHandler.rd1 = os.path.dirname(files.FileHandler.wd_current.rstrip(os.sep))
         files.FileHandler.wd_trees = files.FileHandler.wd_current
         try:
@@ -131,6 +132,7 @@ class OrthoFinderTestFuncs:
 
         if not self.assign:
             self.active_wd_list = [self.core_working_dir]
+            # self.wd_scope_list = [self.core_working_dir]
             with self._use_fh_wds(self.active_wd_list):
                 speciesInfoObj, _ = ProcessPreviousFiles(
                     self.active_wd_list,
@@ -140,28 +142,46 @@ class OrthoFinderTestFuncs:
             self._species_cache = speciesInfoObj
             return speciesInfoObj
 
-        wd_scope_for_species = [self.assign_working_dir, self.core_working_dir]
-        self.active_wd_list = [self.core_working_dir, self.assign_working_dir] 
+        # self.wd_scope_list = [self.assign_working_dir, self.core_working_dir]
+        self.active_wd_list = [self.core_working_dir, self.assign_working_dir]
 
-        with self._use_fh_wds(wd_scope_for_species):
-            speciesInfoObj, _ = ProcessPreviousFiles(
-                self.active_wd_list,
+        with self._use_fh_wds(self.active_wd_list[::-1]):
+            speciesInfoObj, speciesToUse_names = ProcessPreviousFiles(
+                self.active_wd_list[::-1],
                 self.options.qDoubleBlast,
                 check_blast=False,
             )
+
+            # newSpeciesIDs = speciesInfoObj.speciesToUse
+            # iSpecies = len(newSpeciesIDs)
+
+            # with open(self.species_id_fn, 'a') as speciesFile:
+            #     for fastaFilename in os.listdir(self.assign):
+            #         fastaFilename = os.path.join(self.assign, fastaFilename)
+            #         newSpeciesIDs.append(iSpecies)
+            #         fastaFilename = fastaFilename.rstrip()
+            #         speciesFile.write("%d: %s\n" % (iSpecies, os.path.basename(fastaFilename)))
+            #         iSpecies += 1
+
+            # # for i in range(len(speciesInfoObj.speciesToUse), len(speciesInfoObj.speciesToUse) + num_new_species):
+            # #     speciesInfoObj.speciesToUse.append(i)
+            # # speciesInfoObj.nSpAll = max(speciesInfoObj.speciesToUse) + 1 
+            # speciesInfoObj.speciesToUse = newSpeciesIDs
+            # speciesInfoObj.nSpAll = max(speciesInfoObj.speciesToUse) + 1      # will be one of the new species
+    
 
         self._species_cache = speciesInfoObj
         return speciesInfoObj
 
     def get_sequence_info_obj(self):
         speciesInfoObj = self.get_species_info_obj()
-        return util.GetSeqsInfo(self.active_wd_list, speciesInfoObj.speciesToUse, speciesInfoObj.nSpAll)
+        return util.GetSeqsInfo(self.active_wd_list[::-1], speciesInfoObj.speciesToUse, speciesInfoObj.nSpAll)
 
     def get_og_obj(self):
         speciesInfoObj = self.get_species_info_obj()
         ogSet = OrthoGroupsSet(
             self.options.min_seq,
-            self.active_wd_list,
+            self.active_wd_list[::-1],
             speciesInfoObj.speciesToUse,
             speciesInfoObj.nSpAll,
             self.options.qAddSpeciesToIDs,
@@ -415,7 +435,6 @@ class OrthoFinderTestFuncs:
             sorted_orthogroups_list = sorted(orthogroups_list)
             _, orthogroups_set = zip(*sorted_orthogroups_list)
             orthogroups_dict[og_id] = tuple(orthogroups_set)
-        
         return orthogroups_dict
 
         

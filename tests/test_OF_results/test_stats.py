@@ -5,7 +5,11 @@ import numpy as np
 from orthofinder.comparative_genomics.stats import add_unassigned_genes, OrthogroupsMatrix
 
 
-@pytest.mark.order(9)
+@pytest.mark.skipif(
+    "config.getoption('--skip-of-test')",
+    reason="Skipping OrthoFinder results test"
+)
+@pytest.mark.order(12)
 class TestcComparativeStats:
     def test_overall_stats(self, of_and_expected_stats_overall):
         """

@@ -51,6 +51,9 @@ from .. import __version__
 
 class __Files_new_dont_manually_create__(object):    
     def __init__(self):
+        self.reset() 
+
+    def reset(self):
         self.baseOgFormat = "OG%07d"
         self.wd_base = []               # Base: blast, species & sequence IDs, species fasta files - should not request this and then write here
         self.wd_current = None          # Location to write out any new files
@@ -63,7 +66,6 @@ class __Files_new_dont_manually_create__(object):
         self.speciesTreeRootedIDsFN = None
         self.multipleRootedSpeciesTreesDir = None
         self.species_ids_corrected = None
-        # to be modified as appropriate
      
     """ ========================================================================================== """
     # RefactorDS - FileHandler
@@ -621,7 +623,7 @@ class __Files_new_dont_manually_create__(object):
         if not os.path.exists(hog_dir):
             os.makedirs(hog_dir, exist_ok=True)
 
-        return hog_dir + "N0.tsv"
+        return os.path.join(hog_dir, "N0.tsv")
     
     def OGsAllIDFN(self):
         return self.wd_current + "OGsAll.tsv"

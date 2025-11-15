@@ -97,6 +97,8 @@ source = ["src/orthofinder"]
 branch = true
 parallel = true
 concurrency = ["thread", "multiprocessing"]
+# patch = ["subprocess"] 
+# sigterm = true   
 
 [tool.coverage.report]
 show_missing = true
@@ -107,15 +109,14 @@ omit = [
 exclude_lines = ["pragma: no cover", "if __name__ == .__main__.:"]
 
 [tool.pytest.ini_options]
-addopts = "--cov=orthofinder"
-# addopts = "--cov --cov-report=term-missing"
+# addopts = "--cov=orthofinder"
+addopts = "--cov=orthofinder --cov-config=pyproject.toml"
 testpaths = ["tests"]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "disabled: marks tests as disabled (deselect with '-m \"not disabled\"')",
     "regression: marks a test as a regression test",
 ]
-
 
 [tool.setuptools_scm]
 write_to = "src/orthofinder/_version.py"

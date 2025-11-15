@@ -73,6 +73,7 @@ try:
 except ImportError:
     ...
 
+TEST_MODE = os.getenv("ORTHOFINDER_TEST_ISOLATE") == "1"
 
 configfile_location = os.path.join(__location__, "run")
 max_int = sys.maxsize
@@ -371,6 +372,7 @@ def BetweenCoreOrthogroupsWorkflow(
 
 
 def main(args=None):
+    files.FileHandler.reset()
     start = time.perf_counter()
     try:
 
@@ -596,7 +598,9 @@ def main(args=None):
             # 0.
             check_blast = not options.qMSATrees
             speciesInfoObj, _ = species_info.ProcessPreviousFiles(
-                continuationDir, options.qDoubleBlast, check_blast=check_blast
+                files.FileHandler.GetWorkingDirectory1_Read(), 
+                options.qDoubleBlast, 
+                check_blast=check_blast
             )
             files.FileHandler.LogSpecies()
             options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
@@ -842,6 +846,7 @@ def main(args=None):
         # printer.print(f"OrthoFinder finished in {time_elapsed:5f}s", end="\n" * 2, style="info")
         printer.print(f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] finished in ", end="")
         printer.print(f"[green]{time_elapsed:5f}[/green]s", end="\n" * 2)
+        files.FileHandler.reset()
         sys.exit()
 
 

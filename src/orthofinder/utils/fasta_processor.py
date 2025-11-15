@@ -144,20 +144,29 @@ def ProcessesNewFasta(
         print("")
         util.Fail()
 
+    speciesToUse_prev_names = sorted([*speciesToUse_prev_names])
+    originalFastaFilenames = sorted([*originalFastaFilenames])
+
     if len(originalFastaFilenames) == 0:
         print("\nNo fasta files found in supplied directory: %s" % fastaDir)
         util.Fail()
 
     if speciesInfoObj_prev == None:
-        # Then this is a new, clean analysis 
         speciesInfoObj = util.SpeciesInfo()
     else:
         speciesInfoObj = speciesInfoObj_prev
 
     if not species_id_fn:
-        species_id_fn = files.FileHandler.GetSpeciesIDsFN()
+        if files.FileHandler.wd_current:
+            species_id_fn = os.path.join(files.FileHandler.wd_current, "SpeciesIDs.txt")
+        else:
+            species_id_fn = files.FileHandler.GetSpeciesIDsFN()
+
     if not sequence_id_fn:
-        sequence_id_fn = files.FileHandler.GetSequenceIDsFN()
+        if files.FileHandler.wd_current:
+            sequence_id_fn = os.path.join(files.FileHandler.wd_current, "SequenceIDs.txt")
+        else:
+            sequence_id_fn = files.FileHandler.GetSequenceIDsFN()
 
     iSeq = 0
     iSpecies = 0
@@ -169,7 +178,7 @@ def ProcessesNewFasta(
         iSpecies = int(line.split(":")[0]) + 1
     speciesInfoObj.iFirstNewSpecies = iSpecies
     newSpeciesIDs = []
-    
+
     with open(sequence_id_fn, 'a') as idsFile, open(species_id_fn, 'a') as speciesFile:
         for fastaFilename in originalFastaFilenames:
             newSpeciesIDs.append(iSpecies)
@@ -211,3 +220,4 @@ def ProcessesNewFasta(
     speciesInfoObj.nSpAll = max(speciesInfoObj.speciesToUse) + 1      # will be one of the new species
     
     return speciesInfoObj
+

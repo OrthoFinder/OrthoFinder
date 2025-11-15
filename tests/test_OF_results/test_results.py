@@ -2,7 +2,11 @@
 import pytest
 import helper
 
-@pytest.mark.order(4)
+@pytest.mark.skipif(
+    "config.getoption('--skip-of-test')",
+    reason="Skipping OrthoFinder results test"
+)
+@pytest.mark.order(7)
 def test_recon_tree(of_and_expected_recon_tree):
     of_obj, expected_recon_tree = of_and_expected_recon_tree
     of_gene_tree_dict = of_obj.get_recon_gene_trees()
@@ -20,8 +24,11 @@ def test_recon_tree(of_and_expected_recon_tree):
         assert expected_recon_tree.issubset(leaf_names), "????"
         assert gene_tree.check_monophyly(expected_recon_tree)[0], "????"
 
-
-@pytest.mark.order(5)
+@pytest.mark.skipif(
+    "config.getoption('--skip-of-test')",
+    reason="Skipping OrthoFinder results test"
+)
+@pytest.mark.order(8)
 def test_orthologues(of_and_expected_orthologues):
     of_obj, expected = of_and_expected_orthologues
     of_orthologues = of_obj.get_orthologues()
@@ -56,7 +63,11 @@ def test_orthologues(of_and_expected_orthologues):
             )
         raise AssertionError("Some expected orthologues were not found:\n" + "\n".join(msgs))
 
-@pytest.mark.order(6)
+@pytest.mark.skipif(
+    "config.getoption('--skip-of-test')",
+    reason="Skipping OrthoFinder results test"
+)
+@pytest.mark.order(9)
 def test_duplications(of_and_expected_duplications):
     of_obj, expected_dup_map = of_and_expected_duplications
 
@@ -81,20 +92,23 @@ def test_duplications(of_and_expected_duplications):
     #     for (label, A, B), exp_ogs, act_ogs in reloc:
     #         print(f"label={label}, Genes1={sorted(A)}, Genes2={sorted(B)} | expected {exp_ogs}, found {act_ogs}")
 
-
-@pytest.mark.order(7)
+@pytest.mark.skipif(
+    "config.getoption('--skip-of-test')",
+    reason="Skipping OrthoFinder results test"
+)
+@pytest.mark.order(10)
 def test_orthogroups(of_and_expected_orthogroups):
     of_obj, expected_orthogrups = of_and_expected_orthogroups
     orthogroups_dict = of_obj.get_orthogroups()
     
     actual_ogs, actual_locs = helper._index_of_orthogroups(orthogroups_dict)
     expected_ogs, expected_locs = helper._index_of_orthogroups(expected_orthogrups)
-
+    
     missing = [t for t in expected_ogs if t not in actual_ogs]
     if missing:
         lines = []
-        for label, A, B in missing:
-            lines.append(f"Missing orthogroups: label={label}, Genes1={sorted(A)}, Genes2={sorted(B)}")
+        for og in missing:
+            lines.append(f"Missing orthogroups: {sorted(og)}")
         raise AssertionError("Some expected Orthogroups were not found:\n" + "\n".join(lines))
 
     reloc = []
@@ -108,8 +122,11 @@ def test_orthogroups(of_and_expected_orthogroups):
     #     for (label, A, B), exp_ogs, act_ogs in reloc:
     #         print(f"label={label}, Genes1={sorted(A)}, Genes2={sorted(B)} | expected {exp_ogs}, found {act_ogs}")
 
-
-@pytest.mark.order(8)
+@pytest.mark.skipif(
+    "config.getoption('--skip-of-test')",
+    reason="Skipping OrthoFinder results test"
+)
+@pytest.mark.order(11)
 def test_phylogenetic_hierarchical_orthogroups(of_and_expected_hogs):
     of_obj, expected_hogs_dict = of_and_expected_hogs
     of_hogs_dict = of_obj.get_hogs()
@@ -122,7 +139,7 @@ def test_phylogenetic_hierarchical_orthogroups(of_and_expected_hogs):
     if missing:
         lines = []
         for og in missing:
-            lines.append(f"Missing : phylogenetic hierarchical orthogroups {og}")
+            lines.append(f"Missing phylogenetic hierarchical orthogroups: {og}")
         raise AssertionError("Some expected phylogenetic hierarchical orthogroups were not found:\n" + "\n".join(lines))
     
     og_reloc = []
