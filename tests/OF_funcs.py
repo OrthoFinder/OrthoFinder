@@ -470,7 +470,8 @@ class OrthoFinderTestFuncs:
             SequenceDict, 
             speciesDict, 
             ogSet.speciesToUse,
-            write_to_rd=True
+            write_to_rd=True,
+            write_output=False
         )
         q_split_paralogous_clades = self.options.qSplitParaClades
         

@@ -139,6 +139,7 @@ class HogWriter(object):
             sp_ids, 
             species_to_use,
             write_to_rd,
+            write_output=True
         ):
         """
         Prepare files, get ready to write.
@@ -153,10 +154,7 @@ class HogWriter(object):
             q_results = True
         else:
             q_results = False
-        
-        d = os.path.dirname(files.FileHandler.GetHierarchicalOrthogroupsFN("N0", q_results=q_results))
-        if not os.path.exists(d):
-            os.mkdir(d)
+
         self.fhs = dict()
         self.iSps = list(map(str, sorted(species_to_use)))   # list of strings
         self.i_sp_to_index = {int(isp):i_col for i_col, isp in enumerate(self.iSps)}
@@ -164,16 +162,21 @@ class HogWriter(object):
         self.lock_iHOG = mp.Lock()
         self.species_tree = species_tree
         species_names = [sp_ids[i] for i in self.iSps]
-        for name in species_tree_node_names + ["N0.ids"]:
 
-            if not name.endswith(".ids"):
-                fn = files.FileHandler.GetHierarchicalOrthogroupsFN(name, q_results=q_results)
-            elif name.endswith(".ids"):
-                fn = files.FileHandler.GetHierarchicalOrthogroupsFN(name, q_results=q_results, extension=".ids")
-            
-            self.fhs[name] = open(fn, util.csv_write_mode)
-            util.writerow(self.fhs[name], ["HOG", "OG", "Gene Tree Parent Clade"] + species_names)
-            self.fhs[name].flush()
+        if write_output:
+            d = os.path.dirname(files.FileHandler.GetHierarchicalOrthogroupsFN("N0", q_results=q_results))
+            if not os.path.exists(d):
+                os.mkdir(d)
+
+            for name in species_tree_node_names + ["N0.ids"]:
+
+                if not name.endswith(".ids"):
+                    fn = files.FileHandler.GetHierarchicalOrthogroupsFN(name, q_results=q_results)
+                elif name.endswith(".ids"):
+                    fn = files.FileHandler.GetHierarchicalOrthogroupsFN(name, q_results=q_results, extension=".ids")
+                self.fhs[name] = open(fn, util.csv_write_mode)
+                util.writerow(self.fhs[name], ["HOG", "OG", "Gene Tree Parent Clade"] + species_names)
+                self.fhs[name].flush()
         # Map from HOGs to genes that must be contained in them
         self.hog_contents = dict()  # sp_node_name = hog_name-> list of contents fo hog (internal nodes and leaves)
         for n in species_tree.traverse():
@@ -2120,7 +2123,8 @@ def SortParallelFiles(
     if write_hog_tree:
         hog_type.append((files.FileHandler.GetWorkingDirectory_Write() + "N0.ids.tsv", "h"))
     else:
-        hog_type.append((os.path.join(files.FileHandler.GetLegacyHOGDir(), "N0.ids.tsv"), "h"))
+        if os.path.exists(os.path.join(files.FileHandler.GetLegacyHOGDir(), "N0.ids.tsv")):
+            hog_type.append((os.path.join(files.FileHandler.GetLegacyHOGDir(), "N0.ids.tsv"), "h"))
         
     other_type = []
     if not write_hog_tree or not fix_files:

@@ -152,6 +152,7 @@ def GetOrthologues(
         options.qStopAfterSeqs,
         options.qStopAfterAlignments,
         options.qStopAfterTrees,
+        options.qStopAfterSpeciesTrees,
         options.qMSATrees,
         options.qPhyldog,
         options.name,
@@ -165,15 +166,15 @@ def GetOrthologues(
 
 
 def BetweenCoreOrthogroupsWorkflow(
-    continuationDir,
-    speciesInfoObj,
-    seqsInfo,
-    options,
-    prog_caller,
-    speciesNamesDict,
-    results_files,
-    q_hogs,
-):
+        continuationDir,
+        speciesInfoObj,
+        seqsInfo,
+        options,
+        prog_caller,
+        speciesNamesDict,
+        results_files,
+        q_hogs,
+    ):
     """
     Infer clade-specific orthogroups for the new species clades
     n_unassigned: List[int] - number of unassigned genes per species
@@ -695,6 +696,41 @@ def main(args=None):
                 options.qSplitParaClades,
                 save_space=options.save_space,
                 root_from_previous=False,
+            )
+        elif options.qStartFromSpeciesTrees:
+            speciesInfoObj, _ = species_info.ProcessPreviousFiles(
+                files.FileHandler.GetWorkingDirectory1_Read(),
+                options.qDoubleBlast,
+                check_blast=False,
+            )
+            files.FileHandler.LogSpecies()
+            options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
+            speciesNamesDict = species_info.SpeciesNameDict(
+                files.FileHandler.GetSpeciesIDsFN()
+            )
+            seqsInfo = util.GetSeqsInfo(
+                files.FileHandler.GetWorkingDirectory1_Read(),
+                speciesInfoObj.speciesToUse,
+                speciesInfoObj.nSpAll,
+            )
+            
+            orthologues.OrthologuesFromGeneSpeciesTrees(
+                seqsInfo, 
+                speciesNamesDict, 
+                speciesInfoObj, 
+                options,
+                speciesInfoObj.speciesToUse,
+                speciesInfoObj.nSpAll,
+                options.recon_method,
+                options.nBlast,
+                options.nProcessAlg,
+                options.qAddSpeciesToIDs,
+                options.speciesTreeFN,
+                options.fewer_open_files,  # Open one ortholog file per species when analysing trees
+                old_version=options.old_version,
+                q_split_para_clades=options.qSplitParaClades,
+                i_og_restart=0,
+                speciesXML=None,
             )
 
         elif options.qFastAdd:

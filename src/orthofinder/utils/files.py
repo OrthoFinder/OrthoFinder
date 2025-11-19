@@ -64,6 +64,7 @@ class __Files_new_dont_manually_create__(object):
         self.iResultsVersion = 0
         self.nondefaultPickleDir = None
         self.speciesTreeRootedIDsFN = None
+        self.speciesUNTreeRootedIDsFN = None
         self.multipleRootedSpeciesTreesDir = None
         self.species_ids_corrected = None
      
@@ -178,6 +179,7 @@ class __Files_new_dont_manually_create__(object):
                        clustersFilename_pairs,
                        speciesTreeFN, 
                        qIsUSerSpeciesTree,
+                       qStartFromSpeciesTrees=False,
                        user_name=None,
                        search_program=None,
                        msa_program=None,
@@ -217,10 +219,12 @@ class __Files_new_dont_manually_create__(object):
         self.clustersFilename = clustersFilename_pairs[:-len("_id_pairs.txt")]
         self.StartLog(search_program=search_program, msa_program=msa_program, tree_program=tree_program,
                       scorematrix=scorematrix, gapopen=gapopen, gapextend=gapextend)
-        # if not qIsUSerSpeciesTree:
-        #     shutil.copy(speciesTreeFN, self.GetSpeciesTreeIDsRootedFN())
-        # self.WriteToLog("Species Tree: %s\n" % speciesTreeFN)
-        self.WriteToLog("Unrooted Species Tree: %s\n" % speciesTreeFN)
+        if qStartFromSpeciesTrees:
+            if not qIsUSerSpeciesTree:
+                shutil.copy(speciesTreeFN, self.GetSpeciesTreeIDsRootedFN())
+            self.WriteToLog("Species Tree: %s\n" % speciesTreeFN)
+        else:
+            self.WriteToLog("Unrooted Species Tree: %s\n" % speciesTreeFN)
         self.LogWorkingDirectoryTrees()
                                          
     def CreateOutputDirectories(self, options, previous_files_locator, base_dir, fastaDir=None):
@@ -274,15 +278,20 @@ class __Files_new_dont_manually_create__(object):
                                                       gapopen=options.gapopen,
                                                       gapextend=options.gapextend,
                                                       extended_filename=options.extended_filename)
-        elif options.qStartFromTrees:
-            wd1, clustersFilename_pairs, wd_trees, speciesTreeFN = previous_files_locator.GetStartFromTrees()
+        elif options.qStartFromTrees or options.qStartFromSpeciesTrees:
+            wd1, clustersFilename_pairs, wd_trees, speciesTreeFN, unrootedspeciesTreeFN = previous_files_locator.GetStartFromTrees()
             if options.speciesTreeFN != None:
                 qIsUserSpeciesTree = True
                 speciesTreeFN = options.speciesTreeFN
             elif speciesTreeFN != None:
                 qIsUserSpeciesTree = False
+                if options.qStartFromTrees:
+                    speciesTreeFN = unrootedspeciesTreeFN
             else:
-                print("ERROR: Could not find species tree")
+                if options.qStartFromTrees:
+                    print("ERROR: Could not find gene tree")
+                else:
+                    print("ERROR: Could not find species tree")
                 util.Fail()
             self.StartFromTrees(wd1, 
                                 wd_trees,
@@ -290,6 +299,7 @@ class __Files_new_dont_manually_create__(object):
                                 clustersFilename_pairs,
                                 speciesTreeFN, 
                                 qIsUserSpeciesTree,
+                                qStartFromSpeciesTrees=options.qStartFromSpeciesTrees,
                                 user_name=options.name,
                                 search_program=options.search_program,
                                 msa_program=options.msa_program,
@@ -298,8 +308,34 @@ class __Files_new_dont_manually_create__(object):
                                 gapopen=options.gapopen,
                                 gapextend=options.gapextend,
                                 extended_filename=options.extended_filename)
+            
+        # elif :
+            # wd1, clustersFilename_pairs, wd_trees, speciesTreeFN = previous_files_locator.GetStartFromTrees()
+            # if options.speciesTreeFN != None:
+            #     qIsUserSpeciesTree = True
+            #     speciesTreeFN = options.speciesTreeFN
+            # elif speciesTreeFN != None:
+            #     qIsUserSpeciesTree = False
+            # else:
+            #     print("ERROR: Could not find species tree")
+            #     util.Fail()
+            # self.StartFromTrees(wd1, 
+            #                     wd_trees,
+            #                     base_dir, 
+            #                     clustersFilename_pairs,
+            #                     speciesTreeFN, 
+            #                     qIsUserSpeciesTree,
+            #                     user_name=options.name,
+            #                     search_program=options.search_program,
+            #                     msa_program=options.msa_program,
+            #                     tree_program=options.tree_program,
+            #                     scorematrix=options.score_matrix,
+            #                     gapopen=options.gapopen,
+            #                     gapextend=options.gapextend,
+            #                     extended_filename=options.extended_filename)
+            
 
-        if (options.qStartFromGroups or options.qStartFromTrees) and previous_files_locator.species_ids_lines != None:
+        if (options.qStartFromGroups or options.qStartFromTrees or options.qStartFromSpeciesTrees) and previous_files_locator.species_ids_lines != None:
             # In only these cases, it's possible that the SpeciesIDs.txt file is out of sync and the version in the previous log should be used instead
             self.CreateCorrectedSpeciesIDsFile(previous_files_locator.species_ids_lines)
 
@@ -837,6 +873,7 @@ class PreviousFilesLocator(object):
         self.wd_trees = None
         self.home_for_results = None
         self.speciesTreeRootedIDsFN = None
+        self.speciesTreeUNRootedIDsFN = None
         self.species_ids_lines = None
                 
     def GetHomeForResults(self):
@@ -849,7 +886,7 @@ class PreviousFilesLocator(object):
         return self.wd_base_prev, self.clustersFilename_pairs
 
     def GetStartFromTrees(self):
-        return self.wd_base_prev, self.clustersFilename_pairs, self.wd_trees, self.speciesTreeRootedIDsFN
+        return self.wd_base_prev, self.clustersFilename_pairs, self.wd_trees, self.speciesTreeUNRootedIDsFN, self.speciesTreeRootedIDsFN
         
 """ ************************************************************************************************************************* """
 
@@ -922,8 +959,8 @@ class PreviousFilesLocator_new(PreviousFilesLocator):
                         if not os.path.exists(self.wd_trees):
                             print("ERROR: Missing directory: %s" % self.wd_trees)
                             util.Fail()
-                    # self.speciesTreeRootedIDsFN = self.wd_trees + "SpeciesTree_rooted_ids.txt" 
-                    self.speciesTreeRootedIDsFN = os.path.join(self.wd_trees, "SpeciesTree_unrooted_ids.txt")
+                    self.speciesTreeRootedIDsFN = os.path.join(self.wd_trees, "SpeciesTree_rooted_ids.txt") 
+                    self.speciesTreeUNRootedIDsFN = os.path.join(self.wd_trees, "SpeciesTree_unrooted_ids.txt")
 
     @staticmethod           
     def GetWDBaseChain(wd_base_anchor):
@@ -950,9 +987,12 @@ class PreviousFilesLocator_old(PreviousFilesLocator):
         self.home_for_results = continuationDir + "OrthoFinder/"
         if options.qStartFromGroups or options.qStartFromTrees:
             # User can specify it using clusters_id_pairs file, process this first to get the workingDirectory
-            ogs_dir = continuationDir + "../" if options.qStartFromTrees else continuationDir
+            ogs_dir = os.path.abspath(continuationDir + "../" if options.qStartFromTrees else continuationDir)
             self.wd_base_prev, self.orthofinderResultsDir, self.clustersFilename_pairs = self._GetOGsFile(ogs_dir)
             if options.qStartFromTrees:
+                self._FindFromTrees(continuationDir, options.speciesTreeFN, unrooted=True)
+
+            elif options.qStartFromSpeciesTrees:
                 self._FindFromTrees(continuationDir, options.speciesTreeFN)
         elif options.qStartFromBlast:
             if self._IsWorkingDirectory(continuationDir): 
@@ -1038,7 +1078,7 @@ class PreviousFilesLocator_old(PreviousFilesLocator):
         ok = ok and len(glob.glob(orthofinderWorkingDir + "Species*.fa")) > 0
         return ok
         
-    def _FindFromTrees(self, orthologuesDir, userSpeciesTree):
+    def _FindFromTrees(self, orthologuesDir, userSpeciesTree, unrooted=False):
         """
         if userSpeciesTree == None: Use existing tree
         """
@@ -1062,12 +1102,18 @@ class PreviousFilesLocator_old(PreviousFilesLocator):
             if nTrees > 1:
                 print("\nERROR: There is more than one rooted species tree in the specified directory structure. Please use the -s option to specify which species tree should be used\n")
                 util.Fail()
-            self.speciesTreeRootedIDsFN = speciesTree_fn
+            if unrooted and "unrooted" in fn:
+                self.speciesTreeUNRootedIDsFN = speciesTree_fn
+            else:
+                self.speciesTreeRootedIDsFN = speciesTree_fn
         else:
             if not os.path.exists(userSpeciesTree):
                 print("\nERROR: %s does not exist\n" % userSpeciesTree)
                 util.Fail()
-            self.speciesTreeRootedIDsFN = userSpeciesTree
+            if unrooted:
+                self.speciesTreeUNRootedIDsFN = speciesTree_fn
+            else:
+                self.speciesTreeRootedIDsFN = speciesTree_fn
             
 """ ************************************************************************************************************************* """
 """ ************************************************************************************************************************* """

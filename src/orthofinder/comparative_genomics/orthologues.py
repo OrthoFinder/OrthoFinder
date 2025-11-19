@@ -521,6 +521,7 @@ def OrthologuesWorkflow(
         qStopAfterSeqs = False,
         qStopAfterAlign = False,
         qStopAfterTrees = False, 
+        qStopAfterSpeciesTrees = False, 
         qMSA = False,
         qPhyldog = False,
         results_name = "",
@@ -598,7 +599,7 @@ def OrthologuesWorkflow(
         userSpeciesTree, 
         qStopAfterSeqs, 
         qStopAfterAlign, 
-        qStopAfterTrees, 
+        qStopAfterSpeciesTrees, 
         qMSA, 
         qPhyldog,
         results_name, 
@@ -606,6 +607,16 @@ def OrthologuesWorkflow(
         save_space, 
         root_from_previous
     )
+
+    if qStopAfterSpeciesTrees:
+        print()
+        print(f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] stopped after species tree...")
+        shutil.rmtree(files.FileHandler.GetResultsSeqsDir())
+        shutil.rmtree(files.FileHandler.GetOrthogroupResultsDir())
+        shutil.rmtree(files.FileHandler.GetOrthologuesDirectory())
+        shutil.rmtree(files.FileHandler.GetResultsAlignDir())
+        util.Success()
+
     if return_obj is None:
         return
     rooted_sp_tree, fn_rooted_sp_tree, q_multiple_roots, stride_dups = return_obj
@@ -737,7 +748,7 @@ def RootSpeciesTree(
         userSpeciesTree=None,
         qStopAfterSeqs=False,
         qStopAfterAlign=False,
-        qStopAfterTrees=False,
+        qStopAfterSpeciesTrees=False,
         qMSA=False,
         qPhyldog=False,
         results_name="",
@@ -809,25 +820,25 @@ def RootSpeciesTree(
     SpeciesTree:
     We now have a list of rooted species trees: rootedSpeciesTreeFN (this should be recorded by the file handler)
     """
-    # if qStopAfterTrees:
-    #     # root the gene trees using the species tree and write out their accessions - really I could remove the whole '-ot, -os, -oa' options, they are probably rarely used if ever.
-    #     if userSpeciesTree:
-    #         return
-    #     # otherwise, root species tree
-    #     resultsSpeciesTrees = []
-    #     for i, (r, speciesTree_fn) in enumerate(zip(roots, rootedSpeciesTreeFN)):
-    #         resultsSpeciesTrees.append(files.FileHandler.GetSpeciesTreeResultsFN(i, not qMultiple))
-    #         util.RenameTreeTaxa(speciesTree_fn, resultsSpeciesTrees[-1], ogSet.SpeciesDict(), qSupport=qSpeciesTreeSupports, qFixNegatives=True)
-    #         labeled_tree_fn = files.FileHandler.GetSpeciesTreeResultsNodeLabelsFN()
-    #         util.RenameTreeTaxa(speciesTree_fn, labeled_tree_fn, ogSet.SpeciesDict(), qSupport=False, qFixNegatives=True, label='N')
-    #     idDict = ogSet.Spec_SeqDict()
-    #     qHaveSupport = None 
-    #     for iog in ogSet.Get_iOGs4():
-    #         infn = files.FileHandler.GetOGsTreeFN(iog)
-    #         if os.path.exists(infn):
-    #             if qHaveSupport is None: qHaveSupport = util.HaveSupportValues(infn)
-    #             util.RenameTreeTaxa(infn, files.FileHandler.GetOGsTreeFN(iog, True), idDict, qSupport=qHaveSupport, qFixNegatives=True)       
-    #     files.FileHandler.CleanWorkingDir2()
+    if qStopAfterSpeciesTrees:
+        # root the gene trees using the species tree and write out their accessions - really I could remove the whole '-ot, -os, -oa' options, they are probably rarely used if ever.
+        if userSpeciesTree:
+            return
+        # otherwise, root species tree
+        resultsSpeciesTrees = []
+        for i, (r, speciesTree_fn) in enumerate(zip(roots, rootedSpeciesTreeFN)):
+            resultsSpeciesTrees.append(files.FileHandler.GetSpeciesTreeResultsFN(i, not qMultiple))
+            util.RenameTreeTaxa(speciesTree_fn, resultsSpeciesTrees[-1], ogSet.SpeciesDict(), qSupport=qSpeciesTreeSupports, qFixNegatives=True)
+            labeled_tree_fn = files.FileHandler.GetSpeciesTreeResultsNodeLabelsFN()
+            util.RenameTreeTaxa(speciesTree_fn, labeled_tree_fn, ogSet.SpeciesDict(), qSupport=False, qFixNegatives=True, label='N')
+        idDict = ogSet.Spec_SeqDict()
+        qHaveSupport = None 
+        for iog in ogSet.Get_iOGs4():
+            infn = files.FileHandler.GetOGsTreeFN(iog)
+            if os.path.exists(infn):
+                if qHaveSupport is None: qHaveSupport = util.HaveSupportValues(infn)
+                util.RenameTreeTaxa(infn, files.FileHandler.GetOGsTreeFN(iog, True), idDict, qSupport=qHaveSupport, qFixNegatives=True)       
+        files.FileHandler.CleanWorkingDir2()
         
     if qMultiple:
         print("\nWARNING: Multiple potential species tree roots were identified, only one will be analyed.")
@@ -1079,6 +1090,138 @@ def OrthologuesFromGeneTrees(
             write_to_rd=True,
             fd_limit=options.fd_limit
         )
+
+        fastaWriter = trees_msa.FastaWriter(files.FileHandler.GetSpeciesSeqsDir(), speciesToUse)
+        ogs = stats.add_unassigned_genes(ogSet.AllOGs(), ogSet.AllUsedSequenceIDs())
+        species_dict = {int(k): v for k, v in ogSet.SpeciesDict().items()}
+        ids_dict = ogSet.SequenceDict()
+
+        if options.fix_files:
+            if options.rm_legacy:
+                os.remove(files.FileHandler.OGsAllIDFN())
+                os.remove(files.FileHandler.HierarchicalOrthogroupsFNN0())
+                shutil.rmtree(files.FileHandler.GetResolvedTreeIDDir())
+                shutil.rmtree(files.FileHandler.GetLegacyDir())
+
+        stats.Stats(ogs, species_dict, speciesToUse, files.FileHandler.iResultsVersion, fastaWriter, ids_dict)
+    else:
+        fastaWriter = trees_msa.FastaWriter(files.FileHandler.GetSpeciesSeqsDir(), speciesToUse)
+        ogs = accelerate.read_hogs(files.FileHandler.GetResultsDirectory1(), "N0")
+        ogs = stats.add_unassigned_genes(ogs, ogSet.AllUsedSequenceIDs())
+        species_dict = {int(k): v for k, v in ogSet.SpeciesDict().items()}
+        ids_dict = ogSet.SequenceDict()
+        stats.Stats(ogs, species_dict, speciesToUse, files.FileHandler.iResultsVersion, fastaWriter, ids_dict)
+
+
+def OrthologuesFromGeneSpeciesTrees(
+        seqsInfo, 
+        speciesNamesDict, 
+        speciesInfoObj, 
+        options,
+        speciesToUse, 
+        nSpAll, 
+        recon_method,
+        nHighParallel,
+        nLowParallel,
+        qAddSpeciesToIDs,
+        userSpeciesTree_fn,
+        fewer_open_files,  # Open one ortholog file per species when analysing trees
+        old_version=False,
+        q_split_para_clades=False,
+        i_og_restart=0,
+        speciesXML=None,
+):
+    ogSet = orthogroups_set.OrthoGroupsSet(
+        options.min_seq,
+        files.FileHandler.GetWorkingDirectory1_Read(), 
+        speciesToUse, 
+        nSpAll,
+        qAddSpeciesToIDs, 
+        tree_program=options.tree_program,
+        idExtractor = util.FirstWordExtractor
+    )
+    
+    spTreeFN_ids = files.FileHandler.GetSpeciesTreeUnrootedFN()
+    prev_wd = os.path.dirname(spTreeFN_ids)
+
+    if userSpeciesTree_fn != None:
+        speciesDict = files.FileHandler.GetSpeciesDict()
+        speciesToUseNames = [speciesDict[str(iSp)] for iSp in ogSet.speciesToUse]
+        CheckUserSpeciesTree(userSpeciesTree_fn, speciesToUseNames)
+        speciesTreeFN_ids = files.FileHandler.GetSpeciesTreeIDsRootedFN()
+        infer_trees.ConvertUserSpeciesTree(userSpeciesTree_fn, speciesDict, speciesTreeFN_ids)
+
+    write_hog_tree = False
+    write_to_rd = True
+    if options.fix_files:
+        # if options.qMSATrees:
+        #     align_dir = files.FileHandler.GetResultsAlignDir()
+            # util.clear_dir(align_dir)
+        write_hog_tree = True
+        write_to_rd = False
+
+    util.PrintUnderline("Running Orthologue Prediction", True)
+    util.PrintUnderline("Reconciling gene and species trees") 
+    ReconciliationAndOrthologues(
+        recon_method, 
+        ogSet, 
+        nHighParallel, 
+        nLowParallel, 
+        q_split_para_clades=q_split_para_clades,
+        fewer_open_files=fewer_open_files, 
+        old_version=old_version,
+        exist_msa=options.qMSATrees,
+        write_hog_tree=write_hog_tree,
+        fix_files=options.fix_files
+    )
+    util.PrintUnderline("Writing results files")
+    util.PrintTime("Writing results files")
+    files.FileHandler.CleanWorkingDir2()
+
+
+
+    if options.fix_files:
+        shutil.copy2(
+            files.FileHandler.GetWorkingDirectory_Write() + "N0.ids.tsv",
+            os.path.join(files.FileHandler.GetLegacyHOGDir(), "N0.ids.tsv")
+        )
+
+        util.PrintTime("Converting MSA/Trees")
+        ogSet = file_updates.update_output_files(
+            ogSet.SpeciesDict(),
+            ogSet.SequenceDict(),
+            ogSet.speciesToUse,
+            ogSet.AllUsedSequenceIDs(),
+            speciesInfoObj,
+            seqsInfo,
+            speciesNamesDict,
+            options,
+            speciesXML,
+            options.nProcessAlg,
+            q_incremental=False,
+            i_og_restart=i_og_restart,
+            exist_msa=options.qMSATrees,
+            prev_wd=prev_wd
+        )
+        util.PrintTime("Done updating MSA/Trees")
+
+        util.PrintUnderline("Running Orthologue Prediction", True)
+        util.PrintUnderline("Reconciling gene and species trees") 
+        ReconciliationAndOrthologues(
+            recon_method, 
+            ogSet, 
+            nHighParallel, 
+            nLowParallel, 
+            q_split_para_clades=q_split_para_clades,
+            fewer_open_files=fewer_open_files, 
+            old_version=old_version,
+            exist_msa=options.qMSATrees,
+            write_hog_tree=False,
+            fix_files=options.fix_files
+        )
+        util.PrintUnderline("Writing results files")
+        util.PrintTime("Writing results files")
+        files.FileHandler.CleanWorkingDir2()
 
         fastaWriter = trees_msa.FastaWriter(files.FileHandler.GetSpeciesSeqsDir(), speciesToUse)
         ogs = stats.add_unassigned_genes(ogSet.AllOGs(), ogSet.AllUsedSequenceIDs())

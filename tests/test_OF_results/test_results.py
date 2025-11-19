@@ -126,6 +126,7 @@ def test_orthogroups(of_and_expected_orthogroups):
     "config.getoption('--skip-of-test')",
     reason="Skipping OrthoFinder results test"
 )
+# @pytest.mark.skip
 @pytest.mark.order(11)
 def test_phylogenetic_hierarchical_orthogroups(of_and_expected_hogs):
     of_obj, expected_hogs_dict = of_and_expected_hogs

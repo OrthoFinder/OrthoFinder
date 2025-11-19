@@ -93,11 +93,13 @@ class Options(object):  #
         self.qStartFromFasta = False  # local to argument checking
         self.qStartFromGroups = False
         self.qStartFromTrees = False
+        self.qStartFromSpeciesTrees = False
         self.qStopAfterPrepare = False
         self.qStopAfterGroups = False
         self.qStopAfterSeqs = False
         self.qStopAfterAlignments = False
         self.qStopAfterTrees = False
+        self.qStopAfterSpeciesTrees = False
         self.qMSATrees = True  # Updated default
         self.qAddSpeciesToIDs = True
         self.qTrim = True
@@ -423,11 +425,18 @@ def ProcessArgs(args):
             options.qStartFromGroups = True
             continuationDir = GetDirectoryArgument(arg, args)
 
-        elif arg == "-ft" or arg == "--from-trees":
+        elif arg == "-fgt" or arg == "--from-trees":
             if options.qStartFromTrees:
                 print("Repeated argument: -ft/--from-trees\n")
                 util.Fail()
             options.qStartFromTrees = True
+            continuationDir = GetDirectoryArgument(arg, args)
+
+        elif arg == "-fst" or arg == "--from-species-trees":
+            if options.qStartFromSpeciesTrees:
+                print("Repeated argument: -fst/--from-species-trees\n")
+                util.Fail()
+            options.qStartFromSpeciesTrees = True
             continuationDir = GetDirectoryArgument(arg, args)
 
         elif arg == "-t" or arg == "--threads":
@@ -858,8 +867,11 @@ def ProcessArgs(args):
         # elif arg == "-oa" or arg == "--only-alignments":
         #     options.qStopAfterAlignments = False
 
-        elif arg == "-ot" or arg == "--only-trees":
+        elif arg == "-ogt" or arg == "--only-trees":
             options.qStopAfterTrees = True
+
+        elif arg == "-ost" or arg == "--only-species-trees":
+            options.qStopAfterSpeciesTrees = True
 
         elif arg == "-h" or arg == "--help":
             helpinfo.PrintHelp(prog_caller)
@@ -936,6 +948,7 @@ def ProcessArgs(args):
         or options.qStartFromGroups
         or options.qStartFromTrees
         or options.qFastAdd
+        or options.qStartFromSpeciesTrees
     ):
         print(
             "ERROR: Please specify the input directory for OrthoFinder using one of the options: '-f', '-b', '-fg' or '-ft', '--assign'."
@@ -948,9 +961,10 @@ def ProcessArgs(args):
             or options.qStartFromBlast
             or options.qStartFromGroups
             or options.qStartFromTrees
+            or options.qStartFromSpeciesTrees
         ):
             print(
-                "ERROR: Incompatible options used with --assign, cannot accept: '-f', '-b', '-fg' or '-ft'"
+                "ERROR: Incompatible options used with --assign, cannot accept: '-f', '-b', '-fg', '-ft', '-fst'"
             )
             util.Fail()
         if fastaDir is None:
@@ -970,34 +984,50 @@ def ProcessArgs(args):
             util.Fail()
 
     if options.qStartFromFasta and (
-        options.qStartFromTrees or options.qStartFromGroups
+        options.qStartFromTrees or options.qStartFromGroups or options.qStartFromSpeciesTrees
     ):
-        print(
-            "ERROR: Incompatible arguments, -f (start from fasta files) and"
-            + (
-                " -fg (start from orthogroups)"
-                if options.qStartFromGroups
-                else " -ft (start from trees)"
-            )
-        )
+        
+        err_msg = "ERROR: Incompatible arguments, -f (start from fasta files) and"
+        if options.qStartFromGroups:
+            err_msg += " -fg (start from orthogroups)"
+        elif options.qStartFromTrees:
+            err_msg += " -ft (start from gene trees)"
+        else:
+            err_msg += "-fst (start from species trees)"
+        print(err_msg)
+
         util.Fail()
 
     if options.qStartFromBlast and (
-        options.qStartFromTrees or options.qStartFromGroups
+        options.qStartFromTrees or options.qStartFromGroups or options.qStartFromSpeciesTrees
     ):
-        print(
-            "ERROR: Incompatible arguments, -b (start from pre-calcualted BLAST results) and"
-            + (
-                " -fg (start from orthogroups)"
-                if options.qStartFromGroups
-                else " -ft (start from trees)"
-            )
-        )
+        err_msg = "ERROR: Incompatible arguments, -b (start from pre-calcualted BLAST results) and"
+
+        if options.qStartFromGroups:
+            err_msg += " -fg (start from orthogroups)"
+        elif options.qStartFromGroups:
+            err_msg += " -ft (start from gene trees)"
+        else:
+            err_msg += "-fst (start from species trees)"
+        print(err_msg)
         util.Fail()
 
     if options.qStartFromTrees and options.qStartFromGroups:
         print(
-            "ERROR: Incompatible arguments, -fg (start from orthogroups) and -ft (start from trees)"
+            "ERROR: Incompatible arguments, -fg (start from orthogroups) and -ft (start from gene trees)"
+        )
+        util.Fail()
+
+    if options.qStartFromSpeciesTrees and options.qStartFromGroups:
+        print(
+            "ERROR: Incompatible arguments, -fg (start from orthogroups) and -fst (start from species gene trees)"
+        )
+        util.Fail()
+
+
+    if options.qStartFromSpeciesTrees and options.qStartFromTrees:
+        print(
+            "ERROR: Incompatible arguments, -ft (start from gene trees) and -fst (start from species gene trees)"
         )
         util.Fail()
 
@@ -1122,6 +1152,7 @@ def CheckOptions(options, speciesToUse):
             options.qStopAfterSeqs,
             options.qStopAfterAlignments,
             options.qStopAfterTrees,
+            options.qStopAfterSpeciesTrees
         )
     )
     if q_do_orthologs:
