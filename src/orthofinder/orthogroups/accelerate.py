@@ -197,10 +197,17 @@ def create_profiles_database(
     else:
         subtrees_label = ""
     fn_base = "profile_sequences.hogs" if q_hogs else "profile_sequences"
-    if selection == "all":
-        fn_fasta = wd + fn_base + ".%s.all.fa" % subtrees_label
+    if subtrees_label:
+        if selection == "all":
+            fn_fasta = wd + fn_base + ".%s.all.fa" % subtrees_label
+        else:
+            fn_fasta = wd + fn_base + ".%s.%d_%s.fa" % (subtrees_label, n_for_profile, selection)
     else:
-        fn_fasta = wd + fn_base + ".%s.%d_%s.fa" % (subtrees_label, n_for_profile, selection)
+        if selection == "all":
+            fn_fasta = wd + fn_base + ".all.fa"
+        else:
+            fn_fasta = wd + fn_base + ".%d_%s.fa" % (n_for_profile, selection)  
+  
     fn_diamond_db = fn_fasta + ".dmnd"
     if os.path.exists(fn_diamond_db):
         # print("Profiles database already exists and will be reused: %s" % fn_diamond_db)

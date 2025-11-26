@@ -139,7 +139,8 @@ def InferGeneAndSpeciesTrees(
         spTreeFN_ids, qSTAG = db.RunAnalysis(userSpeciesTree == None)
         if userSpeciesTree != None:
             spTreeFN_ids = files.FileHandler.GetSpeciesTreeUnrootedFN()
-    files.FileHandler.LogWorkingDirectoryTrees()
+    # if not fix_files:
+    #     files.FileHandler.LogWorkingDirectoryTrees()
     qSpeciesTreeSupports = False if (userSpeciesTree or qMSA or qPhyldog) else qSTAG
 
     return None if root_from_previous else spTreeFN_ids, qSpeciesTreeSupports

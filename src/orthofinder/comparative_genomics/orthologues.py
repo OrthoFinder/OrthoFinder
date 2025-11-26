@@ -572,6 +572,8 @@ def OrthologuesWorkflow(
         msa_min_seq=options.msa_min_seq
     )
     
+    files.FileHandler.LogWorkingDirectoryTrees()
+    
     if qStopAfterTrees:
         print()
         print(f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] stopped after gene tree...")

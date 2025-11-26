@@ -207,3 +207,4 @@ setup.py
 Species_*
 tests/data/dna/Genomes_Assign/
 tests/data/dna/Genomes_Core/OrthoFinder/
+.vscode/
