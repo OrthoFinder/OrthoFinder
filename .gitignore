@@ -27,3 +27,5 @@ src/
 CONDUCT.md
 DEVNOTES.md
 OrthoFinder-manual.pdf
+of_structure.sh
+lib/

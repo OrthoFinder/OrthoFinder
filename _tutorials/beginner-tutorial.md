@@ -67,11 +67,8 @@ can also ask a question on our [GitHub](https://GitHub.com/OrthoFinder/OrthoFind
 
 When OrthoFinder has finished running, it will generate a folder containing the output,
 with the folder named according to today’s date.
-`ExampleData/OrthoFinder/Results_Jul12` The folder looks like this:
 
-<p align="center" class="figure-wrapper">
-  <img src="{{ site.baseurl }}/assets/images/Beginner_image1.jpeg" alt="Beginner_img1" width="800"/>
-</p>
+{% include of-output-tree.md %}
 
 We’ll discuss how to interpret and analyse these files and folders later on, in the
 [Exploring the results](#exploring-the-results-of-orthofinder) section of the tutorial.
