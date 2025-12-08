@@ -12,7 +12,6 @@
         "mmseqs": "orthofinder -f INPUT -S mmseqs --no-print-info",
         "dendroblast": "orthofinder -f INPUT -M dendroblast --no-print-info",
         "mafft": "orthofinder -f INPUT -A mafft --no-print-info",
-        "multiprocessing": "orthofinder -f INPUT -t 4 -a 4 --no-print-info",
         "iqtree3": "orthofinder -f INPUT -T iqtree3 --no-print-info",
         "fasttree_fastest": "orthofinder -f INPUT -T fasttree_fastest --no-print-info",
         "raxml": "orthofinder -f INPUT -T raxml --no-print-info",

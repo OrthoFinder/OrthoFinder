@@ -1,4 +1,5 @@
 python-semantic-release
+directory_tree
 pytest
 pytest-cov
 pytest-check
