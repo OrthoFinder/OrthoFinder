@@ -56,6 +56,7 @@ dev = [
     "pytest-check",
     "pytest-order",
     # "pytest-subtests",
+    "directory_tree",
     "setuptools>=77",
     "setuptools_scm>=8",
     "packaging>=24.2",
