@@ -17,7 +17,6 @@ def get_path(Path):
         if "OG0" not in file and "Blast" not in file and "Species" not in file and "__v__" not in file:
             altered_files += (file) + "\n"
 
-
         if "\u2514" in file and "OG" in file:
             new_files_start = "".join(file.split("OG")[:-1]).replace("\u2514","\u251C") + "OG" + "0"*7 + file.split("OG")[-1][7:]
             new_files_mid = "".join(file.split("OG")[:-1]).replace("\u2514","\u251C") + "OG" + "0"*3 + "####" + file.split("OG")[-1][7:]
@@ -59,7 +58,7 @@ def get_path(Path):
     stripped_altered_files = stripped_altered_files + [" ".join(altered_files_list[Xenologs +2].split(" ")[:-1]) + " Species_#.tsv"]
     stripped_altered_files = stripped_altered_files + altered_files_list[Gene_Trees:] 
 
-    stripped_altered_files_str = "\n".join(stripped_altered_files)
+    stripped_altered_files_str = "\n   ".join(stripped_altered_files)
 
     return stripped_altered_files_str
 
@@ -70,7 +69,7 @@ if __name__ == "__main__":
     parser.add_argument("path")
     args = parser.parse_args()
     target_dir = args.path
-    print(target_dir)
+
     if not os.path.exists(target_dir):
         print("The target directory doesn't exist")
         raise SystemExit(1)
