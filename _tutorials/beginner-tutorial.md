@@ -68,7 +68,7 @@ can also ask a question on our [GitHub](https://GitHub.com/OrthoFinder/OrthoFind
 When OrthoFinder has finished running, it will generate a folder containing the output,
 with the folder named according to today’s date.
 
-{% include of-output-tree.md %}
+{% include_relative of-output-tree.md %}
 
 We’ll discuss how to interpret and analyse these files and folders later on, in the
 [Exploring the results](#exploring-the-results-of-orthofinder) section of the tutorial.
