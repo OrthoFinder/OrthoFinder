@@ -100,10 +100,10 @@
 
 
 <span class="meta-info">
-    🕒 Updated 20431 days ago
+    🕒 Updated 20432 days ago
 
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 20431 days ago
+    Updated 20432 days ago
 </span> -->
 
 
@@ -114,7 +114,7 @@
 
 <span class="meta-info">
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 215 days ago
+    Updated 216 days ago
 </span>
             </p>
 
@@ -230,86 +230,7 @@ error message, the best way to troubleshoot is to just google the error message.
 can also ask a question on our <a href="https://GitHub.com/OrthoFinder/OrthoFinder/issues">GitHub</a>.</p>
 
 <p>When OrthoFinder has finished running, it will generate a folder containing the output,
-with the folder named according to today’s date.</p>
-
-<p><code class="language-plaintext highlighter-rouge">ExampleData/OrthoFinder/Results_Dec08</code> looks like this:</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ExampleData/OrthoFinder/Results_Dec08
-Results_Dec08/
-├── Citation.txt
-├── Comparative_Genomics_Statistics/
-│   ├── Duplications_per_Orthogroup.tsv
-│   ├── OrthologuesStats_many-to-many.tsv
-│   ├── OrthologuesStats_many-to-one.tsv
-│   ├── OrthologuesStats_one-to-many.tsv
-│   ├── OrthologuesStats_one-to-one.tsv
-│   ├── OrthologuesStats_Totals.tsv
-│   ├── Statistics_Overall.tsv
-├── Gene_Duplication_Events/
-│   ├── Duplications.tsv
-├── Log.txt
-├── MultipleSequenceAlignments/
-│   ├── OG0000000.fa
-│   ├── OG000####.fa
-│   └── OG0000598.fa
-├── Orthogroup_Sequences/
-│   ├── OG0000000.fa
-│   ├── OG000####.fa
-│   └── OG0001116.fa
-├── Orthogroups/
-│   ├── Orthogroups.GeneCount.tsv
-│   ├── Orthogroups.tsv
-│   ├── Orthogroups.txt
-│   ├── Orthogroups_SingleCopyOrthologues.txt
-│   └── Orthogroups_UnassignedGenes.tsv
-├── Orthologues/
-│   ├── Species_1.tsv
-│   ├── Species_#.tsv
-├── Phylogenetic_Hierarchical_Orthogroups/
-│   └── N0.tsv
-│   └── N#.tsv
-├── Phylogenetically_Misplaced_Genes/
-│   ├── Species_1.tsv
-│   ├── Species_#.tsv
-├── Putative_Xenologs/
-│   ├── Species_1.tsv
-│   ├── Species_#.tsv
-├── Resolved_Gene_Trees/
-│   └── Resolved_Gene_Trees.txt
-├── Single_Copy_Orthologue_Sequences/
-│   ├── OG0000000.fa
-│   ├── OG000####.fa
-│   └── OG0000325.fa
-│   ├── Orthogroups_for_concatenated_alignment.txt
-└── WorkingDirectory/
-    ├── Alignments_ids/
-    ├── Blast0_0.txt.gz
-    ├── Blast#_#.txt.gz
-    ├── clusters_OrthoFinder_I1.2.txt
-    ├── clusters_OrthoFinder_I1.2.txt_id_pairs.txt
-    ├── dependencies/
-    │   ├── SimpleTest.fa
-    │   ├── Species0.fa
-    │   ├── Species0.fa.output.txt
-    │   └── test_search_results.txt.gz
-    ├── N0.ids.tsv
-    ├── OrthoFinder_graph.txt
-    ├── pickle/
-    ├── SequenceIDs.txt
-    ├── Sequences_ids/
-    │   ├── OG0000000.fa
-    │   ├── OG000####.fa
-    │   └── OG0001087.fa
-    ├── Species0.fa
-    ├── Species#.fa
-    └── Trees_ids/
-        ├── OG0000000.txt
-        ├── OG000####.txt
-        └── OG0000407.txt
-
-</code></pre></div></div>
-
-<p>We’ll discuss how to interpret and analyse these files and folders later on, in the
+with the folder named according to today’s date, for example, <code class="language-plaintext highlighter-rouge">ExampleData/OrthoFinder/Results_Dec08</code>. We’ll discuss how to interpret and analyse these files and folders later on, in the
 <a href="#exploring-the-results-of-orthofinder">Exploring the results</a> section of the tutorial.</p>
 
 <h3 id="running-orthofinder">Running OrthoFinder</h3>
@@ -327,11 +248,83 @@ it’s finished. To see what options you might want to adjust for your own data,
 <h3 id="exploring-the-results-of-orthofinder">Exploring the results of OrthoFinder</h3>
 
 <p>OrthoFinder creates a results directory named OrthoFinder inside the proteome
-directory, and puts the results here. My results directory looks like this:</p>
+directory, and puts the results here.</p>
 
-<p align="center" class="figure-wrapper">
-  <img src="/OrthoFinder/assets/images/Beginner_image2.jpeg" alt="Beginner_img2" width="800" />
-</p>
+<p>My results directory <code class="language-plaintext highlighter-rouge">ExampleData/OrthoFinder/Results_Dec08</code> looks like this:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Results_Dec08/
+    ├── Citation.txt
+    ├── Comparative_Genomics_Statistics/
+    │   ├── Duplications_per_Orthogroup.tsv
+    │   ├── OrthologuesStats_many-to-many.tsv
+    │   ├── OrthologuesStats_many-to-one.tsv
+    │   ├── OrthologuesStats_one-to-many.tsv
+    │   ├── OrthologuesStats_one-to-one.tsv
+    │   ├── OrthologuesStats_Totals.tsv
+    │   ├── Statistics_Overall.tsv
+    ├── Gene_Duplication_Events/
+    │   ├── Duplications.tsv
+    ├── Log.txt
+    ├── MultipleSequenceAlignments/
+    │   ├── OG0000000.fa
+    │   ├── OG000####.fa
+    │   └── OG0000598.fa
+    ├── Orthogroup_Sequences/
+    │   ├── OG0000000.fa
+    │   ├── OG000####.fa
+    │   └── OG0001116.fa
+    ├── Orthogroups/
+    │   ├── Orthogroups.GeneCount.tsv
+    │   ├── Orthogroups.tsv
+    │   ├── Orthogroups.txt
+    │   ├── Orthogroups_SingleCopyOrthologues.txt
+    │   └── Orthogroups_UnassignedGenes.tsv
+    ├── Orthologues/
+    │   ├── Species_1.tsv
+    │   ├── Species_#.tsv
+    ├── Phylogenetic_Hierarchical_Orthogroups/
+    │   └── N0.tsv
+    │   └── N#.tsv
+    ├── Phylogenetically_Misplaced_Genes/
+    │   ├── Species_1.tsv
+    │   ├── Species_#.tsv
+    ├── Putative_Xenologs/
+    │   ├── Species_1.tsv
+    │   ├── Species_#.tsv
+    ├── Resolved_Gene_Trees/
+    │   └── Resolved_Gene_Trees.txt
+    ├── Single_Copy_Orthologue_Sequences/
+    │   ├── OG0000000.fa
+    │   ├── OG000####.fa
+    │   └── OG0000325.fa
+    │   ├── Orthogroups_for_concatenated_alignment.txt
+    └── WorkingDirectory/
+        ├── Alignments_ids/
+        ├── Blast0_0.txt.gz
+        ├── Blast#_#.txt.gz
+        ├── clusters_OrthoFinder_I1.2.txt
+        ├── clusters_OrthoFinder_I1.2.txt_id_pairs.txt
+        ├── dependencies/
+        │   ├── SimpleTest.fa
+        │   ├── Species0.fa
+        │   ├── Species0.fa.output.txt
+        │   └── test_search_results.txt.gz
+        ├── N0.ids.tsv
+        ├── OrthoFinder_graph.txt
+        ├── pickle/
+        ├── SequenceIDs.txt
+        ├── Sequences_ids/
+        │   ├── OG0000000.fa
+        │   ├── OG000####.fa
+        │   └── OG0001087.fa
+        ├── Species0.fa
+        ├── Species#.fa
+        └── Trees_ids/
+            ├── OG0000000.txt
+            ├── OG000####.txt
+            └── OG0000407.txt
+
+</code></pre></div></div>
 
 <h4 id="step-1-quality-control">Step 1: Quality Control</h4>
 
@@ -545,10 +538,10 @@ species tree (use the -s option).</p>
 
 
 <span class="meta-info">
-    🕒 Updated 20431 days ago
+    🕒 Updated 20432 days ago
 
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 20431 days ago
+    Updated 20432 days ago
 </span> -->
 
 
@@ -559,7 +552,7 @@ species tree (use the -s option).</p>
 
 <span class="meta-info">
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 216 days ago
+    Updated 217 days ago
 </span>
             </p>
 
@@ -680,10 +673,10 @@ discover which one)</p>
 
 
 <span class="meta-info">
-    🕒 Updated 20431 days ago
+    🕒 Updated 20432 days ago
 
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 20431 days ago
+    Updated 20432 days ago
 </span> -->
 
 
@@ -694,7 +687,7 @@ discover which one)</p>
 
 <span class="meta-info">
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 217 days ago
+    Updated 218 days ago
 </span>
             </p>
 
@@ -816,10 +809,10 @@ Separately</a>)</p>
 
 
 <span class="meta-info">
-    🕒 Updated 20431 days ago
+    🕒 Updated 20432 days ago
 
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 20431 days ago
+    Updated 20432 days ago
 </span> -->
 
 
@@ -830,7 +823,7 @@ Separately</a>)</p>
 
 <span class="meta-info">
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 217 days ago
+    Updated 218 days ago
 </span>
             </p>
 
@@ -1092,10 +1085,10 @@ You will have to sign-in or register to download data.</p>
 
 
 <span class="meta-info">
-    🕒 Updated 20431 days ago
+    🕒 Updated 20432 days ago
 
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 20431 days ago
+    Updated 20432 days ago
 </span> -->
 
 
@@ -1106,7 +1099,7 @@ You will have to sign-in or register to download data.</p>
 
 <span class="meta-info">
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 217 days ago
+    Updated 218 days ago
 </span>
             </p>
 
@@ -1419,10 +1412,10 @@ events).</p>
 
 
 <span class="meta-info">
-    🕒 Updated 20431 days ago
+    🕒 Updated 20432 days ago
 
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 20431 days ago
+    Updated 20432 days ago
 </span> -->
 
 
@@ -1433,7 +1426,7 @@ events).</p>
 
 <span class="meta-info">
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 218 days ago
+    Updated 219 days ago
 </span>
             </p>
 

@@ -66,11 +66,7 @@ error message, the best way to troubleshoot is to just google the error message.
 can also ask a question on our [GitHub](https://GitHub.com/OrthoFinder/OrthoFinder/issues).
 
 When OrthoFinder has finished running, it will generate a folder containing the output,
-with the folder named according to today’s date.
-
-{% include_relative of-output-tree.md %}
-
-We’ll discuss how to interpret and analyse these files and folders later on, in the
+with the folder named according to today’s date, for example, `ExampleData/OrthoFinder/Results_Dec08`. We’ll discuss how to interpret and analyse these files and folders later on, in the
 [Exploring the results](#exploring-the-results-of-orthofinder) section of the tutorial.
 
 ### Running OrthoFinder
@@ -89,11 +85,9 @@ it’s finished. To see what options you might want to adjust for your own data,
 ### Exploring the results of OrthoFinder
 
 OrthoFinder creates a results directory named OrthoFinder inside the proteome
-directory, and puts the results here. My results directory looks like this:
+directory, and puts the results here. 
 
-<p align="center" class="figure-wrapper">
-  <img src="{{ site.baseurl }}/assets/images/Beginner_image2.jpeg" alt="Beginner_img2" width="800"/>
-</p>
+{% include_relative of-output-tree.md %}
 
 #### Step 1: Quality Control
 
