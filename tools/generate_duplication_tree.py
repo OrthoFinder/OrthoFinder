@@ -3,7 +3,18 @@ import argparse
 
 from ete4 import Tree
 from tabulate import tabulate
+from ete4.treeview import TreeStyle
 
+
+def save_tree_image(tree, output_path):
+    ts = TreeStyle()
+    ts.show_leaf_name = True
+    ts.show_branch_length = False   
+    ts.show_branch_support = False   
+    ts.show_scale = False    
+    ts.scale = 120    
+
+    tree.render(output_path, w=800, units="px", tree_style=ts)
 
 def gene_duplications(target_dir):
     gene_duplications = "/".join([target_dir,"Gene_Duplication_Events"])
@@ -39,11 +50,11 @@ def gene_duplications(target_dir):
                 new_line.append(element[:gap + 3])
         reformatted_table.append(new_line)
     return tabulate(reformatted_table[1:], reformatted_table[0], tablefmt="github"),\
-        gene_duplication_tree.to_str(props=['name'], compact=True),\
+        gene_duplication_tree,\
         node_example,\
         number_of_duplications_for_node
     
-
+        # gene_duplication_tree.to_str(props=['name'], compact=True),\
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
@@ -61,4 +72,4 @@ if __name__ == "__main__":
     
     duplication_table, duplication_tree, node_example, number_of_duplications_for_node = gene_duplications(target_dir)
     
-    print(duplication_tree)
+    save_tree_image(duplication_tree, r"/tmp/duplication_tree.png")

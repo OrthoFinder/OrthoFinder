@@ -2,7 +2,17 @@ import os
 import argparse
 
 from ete4 import Tree
+from ete4.treeview import TreeStyle
 
+def save_tree_image(tree, output_path):
+    ts = TreeStyle()
+    ts.show_leaf_name = True
+    ts.show_branch_length = False   
+    ts.show_branch_support = False   
+    ts.show_scale = False    
+    ts.scale = 120    
+
+    tree.render(output_path, w=800, units="px", tree_style=ts)
 
 def get_random_gene_tree(target_dir):
     Resolved_genes_tree_path = "/".join([target_dir,"Resolved_Gene_Trees","Resolved_Gene_Trees.txt"])
@@ -16,8 +26,7 @@ def get_random_gene_tree(target_dir):
                 new_ete3_tree = ete3_tree
                 orthogroup = OG_Tree_Pair[0]
                 break
-    return orthogroup, str(new_ete3_tree)
-
+    return orthogroup, new_ete3_tree
 
 
 if __name__ == "__main__":
@@ -36,7 +45,8 @@ if __name__ == "__main__":
         raise SystemExit(1)
     
     gene_tree_orthogroup, new_ete3_tree = get_random_gene_tree(target_dir)
-    print(new_ete3_tree)
+
+    save_tree_image(new_ete3_tree, r"/tmp/gene_tree.png")
 
     
     
