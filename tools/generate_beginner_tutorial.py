@@ -23,7 +23,8 @@ This tutorial will cover:
 - [Exploring the results of OrthoFinder](#exploring-the-results-of-orthofinder)
 
 OrthoFinder requires as input the amino acid sequences for all the protein coding genes in
-your species of interest. We provide a separate tutorial for [getting input files]({{ site.baseurl}}/tutorials/gettting-input-data/) for OrthoFinder.
+your species of interest. We provide a separate tutorial for 
+[getting input files]({{{{ site.baseurl}}}}/tutorials/gettting-input-data/) for OrthoFinder.
 
 All these steps will be done on the command line so that you can just copy and
 paste the commands yourself. If you are not familiar with the command line there
@@ -88,7 +89,8 @@ orthofinder -f primary_transcripts
 ```
 
 That’s it! OrthoFinder will print updates on its progress to the terminal, and tell you when
-it’s finished. To see what options you might want to adjust for your own data, check out the [GitHub](https://GitHub.com/OrthoFinder/OrthoFinder/), or the [Advanced Tutorial]({{ site.baseurl }}/tutorials/advanced-tutorial/) page
+it’s finished. To see what options you might want to adjust for your own data, check out the [GitHub](https://GitHub.com/OrthoFinder/OrthoFinder/), 
+or the [Advanced Tutorial]({{{{ site.baseurl }}}}/tutorials/advanced-tutorial/) page
 
 ### Exploring the results of OrthoFinder
 
@@ -139,7 +141,7 @@ You will now see the phylogenetic tree that OrthoFinder has produced. I have ann
 my version with icons PhyloPic, so that we can see what is going on
 
 <p align="center" class="figure-wrapper">
-  <img src="{{ site.baseurl }}/assets/images/species_tree.png" alt="species_tree" width="450"/>
+  <img src="{{{{ site.baseurl }}}}/assets/images/species_tree.png" alt="species_tree" width="450"/>
 </p>
 
 We now want to do some common-sense checking that everything appears to be in
@@ -179,7 +181,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     We are going to view the tree for `{gene_tree_orthogroup}` on [iTOL](https://itol.embl.de/).
 
     <p align="center" class="figure-wrapper">
-        <img src="{{ site.baseurl }}/assets/images/gene_tree.png" alt="gene_tree" width="650"/>
+        <img src="{{{{ site.baseurl }}}}/assets/images/gene_tree.png" alt="gene_tree" width="650"/>
     </p>
 
 
@@ -199,7 +201,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     to see the node labels
 
     <p align="center" class="figure-wrapper">
-        <img src="{{ site.baseurl }}/assets/images/duplication_tree.png" alt="duplication_tree" width="450"/>
+        <img src={{{{ site.baseurl }}}}/assets/images/duplication_tree.png" alt="duplication_tree" width="450"/>
     </p>
 
     This gives a summary of gene duplication events. Each node shows the node name
