@@ -6,8 +6,7 @@ from ete4 import Tree
 from tabulate import tabulate
 
 
-TUTORIAL = """
----
+TUTORIAL = """---
 layout: post
 title:  "Beginner Tutorial"
 date:   2025-05-01 09:01:16 +0000
@@ -95,9 +94,10 @@ it’s finished. To see what options you might want to adjust for your own data,
 
 OrthoFinder creates a results directory named OrthoFinder inside the proteome
 directory, and puts the results here. 
-```text
-    {{% include_relative of-output-tree.md %}}
-```
+My results directory `{target_dir}` looks like this:
+
+{{% include_relative of-output-tree.md %}}
+
 
 #### Step 1: Quality Control
 
@@ -138,11 +138,7 @@ You can then drag and drop the tree file, which is in `Species_Tree/SpeciesTree_
 You will now see the phylogenetic tree that OrthoFinder has produced. I have annotated
 my version with icons PhyloPic, so that we can see what is going on
 
-
-```text
-    {{% include_relative species_tree.md %}}
-```
-
+{{% include_relative species_tree.md %}}
 
 We now want to do some common-sense checking that everything appears to be in
 order, and we aren’t rewriting the history of life on earth. With our six species, this tree
@@ -180,10 +176,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
 
     We are going to view the tree for `{gene_tree_orthogroup}` on [iTOL](https://itol.embl.de/).
 
-    ```text
-        {{% include_relative gene_tree.md %}}
-    ```
-
+    {{% include_relative gene_tree.md %}}
 
     Looking at the gene tree, we can see that there have been several gene duplications in
     the lineage leading to wallabies (*`Notamacropus`*). This has resulted in a one-to-three
@@ -200,9 +193,9 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     Go into the `Advanced` tab on the Control Panel and select `Display` next to `Node IDs`
     to see the node labels
 
-    ```text
-        {{% include_relative duplication_tree.md %}}
-    ```
+
+    {{% include_relative duplication_tree.md %}}
+
 
     This gives a summary of gene duplication events. Each node shows the node name
     followed by an underscore and then the number of well-supported gene duplication
@@ -523,6 +516,7 @@ if __name__ == "__main__":
 
     tutorial = TUTORIAL.format(
         # of_output_tree=of_tree_structure,
+        target_dir=target_dir,
         stats_overall=stats_overall, 
         percentage_of_genes_in_orthogroup=percentage_of_genes_in_orthogroup,
         statisitcs_per_species=statisitcs_per_species, 

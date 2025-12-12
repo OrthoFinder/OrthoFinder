@@ -44,9 +44,6 @@ def gene_duplications(target_dir):
         number_of_duplications_for_node
     
 
-
-
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
