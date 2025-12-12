@@ -96,7 +96,17 @@ it’s finished. To see what options you might want to adjust for your own data,
 OrthoFinder creates a results directory named OrthoFinder inside the proteome
 directory, and puts the results here. 
 
-{of_output_tree}
+<div style="text-align: center;">
+  <pre style="
+    display: inline-block;
+    text-align: left;
+    font-family: monospace;
+    font-size: 22px; 
+    line-height: 1.5;
+  ">
+    {of_output_tree}
+  </pre>
+</div>
 
 #### Step 1: Quality Control
 
@@ -137,7 +147,18 @@ You can then drag and drop the tree file, which is in `Species_Tree/SpeciesTree_
 You will now see the phylogenetic tree that OrthoFinder has produced. I have annotated
 my version with icons PhyloPic, so that we can see what is going on
 
-{species_tree_ete}
+
+<div style="text-align: center;">
+  <pre style="
+    display: inline-block;
+    text-align: left;
+    font-family: monospace;
+    font-size: 22px; 
+    line-height: 1.5;
+  ">
+    {species_tree_ete}
+   </pre>
+</div>
 
 We now want to do some common-sense checking that everything appears to be in
 order, and we aren’t rewriting the history of life on earth. With our six species, this tree
@@ -175,7 +196,17 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
 
     We are going to view the tree for `{gene_tree_orthogroup}` on [iTOL](https://itol.embl.de/).
 
-    {gene_tree}
+    <div style="text-align: center;">
+        <pre style="
+            display: inline-block;
+            text-align: left;
+            font-family: monospace;
+            font-size: 22px; 
+            line-height: 1.5; 
+        ">
+        {gene_tree}
+        </pre>
+    </div>
 
 
     Looking at the gene tree, we can see that there have been several gene duplications in
@@ -193,7 +224,17 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     Go into the `Advanced` tab on the Control Panel and select `Display` next to `Node IDs`
     to see the node labels
 
-    {duplication_tree}
+    <div style="text-align: center;">
+        <pre style="
+            display: inline-block;
+            text-align: left;
+            font-family: monospace;
+            font-size: 22px; 
+            line-height: 1.5; 
+        ">
+        {duplication_tree}
+        </pre>
+    </div>
 
     This gives a summary of gene duplication events. Each node shows the node name
     followed by an underscore and then the number of well-supported gene duplication
@@ -214,10 +255,6 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     in the gene tree. It also lists the genes descended from each of the two copies arising
     from the gene duplication event. We can check this out for our wombat olfactory
     receptor orthologues.
-
-    # <p align="center" class="figure-wrapper">
-    # <img src="{{ site.baseurl }}/assets/images/Beginner_image9.png" alt="Beginner_img9" width="1200"/>
-    # </p>
 
     These events are also summarised by orthogroup and by species tree node in the files
     Duplications_per_Orthogroup.tsv and Duplications_per_Species_Tree_Node.tsv which are
@@ -320,8 +357,6 @@ def get_path(Path):
     stripped_altered_files_str = "\n   ".join(stripped_altered_files).strip()
 
     return stripped_altered_files_str
-
-
 
 
 def get_Statistics_Overall(target_dir):
@@ -542,14 +577,6 @@ if __name__ == "__main__":
         number_of_duplications_for_node=number_of_duplications_for_node
     )
     print(tutorial)
-    # import markdown
-    # html_string = markdown.markdown(new_ete3_tree)
-    # with open(r"./of_markdown.html", "w") as writer:
-    #     writer.write(new_ete3_tree)
-
-    # with open(r"./of_markdown.md", "w") as writer:
-    #     writer.write(tutorial)
-    
 
     
     
