@@ -2,9 +2,10 @@ from directory_tree import DisplayTree
 import os
 import argparse
 
-
 def get_path(Path):
-	
+    #
+    # Returns string containing path of all files in the OrthoFinder output folder.
+
     customPath: str = Path
     stringRepresentation: str = DisplayTree(customPath, stringRep=True, showHidden=True)
     altered_files = ""
@@ -16,6 +17,7 @@ def get_path(Path):
     for file in stringRepresentation.split("\n"):
         if "OG0" not in file and "Blast" not in file and "Species" not in file and "__v__" not in file:
             altered_files += (file) + "\n"
+
 
         if "\u2514" in file and "OG" in file:
             new_files_start = "".join(file.split("OG")[:-1]).replace("\u2514","\u251C") + "OG" + "0"*7 + file.split("OG")[-1][7:]
@@ -42,7 +44,6 @@ def get_path(Path):
     Xenologs = altered_files.split("\n").index("\u251C" + "\u2500" + "\u2500" + " Putative_Xenologs/")
     Gene_Trees = altered_files.split("\n").index("\u251C" + "\u2500" + "\u2500" + " Resolved_Gene_Trees/")
     altered_files_list = altered_files.split("\n")
-
     stripped_altered_files = altered_files_list[:Orthologs] 
     stripped_altered_files = stripped_altered_files + altered_files_list[Orthologs:Orthologs+1] 
     stripped_altered_files = stripped_altered_files + [" ".join(altered_files_list[Orthologs+2].split(" ")[:-1]) + " Species_1.tsv"]
@@ -58,7 +59,7 @@ def get_path(Path):
     stripped_altered_files = stripped_altered_files + [" ".join(altered_files_list[Xenologs +2].split(" ")[:-1]) + " Species_#.tsv"]
     stripped_altered_files = stripped_altered_files + altered_files_list[Gene_Trees:] 
 
-    stripped_altered_files_str = "\n   ".join(stripped_altered_files)
+    stripped_altered_files_str = "\n   ".join(stripped_altered_files).strip()
 
     return stripped_altered_files_str
 
@@ -78,5 +79,6 @@ if __name__ == "__main__":
         print("The input path is not a directory")
         raise SystemExit(1)
     
-    print(get_path(target_dir))
+    of_tree_structure = get_path(target_dir)
+    print(of_tree_structure)
 

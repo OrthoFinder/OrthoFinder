@@ -101,10 +101,10 @@ directory, and puts the results here.
     display: inline-block;
     text-align: left;
     font-family: monospace;
-    font-size: 22px; 
-    line-height: 1.5;
+    font-size: 18px;    /* adjust size here */
+    line-height: 1.3;   /* optional: tweak vertical spacing */
   ">
-    {of_output_tree}
+    {{% include_relative of-output-tree.md %}}
   </pre>
 </div>
 
@@ -154,11 +154,12 @@ my version with icons PhyloPic, so that we can see what is going on
     text-align: left;
     font-family: monospace;
     font-size: 22px; 
-    line-height: 1.5;
+    line-height: 1.5;  
   ">
-    {species_tree_ete}
-   </pre>
+    {{% include_relative species_tree.md %}}
+  </pre>
 </div>
+
 
 We now want to do some common-sense checking that everything appears to be in
 order, and we aren’t rewriting the history of life on earth. With our six species, this tree
@@ -197,15 +198,15 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     We are going to view the tree for `{gene_tree_orthogroup}` on [iTOL](https://itol.embl.de/).
 
     <div style="text-align: center;">
-        <pre style="
-            display: inline-block;
-            text-align: left;
-            font-family: monospace;
-            font-size: 22px; 
-            line-height: 1.5; 
-        ">
-        {gene_tree}
-        </pre>
+    <pre style="
+        display: inline-block;
+        text-align: left;
+        font-family: monospace;
+        font-size: 22px; 
+        line-height: 1.5; 
+    ">
+        {{% include_relative gene_tree.md %}}
+    </pre>
     </div>
 
 
@@ -225,15 +226,15 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     to see the node labels
 
     <div style="text-align: center;">
-        <pre style="
-            display: inline-block;
-            text-align: left;
-            font-family: monospace;
-            font-size: 22px; 
-            line-height: 1.5; 
-        ">
-        {duplication_tree}
-        </pre>
+    <pre style="
+        display: inline-block;
+        text-align: left;
+        font-family: monospace;
+        font-size: 22px;   
+        line-height: 1.5;  
+    ">
+        {{% include_relative duplication_tree.md %}}
+    </pre>
     </div>
 
     This gives a summary of gene duplication events. Each node shows the node name
@@ -554,13 +555,13 @@ if __name__ == "__main__":
     duplication_table, duplication_tree, node_example, number_of_duplications_for_node = gene_duplications(target_dir)
 
     tutorial = TUTORIAL.format(
-        of_output_tree=of_tree_structure,
+        # of_output_tree=of_tree_structure,
         stats_overall=stats_overall, 
         percentage_of_genes_in_orthogroup=percentage_of_genes_in_orthogroup,
         statisitcs_per_species=statisitcs_per_species, 
         lowest_percent_species=lowest_percent_species, 
         lowest_percent_value=lowest_percent_value,
-        species_tree_ete=species_tree_ete,
+        # species_tree=species_tree_ete,
         ortholog_path=os.path.join("Orthologues",
                                     "_".join(("Orthologues", species1)),
                                     "__v__".join((species1, species2)) + ".tsv"),
@@ -570,13 +571,15 @@ if __name__ == "__main__":
         orthologs=orthologs,
         orthogroup=ortholog_orthogroup,
         gene_tree_orthogroup=gene_tree_orthogroup,
-        gene_tree=new_ete3_tree,
+        # gene_tree=new_ete3_tree,
         duplication_table=duplication_table, 
-        duplication_tree=duplication_tree, 
+        # duplication_tree=duplication_tree, 
         node_example=node_example, 
         number_of_duplications_for_node=number_of_duplications_for_node
     )
     print(tutorial)
+    # with open(r"/tmp/beginner-tutorial.md", "w") as writer:
+    #     writer.write(tutorial)
 
     
     
