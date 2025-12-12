@@ -141,7 +141,7 @@ You will now see the phylogenetic tree that OrthoFinder has produced. I have ann
 my version with icons PhyloPic, so that we can see what is going on
 
 <p align="center" class="figure-wrapper">
-  <img src="{{{{ site.baseurl }}}}/assets/images/species_tree.png" alt="species_tree" width="450"/>
+  <img src="{{{{ site.baseurl }}}}/assets/images/species_tree.png" alt="species_tree" width="500"/>
 </p>
 
 We now want to do some common-sense checking that everything appears to be in
@@ -181,7 +181,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     We are going to view the tree for `{gene_tree_orthogroup}` on [iTOL](https://itol.embl.de/).
 
     <p align="center" class="figure-wrapper">
-        <img src="{{{{ site.baseurl }}}}/assets/images/gene_tree.png" alt="gene_tree" width="650"/>
+        <img src="{{{{ site.baseurl }}}}/assets/images/gene_tree.png" alt="gene_tree" width="800"/>
     </p>
 
 
@@ -201,8 +201,9 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     to see the node labels
 
     <p align="center" class="figure-wrapper">
-        <img src={{{{ site.baseurl }}}}/assets/images/duplication_tree.png" alt="duplication_tree" width="450"/>
+        <img src="{{{{ site.baseurl }}}}/assets/images/duplication_tree.png" alt="duplication_tree" width="500"/>
     </p>
+
 
     This gives a summary of gene duplication events. Each node shows the node name
     followed by an underscore and then the number of well-supported gene duplication
