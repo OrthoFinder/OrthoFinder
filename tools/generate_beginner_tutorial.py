@@ -176,7 +176,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     We are going to view the tree for `{gene_tree_orthogroup}`
 
     <p align="center" class="figure-wrapper">
-        <img src="{{{{ site.baseurl }}}}/assets/images/gene_tree.png" alt="gene_tree" width="800"/>
+        <img src="{{{{ site.baseurl }}}}/assets/images/gene_tree.png" alt="gene_tree" width="1000"/>
     </p>
 
 
@@ -191,7 +191,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     to see the node labels
 
     <p align="center" class="figure-wrapper">
-        <img src="{{{{ site.baseurl }}}}/assets/images/duplication_tree.png" alt="duplication_tree" width="500"/>
+        <img src="{{{{ site.baseurl }}}}/assets/images/duplication_tree.png" alt="duplication_tree" width="600"/>
     </p>
 
 
