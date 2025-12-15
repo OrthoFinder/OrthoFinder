@@ -249,7 +249,7 @@ jobs:
           cp /tmp/duplication_tree.png site/assets/images/duplication_tree.png
 
           echo "Updated files on gh-pages:"
-          ls -l site/_tutorials/beginner-tutorial.md site/_tutorials/of-output-tree.md assets/images/*tree.png
+          ls -l site/_tutorials/beginner-tutorial.md site/_tutorials/of-output-tree.md site/assets/images/*tree.png
 
       - name: Commit and push updated docs (gh-pages)
         shell: bash
