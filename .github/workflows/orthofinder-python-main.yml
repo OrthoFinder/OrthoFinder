@@ -148,13 +148,16 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install system dependencies for PyQt6
+      - name: Install system dependencies
         run: |
           set -euxo pipefail
           sudo apt-get update
           sudo apt-get install -y \
-            libxcb-cursor0 \
+            libegl1 \
+            libgl1 \
+            libopengl0 \
             libxkbcommon-x11-0 \
+            libxcb-cursor0 \
             libxcb-xinerama0 \
             libxcb-icccm4 \
             libxcb-image0 \
