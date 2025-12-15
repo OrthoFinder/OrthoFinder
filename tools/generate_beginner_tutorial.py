@@ -23,7 +23,7 @@ This tutorial will cover:
 - [Exploring the results of OrthoFinder](#exploring-the-results-of-orthofinder)
 
 OrthoFinder requires as input the amino acid sequences for all the protein coding genes in
-your species of interest. We provide a separate tutorial for 
+your species of interest. We provide a separate tutorial for
 [getting input files]({{{{ site.baseurl}}}}/tutorials/gettting-input-data/) for OrthoFinder.
 
 All these steps will be done on the command line so that you can just copy and
@@ -85,17 +85,17 @@ First, you have to open a terminal and navigate to the directory where your file
 are. You can now run OrthoFinder on your proteomes.
 
 ```bash
-orthofinder -f primary_transcripts 
+orthofinder -f primary_transcripts
 ```
 
 That’s it! OrthoFinder will print updates on its progress to the terminal, and tell you when
-it’s finished. To see what options you might want to adjust for your own data, check out the [GitHub](https://GitHub.com/OrthoFinder/OrthoFinder/), 
+it’s finished. To see what options you might want to adjust for your own data, check out the [GitHub](https://GitHub.com/OrthoFinder/OrthoFinder/),
 or the [Advanced Tutorial]({{{{ site.baseurl }}}}/tutorials/advanced-tutorial/) page
 
 ### Exploring the results of OrthoFinder
 
 OrthoFinder creates a results directory named OrthoFinder inside the proteome
-directory, and puts the results here. 
+directory, and puts the results here.
 My results directory `{target_dir}` looks like this:
 
 {{% include_relative of-output-tree.md %}}
@@ -131,21 +131,17 @@ The lowest percentage is the *`lowest_percent_species`*, but we still managed to
 genes to orthogroups. The key message here is that it’s always a good idea to look at
 this information before you start interpreting your results. If the numbers were too low for
 one species, we might want to consider sampling more species to fill in the long
-evolutionary divergence between species (e.g. something in between a Kiwi and a
-Kakapo, such as a Hoatzin).
+evolutionary divergence between species.
 
 One more useful thing to do before we really start to dive in is to look at the species
-tree. Go to the [iTOL website](https://itol.embl.de/), and click `Upload a tree`.
-You can then drag and drop the tree file, which is in `Species_Tree/SpeciesTree_rooted.txt`
-You will now see the phylogenetic tree that OrthoFinder has produced. I have annotated
-my version with icons PhyloPic, so that we can see what is going on
+tree.
 
 <p align="center" class="figure-wrapper">
   <img src="{{{{ site.baseurl }}}}/assets/images/species_tree.png" alt="species_tree" width="500"/>
 </p>
 
 We now want to do some common-sense checking that everything appears to be in
-order, and we aren’t rewriting the history of life on earth. With our six species, this tree
+order, and we aren’t rewriting the history of life on earth. With our species, this tree
 looks exactly as we would expect.
 If the tree doesn’t look correct, then this won’t impact orthogroup inference, but will affect
 our measures of gene duplication, and might affect our assignment of orthologs and
@@ -157,14 +153,13 @@ species tree (use the `-s` option).
 Now that we are happy with our OrthoFinder run, we can start diving into the results.
 
 - ***Orthologues***<br>
-    We will start by finding orthologues of a gene that we are interested in. We will focus on the gene `ENSVURG00010002700.1` in wombats, which is an
-    olfactory receptor. Let’s find out what its orthologues are in the Tammar wallaby.
-    In the Orthologues directory there is a sub-directory for each species. 
+    We will start by finding orthologues of a gene that we are interested in.
+    In the Orthologues directory there is a sub-directory for each species.
 
     Open `{ortholog_path}`, in a spreadsheet program (specifying that it’s tab-delimited
     if necessary). The file has three columns, `Orthogroup`, `{species1}`, and
     `{species2}`. Find `{gene_of_interest}` in the table, I can see that
-    the gene is in orthogroup `{orthogroup}` and that it has three orthologues in wallabies:
+    the gene is in orthogroup `{orthogroup}` and that its orthologs are:
     `{orthologs}`
 
 - ***Gene trees***<br>
@@ -178,19 +173,14 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     gene tree for that orthogroup. To find the tree for certain orthogroup, just search for the
     orthogroup ID.
 
-    We are going to view the tree for `{gene_tree_orthogroup}` on [iTOL](https://itol.embl.de/).
+    We are going to view the tree for `{gene_tree_orthogroup}`
 
     <p align="center" class="figure-wrapper">
         <img src="{{{{ site.baseurl }}}}/assets/images/gene_tree.png" alt="gene_tree" width="800"/>
     </p>
 
 
-    Looking at the gene tree, we can see that there have been several gene duplications in
-    the lineage leading to wallabies (*`Notamacropus`*). This has resulted in a one-to-three
-    orthology relationship, i.e. all three of the wallaby genes are equally related to the
-    wombat gene `ENSVURG00010002700.1`. It’s often the case that orthology relationships
-    aren’t one-to-one, and it’s important to know this—you don’t want to spend months doing
-    experiments on `the orthologue` only to find out later there are actually three!
+    Looking at the gene tree, we can see if there are any gene duplications
 
 - ***Gene duplications***<br>
     Having the gene trees means that OrthoFinder can identify all gene duplication events
@@ -209,10 +199,10 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     followed by an underscore and then the number of well-supported gene duplication
     events mapped to each node in the species tree. Gene-duplication events are
     considered `well-supported` if at least `50%` of the descendant species have retained
-    both copies of the duplicated gene. For the common ancestor of the mammals, `{node_example}`, 
+    both copies of the duplicated gene. For the common ancestor of the mammals, `{node_example}`,
     there were `{number_of_duplications_for_node}` of these well-supported gene duplication events. The numbers after the
     species names are the number of `terminal` duplications that map to that species, rather
-    than an internal node of the species tree. 
+    than an internal node of the species tree.
 
     We can see the full list of gene duplication
     events in the file `Gene_Duplication_Events/Duplications.tsv`. Here are just a few lines
@@ -266,74 +256,12 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
 """
 
 
-def get_path(Path):
-    #
-    # Returns string containing path of all files in the OrthoFinder output folder.
-
-    customPath: str = Path
-    stringRepresentation: str = DisplayTree(customPath, stringRep=True, showHidden=True)
-    altered_files = ""
-    Last_Blast = ""
-    Last_Species = ""
-
-    HOGs = 0
-
-    for file in stringRepresentation.split("\n"):
-        if "OG0" not in file and "Blast" not in file and "Species" not in file and "__v__" not in file:
-            altered_files += (file) + "\n"
-
-
-        if "\u2514" in file and "OG" in file:
-            new_files_start = "".join(file.split("OG")[:-1]).replace("\u2514","\u251C") + "OG" + "0"*7 + file.split("OG")[-1][7:]
-            new_files_mid = "".join(file.split("OG")[:-1]).replace("\u2514","\u251C") + "OG" + "0"*3 + "####" + file.split("OG")[-1][7:]
-            altered_files += (new_files_start) + "\n"
-            altered_files += (new_files_mid) + "\n"
-            altered_files += (file) + "\n"
-
-        if "Blast" in file:
-            if "Blast0_0.txt" in file:
-                altered_files += (file) + "\n"
-            elif "Blast0_1.txt" in file:
-                altered_files += (file.replace("0_1","#_#")) + "\n"
-
-        if "Species" in file:
-            if "Species0.fa" in file:
-                altered_files += (file) + "\n"
-            if "Species1.fa" in file:
-                altered_files += (file).replace("1","#") + "\n"
-
-    Orthologs = (altered_files.split("\n").index("\u251C" + "\u2500" + "\u2500" + " Orthologues/"))
-    HOGS = altered_files.split("\n").index("\u251C" + "\u2500" + "\u2500" + " Phylogenetic_Hierarchical_Orthogroups/")
-    Misplaced = altered_files.split("\n").index("\u251C" + "\u2500" + "\u2500" + " Phylogenetically_Misplaced_Genes/")
-    Xenologs = altered_files.split("\n").index("\u251C" + "\u2500" + "\u2500" + " Putative_Xenologs/")
-    Gene_Trees = altered_files.split("\n").index("\u251C" + "\u2500" + "\u2500" + " Resolved_Gene_Trees/")
-    altered_files_list = altered_files.split("\n")
-    stripped_altered_files = altered_files_list[:Orthologs] 
-    stripped_altered_files = stripped_altered_files + altered_files_list[Orthologs:Orthologs+1] 
-    stripped_altered_files = stripped_altered_files + [" ".join(altered_files_list[Orthologs+2].split(" ")[:-1]) + " Species_1.tsv"]
-    stripped_altered_files = stripped_altered_files + [" ".join(altered_files_list[Orthologs+2].split(" ")[:-1]) + " Species_#.tsv"]
-    stripped_altered_files = stripped_altered_files + altered_files_list[HOGS:HOGS+1] 
-    stripped_altered_files = stripped_altered_files + [" ".join(altered_files_list[HOGS+2].split(" ")[:-1]) + " N0.tsv"]
-    stripped_altered_files = stripped_altered_files + [" ".join(altered_files_list[HOGS+2].split(" ")[:-1]) + " N#.tsv"]
-    stripped_altered_files = stripped_altered_files + altered_files_list[Misplaced :Misplaced +1] 
-    stripped_altered_files = stripped_altered_files + [" ".join(altered_files_list[Misplaced +2].split(" ")[:-1]) + " Species_1.tsv"]
-    stripped_altered_files = stripped_altered_files + [" ".join(altered_files_list[Misplaced +2].split(" ")[:-1]) + " Species_#.tsv"]
-    stripped_altered_files = stripped_altered_files + altered_files_list[Xenologs :Xenologs +1] 
-    stripped_altered_files = stripped_altered_files + [" ".join(altered_files_list[Xenologs +2].split(" ")[:-1]) + " Species_1.tsv"]
-    stripped_altered_files = stripped_altered_files + [" ".join(altered_files_list[Xenologs +2].split(" ")[:-1]) + " Species_#.tsv"]
-    stripped_altered_files = stripped_altered_files + altered_files_list[Gene_Trees:] 
-
-    stripped_altered_files_str = "\n   ".join(stripped_altered_files).strip()
-
-    return stripped_altered_files_str
-
-
 def get_Statistics_Overall(target_dir):
     #
-    # Returns string containing the first six lines of Statistics_Overall.tsv" and the Percentage of genes in orthogroups 
+    # Returns string containing the first six lines of Statistics_Overall.tsv" and the Percentage of genes in orthogroups
     percentage_of_genes_in_orthogroup = 0
     Statistics_Overall_Lines = []
-    max_len = 0 
+    max_len = 0
     comparaitve_genome_statisitcs_overall = "/".join([target_dir,"Comparative_Genomics_Statistics","Statistics_Overall.tsv"])
     with open(comparaitve_genome_statisitcs_overall) as statisitcs_overall:
         for lines in range(0,7):
@@ -350,7 +278,7 @@ def get_Statistics_Overall(target_dir):
         new_space = (" ")*(max_len - len(line[0]) + 3)
         table.append([line[0],line[1]])
         #sys.exit()
-    
+
     return tabulate(table,tablefmt="github"), percentage_of_genes_in_orthogroup
 
 
@@ -367,7 +295,7 @@ def get_Statistics_PerSpecies(target_dir):
     lengths = []
     for species in first_6_lines[0].split("\t"):
         lengths.append(len(species))
-        
+
     first_col_lengths = []
     for first_col in first_6_lines:
         first_col_lengths.append(len(first_col.split("\t")[0]))
@@ -382,7 +310,7 @@ def get_Statistics_PerSpecies(target_dir):
             else:
                 new_line.append(element)
         reformatted_statisitcs_per_species.append("   ".join(new_line))
-        
+
     table = []
 
     for i, line in enumerate(reformatted_statisitcs_per_species):
@@ -401,17 +329,6 @@ def get_Statistics_PerSpecies(target_dir):
     return tabulate(table, header, tablefmt="github"), lowest_percent_species, lowest_percent_value
 
 
-
-def Species_Tree_output(target_dir):
-    
-    species_tree = "/".join([target_dir,"Species_Tree","SpeciesTree_rooted.txt"]) 
-    Species_Tree_ETE = Tree(open(species_tree).read())
-    
-    
-    return Species_Tree_ETE
-    #"\u251C"
-    
-    
 def get_ortholog(target_dir, species1, species2):
     # pick some thing??Mycoplasma_hyopneumoniae v  Mycoplasma_agalactiae
     orthologs_target_path = "/".join([
@@ -445,11 +362,9 @@ def get_random_gene_tree(target_dir):
             ete3_tree = Tree(OG_Tree_Pair[1], parser=1)
 
             if len(list(ete3_tree.leaves())) < 12 and 4 < len(list(ete3_tree.leaves())):
-                #new_ete3_tree = reformat_ete3_tree(ete3_tree)
-                new_ete3_tree = ete3_tree
                 orthogroup = OG_Tree_Pair[0]
                 break
-    return orthogroup, str(new_ete3_tree)
+    return orthogroup
 
 
 
@@ -462,8 +377,8 @@ def gene_duplications(target_dir):
         if node.name.startswith("N2"):
             node_example = node.name.split("_")[0]
             number_of_duplications_for_node = node.name.split("_")[1]
-    
-    
+
+
     #print(gene_duplication_tree)
     first_duplication_lines = []
     gene_duplication_table = "/".join([gene_duplications,"Duplications.tsv"])
@@ -471,13 +386,13 @@ def gene_duplications(target_dir):
         for lines in range(0,6):
             line = next(duplication_table)
             first_duplication_lines.append(line.rstrip())
-    
+
     gap = 0
     for col_name in first_duplication_lines[0].split("\t"):
         if gap < len(col_name):
             gap = len(col_name)
     reformatted_table = []
-    
+
     for line in first_duplication_lines:
         new_line = []
         for element in line.split("\t"):
@@ -487,11 +402,8 @@ def gene_duplications(target_dir):
                 new_line.append(element[:gap + 3])
         reformatted_table.append(new_line)
     return tabulate(reformatted_table[1:], reformatted_table[0], tablefmt="github"),\
-        gene_duplication_tree.to_str(props=['name'], compact=True),\
         node_example,\
         number_of_duplications_for_node
-    
-
 
 
 
@@ -505,32 +417,28 @@ if __name__ == "__main__":
     if not os.path.exists(target_dir):
         print("The target directory doesn't exist")
         raise SystemExit(1)
-    
+
     if not os.path.isdir(target_dir):
         print("The input path is not a directory")
         raise SystemExit(1)
-    
-    of_tree_structure = get_path(target_dir)
+
     stats_overall, percentage_of_genes_in_orthogroup = get_Statistics_Overall(target_dir)
     statisitcs_per_species, lowest_percent_species, lowest_percent_value = get_Statistics_PerSpecies(target_dir)
-    species_tree_ete = Species_Tree_output(target_dir)
-    
+
     species1 = "Mycoplasma_hyopneumoniae"
     species2 = "Mycoplasma_agalactiae"
 
     gene_of_interest,orthologs,ortholog_orthogroup = get_ortholog(target_dir, species1, species2)
-    gene_tree_orthogroup,new_ete3_tree = get_random_gene_tree(target_dir)
-    duplication_table, duplication_tree, node_example, number_of_duplications_for_node = gene_duplications(target_dir)
+    gene_tree_orthogroup = get_random_gene_tree(target_dir)
+    duplication_table, node_example, number_of_duplications_for_node = gene_duplications(target_dir)
 
     tutorial = TUTORIAL.format(
-        # of_output_tree=of_tree_structure,
         target_dir=target_dir,
-        stats_overall=stats_overall, 
+        stats_overall=stats_overall,
         percentage_of_genes_in_orthogroup=percentage_of_genes_in_orthogroup,
-        statisitcs_per_species=statisitcs_per_species, 
-        lowest_percent_species=lowest_percent_species, 
+        statisitcs_per_species=statisitcs_per_species,
+        lowest_percent_species=lowest_percent_species,
         lowest_percent_value=lowest_percent_value,
-        # species_tree=species_tree_ete,
         ortholog_path=os.path.join("Orthologues",
                                     "_".join(("Orthologues", species1)),
                                     "__v__".join((species1, species2)) + ".tsv"),
@@ -540,16 +448,8 @@ if __name__ == "__main__":
         orthologs=orthologs,
         orthogroup=ortholog_orthogroup,
         gene_tree_orthogroup=gene_tree_orthogroup,
-        # gene_tree=new_ete3_tree,
-        duplication_table=duplication_table, 
-        # duplication_tree=duplication_tree, 
-        node_example=node_example, 
+        duplication_table=duplication_table,
+        node_example=node_example,
         number_of_duplications_for_node=number_of_duplications_for_node
     )
     print(tutorial)
-    # with open(r"/tmp/beginner-tutorial.md", "w") as writer:
-    #     writer.write(tutorial)
-
-    
-    
-    

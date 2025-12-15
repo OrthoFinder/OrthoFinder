@@ -2,14 +2,19 @@ import os
 import argparse
 
 from ete4 import Tree
-from ete4.treeview import TreeStyle
+from ete4.treeview import TreeStyle, TextFace
 
 def save_tree_image(tree, output_path):
+    # def layout(node):
+    #     if node.is_leaf == False:
+    #         node.add_face(TextFace(node.name), 0, position='branch-right')
+
     ts = TreeStyle()
     ts.show_leaf_name = True
     ts.show_branch_length = False   
     ts.show_branch_support = False   
-    ts.show_scale = False    
+    ts.show_scale = False   
+    # ts.layout_fn = layout
     ts.scale = 120    
 
     tree.render(output_path, w=800, units="px", tree_style=ts)
