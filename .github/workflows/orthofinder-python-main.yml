@@ -148,11 +148,24 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install OrthoFinder (runtime only)
+      - name: Install system dependencies for PyQt6
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxcb-cursor0 \
+            libxkbcommon-x11-0 \
+            libxcb-xinerama0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-render-util0
+
+      - name: Install OrthoFinder
         run: |
           set -euxo pipefail
           python -m pip install --upgrade pip
-          pip install -e .
+          pip install -e ".[docs]"
 
       - name: Run OrthoFinder on ExampleData
         run: |
