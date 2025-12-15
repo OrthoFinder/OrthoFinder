@@ -153,16 +153,19 @@ jobs:
           set -euxo pipefail
           sudo apt-get update
           sudo apt-get install -y \
-            libegl1 \
-            libgl1 \
-            libopengl0 \
-            libxkbcommon-x11-0 \
             libxcb-cursor0 \
+            libxkbcommon-x11-0 \
             libxcb-xinerama0 \
             libxcb-icccm4 \
             libxcb-image0 \
             libxcb-keysyms1 \
-            libxcb-render-util0
+            libxcb-render-util0 \
+            libegl1 \
+            libgl1 \
+            libopengl0
+            
+      - name: Set Qt to offscreen
+        run: echo "QT_QPA_PLATFORM=offscreen" >> $GITHUB_ENV
 
       - name: Install OrthoFinder
         run: |
