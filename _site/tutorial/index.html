@@ -199,7 +199,7 @@ command line. Conda automates the installation process and handles all dependenc
 making it very beginner-friendly.
 To install via conda, we first need to install miniconda. Follow the instructions <a href="https://docs.anaconda.com/miniconda/">here</a>.</p>
 
-<p>We then need to run these commands</p>
+<p>We then need to run these commands.</p>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>conda config --add channels defaults conda config --add channels bioconda conda config
 --add channels conda-forge
@@ -222,7 +222,7 @@ pip install git+https://GitHub.com/OrthoFinder/OrthoFinder.git
 <code class="language-plaintext highlighter-rouge">orthofinder -h</code>, which will print all of the command line options.</p>
 
 <p>You can test that OrthoFinder is working correctly by running it on the example
-dataset, which you can download from our <a href="https://GitHub.com/OrthoFinder/OrthoFinder/">GitHub</a></p>
+dataset, which you can download from our <a href="https://GitHub.com/OrthoFinder/OrthoFinder/">GitHub</a>.</p>
 
 <p><code class="language-plaintext highlighter-rouge">orthofinder -f ExampleData/</code></p>
 
@@ -245,7 +245,7 @@ are. You can now run OrthoFinder on your proteomes.</p>
 
 <p>That’s it! OrthoFinder will print updates on its progress to the terminal, and tell you when
 it’s finished. To see what options you might want to adjust for your own data, check out the <a href="https://GitHub.com/OrthoFinder/OrthoFinder/">GitHub</a>,
-or the <a href="/OrthoFinder/tutorials/advanced-tutorial/">Advanced Tutorial</a> page</p>
+or the <a href="/OrthoFinder/tutorials/advanced-tutorial/">Advanced Tutorial</a> page.</p>
 
 <h3 id="exploring-the-results-of-orthofinder">Exploring the results of OrthoFinder</h3>
 
@@ -341,7 +341,7 @@ Results_Dec15/
 of the OrthoFinder run. We want to make sure that most genes across all species
 have been assigned to orthogroups, and that the species tree looks realistic.</p>
 
-<p>Open the file Statistics_Overall.tsv from the folder <code class="language-plaintext highlighter-rouge">Comparative_Genomics_Statistics</code>. This file can be opened in spreadsheet software
+<p>Open the file <code class="language-plaintext highlighter-rouge">Statistics_Overall.tsv</code> from the folder <code class="language-plaintext highlighter-rouge">Comparative_Genomics_Statistics</code>. This file can be opened in spreadsheet software
 like Microsoft Excel, or in a text editor like Notepad.</p>
 
 <p>On the 5th line, we can see the <code class="language-plaintext highlighter-rouge">Percentage of genes in orthogroups</code>, which in my case
@@ -385,7 +385,7 @@ is <code class="language-plaintext highlighter-rouge">81.0
 some orthology relationships that actually exist. The best way to fix this would be better
 species sampling.</p>
 
-<p>Now open the file <code class="language-plaintext highlighter-rouge">Statistics_PerSpecies</code>, from the same folder. This file gives us the
+<p>Now open the file <code class="language-plaintext highlighter-rouge">Statistics_PerSpecies.tsv</code>, from the same folder. This file gives us the
 <code class="language-plaintext highlighter-rouge">%</code> of genes in each species that are assigned to orthogroups, rather than the
 percentage for all genes across species.</p>
 
@@ -447,7 +447,8 @@ one species, we might want to consider sampling more species to fill in the long
 evolutionary divergence between species.</p>
 
 <p>One more useful thing to do before we really start to dive in is to look at the species
-tree.</p>
+tree. You can do this by opening the tree in <a href="https://itol.embl.de/upload.cgi">iTOL</a> by either copy and pasting the file content 
+or uploading the file directly.</p>
 
 <p align="center" class="figure-wrapper">
   <img src="/OrthoFinder/assets/images/species_tree.png" alt="species_tree" width="500" />
@@ -475,7 +476,7 @@ species tree (use the <code class="language-plaintext highlighter-rouge">-s</cod
   if necessary). The file has three columns, <code class="language-plaintext highlighter-rouge">Orthogroup</code>, <code class="language-plaintext highlighter-rouge">Mycoplasma_hyopneumoniae</code>, and
   <code class="language-plaintext highlighter-rouge">Mycoplasma_agalactiae</code>. Find <code class="language-plaintext highlighter-rouge">gi|71851854|gb|AAZ44462.1|</code> in the table, I can see that
   the gene is in orthogroup <code class="language-plaintext highlighter-rouge">OG0000014</code> and that its orthologs are:
-  <code class="language-plaintext highlighter-rouge">gi|290752976|emb|CBH40952.1|,  gi|290752482|emb|CBH40454.1|,  gi|290752494|emb|CBH40466.1|</code></p>
+  <code class="language-plaintext highlighter-rouge">gi|290752976|emb|CBH40952.1|,  gi|290752482|emb|CBH40454.1|,  gi|290752494|emb|CBH40466.1|</code>.</p>
   </li>
   <li>
     <p><strong><em>Gene trees</em></strong><br />
@@ -489,13 +490,13 @@ species tree (use the <code class="language-plaintext highlighter-rouge">-s</cod
   gene tree for that orthogroup. To find the tree for certain orthogroup, just search for the
   orthogroup ID.</p>
 
-    <p>We are going to view the tree for <code class="language-plaintext highlighter-rouge">OG0000008</code></p>
+    <p>We are going to view the tree for <code class="language-plaintext highlighter-rouge">OG0000008</code>.</p>
 
     <p align="center" class="figure-wrapper">
       <img src="/OrthoFinder/assets/images/gene_tree.png" alt="gene_tree" width="1000" />
   </p>
 
-    <p>Looking at the gene tree, we can see if there are any gene duplications</p>
+    <p>Looking at the gene tree, we can see if there are any gene duplications.</p>
   </li>
   <li>
     <p><strong><em>Gene duplications</em></strong><br />
@@ -504,7 +505,7 @@ species tree (use the <code class="language-plaintext highlighter-rouge">-s</cod
   allow us to explore duplications. Let’s first open
   <code class="language-plaintext highlighter-rouge">Gene_Duplication_Events/SpeciesTree_Gene_Duplications_0.5_Support.txt</code> in iTOL.
   Go into the <code class="language-plaintext highlighter-rouge">Advanced</code> tab on the Control Panel and select <code class="language-plaintext highlighter-rouge">Display</code> next to <code class="language-plaintext highlighter-rouge">Node IDs</code>
-  to see the node labels</p>
+  to see the node labels.</p>
 
     <p align="center" class="figure-wrapper">
       <img src="/OrthoFinder/assets/images/duplication_tree.png" alt="duplication_tree" width="600" />
@@ -515,7 +516,7 @@ species tree (use the <code class="language-plaintext highlighter-rouge">-s</cod
   events mapped to each node in the species tree. Gene-duplication events are
   considered <code class="language-plaintext highlighter-rouge">well-supported</code> if at least <code class="language-plaintext highlighter-rouge">50%</code> of the descendant species have retained
   both copies of the duplicated gene. For the common ancestor of the mammals, <code class="language-plaintext highlighter-rouge">N2</code>,
-  there were <code class="language-plaintext highlighter-rouge">11</code> of these well-supported gene duplication events. The numbers after the
+  there were <code class="language-plaintext highlighter-rouge">6</code> of these well-supported gene duplication events. The numbers after the
   species names are the number of <code class="language-plaintext highlighter-rouge">terminal</code> duplications that map to that species, rather
   than an internal node of the species tree.</p>
 
@@ -590,7 +591,7 @@ species tree (use the <code class="language-plaintext highlighter-rouge">-s</cod
   receptor orthologues.</p>
 
     <p>These events are also summarised by orthogroup and by species tree node in the files
-  Duplications_per_Orthogroup.tsv and Duplications_per_Species_Tree_Node.tsv which are
+  <code class="language-plaintext highlighter-rouge">Duplications_per_Orthogroup.tsv</code> and <code class="language-plaintext highlighter-rouge">Duplications_per_Species_Tree_Node.tsv</code> which are
   both in the directory <code class="language-plaintext highlighter-rouge">Comparative_Genomics_Statistics/</code>.</p>
   </li>
   <li>
@@ -605,7 +606,7 @@ species tree (use the <code class="language-plaintext highlighter-rouge">-s</cod
   even though some of the genes within an orthogroup can be paralogs of one another, if
   we tried to take any genes out then we would also be removing orthologs too.</p>
 
-    <p>So if we want to do a comparison of the <code class="language-plaintext highlighter-rouge">equivalent</code> genes in a set of species, we need
+    <p>So if we want to do a comparison of the equivalent genes in a set of species, we need
   to do the comparison across the genes in an orthogroup. The orthogroups are in the file
   <code class="language-plaintext highlighter-rouge">Orthogroups/Orthogroups.tsv</code>. This table has one orthogroup per line and one species
   per column and is ordered from largest orthogroup to smallest.</p>
@@ -629,7 +630,7 @@ species tree (use the <code class="language-plaintext highlighter-rouge">-s</cod
   files is available below.</p>
 
     <p>There are also some useful community tools that allow interactive viewing of results,
-  such as <a href="https://orthobrowserexamples.netlify.app/">OrthoBrowser</a></p>
+  such as <a href="https://orthobrowserexamples.netlify.app/">OrthoBrowser</a>.</p>
   </li>
 </ul>
 

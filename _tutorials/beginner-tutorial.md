@@ -33,7 +33,7 @@ command line. Conda automates the installation process and handles all dependenc
 making it very beginner-friendly.
 To install via conda, we first need to install miniconda. Follow the instructions [here](https://docs.anaconda.com/miniconda/).
 
-We then need to run these commands
+We then need to run these commands.
 
 ```
 conda config --add channels defaults conda config --add channels bioconda conda config
@@ -58,7 +58,7 @@ You can test that OrthoFinder has been installed by printing its help file
 ```orthofinder -h```, which will print all of the command line options.
 
 You can test that OrthoFinder is working correctly by running it on the example
-dataset, which you can download from our [GitHub](https://GitHub.com/OrthoFinder/OrthoFinder/)
+dataset, which you can download from our [GitHub](https://GitHub.com/OrthoFinder/OrthoFinder/).
 
 ```orthofinder -f ExampleData/ ```
 
@@ -82,7 +82,7 @@ orthofinder -f primary_transcripts
 
 That’s it! OrthoFinder will print updates on its progress to the terminal, and tell you when
 it’s finished. To see what options you might want to adjust for your own data, check out the [GitHub](https://GitHub.com/OrthoFinder/OrthoFinder/),
-or the [Advanced Tutorial]({{ site.baseurl }}/tutorials/advanced-tutorial/) page
+or the [Advanced Tutorial]({{ site.baseurl }}/tutorials/advanced-tutorial/) page.
 
 ### Exploring the results of OrthoFinder
 
@@ -99,7 +99,7 @@ Before we start diving into the orthogroups, it would behoove us to check the qu
 of the OrthoFinder run. We want to make sure that most genes across all species
 have been assigned to orthogroups, and that the species tree looks realistic.
 
-Open the file Statistics_Overall.tsv from the folder `Comparative_Genomics_Statistics`. This file can be opened in spreadsheet software
+Open the file `Statistics_Overall.tsv` from the folder `Comparative_Genomics_Statistics`. This file can be opened in spreadsheet software
 like Microsoft Excel, or in a text editor like Notepad.
 
 On the 5th line, we can see the `Percentage of genes in orthogroups`, which in my case
@@ -119,7 +119,7 @@ A good rule of thumb is that this number should be `>80%`. If not, you are likel
 some orthology relationships that actually exist. The best way to fix this would be better
 species sampling.
 
-Now open the file `Statistics_PerSpecies`, from the same folder. This file gives us the
+Now open the file `Statistics_PerSpecies.tsv`, from the same folder. This file gives us the
 `%` of genes in each species that are assigned to orthogroups, rather than the
 percentage for all genes across species.
 
@@ -140,7 +140,8 @@ one species, we might want to consider sampling more species to fill in the long
 evolutionary divergence between species.
 
 One more useful thing to do before we really start to dive in is to look at the species
-tree.
+tree. You can do this by opening the tree in [iTOL](https://itol.embl.de/upload.cgi) by either copy and pasting the file content 
+or uploading the file directly. 
 
 <p align="center" class="figure-wrapper">
   <img src="{{ site.baseurl }}/assets/images/species_tree.png" alt="species_tree" width="500"/>
@@ -166,7 +167,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     if necessary). The file has three columns, `Orthogroup`, `Mycoplasma_hyopneumoniae`, and
     `Mycoplasma_agalactiae`. Find `gi|71851854|gb|AAZ44462.1|` in the table, I can see that
     the gene is in orthogroup `OG0000014` and that its orthologs are:
-    `gi|290752976|emb|CBH40952.1|,  gi|290752482|emb|CBH40454.1|,  gi|290752494|emb|CBH40466.1|`
+    `gi|290752976|emb|CBH40952.1|,  gi|290752482|emb|CBH40454.1|,  gi|290752494|emb|CBH40466.1|`. 
 
 - ***Gene trees***<br>
     Next, we are going to look at the gene tree to see how these orthologues arose.
@@ -179,14 +180,14 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     gene tree for that orthogroup. To find the tree for certain orthogroup, just search for the
     orthogroup ID.
 
-    We are going to view the tree for `OG0000008`
+    We are going to view the tree for `OG0000008`. 
 
     <p align="center" class="figure-wrapper">
         <img src="{{ site.baseurl }}/assets/images/gene_tree.png" alt="gene_tree" width="1000"/>
     </p>
 
 
-    Looking at the gene tree, we can see if there are any gene duplications
+    Looking at the gene tree, we can see if there are any gene duplications.
 
 - ***Gene duplications***<br>
     Having the gene trees means that OrthoFinder can identify all gene duplication events
@@ -194,7 +195,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     allow us to explore duplications. Let’s first open
     `Gene_Duplication_Events/SpeciesTree_Gene_Duplications_0.5_Support.txt` in iTOL.
     Go into the `Advanced` tab on the Control Panel and select `Display` next to `Node IDs`
-    to see the node labels
+    to see the node labels.
 
     <p align="center" class="figure-wrapper">
         <img src="{{ site.baseurl }}/assets/images/duplication_tree.png" alt="duplication_tree" width="600"/>
@@ -206,7 +207,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     events mapped to each node in the species tree. Gene-duplication events are
     considered `well-supported` if at least `50%` of the descendant species have retained
     both copies of the duplicated gene. For the common ancestor of the mammals, `N2`,
-    there were `11` of these well-supported gene duplication events. The numbers after the
+    there were `6` of these well-supported gene duplication events. The numbers after the
     species names are the number of `terminal` duplications that map to that species, rather
     than an internal node of the species tree.
 
@@ -228,7 +229,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     receptor orthologues.
 
     These events are also summarised by orthogroup and by species tree node in the files
-    Duplications_per_Orthogroup.tsv and Duplications_per_Species_Tree_Node.tsv which are
+    `Duplications_per_Orthogroup.tsv` and `Duplications_per_Species_Tree_Node.tsv` which are
     both in the directory `Comparative_Genomics_Statistics/`.
 
 - ***Orthogroups***<br>
@@ -242,7 +243,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     even though some of the genes within an orthogroup can be paralogs of one another, if
     we tried to take any genes out then we would also be removing orthologs too.
 
-    So if we want to do a comparison of the `equivalent` genes in a set of species, we need
+    So if we want to do a comparison of the equivalent genes in a set of species, we need
     to do the comparison across the genes in an orthogroup. The orthogroups are in the file
     `Orthogroups/Orthogroups.tsv`. This table has one orthogroup per line and one species
     per column and is ordered from largest orthogroup to smallest.
@@ -263,6 +264,6 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     files is available below.
 
     There are also some useful community tools that allow interactive viewing of results,
-    such as [OrthoBrowser](https://orthobrowserexamples.netlify.app/)
+    such as [OrthoBrowser](https://orthobrowserexamples.netlify.app/).
 
 
