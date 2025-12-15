@@ -15,7 +15,8 @@ This tutorial will cover:
 - [Exploring the results of OrthoFinder](#exploring-the-results-of-orthofinder)
 
 OrthoFinder requires as input the amino acid sequences for all the protein coding genes in
-your species of interest. We provide a separate tutorial for [getting input files]({{ site.baseurl}}/tutorials/gettting-input-data/) for OrthoFinder.
+your species of interest. We provide a separate tutorial for
+[getting input files]({{ site.baseurl}}/tutorials/gettting-input-data/) for OrthoFinder.
 
 All these steps will be done on the command line so that you can just copy and
 paste the commands yourself. If you are not familiar with the command line there
@@ -76,18 +77,21 @@ First, you have to open a terminal and navigate to the directory where your file
 are. You can now run OrthoFinder on your proteomes.
 
 ```bash
-orthofinder -f primary_transcripts 
+orthofinder -f primary_transcripts
 ```
 
 That’s it! OrthoFinder will print updates on its progress to the terminal, and tell you when
-it’s finished. To see what options you might want to adjust for your own data, check out the [GitHub](https://GitHub.com/OrthoFinder/OrthoFinder/), or the [Advanced Tutorial]({{ site.baseurl }}/tutorials/advanced-tutorial/) page
+it’s finished. To see what options you might want to adjust for your own data, check out the [GitHub](https://GitHub.com/OrthoFinder/OrthoFinder/),
+or the [Advanced Tutorial]({{ site.baseurl }}/tutorials/advanced-tutorial/) page
 
 ### Exploring the results of OrthoFinder
 
 OrthoFinder creates a results directory named OrthoFinder inside the proteome
-directory, and puts the results here. 
+directory, and puts the results here.
+My results directory `ExampleData/OrthoFinder/Results_Dec15` looks like this:
 
 {% include_relative of-output-tree.md %}
+
 
 #### Step 1: Quality Control
 
@@ -98,70 +102,71 @@ have been assigned to orthogroups, and that the species tree looks realistic.
 Open the file Statistics_Overall.tsv from the folder `Comparative_Genomics_Statistics`. This file can be opened in spreadsheet software
 like Microsoft Excel, or in a text editor like Notepad.
 
-On the 5th line, we can see the ‘Percentage of genes in orthogroups’, which in my case
-is `95.7%`.
+On the 5th line, we can see the `Percentage of genes in orthogroups`, which in my case
+is `81.0
+`.
 
-<p align="center" class="figure-wrapper">
-  <img src="{{ site.baseurl }}/assets/images/Beginner_image3.png" alt="Beginner_img3" width="450"/>
-</p>
-
+|------------------------------------|------|
+| Number of species                  |    4 |
+| Number of genes                    | 2733 |
+| Number of genes in orthogroups     | 2215 |
+| Number of unassigned genes         |  518 |
+| Percentage of genes in orthogroups |   81 |
+| Percentage of unassigned genes     |   19 |
+| Number of orthogroups              |  599 |
 
 A good rule of thumb is that this number should be `>80%`. If not, you are likely missing
 some orthology relationships that actually exist. The best way to fix this would be better
 species sampling.
 
-Now open the file ‘Statistics_PerSpecies’, from the same folder. This file gives us the
+Now open the file `Statistics_PerSpecies`, from the same folder. This file gives us the
 `%` of genes in each species that are assigned to orthogroups, rather than the
 percentage for all genes across species.
 
 You can see here that we capture most genes across all species.
 
-<p align="center" class="figure-wrapper">
-  <img src="{{ site.baseurl }}/assets/images/Beginner_image4.png" alt="Beginner_img4" width="1000"/>
-</p>
+|                                    |   Mycoplasma_agalactiae |   Mycoplasma_gallisepticum |   Mycoplasma_genitalium |   Mycoplasma_hyopneumoniae |
+|------------------------------------|-------------------------|----------------------------|-------------------------|----------------------------|
+| Number of genes                    |                   820   |                      763   |                   476   |                      674   |
+| Number of genes in orthogroups     |                   650   |                      596   |                   417   |                      552   |
+| Number of unassigned genes         |                   170   |                      167   |                    59   |                      122   |
+| Percentage of genes in orthogroups |                    79.3 |                       78.1 |                    87.6 |                       81.9 |
+| Percentage of unassigned genes     |                    20.7 |                       21.9 |                    12.4 |                       18.1 |
 
-
-The lowest percentage is the kiwi (*`A. haastii`*), but we still managed to assign `94%` of its
+The lowest percentage is the *`lowest_percent_species`*, but we still managed to assign `78.1` of its
 genes to orthogroups. The key message here is that it’s always a good idea to look at
 this information before you start interpreting your results. If the numbers were too low for
 one species, we might want to consider sampling more species to fill in the long
-evolutionary divergence between species (e.g. something in between a Kiwi and a
-Kakapo, such as a Hoatzin).
+evolutionary divergence between species.
 
 One more useful thing to do before we really start to dive in is to look at the species
-tree. Go to the [iTOL website](https://itol.embl.de/), and click `Upload a tree`.
-You can then drag and drop the tree file, which is in `Species_Tree/SpeciesTree_rooted.txt`
-You will now see the phylogenetic tree that OrthoFinder has produced. I have annotated
-my version with icons PhyloPic, so that we can see what is going on
+tree.
 
 <p align="center" class="figure-wrapper">
-  <img src="{{ site.baseurl }}/assets/images/Beginner_image5.png" alt="Beginner_img5" width="800"/>
+  <img src="{{ site.baseurl }}/assets/images/species_tree.png" alt="species_tree" width="500"/>
 </p>
 
-
 We now want to do some common-sense checking that everything appears to be in
-order, and we aren’t rewriting the history of life on earth. With our six species, this tree
+order, and we aren’t rewriting the history of life on earth. With our species, this tree
 looks exactly as we would expect.
 If the tree doesn’t look correct, then this won’t impact orthogroup inference, but will affect
 our measures of gene duplication, and might affect our assignment of orthologs and
 paralogs within an orthogroup. If you need to, you can run OrthoFinder with your own
-species tree (use the -s option).
+species tree (use the `-s` option).
 
 #### Step 2: Interpreting results
 
 Now that we are happy with our OrthoFinder run, we can start diving into the results.
 
 - ***Orthologues***<br>
-    We will start by finding orthologues of a gene that we are interested in. We will focus on the gene `ENSVURG00010002700.1` in wombats, which is an
-    olfactory receptor. Let’s find out what its orthologues are in the Tammar wallaby.
-    In the Orthologues directory there is a sub-directory for each species. 
+    We will start by finding orthologues of a gene that we are interested in.
+    In the Orthologues directory there is a sub-directory for each species.
 
-    Open `Orthologues/Orthologues_Vombatus_ursinus/Vombatus_ursinus v
-    Notamacropus_eugeni i.tsv`, in a spreadsheet program (specifying that it’s tab-delimited
-    if necessary). The file has three columns, `Orthogroup`, `Vombatus_ursinus`, and
-    `Notamacropus_eugenii`. Find `ENSVURG00010002700.1` in the table, I can see that
-    the gene is in orthogroup `OG0000365` and that it has three orthologues in wallabies:
-    `ENSMEUG00000016785.1`, `ENSMEUG00000001827.1`, `ENSMEUG00000010434.1`
+    Open `Orthologues/Orthologues_Mycoplasma_hyopneumoniae/Mycoplasma_hyopneumoniae__v__Mycoplasma_agalactiae.tsv`, in a spreadsheet program (specifying that it’s tab-delimited
+    if necessary). The file has three columns, `Orthogroup`, `Mycoplasma_hyopneumoniae`, and
+    `Mycoplasma_agalactiae`. Find `gi|71851854|gb|AAZ44462.1|` in the table, I can see that
+    the gene is in orthogroup `OG0000014` and that its orthologs are:
+    `['gi|290752976|emb|CBH40952.1|', ' gi|290752482|emb|CBH40454.1|', ' gi|290752494|emb|CBH40466.1|']`
 
 - ***Gene trees***<br>
     Next, we are going to look at the gene tree to see how these orthologues arose.
@@ -170,23 +175,18 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     the OrthoFinder2 [paper](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1832-y) for more details).
 
     All of the gene trees are in one file (`Resolved_Gene_Trees/Resolved_Gene_Trees.txt`).
-    Each line of the file contains the ID of an orthogroup (e.g. `OG0000365`:), followed by the
+    Each line of the file contains the ID of an orthogroup (e.g. `OG0000008`:), followed by the
     gene tree for that orthogroup. To find the tree for certain orthogroup, just search for the
     orthogroup ID.
 
-    We are going to view the tree for `OG0000365` on [iTOL](https://itol.embl.de/).
+    We are going to view the tree for `OG0000008`
 
     <p align="center" class="figure-wrapper">
-    <img src="{{ site.baseurl }}/assets/images/Beginner_image6.png" alt="Beginner_img6" width="1000"/>
+        <img src="{{ site.baseurl }}/assets/images/gene_tree.png" alt="gene_tree" width="1000"/>
     </p>
 
 
-    Looking at the gene tree, we can see that there have been several gene duplications in
-    the lineage leading to wallabies (*`Notamacropus`*). This has resulted in a one-to-three
-    orthology relationship, i.e. all three of the wallaby genes are equally related to the
-    wombat gene `ENSVURG00010002700.1`. It’s often the case that orthology relationships
-    aren’t one-to-one, and it’s important to know this—you don’t want to spend months doing
-    experiments on ‘the orthologue’ only to find out later there are actually three!
+    Looking at the gene tree, we can see if there are any gene duplications
 
 - ***Gene duplications***<br>
     Having the gene trees means that OrthoFinder can identify all gene duplication events
@@ -197,33 +197,35 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     to see the node labels
 
     <p align="center" class="figure-wrapper">
-    <img src="{{ site.baseurl }}/assets/images/Beginner_image7.png" alt="Beginner_img7" width="1200"/>
+        <img src="{{ site.baseurl }}/assets/images/duplication_tree.png" alt="duplication_tree" width="600"/>
     </p>
+
 
     This gives a summary of gene duplication events. Each node shows the node name
     followed by an underscore and then the number of well-supported gene duplication
     events mapped to each node in the species tree. Gene-duplication events are
     considered `well-supported` if at least `50%` of the descendant species have retained
-    both copies of the duplicated gene. For the common ancestor of the mammals, N2, there were 812 of these well-supported gene duplication events. The numbers after the
+    both copies of the duplicated gene. For the common ancestor of the mammals, `N2`,
+    there were `11` of these well-supported gene duplication events. The numbers after the
     species names are the number of `terminal` duplications that map to that species, rather
-    than an internal node of the species tree. 
+    than an internal node of the species tree.
 
     We can see the full list of gene duplication
     events in the file `Gene_Duplication_Events/Duplications.tsv`. Here are just a few lines
     from the file:
 
-    <p align="center" class="figure-wrapper">
-    <img src="{{ site.baseurl }}/assets/images/Beginner_image8.png" alt="Beginner_img8" width="800"/>
-    </p>
+    | Orthogroup   | Species Tree Node    | Gene Tree Node   |   Support | Type     | Genes 1              | Genes 2              |
+|--------------|----------------------|------------------|-----------|----------|----------------------|----------------------|
+| OG0000000    | Mycoplasma_gallisept | n0               |         1 | Terminal | Mycoplasma_gallisept | Mycoplasma_gallisept |
+| OG0000000    | Mycoplasma_gallisept | n1               |         1 | Terminal | Mycoplasma_gallisept | Mycoplasma_gallisept |
+| OG0000000    | Mycoplasma_gallisept | n2               |         1 | Terminal | Mycoplasma_gallisept | Mycoplasma_gallisept |
+| OG0000000    | Mycoplasma_gallisept | n3               |         1 | Terminal | Mycoplasma_gallisept | Mycoplasma_gallisept |
+| OG0000000    | Mycoplasma_gallisept | n4               |         1 | Terminal | Mycoplasma_gallisept | Mycoplasma_gallisept |
 
     Each gene duplication event is cross-referenced to the species tree node, and the node
     in the gene tree. It also lists the genes descended from each of the two copies arising
     from the gene duplication event. We can check this out for our wombat olfactory
     receptor orthologues.
-
-    <p align="center" class="figure-wrapper">
-    <img src="{{ site.baseurl }}/assets/images/Beginner_image9.png" alt="Beginner_img9" width="1200"/>
-    </p>
 
     These events are also summarised by orthogroup and by species tree node in the files
     Duplications_per_Orthogroup.tsv and Duplications_per_Species_Tree_Node.tsv which are
@@ -262,7 +264,5 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
 
     There are also some useful community tools that allow interactive viewing of results,
     such as [OrthoBrowser](https://orthobrowserexamples.netlify.app/)
-
-
 
 

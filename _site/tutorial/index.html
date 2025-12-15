@@ -100,10 +100,10 @@
 
 
 <span class="meta-info">
-    🕒 Updated 20432 days ago
+    🕒 Updated 20437 days ago
 
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 20432 days ago
+    Updated 20437 days ago
 </span> -->
 
 
@@ -114,7 +114,7 @@
 
 <span class="meta-info">
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 216 days ago
+    Updated 221 days ago
 </span>
             </p>
 
@@ -181,7 +181,8 @@
 </ul>
 
 <p>OrthoFinder requires as input the amino acid sequences for all the protein coding genes in
-your species of interest. We provide a separate tutorial for <a href="/OrthoFinder/tutorials/gettting-input-data/">getting input files</a> for OrthoFinder.</p>
+your species of interest. We provide a separate tutorial for
+<a href="/OrthoFinder/tutorials/gettting-input-data/">getting input files</a> for OrthoFinder.</p>
 
 <p>All these steps will be done on the command line so that you can just copy and
 paste the commands yourself. If you are not familiar with the command line there
@@ -239,16 +240,18 @@ with the folder named according to today’s date, for example, <code class="lan
 First, you have to open a terminal and navigate to the directory where your files
 are. You can now run OrthoFinder on your proteomes.</p>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>orthofinder <span class="nt">-f</span> primary_transcripts 
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>orthofinder <span class="nt">-f</span> primary_transcripts
 </code></pre></div></div>
 
 <p>That’s it! OrthoFinder will print updates on its progress to the terminal, and tell you when
-it’s finished. To see what options you might want to adjust for your own data, check out the <a href="https://GitHub.com/OrthoFinder/OrthoFinder/">GitHub</a>, or the <a href="/OrthoFinder/tutorials/advanced-tutorial/">Advanced Tutorial</a> page</p>
+it’s finished. To see what options you might want to adjust for your own data, check out the <a href="https://GitHub.com/OrthoFinder/OrthoFinder/">GitHub</a>,
+or the <a href="/OrthoFinder/tutorials/advanced-tutorial/">Advanced Tutorial</a> page</p>
 
 <h3 id="exploring-the-results-of-orthofinder">Exploring the results of OrthoFinder</h3>
 
 <p>OrthoFinder creates a results directory named OrthoFinder inside the proteome
-directory, and puts the results here.</p>
+directory, and puts the results here.
+My results directory <code class="language-plaintext highlighter-rouge">ExampleData/OrthoFinder/Results_Dec15</code> looks like this:</p>
 
 <p>My results directory <code class="language-plaintext highlighter-rouge">ExampleData/OrthoFinder/Results_Dec08</code> looks like this:</p>
 
@@ -335,51 +338,122 @@ have been assigned to orthogroups, and that the species tree looks realistic.</p
 <p>Open the file Statistics_Overall.tsv from the folder <code class="language-plaintext highlighter-rouge">Comparative_Genomics_Statistics</code>. This file can be opened in spreadsheet software
 like Microsoft Excel, or in a text editor like Notepad.</p>
 
-<p>On the 5th line, we can see the ‘Percentage of genes in orthogroups’, which in my case
-is <code class="language-plaintext highlighter-rouge">95.7%</code>.</p>
+<p>On the 5th line, we can see the <code class="language-plaintext highlighter-rouge">Percentage of genes in orthogroups</code>, which in my case
+is <code class="language-plaintext highlighter-rouge">81.0
+</code>.</p>
 
-<p align="center" class="figure-wrapper">
-  <img src="/OrthoFinder/assets/images/Beginner_image3.png" alt="Beginner_img3" width="450" />
-</p>
+<table>
+  <tbody>
+    <tr>
+      <td>Number of species</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <td>Number of genes</td>
+      <td>2733</td>
+    </tr>
+    <tr>
+      <td>Number of genes in orthogroups</td>
+      <td>2215</td>
+    </tr>
+    <tr>
+      <td>Number of unassigned genes</td>
+      <td>518</td>
+    </tr>
+    <tr>
+      <td>Percentage of genes in orthogroups</td>
+      <td>81</td>
+    </tr>
+    <tr>
+      <td>Percentage of unassigned genes</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <td>Number of orthogroups</td>
+      <td>599</td>
+    </tr>
+  </tbody>
+</table>
 
 <p>A good rule of thumb is that this number should be <code class="language-plaintext highlighter-rouge">&gt;80%</code>. If not, you are likely missing
 some orthology relationships that actually exist. The best way to fix this would be better
 species sampling.</p>
 
-<p>Now open the file ‘Statistics_PerSpecies’, from the same folder. This file gives us the
+<p>Now open the file <code class="language-plaintext highlighter-rouge">Statistics_PerSpecies</code>, from the same folder. This file gives us the
 <code class="language-plaintext highlighter-rouge">%</code> of genes in each species that are assigned to orthogroups, rather than the
 percentage for all genes across species.</p>
 
 <p>You can see here that we capture most genes across all species.</p>
 
-<p align="center" class="figure-wrapper">
-  <img src="/OrthoFinder/assets/images/Beginner_image4.png" alt="Beginner_img4" width="1000" />
-</p>
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Mycoplasma_agalactiae</th>
+      <th>Mycoplasma_gallisepticum</th>
+      <th>Mycoplasma_genitalium</th>
+      <th>Mycoplasma_hyopneumoniae</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Number of genes</td>
+      <td>820</td>
+      <td>763</td>
+      <td>476</td>
+      <td>674</td>
+    </tr>
+    <tr>
+      <td>Number of genes in orthogroups</td>
+      <td>650</td>
+      <td>596</td>
+      <td>417</td>
+      <td>552</td>
+    </tr>
+    <tr>
+      <td>Number of unassigned genes</td>
+      <td>170</td>
+      <td>167</td>
+      <td>59</td>
+      <td>122</td>
+    </tr>
+    <tr>
+      <td>Percentage of genes in orthogroups</td>
+      <td>79.3</td>
+      <td>78.1</td>
+      <td>87.6</td>
+      <td>81.9</td>
+    </tr>
+    <tr>
+      <td>Percentage of unassigned genes</td>
+      <td>20.7</td>
+      <td>21.9</td>
+      <td>12.4</td>
+      <td>18.1</td>
+    </tr>
+  </tbody>
+</table>
 
-<p>The lowest percentage is the kiwi (<em><code class="language-plaintext highlighter-rouge">A. haastii</code></em>), but we still managed to assign <code class="language-plaintext highlighter-rouge">94%</code> of its
+<p>The lowest percentage is the <em><code class="language-plaintext highlighter-rouge">lowest_percent_species</code></em>, but we still managed to assign <code class="language-plaintext highlighter-rouge">78.1</code> of its
 genes to orthogroups. The key message here is that it’s always a good idea to look at
 this information before you start interpreting your results. If the numbers were too low for
 one species, we might want to consider sampling more species to fill in the long
-evolutionary divergence between species (e.g. something in between a Kiwi and a
-Kakapo, such as a Hoatzin).</p>
+evolutionary divergence between species.</p>
 
 <p>One more useful thing to do before we really start to dive in is to look at the species
-tree. Go to the <a href="https://itol.embl.de/">iTOL website</a>, and click <code class="language-plaintext highlighter-rouge">Upload a tree</code>.
-You can then drag and drop the tree file, which is in <code class="language-plaintext highlighter-rouge">Species_Tree/SpeciesTree_rooted.txt</code>
-You will now see the phylogenetic tree that OrthoFinder has produced. I have annotated
-my version with icons PhyloPic, so that we can see what is going on</p>
+tree.</p>
 
 <p align="center" class="figure-wrapper">
-  <img src="/OrthoFinder/assets/images/Beginner_image5.png" alt="Beginner_img5" width="800" />
+  <img src="/OrthoFinder/assets/images/species_tree.png" alt="species_tree" width="500" />
 </p>
 
 <p>We now want to do some common-sense checking that everything appears to be in
-order, and we aren’t rewriting the history of life on earth. With our six species, this tree
+order, and we aren’t rewriting the history of life on earth. With our species, this tree
 looks exactly as we would expect.
 If the tree doesn’t look correct, then this won’t impact orthogroup inference, but will affect
 our measures of gene duplication, and might affect our assignment of orthologs and
 paralogs within an orthogroup. If you need to, you can run OrthoFinder with your own
-species tree (use the -s option).</p>
+species tree (use the <code class="language-plaintext highlighter-rouge">-s</code> option).</p>
 
 <h4 id="step-2-interpreting-results">Step 2: Interpreting results</h4>
 
@@ -388,16 +462,14 @@ species tree (use the -s option).</p>
 <ul>
   <li>
     <p><strong><em>Orthologues</em></strong><br />
-  We will start by finding orthologues of a gene that we are interested in. We will focus on the gene <code class="language-plaintext highlighter-rouge">ENSVURG00010002700.1</code> in wombats, which is an
-  olfactory receptor. Let’s find out what its orthologues are in the Tammar wallaby.
+  We will start by finding orthologues of a gene that we are interested in.
   In the Orthologues directory there is a sub-directory for each species.</p>
 
-    <p>Open <code class="language-plaintext highlighter-rouge">Orthologues/Orthologues_Vombatus_ursinus/Vombatus_ursinus v
-  Notamacropus_eugeni i.tsv</code>, in a spreadsheet program (specifying that it’s tab-delimited
-  if necessary). The file has three columns, <code class="language-plaintext highlighter-rouge">Orthogroup</code>, <code class="language-plaintext highlighter-rouge">Vombatus_ursinus</code>, and
-  <code class="language-plaintext highlighter-rouge">Notamacropus_eugenii</code>. Find <code class="language-plaintext highlighter-rouge">ENSVURG00010002700.1</code> in the table, I can see that
-  the gene is in orthogroup <code class="language-plaintext highlighter-rouge">OG0000365</code> and that it has three orthologues in wallabies:
-  <code class="language-plaintext highlighter-rouge">ENSMEUG00000016785.1</code>, <code class="language-plaintext highlighter-rouge">ENSMEUG00000001827.1</code>, <code class="language-plaintext highlighter-rouge">ENSMEUG00000010434.1</code></p>
+    <p>Open <code class="language-plaintext highlighter-rouge">Orthologues/Orthologues_Mycoplasma_hyopneumoniae/Mycoplasma_hyopneumoniae__v__Mycoplasma_agalactiae.tsv</code>, in a spreadsheet program (specifying that it’s tab-delimited
+  if necessary). The file has three columns, <code class="language-plaintext highlighter-rouge">Orthogroup</code>, <code class="language-plaintext highlighter-rouge">Mycoplasma_hyopneumoniae</code>, and
+  <code class="language-plaintext highlighter-rouge">Mycoplasma_agalactiae</code>. Find <code class="language-plaintext highlighter-rouge">gi|71851854|gb|AAZ44462.1|</code> in the table, I can see that
+  the gene is in orthogroup <code class="language-plaintext highlighter-rouge">OG0000014</code> and that its orthologs are:
+  <code class="language-plaintext highlighter-rouge">['gi|290752976|emb|CBH40952.1|', ' gi|290752482|emb|CBH40454.1|', ' gi|290752494|emb|CBH40466.1|']</code></p>
   </li>
   <li>
     <p><strong><em>Gene trees</em></strong><br />
@@ -407,22 +479,17 @@ species tree (use the -s option).</p>
   the OrthoFinder2 <a href="https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1832-y">paper</a> for more details).</p>
 
     <p>All of the gene trees are in one file (<code class="language-plaintext highlighter-rouge">Resolved_Gene_Trees/Resolved_Gene_Trees.txt</code>).
-  Each line of the file contains the ID of an orthogroup (e.g. <code class="language-plaintext highlighter-rouge">OG0000365</code>:), followed by the
+  Each line of the file contains the ID of an orthogroup (e.g. <code class="language-plaintext highlighter-rouge">OG0000008</code>:), followed by the
   gene tree for that orthogroup. To find the tree for certain orthogroup, just search for the
   orthogroup ID.</p>
 
-    <p>We are going to view the tree for <code class="language-plaintext highlighter-rouge">OG0000365</code> on <a href="https://itol.embl.de/">iTOL</a>.</p>
+    <p>We are going to view the tree for <code class="language-plaintext highlighter-rouge">OG0000008</code></p>
 
     <p align="center" class="figure-wrapper">
-  <img src="/OrthoFinder/assets/images/Beginner_image6.png" alt="Beginner_img6" width="1000" />
+      <img src="/OrthoFinder/assets/images/gene_tree.png" alt="gene_tree" width="1000" />
   </p>
 
-    <p>Looking at the gene tree, we can see that there have been several gene duplications in
-  the lineage leading to wallabies (<em><code class="language-plaintext highlighter-rouge">Notamacropus</code></em>). This has resulted in a one-to-three
-  orthology relationship, i.e. all three of the wallaby genes are equally related to the
-  wombat gene <code class="language-plaintext highlighter-rouge">ENSVURG00010002700.1</code>. It’s often the case that orthology relationships
-  aren’t one-to-one, and it’s important to know this—you don’t want to spend months doing
-  experiments on ‘the orthologue’ only to find out later there are actually three!</p>
+    <p>Looking at the gene tree, we can see if there are any gene duplications</p>
   </li>
   <li>
     <p><strong><em>Gene duplications</em></strong><br />
@@ -434,14 +501,15 @@ species tree (use the -s option).</p>
   to see the node labels</p>
 
     <p align="center" class="figure-wrapper">
-  <img src="/OrthoFinder/assets/images/Beginner_image7.png" alt="Beginner_img7" width="1200" />
+      <img src="/OrthoFinder/assets/images/duplication_tree.png" alt="duplication_tree" width="600" />
   </p>
 
     <p>This gives a summary of gene duplication events. Each node shows the node name
   followed by an underscore and then the number of well-supported gene duplication
   events mapped to each node in the species tree. Gene-duplication events are
   considered <code class="language-plaintext highlighter-rouge">well-supported</code> if at least <code class="language-plaintext highlighter-rouge">50%</code> of the descendant species have retained
-  both copies of the duplicated gene. For the common ancestor of the mammals, N2, there were 812 of these well-supported gene duplication events. The numbers after the
+  both copies of the duplicated gene. For the common ancestor of the mammals, <code class="language-plaintext highlighter-rouge">N2</code>,
+  there were <code class="language-plaintext highlighter-rouge">11</code> of these well-supported gene duplication events. The numbers after the
   species names are the number of <code class="language-plaintext highlighter-rouge">terminal</code> duplications that map to that species, rather
   than an internal node of the species tree.</p>
 
@@ -449,18 +517,71 @@ species tree (use the -s option).</p>
   events in the file <code class="language-plaintext highlighter-rouge">Gene_Duplication_Events/Duplications.tsv</code>. Here are just a few lines
   from the file:</p>
 
-    <p align="center" class="figure-wrapper">
-  <img src="/OrthoFinder/assets/images/Beginner_image8.png" alt="Beginner_img8" width="800" />
-  </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Orthogroup</th>
+          <th>Species Tree Node</th>
+          <th>Gene Tree Node</th>
+          <th>Support</th>
+          <th>Type</th>
+          <th>Genes 1</th>
+          <th>Genes 2</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>OG0000000</td>
+          <td>Mycoplasma_gallisept</td>
+          <td>n0</td>
+          <td>1</td>
+          <td>Terminal</td>
+          <td>Mycoplasma_gallisept</td>
+          <td>Mycoplasma_gallisept</td>
+        </tr>
+        <tr>
+          <td>OG0000000</td>
+          <td>Mycoplasma_gallisept</td>
+          <td>n1</td>
+          <td>1</td>
+          <td>Terminal</td>
+          <td>Mycoplasma_gallisept</td>
+          <td>Mycoplasma_gallisept</td>
+        </tr>
+        <tr>
+          <td>OG0000000</td>
+          <td>Mycoplasma_gallisept</td>
+          <td>n2</td>
+          <td>1</td>
+          <td>Terminal</td>
+          <td>Mycoplasma_gallisept</td>
+          <td>Mycoplasma_gallisept</td>
+        </tr>
+        <tr>
+          <td>OG0000000</td>
+          <td>Mycoplasma_gallisept</td>
+          <td>n3</td>
+          <td>1</td>
+          <td>Terminal</td>
+          <td>Mycoplasma_gallisept</td>
+          <td>Mycoplasma_gallisept</td>
+        </tr>
+        <tr>
+          <td>OG0000000</td>
+          <td>Mycoplasma_gallisept</td>
+          <td>n4</td>
+          <td>1</td>
+          <td>Terminal</td>
+          <td>Mycoplasma_gallisept</td>
+          <td>Mycoplasma_gallisept</td>
+        </tr>
+      </tbody>
+    </table>
 
     <p>Each gene duplication event is cross-referenced to the species tree node, and the node
   in the gene tree. It also lists the genes descended from each of the two copies arising
   from the gene duplication event. We can check this out for our wombat olfactory
   receptor orthologues.</p>
-
-    <p align="center" class="figure-wrapper">
-  <img src="/OrthoFinder/assets/images/Beginner_image9.png" alt="Beginner_img9" width="1200" />
-  </p>
 
     <p>These events are also summarised by orthogroup and by species tree node in the files
   Duplications_per_Orthogroup.tsv and Duplications_per_Species_Tree_Node.tsv which are
@@ -538,10 +659,10 @@ species tree (use the -s option).</p>
 
 
 <span class="meta-info">
-    🕒 Updated 20432 days ago
+    🕒 Updated 20437 days ago
 
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 20432 days ago
+    Updated 20437 days ago
 </span> -->
 
 
@@ -552,7 +673,7 @@ species tree (use the -s option).</p>
 
 <span class="meta-info">
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 217 days ago
+    Updated 222 days ago
 </span>
             </p>
 
@@ -673,10 +794,10 @@ discover which one)</p>
 
 
 <span class="meta-info">
-    🕒 Updated 20432 days ago
+    🕒 Updated 20437 days ago
 
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 20432 days ago
+    Updated 20437 days ago
 </span> -->
 
 
@@ -687,7 +808,7 @@ discover which one)</p>
 
 <span class="meta-info">
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 218 days ago
+    Updated 223 days ago
 </span>
             </p>
 
@@ -809,10 +930,10 @@ Separately</a>)</p>
 
 
 <span class="meta-info">
-    🕒 Updated 20432 days ago
+    🕒 Updated 20437 days ago
 
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 20432 days ago
+    Updated 20437 days ago
 </span> -->
 
 
@@ -823,7 +944,7 @@ Separately</a>)</p>
 
 <span class="meta-info">
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 218 days ago
+    Updated 223 days ago
 </span>
             </p>
 
@@ -1085,10 +1206,10 @@ You will have to sign-in or register to download data.</p>
 
 
 <span class="meta-info">
-    🕒 Updated 20432 days ago
+    🕒 Updated 20437 days ago
 
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 20432 days ago
+    Updated 20437 days ago
 </span> -->
 
 
@@ -1099,7 +1220,7 @@ You will have to sign-in or register to download data.</p>
 
 <span class="meta-info">
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 218 days ago
+    Updated 223 days ago
 </span>
             </p>
 
@@ -1412,10 +1533,10 @@ events).</p>
 
 
 <span class="meta-info">
-    🕒 Updated 20432 days ago
+    🕒 Updated 20437 days ago
 
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 20432 days ago
+    Updated 20437 days ago
 </span> -->
 
 
@@ -1426,7 +1547,7 @@ events).</p>
 
 <span class="meta-info">
     <i class="fa fa-clock-o" aria-hidden="true"></i>
-    Updated 219 days ago
+    Updated 224 days ago
 </span>
             </p>
 
