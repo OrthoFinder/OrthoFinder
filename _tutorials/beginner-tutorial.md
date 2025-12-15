@@ -133,7 +133,7 @@ You can see here that we capture most genes across all species.
 | Percentage of genes in orthogroups |                    79.3 |                       78.1 |                    87.6 |                       81.9 |
 | Percentage of unassigned genes     |                    20.7 |                       21.9 |                    12.4 |                       18.1 |
 
-The lowest percentage is the *`lowest_percent_species`*, but we still managed to assign `78.1` of its
+The lowest percentage is the *`Mycoplasma_gallisepticum`*, but we still managed to assign `78.1` of its
 genes to orthogroups. The key message here is that it’s always a good idea to look at
 this information before you start interpreting your results. If the numbers were too low for
 one species, we might want to consider sampling more species to fill in the long
@@ -166,7 +166,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     if necessary). The file has three columns, `Orthogroup`, `Mycoplasma_hyopneumoniae`, and
     `Mycoplasma_agalactiae`. Find `gi|71851854|gb|AAZ44462.1|` in the table, I can see that
     the gene is in orthogroup `OG0000014` and that its orthologs are:
-    `['gi|290752976|emb|CBH40952.1|', ' gi|290752482|emb|CBH40454.1|', ' gi|290752494|emb|CBH40466.1|']`
+    `gi|290752976|emb|CBH40952.1|,  gi|290752482|emb|CBH40454.1|,  gi|290752494|emb|CBH40466.1|`
 
 - ***Gene trees***<br>
     Next, we are going to look at the gene tree to see how these orthologues arose.
@@ -206,7 +206,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     events mapped to each node in the species tree. Gene-duplication events are
     considered `well-supported` if at least `50%` of the descendant species have retained
     both copies of the duplicated gene. For the common ancestor of the mammals, `N2`,
-    there were `6` of these well-supported gene duplication events. The numbers after the
+    there were `11` of these well-supported gene duplication events. The numbers after the
     species names are the number of `terminal` duplications that map to that species, rather
     than an internal node of the species tree.
 

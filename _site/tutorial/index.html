@@ -253,81 +253,87 @@ or the <a href="/OrthoFinder/tutorials/advanced-tutorial/">Advanced Tutorial</a>
 directory, and puts the results here.
 My results directory <code class="language-plaintext highlighter-rouge">ExampleData/OrthoFinder/Results_Dec15</code> looks like this:</p>
 
-<p>My results directory <code class="language-plaintext highlighter-rouge">ExampleData/OrthoFinder/Results_Dec08</code> looks like this:</p>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Results_Dec08/
-    ├── Citation.txt
-    ├── Comparative_Genomics_Statistics/
-    │   ├── Duplications_per_Orthogroup.tsv
-    │   ├── OrthologuesStats_many-to-many.tsv
-    │   ├── OrthologuesStats_many-to-one.tsv
-    │   ├── OrthologuesStats_one-to-many.tsv
-    │   ├── OrthologuesStats_one-to-one.tsv
-    │   ├── OrthologuesStats_Totals.tsv
-    │   ├── Statistics_Overall.tsv
-    ├── Gene_Duplication_Events/
-    │   ├── Duplications.tsv
-    ├── Log.txt
-    ├── MultipleSequenceAlignments/
-    │   ├── OG0000000.fa
-    │   ├── OG000####.fa
-    │   └── OG0000598.fa
-    ├── Orthogroup_Sequences/
-    │   ├── OG0000000.fa
-    │   ├── OG000####.fa
-    │   └── OG0001116.fa
-    ├── Orthogroups/
-    │   ├── Orthogroups.GeneCount.tsv
-    │   ├── Orthogroups.tsv
-    │   ├── Orthogroups.txt
-    │   ├── Orthogroups_SingleCopyOrthologues.txt
-    │   └── Orthogroups_UnassignedGenes.tsv
-    ├── Orthologues/
-    │   ├── Species_1.tsv
-    │   ├── Species_#.tsv
-    ├── Phylogenetic_Hierarchical_Orthogroups/
-    │   └── N0.tsv
-    │   └── N#.tsv
-    ├── Phylogenetically_Misplaced_Genes/
-    │   ├── Species_1.tsv
-    │   ├── Species_#.tsv
-    ├── Putative_Xenologs/
-    │   ├── Species_1.tsv
-    │   ├── Species_#.tsv
-    ├── Resolved_Gene_Trees/
-    │   └── Resolved_Gene_Trees.txt
-    ├── Single_Copy_Orthologue_Sequences/
-    │   ├── OG0000000.fa
-    │   ├── OG000####.fa
-    │   └── OG0000325.fa
-    │   ├── Orthogroups_for_concatenated_alignment.txt
-    └── WorkingDirectory/
-        ├── Alignments_ids/
-        ├── Blast0_0.txt.gz
-        ├── Blast#_#.txt.gz
-        ├── clusters_OrthoFinder_I1.2.txt
-        ├── clusters_OrthoFinder_I1.2.txt_id_pairs.txt
-        ├── dependencies/
-        │   ├── SimpleTest.fa
-        │   ├── Species0.fa
-        │   ├── Species0.fa.output.txt
-        │   └── test_search_results.txt.gz
-        ├── N0.ids.tsv
-        ├── OrthoFinder_graph.txt
-        ├── pickle/
-        ├── SequenceIDs.txt
-        ├── Sequences_ids/
-        │   ├── OG0000000.fa
-        │   ├── OG000####.fa
-        │   └── OG0001087.fa
-        ├── Species0.fa
-        ├── Species#.fa
-        └── Trees_ids/
-            ├── OG0000000.txt
-            ├── OG000####.txt
-            └── OG0000407.txt
-
-</code></pre></div></div>
+<div style="text-align: center;">
+  <pre style="
+    display: inline-block;
+    text-align: left;
+    font-family: monospace;
+    font-size: 18px;
+    line-height: 1.5;
+  ">
+Results_Dec15/
+   ├── Citation.txt
+   ├── Comparative_Genomics_Statistics/
+   │   ├── Duplications_per_Orthogroup.tsv
+   │   ├── OrthologuesStats_many-to-many.tsv
+   │   ├── OrthologuesStats_many-to-one.tsv
+   │   ├── OrthologuesStats_one-to-many.tsv
+   │   ├── OrthologuesStats_one-to-one.tsv
+   │   ├── OrthologuesStats_Totals.tsv
+   │   ├── Statistics_Overall.tsv
+   ├── Gene_Duplication_Events/
+   │   ├── Duplications.tsv
+   ├── Log.txt
+   ├── MultipleSequenceAlignments/
+   │   ├── OG0000000.fa
+   │   ├── OG000####.fa
+   │   └── OG0000598.fa
+   ├── Orthogroup_Sequences/
+   │   ├── OG0000000.fa
+   │   ├── OG000####.fa
+   │   └── OG0001116.fa
+   ├── Orthogroups/
+   │   ├── Orthogroups.GeneCount.tsv
+   │   ├── Orthogroups.tsv
+   │   ├── Orthogroups.txt
+   │   ├── Orthogroups_SingleCopyOrthologues.txt
+   │   └── Orthogroups_UnassignedGenes.tsv
+   ├── Orthologues/
+   │   ├── Species_1.tsv
+   │   ├── Species_#.tsv
+   ├── Phylogenetic_Hierarchical_Orthogroups/
+   │   └── N0.tsv
+   │   └── N#.tsv
+   ├── Phylogenetically_Misplaced_Genes/
+   │   ├── Species_1.tsv
+   │   ├── Species_#.tsv
+   ├── Putative_Xenologs/
+   │   ├── Species_1.tsv
+   │   ├── Species_#.tsv
+   ├── Resolved_Gene_Trees/
+   │   └── Resolved_Gene_Trees.txt
+   ├── Single_Copy_Orthologue_Sequences/
+   │   ├── OG0000000.fa
+   │   ├── OG000####.fa
+   │   └── OG0000325.fa
+   │   ├── Orthogroups_for_concatenated_alignment.txt
+   └── WorkingDirectory/
+       ├── Alignments_ids/
+       ├── Blast0_0.txt.gz
+       ├── Blast#_#.txt.gz
+       ├── clusters_OrthoFinder_I1.2.txt
+       ├── clusters_OrthoFinder_I1.2.txt_id_pairs.txt
+       ├── dependencies/
+       │   ├── SimpleTest.fa
+       │   ├── Species0.fa
+       │   ├── Species0.fa.output.txt
+       │   └── test_search_results.txt.gz
+       ├── N0.ids.tsv
+       ├── OrthoFinder_graph.txt
+       ├── pickle/
+       ├── SequenceIDs.txt
+       ├── Sequences_ids/
+       │   ├── OG0000000.fa
+       │   ├── OG000####.fa
+       │   └── OG0001087.fa
+       ├── Species0.fa
+       ├── Species#.fa
+       └── Trees_ids/
+           ├── OG0000000.txt
+           ├── OG000####.txt
+           └── OG0000407.txt
+  </pre>
+</div>
 
 <h4 id="step-1-quality-control">Step 1: Quality Control</h4>
 
@@ -434,7 +440,7 @@ percentage for all genes across species.</p>
   </tbody>
 </table>
 
-<p>The lowest percentage is the <em><code class="language-plaintext highlighter-rouge">lowest_percent_species</code></em>, but we still managed to assign <code class="language-plaintext highlighter-rouge">78.1</code> of its
+<p>The lowest percentage is the <em><code class="language-plaintext highlighter-rouge">Mycoplasma_gallisepticum</code></em>, but we still managed to assign <code class="language-plaintext highlighter-rouge">78.1</code> of its
 genes to orthogroups. The key message here is that it’s always a good idea to look at
 this information before you start interpreting your results. If the numbers were too low for
 one species, we might want to consider sampling more species to fill in the long
@@ -469,7 +475,7 @@ species tree (use the <code class="language-plaintext highlighter-rouge">-s</cod
   if necessary). The file has three columns, <code class="language-plaintext highlighter-rouge">Orthogroup</code>, <code class="language-plaintext highlighter-rouge">Mycoplasma_hyopneumoniae</code>, and
   <code class="language-plaintext highlighter-rouge">Mycoplasma_agalactiae</code>. Find <code class="language-plaintext highlighter-rouge">gi|71851854|gb|AAZ44462.1|</code> in the table, I can see that
   the gene is in orthogroup <code class="language-plaintext highlighter-rouge">OG0000014</code> and that its orthologs are:
-  <code class="language-plaintext highlighter-rouge">['gi|290752976|emb|CBH40952.1|', ' gi|290752482|emb|CBH40454.1|', ' gi|290752494|emb|CBH40466.1|']</code></p>
+  <code class="language-plaintext highlighter-rouge">gi|290752976|emb|CBH40952.1|,  gi|290752482|emb|CBH40454.1|,  gi|290752494|emb|CBH40466.1|</code></p>
   </li>
   <li>
     <p><strong><em>Gene trees</em></strong><br />
@@ -509,7 +515,7 @@ species tree (use the <code class="language-plaintext highlighter-rouge">-s</cod
   events mapped to each node in the species tree. Gene-duplication events are
   considered <code class="language-plaintext highlighter-rouge">well-supported</code> if at least <code class="language-plaintext highlighter-rouge">50%</code> of the descendant species have retained
   both copies of the duplicated gene. For the common ancestor of the mammals, <code class="language-plaintext highlighter-rouge">N2</code>,
-  there were <code class="language-plaintext highlighter-rouge">6</code> of these well-supported gene duplication events. The numbers after the
+  there were <code class="language-plaintext highlighter-rouge">11</code> of these well-supported gene duplication events. The numbers after the
   species names are the number of <code class="language-plaintext highlighter-rouge">terminal</code> duplications that map to that species, rather
   than an internal node of the species tree.</p>
 
