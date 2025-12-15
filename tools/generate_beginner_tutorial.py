@@ -127,7 +127,7 @@ You can see here that we capture most genes across all species.
 
 {statisitcs_per_species}
 
-The lowest percentage is the *`lowest_percent_species`*, but we still managed to assign `{lowest_percent_value}` of its
+The lowest percentage is the *`{lowest_percent_species}`*, but we still managed to assign `{lowest_percent_value}` of its
 genes to orthogroups. The key message here is that it’s always a good idea to look at
 this information before you start interpreting your results. If the numbers were too low for
 one species, we might want to consider sampling more species to fill in the long
@@ -445,7 +445,7 @@ if __name__ == "__main__":
         species1=species1,
         species2=species2,
         gene_of_interest=gene_of_interest,
-        orthologs=orthologs,
+        orthologs=", ".join(orthologs),
         orthogroup=ortholog_orthogroup,
         gene_tree_orthogroup=gene_tree_orthogroup,
         duplication_table=duplication_table,
