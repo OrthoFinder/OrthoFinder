@@ -163,7 +163,7 @@ jobs:
             libegl1 \
             libgl1 \
             libopengl0
-            
+
       - name: Set Qt to offscreen
         run: echo "QT_QPA_PLATFORM=offscreen" >> $GITHUB_ENV
 
@@ -228,6 +228,14 @@ jobs:
           echo "=== Preview of generated beginner tutorial (first 40 lines) ==="
           sed -n '1,40p' beginner-tutorial.md || true
 
+      - name: Checkout gh-pages into ./site
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: site
+          fetch-depth: 0
+
+
       - name: Switch to gh-pages and copy generated docs
         shell: bash
         run: |
@@ -236,23 +244,23 @@ jobs:
           git fetch origin gh-pages:gh-pages
           git checkout gh-pages
 
-          mkdir -p _tutorials assets/images
+          mkdir -p site/_tutorials site/assets/images
 
           # Copy generated content from /tmp into gh-pages
-          cp /tmp/beginner-tutorial.md _tutorials/beginner-tutorial.md
-          cp /tmp/of-output-tree.md    _tutorials/of-output-tree.md
-          cp /tmp/species_tree.png     assets/images/species_tree.png
-          cp /tmp/gene_tree.png        assets/images/gene_tree.png
-          cp /tmp/duplication_tree.png assets/images/duplication_tree.png
+          cp /tmp/beginner-tutorial.md site/_tutorials/beginner-tutorial.md
+          cp /tmp/of-output-tree.md    site/_tutorials/of-output-tree.md
+          cp /tmp/species_tree.png     site/assets/images/species_tree.png
+          cp /tmp/gene_tree.png        site/assets/images/gene_tree.png
+          cp /tmp/duplication_tree.png site/assets/images/duplication_tree.png
 
           echo "Updated files on gh-pages:"
-          ls -l _tutorials/beginner-tutorial.md _tutorials/of-output-tree.md assets/images/*tree.png
+          ls -l site/_tutorials/beginner-tutorial.md site/_tutorials/of-output-tree.md assets/images/*tree.png
 
       - name: Commit and push updated docs (gh-pages)
         shell: bash
         run: |
           set -euxo pipefail
-
+          cd site
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
