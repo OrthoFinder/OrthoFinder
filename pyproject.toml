@@ -49,7 +49,7 @@ repository = "https://github.com/OrthoFinder/OrthoFinder"
 
 [project.optional-dependencies]
 build = ["build", "twine", "wheel"]
-docs = ["directory_tree", "PyQt6"]
+docs = ["directory_tree", "PyQt6", "tabulate"]
 dev = [
     "python-semantic-release",
     "pytest",
