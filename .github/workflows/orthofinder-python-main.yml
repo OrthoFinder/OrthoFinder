@@ -240,13 +240,8 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-
-          git fetch origin gh-pages:gh-pages
-          git checkout gh-pages
-
           mkdir -p site/_tutorials site/assets/images
 
-          # Copy generated content from /tmp into gh-pages
           cp /tmp/beginner-tutorial.md site/_tutorials/beginner-tutorial.md
           cp /tmp/of-output-tree.md    site/_tutorials/of-output-tree.md
           cp /tmp/species_tree.png     site/assets/images/species_tree.png
