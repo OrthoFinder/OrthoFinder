@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Beginner Tutorial"
-date:   2025-12-17 23:10:00 +0000
+date:   2025-12-17 23:47:40 +0000
 updated: 2025-12-17
 docs: /assets/docs/beginner-tutorial.pdf
 pdfs: https://GitHub.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/beginner-tutorial.pdf
@@ -207,7 +207,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     events mapped to each node in the species tree. Gene-duplication events are
     considered `well-supported` if at least `50%` of the descendant species have retained
     both copies of the duplicated gene. For the common ancestor of the mammals, `N2`,
-    there were `6` of these well-supported gene duplication events. The numbers after the
+    there were `11` of these well-supported gene duplication events. The numbers after the
     species names are the number of `terminal` duplications that map to that species, rather
     than an internal node of the species tree.
 
