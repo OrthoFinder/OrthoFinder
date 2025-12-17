@@ -13,7 +13,7 @@ try:
 except ImportError:
     ...
 
-from . import stag, tree
+from . import tree, stag
 from ..utils import util, files, parallel_task_manager, program_caller
 from ..utils import blast_file_processor as BlastFileProcessor
 

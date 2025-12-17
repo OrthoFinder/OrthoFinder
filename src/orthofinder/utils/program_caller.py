@@ -32,7 +32,8 @@ import subprocess
 # from .. import my_env
 import types
 import traceback
-
+import re 
+import shlex
 try:
     import queue
 except ImportError:
@@ -46,7 +47,78 @@ except ImportError:
     ...
 
 import multiprocessing as mp
+import threading
 
+TOTAL_CORES = os.cpu_count() or 8
+TOKENS = threading.BoundedSemaphore(TOTAL_CORES)
+
+_METHODTHREAD_RE = re.compile(r"(?<![A-Za-z0-9_])(METHODTHREADS?|METHODTHREAD)(?![A-Za-z0-9_])")
+
+# def _to_text_or_none(x):
+#     if isinstance(x, str):
+#         return x
+#     if isinstance(x, bytes):
+#         try:
+#             return x.decode("utf-8", "ignore")
+#         except Exception:
+#             return None
+#     return None 
+
+# def threads_from_cmd(cmd_maybe, method_threads: int) -> int:
+#     s = _to_text_or_none(cmd_maybe)
+#     if not s:
+#         return 1
+#     return int(method_threads) if _METHODTHREAD_RE.search(s) else 1
+
+# def _detect_cores():
+#     try:
+#         return len(os.sched_getaffinity(0))
+#     except Exception:
+#         return mp.cpu_count() or 1
+
+
+_SPLIT_CMDS_RE = re.compile(r"\s*(?:;|&&|\|)\s*")
+_INPUT_FLAGS = {"-s", "--msa", "-q", "--query", "--in", "--input", "-align"}
+_FASTA_EXTS = (".fa", ".fasta", ".faa", ".aln", ".fa.gz", ".fasta.gz", ".faa.gz", ".aln.gz")
+
+# def _tokens(cmd):
+#     try:
+#         return shlex.split(cmd, posix=True)
+#     except Exception:
+#         return cmd.split()
+
+# def _first_existing_path(tokens):
+#     for t in tokens:
+#         if t in {">", "1>", "2>"}:
+#             break
+#         if ("/" in t or t.lower().endswith(_FASTA_EXTS)) and os.path.exists(t):
+#             return t
+#     return None
+
+# def extract_input_path(cmd: str):
+#     """Return the most likely INPUT path for this (possibly compound) command."""
+#     for sub in _SPLIT_CMDS_RE.split(cmd):
+#         toks = _tokens(sub)
+#         if not toks:
+#             continue
+#         for i, t in enumerate(toks[:-1]):
+#             if t in _INPUT_FLAGS and os.path.exists(toks[i+1]):
+#                 return toks[i+1]
+#         prog = os.path.basename(toks[0]).lower()
+#         if prog in {"famsa", "fasttree", "fasttreemp", "mafft", "mafft-memsave", "muscle"}:
+#             inp = _first_existing_path(toks)
+#             if inp: return inp
+#     return None
+
+
+# def _threads_by_size(path: str, base_threads: int) -> int:
+#     try:
+#         sz = os.path.getsize(path)
+#     except Exception:
+#         return 1
+#     if sz <= 10000:        # < ~200 KB
+#         return 1
+#     return max(4, base_threads) 
 
 # try:
 #     longer_file = impresources.files(test_sequences) / "longer.txt"
@@ -147,116 +219,55 @@ class ProgramCaller(object):
         if configure_file == None:
             return
         if not os.path.exists(configure_file):
-            print(
-                (
-                    "WARNING: Configuration file, '%s', does not exist. No user-confgurable multiple sequence alignment or tree inference methods have been added.\n"
-                    % configure_file
-                )
-            )
+            print(("WARNING: Configuration file, '%s', does not exist. No user-confgurable multiple sequence alignment or tree inference methods have been added.\n" % configure_file))
             return
         with open(configure_file, "r") as infile:
             try:
                 d = json.load(infile)
             except ValueError:
-                print(
-                    (
-                        "WARNING: Incorrectly formatted configuration file %s"
-                        % configure_file
-                    )
-                )
-                print(
-                    "File is not in .json format. No user-confgurable multiple sequence alignment or tree inference methods have been added.\n"
-                )
+                print(("WARNING: Incorrectly formatted configuration file %s" % configure_file))
+                print("File is not in .json format. No user-confgurable multiple sequence alignment or tree inference methods have been added.\n")
                 return
             for name, v in d.items():
                 if name == "__comment":
                     continue
                 if " " in name:
-                    print(
-                        (
-                            "WARNING: Incorrectly formatted configuration file entry: %s"
-                            % name
-                        )
-                    )
+                    print(("WARNING: Incorrectly formatted configuration file entry: %s" % name))
                     print(("No space is allowed in name: '%s'" % name))
                     continue
 
                 if "program_type" not in v:
-                    print(
-                        (
-                            "WARNING: Incorrectly formatted configuration file entry: %s"
-                            % name
-                        )
-                    )
+                    print(("WARNING: Incorrectly formatted configuration file entry: %s" % name))
                     print("'program_type' entry is missing")
                 try:
                     if v["program_type"] == "msa":
                         if name in self.msa:
-                            print(
-                                (
-                                    "Multiple sequence alignment method '%s' has already been defined, skipping config file entry."
-                                    % name
-                                )
-                            )
+                            print(("Multiple sequence alignment method '%s' has already been defined, skipping config file entry." % name))
                         else:
                             self.msa[name] = Method(name, v)
                     elif v["program_type"] == "tree":
                         if name in self.tree:
-                            print(
-                                (
-                                    "Tree inference method '%s' has already been defined, skipping config file entry."
-                                    % name
-                                )
-                            )
+                            print(("Tree inference method '%s' has already been defined, skipping config file entry." % name))
                         else:
                             self.tree[name] = Method(name, v)
                     elif v["program_type"] == "search":
                         if ("db_cmd" not in v) or ("search_cmd" not in v):
-                            print(
-                                (
-                                    "WARNING: Incorrectly formatted configuration file entry: %s"
-                                    % name
-                                )
-                            )
+                            print(("WARNING: Incorrectly formatted configuration file entry: %s" % name))
                             print("'cmd_line' entry is missing")
                             raise InvalidEntryException
                         if name in self.search_db:
-                            print(
-                                (
-                                    "Sequence search method '%s' has already been defined, skipping config file entry."
-                                    % name
-                                )
-                            )
+                            print(("Sequence search method '%s' has already been defined, skipping config file entry." % name))
                         else:
-                            self.search_db[name] = Method(
-                                name, {"cmd_line": v["db_cmd"]}
-                            )
-                            self.search_search[name] = Method(
-                                name, {"cmd_line": v["search_cmd"]}
-                            )
+                            self.search_db[name] = Method(name, {"cmd_line": v["db_cmd"]})
+                            self.search_search[name] = Method(name, {"cmd_line": v["search_cmd"]})
                             if "ouput_filename" in v:
-                                print(
-                                    (
-                                        "WARNING: Incorrectly formatted configuration file entry: %s"
-                                        % name
-                                    )
-                                )
+                                print(("WARNING: Incorrectly formatted configuration file entry: %s" % name))
                                 print(
                                     "'ouput_filename' option is not supported for 'program_type' 'search'"
                                 )
                     else:
-                        print(
-                            (
-                                "WARNING: Incorrectly formatted configuration file entry: %s"
-                                % name
-                            )
-                        )
-                        print(
-                            (
-                                "'program_type' should be 'msa' or 'tree', got '%s'"
-                                % v["program_type"]
-                            )
-                        )
+                        print(("WARNING: Incorrectly formatted configuration file entry: %s" % name))
+                        print(("'program_type' should be 'msa' or 'tree', got '%s'" % v["program_type"]))
                 except InvalidEntryException:
                     pass
 
@@ -412,95 +423,95 @@ class ProgramCaller(object):
                 for infn, outfn, ident, n in zip(infn_list, outfn_list, id_list, nSeqs)
             ]
 
-    # not used
-    def GetSearchCommands_DB(
-        self,
-        method_name,
-        infn_list,
-        outfn_list,
-        scorematrix=None,
-        gapopen=None,
-        gapextend=None,
-        method_threads=None,
-    ):
-        return [
-            self.GetSearchMethodCommand_DB(
-                method_name,
-                infn,
-                outfn,
-                scorematrix=scorematrix,
-                gapopen=gapopen,
-                gapextend=gapextend,
-                method_threads=method_threads,
-            )
-            for infn, outfn in zip(infn_list, outfn_list)
-        ]
+    # # not used
+    # def GetSearchCommands_DB(
+    #     self,
+    #     method_name,
+    #     infn_list,
+    #     outfn_list,
+    #     scorematrix=None,
+    #     gapopen=None,
+    #     gapextend=None,
+    #     method_threads=None,
+    # ):
+    #     return [
+    #         self.GetSearchMethodCommand_DB(
+    #             method_name,
+    #             infn,
+    #             outfn,
+    #             scorematrix=scorematrix,
+    #             gapopen=gapopen,
+    #             gapextend=gapextend,
+    #             method_threads=method_threads,
+    #         )
+    #         for infn, outfn in zip(infn_list, outfn_list)
+    #     ]
 
-    # not used
-    def GetSearchCommands_Search(
-        self,
-        method_name,
-        querryfn_list,
-        dblist,
-        outfn_list,
-        scorematrix=None,
-        gapopen=None,
-        gapextend=None,
-        method_threads=None,
-    ):
-        return [
-            self.GetSearchMethodCommand_Search(
-                method_name,
-                querryfn,
-                dbname,
-                outfn,
-                scorematrix=scorematrix,
-                gapopen=gapopen,
-                gapextend=gapextend,
-                method_threads=method_threads,
-            )
-            for querryfn, dbname, outfn in zip(querryfn_list, dblist, outfn_list)
-        ]
+    # # not used
+    # def GetSearchCommands_Search(
+    #     self,
+    #     method_name,
+    #     querryfn_list,
+    #     dblist,
+    #     outfn_list,
+    #     scorematrix=None,
+    #     gapopen=None,
+    #     gapextend=None,
+    #     method_threads=None,
+    # ):
+    #     return [
+    #         self.GetSearchMethodCommand_Search(
+    #             method_name,
+    #             querryfn,
+    #             dbname,
+    #             outfn,
+    #             scorematrix=scorematrix,
+    #             gapopen=gapopen,
+    #             gapextend=gapextend,
+    #             method_threads=method_threads,
+    #         )
+    #         for querryfn, dbname, outfn in zip(querryfn_list, dblist, outfn_list)
+    #     ]
 
-    # not used
-    def CallMSAMethod(
-        self,
-        method_name,
-        infilename,
-        outfilename,
-        identifier,
-        nSeqs=None,
-        method_threads=None,
-    ):
-        return self._CallMethod(
-            "msa",
-            method_name,
-            infilename,
-            outfilename,
-            identifier,
-            nSeqs=nSeqs,
-            method_threads=method_threads,
-        )
+    # # not used
+    # def CallMSAMethod(
+    #     self,
+    #     method_name,
+    #     infilename,
+    #     outfilename,
+    #     identifier,
+    #     nSeqs=None,
+    #     method_threads=None,
+    # ):
+    #     return self._CallMethod(
+    #         "msa",
+    #         method_name,
+    #         infilename,
+    #         outfilename,
+    #         identifier,
+    #         nSeqs=nSeqs,
+    #         method_threads=method_threads,
+    #     )
 
-    # not used
-    def CallTreeMethod(
-        self,
-        method_name,
-        infilename,
-        outfilename,
-        identifier,
-        nSeqs=None,
-        method_threads=None,
-    ):
-        return self._CallMethod(
-            "tree",
-            method_name,
-            infilename,
-            outfilename,
-            identifier,
-            nSeqs=nSeqs,
-            method_threads=method_threads,
-        )
+    # # not used
+    # def CallTreeMethod(
+    #     self,
+    #     method_name,
+    #     infilename,
+    #     outfilename,
+    #     identifier,
+    #     nSeqs=None,
+    #     method_threads=None,
+    # ):
+    #     return self._CallMethod(
+    #         "tree",
+    #         method_name,
+    #         infilename,
+    #         outfilename,
+    #         identifier,
+    #         nSeqs=nSeqs,
+    #         method_threads=method_threads,
+    #     )
 
     def CallSearchMethod_DB(
         self,
@@ -882,6 +893,7 @@ def RunParallelCommands(
     q_print_on_error=False,
     q_always_print_stderr=False,
     old_version=False,
+    dynamic_threads=False
 ):
 
     if qListOfList:
@@ -904,6 +916,7 @@ def RunParallelCommands(
         q_print_on_error,
         q_always_print_stderr,
         old_version,
+        dynamic_threads
     )
 
 
@@ -954,6 +967,7 @@ def RunParallelCommandsAndMoveResultsFile(
     q_print_on_error=False,
     q_always_print_stderr=False,
     old_version=False,
+    dynamic_threads=False
 ):
     """
     Calls the commands in parallel and if required moves the results file to the required new filename
@@ -997,122 +1011,52 @@ def RunParallelCommandsAndMoveResultsFile(
         if method_threads is None:
             method_threads = "1"
 
-        if method_threads is not None:
-            if nProcesses * int(method_threads) > mp.cpu_count():
-                nProcesses = mp.cpu_count() // int(method_threads)
 
-        if not qListOfList:
-            if "METHODTHREAD" in commands_and_filenames[0][0]:
-                commands_and_filenames = [
-                    (cmd[0].replace("METHODTHREAD", method_threads), cmd[1])
-                    for cmd in commands_and_filenames
-                ]
+        nProcesses = max(1, min((nProcesses, len(commands_and_filenames), TOTAL_CORES * 4)))
 
-        else:
-            if "METHODTHREAD" in commands_and_filenames[0][0][0]:
-                if qTrim:
-                    commands_and_filenames = [
-                        (
-                            [
-                                (
-                                    cmd[0][0].replace(
-                                        "METHODTHREAD", method_threads
-                                    ),
-                                    cmd[0][1],
-                                ),
-                                (
-                                    cmd[1][0],
-                                    cmd[1][1].replace(
-                                        "METHODTHREAD", method_threads
-                                    ),
-                                ),
-                                (
-                                    cmd[2][0].replace(
-                                        "METHODTHREAD", method_threads
-                                    ),
-                                    cmd[2][1],
-                                ),
-                            ]
-                            if len(cmd) > 1
-                            else [
-                                (
-                                    cmd[0][0].replace(
-                                        "METHODTHREAD", method_threads
-                                    ),
-                                    cmd[0][1],
-                                )
-                            ]
-                        )
-                        for cmd in commands_and_filenames
-                    ]
-
-                else:
-                    commands_and_filenames = [
-                        [
-                            (
-                                cmd[0][0].replace("METHODTHREAD", method_threads),
-                                cmd[0][1],
-                            ),
-                            (
-                                cmd[1][0].replace("METHODTHREAD", method_threads),
-                                cmd[1][1],
-                            ),
-                        ]
-                        for cmd in commands_and_filenames
-                    ]
         progressbar, task = util.get_progressbar(total_commands)
         progressbar.start()
         update_cycle = 1 #10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000
 
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=nProcesses
-        ) as executor:
-            futures = {
-                executor.submit(
+        with concurrent.futures.ThreadPoolExecutor(max_workers=nProcesses) as executor:
+            futures = {}
+            for cmd_unit in commands_and_filenames:
+                if cmd_unit is None:
+                    continue
+                fut = executor.submit(
                     Worker_RunCommands_And_Move,
-                    cmd,
+                    cmd_unit,
+                    method_threads,
                     qListOfList,
                     q_print_on_error,
                     q_always_print_stderr,
-                ): cmd
-                for cmd in commands_and_filenames
-                if cmd is not None
-            }
+                    dynamic_threads=dynamic_threads
+                )
+                futures[fut] = cmd_unit
 
             for i, future in enumerate(concurrent.futures.as_completed(futures)):
                 try:
                     result = future.result()
-                    # completed_count += 1
-                    # if (
-                    #     divmod(
-                    #         completed_count,
-                    #         (
-                    #             10
-                    #             if total_commands <= 200
-                    #             else 100 if total_commands <= 2000 else 1000
-                    #         ),
-                    #     )[1]
-                    #     == 0
-                    # ):
-                    #     util.PrintTime(
-                    #         "Done %d of %d" % (completed_count, total_commands)
-                    #     )
-
                     if result != 0 and q_print_on_error:
                         print(f"ERROR occurred with command: {futures[future]}")
                 except Exception as e:
                     print(f"Exception with command {futures[future]}: {e}")
-
                 finally:
                     if (i + 1) % update_cycle == 0:
                         progressbar.update(task, advance=update_cycle)
         progressbar.stop()
 
+
 q_print_first_traceback_0 = False
 
 
 def Worker_RunCommands_And_Move(
-    command_fns_list, qListOfLists, q_print_on_error, q_always_print_stderr
+    command_fns_list, 
+    method_threads, 
+    qListOfLists, 
+    q_print_on_error, 
+    q_always_print_stderr, 
+    dynamic_threads,
 ):
     """
     Continuously takes commands that need to be run from the cmd_and_filename_queue until the queue is empty. If required, moves
@@ -1145,7 +1089,7 @@ def Worker_RunCommands_And_Move(
             if isinstance(command, types.FunctionType):
                 # This will block the process, but it is ok for trimming, it takes minimal time
                 fn = command
-                fn(fns)
+                fn(*fns)
                 return_code = 0
             else:
                 if not isinstance(command, str):
@@ -1154,6 +1098,7 @@ def Worker_RunCommands_And_Move(
                 else:
                     return_code = RunCommand(
                         command,
+                        method_threads,
                         qPrintOnError=q_print_on_error,
                         qPrintStderr=q_always_print_stderr,
                     )
@@ -1175,29 +1120,83 @@ def Worker_RunCommands_And_Move(
         print("WARNING: Unknown caught unknown exception")
 
 
-def RunCommand(command, qPrintOnError=False, qPrintStderr=True):
-    """Run a single command"""
-    popen = subprocess.Popen(
-        command, env=parallel_task_manager.my_env, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
-    if qPrintOnError:
-        stdout, stderr = popen.communicate()
-        if popen.returncode != 0:
-            print(
-                (
-                    "\nERROR: external program called by OrthoFinder returned an error code: %d"
-                    % popen.returncode
-                )
-            )
-            print(("\nCommand: %s" % command))
-            print(("\nstdout:\n%s" % stdout))
-            print(("stderr:\n%s" % stderr))
-        elif qPrintStderr and len(stderr) > 0 and not util.stderr_exempt(stderr):
-            print("\nWARNING: program called by OrthoFinder produced output to stderr")
-            print(("\nCommand: %s" % command))
-            print(("\nstdout:\n%s" % stdout))
-            print(("stderr:\n%s" % stderr))
-        return popen.returncode
+def RunCommand(command, method_threads, dynamic_threads=False, qPrintOnError=False, qPrintStderr=True):
+    """Run a single command with token gating."""
+    
+    # threads_needed = threads_from_cmd(command, method_threads)
+
+    # if threads_needed > TOTAL_CORES:
+    #     # if qPrintOnError:
+    #     #     print(f"Capping threads from {threads_needed} to {TOTAL_CORES} for {prog} to avoid oversubscription.")
+    #     threads_needed = TOTAL_CORES
+    # if threads_needed < 1:
+    #     threads_needed = 1
+
+    try:
+        prog = os.path.basename(shlex.split(command)[0]).lower()
+    except Exception:
+        prog = "" 
+
+    base_cap = max(1, min(int(method_threads), TOTAL_CORES))
+    if _METHODTHREAD_RE.search(command):
+        # if dynamic_threads:
+        #     inp = extract_input_path(command)
+        #     if inp:
+        #         t_dyn = _threads_by_size(inp, TOTAL_CORES) 
+        #         threads_needed = min(t_dyn, base_cap)
+        #     else:
+        #         threads_needed = base_cap
+        # else:
+        threads_needed = base_cap
+
+        if prog.startswith("diamond"):  # diamond makedb / blastp
+            threads_needed = 1
     else:
-        popen.communicate()
-        return popen.returncode
+        threads_needed = 1
+
+    command = _METHODTHREAD_RE.sub(str(threads_needed), command)
+
+    acquired = 0
+    try:
+        for _ in range(threads_needed):
+            TOKENS.acquire()
+            acquired += 1
+
+        env = dict(parallel_task_manager.my_env) if hasattr(parallel_task_manager, "my_env") else os.environ.copy()
+        if threads_needed > 1:
+            env["OMP_NUM_THREADS"] = str(threads_needed)
+        env.setdefault("OPENBLAS_NUM_THREADS", "1")
+        env.setdefault("MKL_NUM_THREADS", "1")
+        env.setdefault("OMP_NESTED", "0")
+
+        out = subprocess.DEVNULL if not qPrintOnError else subprocess.PIPE
+        err = subprocess.DEVNULL if not (qPrintOnError and qPrintStderr) else subprocess.PIPE
+
+        popen = subprocess.Popen(
+            command, env=env, shell=True,
+            stdout=out, stderr=err
+        )
+
+        if qPrintOnError:
+            stdout, stderr = popen.communicate()
+            if popen.returncode != 0:
+                print(f"\nERROR: external program returned code {popen.returncode}")
+                print(f"\nCommand: {command}")
+                print(f"\nstdout:\n{stdout}")
+                print(f"stderr:\n{stderr}")
+            elif qPrintStderr and len(stderr) > 0 and not util.stderr_exempt(stderr):
+                print("\nWARNING: program produced output to stderr")
+                print(f"\nCommand: {command}")
+                print(f"\nstdout:\n{stdout}")
+                print(f"stderr:\n{stderr}")
+            return popen.returncode
+        else:
+            popen.communicate()
+            return popen.returncode
+    finally:
+        for _ in range(acquired):
+            TOKENS.release()
+
+
+
+

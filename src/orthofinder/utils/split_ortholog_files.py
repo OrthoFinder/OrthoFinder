@@ -45,12 +45,12 @@ def split_ortholog_files(d_ologs, q_compress=False):
                     csv_writers[row[1]].writerow(row[:1] + row[2:])
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("orthologs_directory", help="Input directory")
-    parser.add_argument("-c", "--compress", action="store_true", help="Compress output files")
-    args = parser.parse_args()
-    if not os.path.exists(args.orthologs_directory):
-        print("Directory not found: %s" % args.orthologs_directory)
-        sys.exit(1)
-    split_ortholog_files(args.orthologs_directory, q_compress=args.compress)
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("orthologs_directory", help="Input directory")
+#     parser.add_argument("-c", "--compress", action="store_true", help="Compress output files")
+#     args = parser.parse_args()
+#     if not os.path.exists(args.orthologs_directory):
+#         print("Directory not found: %s" % args.orthologs_directory)
+#         sys.exit(1)
+#     split_ortholog_files(args.orthologs_directory, q_compress=args.compress)

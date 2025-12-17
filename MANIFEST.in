@@ -6,8 +6,8 @@ include pyproject.toml
 recursive-include src/orthofinder *.json
 recursive-include ExampleData *
 
-prune tests
-prune .github
+# prune tests
+# prune .github
 prune assets/docs
 prune src/orthofinder/legacy
 # prune src/orthofinder/bin

@@ -79,12 +79,12 @@ def GetPredictedOGs(clustersFilename):
             predictedOGs.append(og)
     return predictedOGs
     
-def GetSingleID(speciesStartingIndices, seq, speciesToUse): 
-    a, b = seq.split("_")
-    iSpecies = int(a)
-    iSeq = int(b)
-    offset = speciesStartingIndices[speciesToUse.index(iSpecies)]
-    return iSeq + offset  
+# def GetSingleID(speciesStartingIndices, seq, speciesToUse): 
+#     a, b = seq.split("_")
+#     iSpecies = int(a)
+#     iSeq = int(b)
+#     offset = speciesStartingIndices[speciesToUse.index(iSpecies)]
+#     return iSeq + offset  
 
 def GetIDPair(speciesStartingIndices, singleID, speciesToUse):   
     for i, startingIndex in enumerate(speciesStartingIndices):
@@ -136,15 +136,28 @@ def write_updated_clusters_file(ogs: List[Set[str]], clustersFilename_pairs):
         outfile.write(")\n")
 
 
+def IDFullDict(idsFilenames, func=util.FirstWordExtractor):
+
+    fullDict = dict()
+    for idsFilename in idsFilenames:
+        idExtract = func(idsFilename)
+        idDict = idExtract.GetIDToNameDict()
+        fullDict.update(idDict)
+
+    return fullDict
+
 class MCL:
     @staticmethod
-    def CreateOGs(predictedOGs, outputFilename, idDict):
-        with open(outputFilename, 'w') as outputFile:
+    def CreateOGs(predictedOGs, outputFilename, orthogroups_id_fn, idDict):
+        with open(outputFilename, 'w') as outputFile, open(orthogroups_id_fn, "w") as outputidFile:
             for iOg, og in enumerate(predictedOGs):
                 outputFile.write("OG%07d: " % iOg)
                 accessions = sorted([idDict[seq] for seq in og])
                 outputFile.write(" ".join(accessions))
                 outputFile.write("\n")
+                outputidFile.write("OG%07d: " % iOg)
+                outputidFile.write(" ".join(sorted([seq for seq in og])))
+                outputidFile.write("\n")
 
     @staticmethod
     def prettify(elem):
@@ -154,64 +167,64 @@ class MCL:
         reparsed = minidom.parseString(rough_string)
         return reparsed.toprettyxml(indent="  ")
 
-    @staticmethod
-    def WriteOrthoXML(speciesInfo, predictedOGs, nSequencesDict, idDict, orthoxmlFilename, speciesToUse):
-        """ speciesInfo: ordered array for which each element has
-            fastaFilename, speciesName, NCBITaxID, sourceDatabaseName, databaseVersionFastaFile
-        """
-        # Write OrthoXML file
-        root = ET.Element("orthoXML")
-        root.set('xsi:schemaLocation', "http://orthoXML.org/2011/ http://www.orthoxml.org/0.3/orthoxml.xsd")
-        root.set('originVersion', __version__)
-        root.set('origin', 'OrthoFinder')
-        root.set('version', "0.3")
-        root.set('xmlns:xsi', "http://www.w3.org/2001/XMLSchema-instance")
-        #notes = SubElement(root, 'notes')
+    # @staticmethod
+    # def WriteOrthoXML(speciesInfo, predictedOGs, nSequencesDict, idDict, orthoxmlFilename, speciesToUse):
+    #     """ speciesInfo: ordered array for which each element has
+    #         fastaFilename, speciesName, NCBITaxID, sourceDatabaseName, databaseVersionFastaFile
+    #     """
+    #     # Write OrthoXML file
+    #     root = ET.Element("orthoXML")
+    #     root.set('xsi:schemaLocation', "http://orthoXML.org/2011/ http://www.orthoxml.org/0.3/orthoxml.xsd")
+    #     root.set('originVersion', __version__)
+    #     root.set('origin', 'OrthoFinder')
+    #     root.set('version', "0.3")
+    #     root.set('xmlns:xsi', "http://www.w3.org/2001/XMLSchema-instance")
+    #     #notes = SubElement(root, 'notes')
 
-        # Species: details of source of genomes and sequences they contain
-        speciesStartingIndices = []
-        iGene_all = 0
-        for iPos, thisSpeciesInfo in enumerate(speciesInfo):
-            iSpecies = speciesToUse[iPos]
-            nSeqs = nSequencesDict[iSpecies]
-            speciesNode = SubElement(root, 'species')
-            speciesNode.set('NCBITaxId', thisSpeciesInfo[2])           # required
-            speciesNode.set('name', thisSpeciesInfo[1])                # required
-            speciesDatabaseNode = SubElement(speciesNode, "database")
-            speciesDatabaseNode.set('name', thisSpeciesInfo[3])            # required
-            speciesDatabaseNode.set('version', thisSpeciesInfo[4])         # required
-    #            speciesDatabaseNode.set('geneLink', "")        # skip
-    #            speciesDatabaseNode.set('protLink', "")        # skip
-    #            speciesDatabaseNode.set('transcriptLink', "")  # skip
-            allGenesNode = SubElement(speciesDatabaseNode, "genes")
-            speciesStartingIndices.append(iGene_all)
-            for iGene_species in range(nSeqs):
-                geneNode = SubElement(allGenesNode, 'gene')
-                geneNode.set("geneId", idDict["%d_%d" % (iSpecies , iGene_species)])
-                geneNode.set('id', str(iGene_all))       # required
-    #                geneNode.set("protID", "")  # skip
-                iGene_all += 1
+    #     # Species: details of source of genomes and sequences they contain
+    #     speciesStartingIndices = []
+    #     iGene_all = 0
+    #     for iPos, thisSpeciesInfo in enumerate(speciesInfo):
+    #         iSpecies = speciesToUse[iPos]
+    #         nSeqs = nSequencesDict[iSpecies]
+    #         speciesNode = SubElement(root, 'species')
+    #         speciesNode.set('NCBITaxId', thisSpeciesInfo[2])           # required
+    #         speciesNode.set('name', thisSpeciesInfo[1])                # required
+    #         speciesDatabaseNode = SubElement(speciesNode, "database")
+    #         speciesDatabaseNode.set('name', thisSpeciesInfo[3])            # required
+    #         speciesDatabaseNode.set('version', thisSpeciesInfo[4])         # required
+    # #            speciesDatabaseNode.set('geneLink', "")        # skip
+    # #            speciesDatabaseNode.set('protLink', "")        # skip
+    # #            speciesDatabaseNode.set('transcriptLink', "")  # skip
+    #         allGenesNode = SubElement(speciesDatabaseNode, "genes")
+    #         speciesStartingIndices.append(iGene_all)
+    #         for iGene_species in range(nSeqs):
+    #             geneNode = SubElement(allGenesNode, 'gene')
+    #             geneNode.set("geneId", idDict["%d_%d" % (iSpecies , iGene_species)])
+    #             geneNode.set('id', str(iGene_all))       # required
+    # #                geneNode.set("protID", "")  # skip
+    #             iGene_all += 1
 
-        # Scores tag - unused
-    #            scoresNode = SubElement(root, 'scores')        # skip
+    #     # Scores tag - unused
+    # #            scoresNode = SubElement(root, 'scores')        # skip
 
-        # Orthogroups
-        allGroupsNode = SubElement(root, 'groups')
-        for iOg, og in enumerate(predictedOGs):
-            groupNode = SubElement(allGroupsNode, 'orthologGroup')
-            groupNode.set('id', str(iOg))
-    #                groupScoreNode = SubElement(groupNode, 'score')    # skip
-    #                groupScoreNode.set('id', "")                       # skip
-    #                groupScoreNode.set('value', "")                    # skip
-    #                SubElement(groupNode, 'property')                  # skip
-            for seq in og:
-                geneNode = SubElement(groupNode, 'geneRef')
-                geneNode.set('id', str(GetSingleID(speciesStartingIndices, seq, speciesToUse)))
-    #                    SubElement(geneNode, 'score')                  # skip
-        with open(orthoxmlFilename, 'w') as orthoxmlFile:
-    #            ET.ElementTree(root).write(orthoxmlFile)
-            orthoxmlFile.write(MCL.prettify(root))
-        print("Orthogroups have been written to orthoxml file:\n   %s" % orthoxmlFilename)
+    #     # Orthogroups
+    #     allGroupsNode = SubElement(root, 'groups')
+    #     for iOg, og in enumerate(predictedOGs):
+    #         groupNode = SubElement(allGroupsNode, 'orthologGroup')
+    #         groupNode.set('id', str(iOg))
+    # #                groupScoreNode = SubElement(groupNode, 'score')    # skip
+    # #                groupScoreNode.set('id', "")                       # skip
+    # #                groupScoreNode.set('value', "")                    # skip
+    # #                SubElement(groupNode, 'property')                  # skip
+    #         for seq in og:
+    #             geneNode = SubElement(groupNode, 'geneRef')
+    #             geneNode.set('id', str(GetSingleID(speciesStartingIndices, seq, speciesToUse)))
+    # #                    SubElement(geneNode, 'score')                  # skip
+    #     with open(orthoxmlFilename, 'w') as orthoxmlFile:
+    # #            ET.ElementTree(root).write(orthoxmlFile)
+    #         orthoxmlFile.write(MCL.prettify(root))
+    #     print("Orthogroups have been written to orthoxml file:\n   %s" % orthoxmlFilename)
 
     @staticmethod
     def RunMCL(graphFilename, clustersFilename, nProcesses, inflation):
@@ -227,31 +240,34 @@ class MCL:
             clustersFilename_pairs
         ):
         outputFN = resultsBaseFilename + ".txt"
+        orthogroups_id_fn = files.FileHandler.OGsIDFN(extension=".txt")
         try:
-            fullDict = dict()
-            for idsFilename in idsFilenames:
-                idExtract = util.FirstWordExtractor(idsFilename)
-                idDict = idExtract.GetIDToNameDict()
-                fullDict.update(idDict)
-            MCL.CreateOGs(ogs, outputFN, fullDict)
+            # fullDict = dict()
+            # for idsFilename in idsFilenames:
+            #     idExtract = util.FirstWordExtractor(idsFilename)
+            #     idDict = idExtract.GetIDToNameDict()
+            #     fullDict.update(idDict)
+            fullDict = IDFullDict(idsFilenames, func=util.FirstWordExtractor)
+            MCL.CreateOGs(ogs, outputFN, orthogroups_id_fn, fullDict)
         except KeyError as e:
-            sys.stderr.write("ERROR: Sequence ID not found in %s\n" % idsFilename)
+            sys.stderr.write("ERROR: Sequence ID not found in %s\n" % idsFilenames)
             sys.stderr.write(str(e) + "\n")
-            files.FileHandler.LogFailAndExit(("ERROR: Sequence ID not found in %s\n" % idsFilename) + str(e) + "\n")
+            files.FileHandler.LogFailAndExit(("ERROR: Sequence ID not found in %s\n" % idsFilenames) + str(e) + "\n")
         except RuntimeError as error:
             print(str(error))
             if str(error).startswith("ERROR"):
-                err_text = "ERROR: %s contains a duplicate ID. The IDs for the orthogroups in %s will not be replaced with the sequence accessions. If %s was prepared manually then please check the IDs are correct. " % (idsFilename, clustersFilename_pairs, idsFilename)
+                err_text = "ERROR: %s contains a duplicate ID. The IDs for the orthogroups in %s will not be replaced with the sequence accessions. If %s was prepared manually then please check the IDs are correct. " % (idsFilenames, clustersFilename_pairs, idsFilenames)
                 files.FileHandler.LogFailAndExit(err_text)
             else:
                 print("Tried to use only the first part of the accession in order to list the sequences in each orthogroup\nmore concisely but these were not unique. The full accession line will be used instead.\n")
                 try:
-                    fullDict = dict()
-                    for idsFilename in idsFilenames:
-                        idExtract = util.FullAccession(idsFilename)
-                        idDict = idExtract.GetIDToNameDict()
-                        fullDict.update(idDict)
-                    MCL.CreateOGs(ogs, outputFN, fullDict)
+                    # fullDict = dict()
+                    # for idsFilename in idsFilenames:
+                    #     idExtract = util.FullAccession(idsFilename)
+                    #     idDict = idExtract.GetIDToNameDict()
+                    #     fullDict.update(idDict)
+                    fullDict = IDFullDict(idsFilenames, func=util.FullAccession)
+                    MCL.CreateOGs(ogs, outputFN, orthogroups_id_fn, fullDict)
                 except:
                     err_text = "ERROR: %s contains a duplicate ID. The IDs for the orthogroups in %s will not be replaced with the sequence accessions. This is probably because the same accession was used more than once in your input FASTA files. However, if %s was prepared manually then you may need to check that file instead." % (idsFilename, clustersFilename_pairs, idsFilename)
                     files.FileHandler.LogFailAndExit(err_text)
@@ -268,26 +284,36 @@ class MCL:
     ):
 
         nSpecies = len(speciesNamesDict)
-
+        
+        ogs_ids = [[seq for seq in og] for og in ogs]
         ogs_names = [[idToNameDict[seq] for seq in og] for og in ogs]
         ogs_ints = [[list(map(int, sequence.split("_"))) for sequence in og] for og in ogs]
 
         # write out
+        orthogroups_id_fn = files.FileHandler.OGsIDFN()
         outputFilename = resultsBaseFilename + ".tsv"
         outputFilename_counts = resultsBaseFilename + ".GeneCount.tsv"
         singleGeneFilename = resultsBaseFilename + "_UnassignedGenes.tsv"
-        with open(outputFilename, util.csv_write_mode) as outputFile, open(singleGeneFilename, util.csv_write_mode) as singleGeneFile, open(outputFilename_counts, util.csv_write_mode) as outFile_counts:
+        with open(outputFilename, util.csv_write_mode) as outputFile, \
+            open(orthogroups_id_fn, util.csv_write_mode) as ogidfile, \
+            open(singleGeneFilename, util.csv_write_mode) as singleGeneFile, \
+            open(outputFilename_counts, util.csv_write_mode) as outFile_counts:
+            
+            ogid_filewriter = csv.writer(ogidfile, delimiter="\t")
             fileWriter = csv.writer(outputFile, delimiter="\t")
+            
             fileWriter_counts = csv.writer(outFile_counts, delimiter="\t")
             singleGeneWriter = csv.writer(singleGeneFile, delimiter="\t")
-            for writer in [fileWriter, singleGeneWriter]:
+            for writer in [ogid_filewriter, fileWriter, singleGeneWriter]:
                 row = ["Orthogroup"] + [speciesNamesDict[index] for index in speciesToUse]
                 writer.writerow(row)
             fileWriter_counts.writerow(row + ['Total'])
 
-            for iOg, (og, og_names) in enumerate(zip(ogs_ints, ogs_names)):
+            for iOg, (og, og_names, og_ids) in enumerate(zip(ogs_ints, ogs_names, ogs_ids)):
                 ogDict = defaultdict(list)
+                ogIDDict = defaultdict(list)
                 row = ["OG%07d" % iOg]
+                id_row = ["OG%07d" % iOg]
                 thisOutputWriter = fileWriter
                 # separate it into sequences from each species
                 if len(og) == 1:
@@ -295,10 +321,13 @@ class MCL:
                     row[speciesToUse.index(og[0][0]) + 1] = og_names[0]
                     thisOutputWriter = singleGeneWriter
                 else:
-                    for (iSpecies, iSequence), name in zip(og, og_names):
+                    for (iSpecies, iSequence), name, ids in zip(og, og_names, og_ids):
                         ogDict[speciesToUse.index(iSpecies)].append(name)
+                        ogIDDict[speciesToUse.index(iSpecies)].append(ids)
                     for iSpecies in range(nSpecies):
                         row.append(", ".join(sorted(ogDict[iSpecies])))
+                        id_row.append(", ".join(sorted(ogIDDict[iSpecies])))
+                    ogid_filewriter.writerow(id_row)
                     counts = Counter([iSpecies for iSpecies, _ in og])
                     counts_row = [counts[iSpecies] for iSpecies in speciesToUse]
                     fileWriter_counts.writerow(row[:1] + counts_row + [sum(counts_row)])

@@ -1,4 +1,5 @@
 import os
+import re
 from ..utils import util, files, program_caller
 from ..utils.util import printer
 from ..comparative_genomics import orthologues
@@ -18,69 +19,69 @@ except ImportError:
 
 configfile_location = os.path.join(__location__, "run")
 
-# Default DIAMOND custom scoring matricies and their corresponding gapopen and gapextend values
-diamond_sm_options = {
-    "BLOSUM45": [{2: 14}, {3: (10, 13), 2: (12, 16), 1: (16, 19)}],
-    "BLOSUM50": [{2: 13}, {3: (9, 13), 2: (12, 16), 1: (15, 19)}],
-    "BLOSUM62": [{1: 11}, {2: (6, 11), 1: (9, 13)}],
-    "BLOSUM80": [{1: 10}, {2: [6, 7, 8, 9, 13, 25], 1: (9, 11)}],
-    "BLOSUM90": [{1: 10}, {2: (6, 11), 1: (9, 11)}],
-    "PAM250": [{2: 14}, {3: (11, 15), 2: (13, 17), 1: (17, 21)}],
-    "PAM70": [{1: 10}, {2: (6, 8), 1: (9, 11)}],
-    "PAM30": [{1: 9}, {2: (5, 7), 1: (8, 10)}],
-}
+# # Default DIAMOND custom scoring matricies and their corresponding gapopen and gapextend values
+# diamond_sm_options = {
+#     "BLOSUM45": [{2: 14}, {3: (10, 13), 2: (12, 16), 1: (16, 19)}],
+#     "BLOSUM50": [{2: 13}, {3: (9, 13), 2: (12, 16), 1: (15, 19)}],
+#     "BLOSUM62": [{1: 11}, {2: (6, 11), 1: (9, 13)}],
+#     "BLOSUM80": [{1: 10}, {2: [6, 7, 8, 9, 13, 25], 1: (9, 11)}],
+#     "BLOSUM90": [{1: 10}, {2: (6, 11), 1: (9, 11)}],
+#     "PAM250": [{2: 14}, {3: (11, 15), 2: (13, 17), 1: (17, 21)}],
+#     "PAM70": [{1: 10}, {2: (6, 8), 1: (9, 11)}],
+#     "PAM30": [{1: 9}, {2: (5, 7), 1: (8, 10)}],
+# }
 
-diamond_sm_options_table = """
-The following matrices are supported by DIAMOND, with the default being BLOSUM62.
+# diamond_sm_options_table = """
+# The following matrices are supported by DIAMOND, with the default being BLOSUM62.
 
-+----------+---------------------------------+-------------------------+
-|  Matrix  |         Supported values        |  Default gap penalties  |
-+----------+---------------------------------+-------------------------+
-| BLOSUM45 | (10-13)/3; (12-16)/2; (16-19)/1 |           14/2          |
-| BLOSUM50 | (9-13)/3; (12-16)/2; (15-19)/1  |           13/2          |
-| BLOSUM62 | (6-11)/2; (9-13)/1              |           11/1          |
-| BLOSUM80 | (6-9)/2; 13/2; 25/2; (9-11)/1   |           10/1          |
-| BLOSUM90 | (6-9)/2; (9-11)/1               |           10/1          |
-| PAM250   | (11-15)/3; (13-17)/2; (17-21)/1 |           14/2          |
-| PAM70    | (6-8)/2; (9-11)/1               |           10/1          |
-| PAM30    | (5-7)/2; (8-10)/1               |           9/1           |
-+----------+---------------------------------+-------------------------+
-NOTE: int (gap open) / int (gap extend)
+# +----------+---------------------------------+-------------------------+
+# |  Matrix  |         Supported values        |  Default gap penalties  |
+# +----------+---------------------------------+-------------------------+
+# | BLOSUM45 | (10-13)/3; (12-16)/2; (16-19)/1 |           14/2          |
+# | BLOSUM50 | (9-13)/3; (12-16)/2; (15-19)/1  |           13/2          |
+# | BLOSUM62 | (6-11)/2; (9-13)/1              |           11/1          |
+# | BLOSUM80 | (6-9)/2; 13/2; 25/2; (9-11)/1   |           10/1          |
+# | BLOSUM90 | (6-9)/2; (9-11)/1               |           10/1          |
+# | PAM250   | (11-15)/3; (13-17)/2; (17-21)/1 |           14/2          |
+# | PAM70    | (6-8)/2; (9-11)/1               |           10/1          |
+# | PAM30    | (5-7)/2; (8-10)/1               |           9/1           |
+# +----------+---------------------------------+-------------------------+
+# NOTE: int (gap open) / int (gap extend)
 
-EXPLANATION:
-The default gap open and gap extend penalties for BLOSUM62 are 11 and 1, respectively. Apart from the default gap penalties, BLOSUM62 also support gap extend to be either 2 or 1, with different gap open values allowed. For example, when gap extend is 2, gap open can be chosen between 6 and 11.
+# EXPLANATION:
+# The default gap open and gap extend penalties for BLOSUM62 are 11 and 1, respectively. Apart from the default gap penalties, BLOSUM62 also support gap extend to be either 2 or 1, with different gap open values allowed. For example, when gap extend is 2, gap open can be chosen between 6 and 11.
 
-USAGE 1:
-Available scoring matrices supported by DIAMOND:
+# USAGE 1:
+# Available scoring matrices supported by DIAMOND:
 
-1. orthofinder -f ExampleData
-When no scoring matrix is provided, OrthoFinder will run the default BLOSUM62 with gap penalties 11/1.
+# 1. orthofinder -f ExampleData
+# When no scoring matrix is provided, OrthoFinder will run the default BLOSUM62 with gap penalties 11/1.
 
-2. orthofinder -f ExampleData --matrix BLOSUM45
-When no gap penalties are specified, OrthoFinder will use the default gap penalties.
+# 2. orthofinder -f ExampleData --matrix BLOSUM45
+# When no gap penalties are specified, OrthoFinder will use the default gap penalties.
 
-3. orthofinder -f ExampleData --matrix BLOSUM62 --gapextend 2 --gapopen 10
-When specifying the gap penalties, gap extend penalty must be defined before the gap open penalty
+# 3. orthofinder -f ExampleData --matrix BLOSUM62 --gapextend 2 --gapopen 10
+# When specifying the gap penalties, gap extend penalty must be defined before the gap open penalty
 
-4. orthofinder -f ExampleData --matrix BLOSUM62 --gapextend 2
-If the gap open penalty is unavailable, OrthoFinder will use the largest gap open in allowed range defined by the provided gap extend penalty. 
+# 4. orthofinder -f ExampleData --matrix BLOSUM62 --gapextend 2
+# If the gap open penalty is unavailable, OrthoFinder will use the largest gap open in allowed range defined by the provided gap extend penalty. 
 
-USAGE 2:
-Custom scoring matrices:
+# USAGE 2:
+# Custom scoring matrices:
 
-1. orthofinder -f ExampleData -S diamond_custom --custom-matrix scoring-matrix-file.txt --gapopen 10 --gapextend 2
-When use a custom scoring matrix, the search program needs be changed to the custom version.
-In the meantime, the gap penalties must be provided. There are no default gap penalties available in OrthoFinder for a custom scoring matrix.
-The order of the gap extend and gap open penalties are unimportant in this case. All entries in a custom scoring matrix must be integers.
+# 1. orthofinder -f ExampleData -S diamond_custom --custom-matrix scoring-matrix-file.txt --gapopen 10 --gapextend 2
+# When use a custom scoring matrix, the search program needs be changed to the custom version.
+# In the meantime, the gap penalties must be provided. There are no default gap penalties available in OrthoFinder for a custom scoring matrix.
+# The order of the gap extend and gap open penalties are unimportant in this case. All entries in a custom scoring matrix must be integers.
 
-ATTENTION:
-By default, the output directory for each run is saved inside the data folder under the OrthoFinder directory with the name convetion in the following format. Naming format: Results + abbreviated month name + date + (number of runs, the first one is unshown). Example: Results_Jan08_2
+# ATTENTION:
+# By default, the output directory for each run is saved inside the data folder under the OrthoFinder directory with the name convetion in the following format. Naming format: Results + abbreviated month name + date + (number of runs, the first one is unshown). Example: Results_Jan08_2
 
-To distinguish the results obtained via different scoring matrices, attaching `-efn` to the command can enable OrthoFinder to save the output in a folder with the corresponding scoring matrix name, gap penalties as well as the used search program, MSA method and tree method appending to the convetional name.
-Command: orthofinder -f ExampleData --matrix BLOSUM80 -efn
-Example: Results_Feb28_5_BLOSUM80-10-1-diamond-mafft-fasttree
-(By default, orthofinder uses DIAMOND as the search program, MAFFT as the MSA method, FASTTREE as the tree method)
-"""
+# To distinguish the results obtained via different scoring matrices, attaching `-efn` to the command can enable OrthoFinder to save the output in a folder with the corresponding scoring matrix name, gap penalties as well as the used search program, MSA method and tree method appending to the convetional name.
+# Command: orthofinder -f ExampleData --matrix BLOSUM80 -efn
+# Example: Results_Feb28_5_BLOSUM80-10-1-diamond-mafft-fasttree
+# (By default, orthofinder uses DIAMOND as the search program, MAFFT as the MSA method, FASTTREE as the tree method)
+# """
 
 # Control
 class Options(object):  #
@@ -92,11 +93,13 @@ class Options(object):  #
         self.qStartFromFasta = False  # local to argument checking
         self.qStartFromGroups = False
         self.qStartFromTrees = False
+        self.qStartFromSpeciesTrees = False
         self.qStopAfterPrepare = False
         self.qStopAfterGroups = False
         self.qStopAfterSeqs = False
         self.qStopAfterAlignments = False
         self.qStopAfterTrees = False
+        self.qStopAfterSpeciesTrees = False
         self.qMSATrees = True  # Updated default
         self.qAddSpeciesToIDs = True
         self.qTrim = True
@@ -119,9 +122,9 @@ class Options(object):  #
         self.save_space = False  # On complete, have only one orthologs file per species
         self.v2_scores = False
         self.root_from_previous = False
-        self.score_matrix = None
-        self.gapopen = None
-        self.gapextend = None  #
+        self.score_matrix = "BLOSUM62" # None
+        self.gapopen = "11" # None
+        self.gapextend = "1"  # None
         self.extended_filename = False
         self.method_threads = "1"
         self.rm_gene_trees = True
@@ -134,6 +137,16 @@ class Options(object):  #
         self.fix_files = True
         self.config = None
         self.min_seq = 4
+        self.msa_min_seq = 10
+        self.astral = False
+        self.species_tree_program = "stag" # astral
+        self.dynamic_threads = False
+        self.n_skip = 50
+        self.save_blast_commands = False
+        self.restart_of_blast = False
+        self.rm_legacy = True
+        self.print_info = True
+        self.fd_limit = None
 
     def what(self):
         for k, v in self.__dict__.items():
@@ -141,20 +154,20 @@ class Options(object):  #
                 print(k)
 
 
-def period_of_day(hour):
-    if hour < 12:
-        return "in the morning"
-    elif hour < 18:
-        return "in the afternoon"
-    else:
-        return "in the evening"
+# def period_of_day(hour):
+#     if hour < 12:
+#         return "in the morning"
+#     elif hour < 18:
+#         return "in the afternoon"
+#     else:
+#         return "in the evening"
 
-def ordinal(n):
-    if 11 <= n % 100 <= 13:
-        suffix = "th"
-    else:
-        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
-    return str(n) + suffix
+# def ordinal(n):
+#     if 11 <= n % 100 <= 13:
+#         suffix = "th"
+#     else:
+#         suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+#     return str(n) + suffix
 
 def GetDirectoryArgument(arg, args):
     if len(args) == 0:
@@ -180,125 +193,125 @@ def GetFileArgument(arg: str) -> str:
     return file_path
 
 
-def GetScoreMatrix(matrixid: str):
-    if matrixid.upper() in diamond_sm_options:
-        return matrixid.upper()
-    else:
-        if os.path.isfile(matrixid):
-            return matrixid
-        else:
-            raise Exception("The custom scoring matrix file doesn't exist!")
+# def GetScoreMatrix(matrixid: str):
+#     if matrixid.upper() in diamond_sm_options:
+#         return matrixid.upper()
+#     else:
+#         if os.path.isfile(matrixid):
+#             return matrixid
+#         else:
+#             raise Exception("The custom scoring matrix file doesn't exist!")
 
 
-def GetGapExtend(
-        matrixid: str, 
-        gapextend: Optional[str] = None,
-        scoring_matrix_info = "--matrix"
-    ):
+# def GetGapExtend(
+#         matrixid: str, 
+#         gapextend: Optional[str] = None,
+#         scoring_matrix_info = "--matrix"
+#     ):
 
-    if gapextend is None and scoring_matrix_info == "--matrix":
-        if matrixid.upper() in diamond_sm_options:
-            return str([*diamond_sm_options[matrixid][0].keys()][0])
-        else:
-            print(f"{matrixid} is not allowed by DIAMOND")
-            print(f"Available scoring matrices allowed by DIAMOND: {[*diamond_sm_options.keys()]}")
-            util.Fail()
+#     if gapextend is None and scoring_matrix_info == "--matrix":
+#         if matrixid.upper() in diamond_sm_options:
+#             return str([*diamond_sm_options[matrixid][0].keys()][0])
+#         else:
+#             print(f"{matrixid} is not allowed by DIAMOND")
+#             print(f"Available scoring matrices allowed by DIAMOND: {[*diamond_sm_options.keys()]}")
+#             util.Fail()
         
-    if gapextend is None and scoring_matrix_info == "--custom-matrix":
-        print("--gapextend must be provided when using '--custom-matrix'")
-        util.Fail()
+#     if gapextend is None and scoring_matrix_info == "--custom-matrix":
+#         print("--gapextend must be provided when using '--custom-matrix'")
+#         util.Fail()
     
-    if len(gapextend) != 0:
-        try:
-            gapextend_penalty = abs(int(gapextend))
-        except ValueError as e:
-            print(f"Unrecognisable --gapextend value {gapextend}!")
-            print(f"The gapextend penalty needs to be positive integers!")
-            util.Fail()
+#     if len(gapextend) != 0:
+#         try:
+#             gapextend_penalty = abs(int(gapextend))
+#         except ValueError as e:
+#             print(f"Unrecognisable --gapextend value {gapextend}!")
+#             print(f"The gapextend penalty needs to be positive integers!")
+#             util.Fail()
 
-        if matrixid.upper() in diamond_sm_options:
-            allowed_gapextend = [*diamond_sm_options[matrixid][1].keys()]
-            if gapextend_penalty in allowed_gapextend:
-                return str(gapextend_penalty)
-            else:
-                raise Exception(
-                    f"User defined --gapextend penalty is not allowed by DIAMOND. Acceptable gapextend is {allowed_gapextend}"
-                )
-        else:
-            return str(gapextend_penalty)
-    else:
-        print(f"Unrecognisable --gapextend value {gapextend}!")
-        print(f"The gapextend penalty needs to be positive integers!")
-        util.Fail()
+#         if matrixid.upper() in diamond_sm_options:
+#             allowed_gapextend = [*diamond_sm_options[matrixid][1].keys()]
+#             if gapextend_penalty in allowed_gapextend:
+#                 return str(gapextend_penalty)
+#             else:
+#                 raise Exception(
+#                     f"User defined --gapextend penalty is not allowed by DIAMOND. Acceptable gapextend is {allowed_gapextend}"
+#                 )
+#         else:
+#             return str(gapextend_penalty)
+#     else:
+#         print(f"Unrecognisable --gapextend value {gapextend}!")
+#         print(f"The gapextend penalty needs to be positive integers!")
+#         util.Fail()
 
 
-def GetGapOpen(
-        matrixid: str, 
-        gapopen: Optional[str] = None, 
-        gapextend: Optional[str] = None,
-        scoring_matrix_info = "--matrix",
-    ):
+# def GetGapOpen(
+#         matrixid: str, 
+#         gapopen: Optional[str] = None, 
+#         gapextend: Optional[str] = None,
+#         scoring_matrix_info = "--matrix",
+#     ):
 
-    if gapopen is None and gapextend is None and scoring_matrix_info == "--matrix":
-        if matrixid.upper() in diamond_sm_options:
-            return str([*diamond_sm_options[matrixid][0].values()][0])
-        else:
-            print(f"{matrixid} is not allowed by DIAMOND")
-            print(f"Available scoring matrices allowed by DIAMOND: {[*diamond_sm_options.keys()]}")
-            util.Fail()
+#     if gapopen is None and gapextend is None and scoring_matrix_info == "--matrix":
+#         if matrixid.upper() in diamond_sm_options:
+#             return str([*diamond_sm_options[matrixid][0].values()][0])
+#         else:
+#             print(f"{matrixid} is not allowed by DIAMOND")
+#             print(f"Available scoring matrices allowed by DIAMOND: {[*diamond_sm_options.keys()]}")
+#             util.Fail()
 
-    if gapopen is None and gapextend is not None and scoring_matrix_info == "--matrix":
-        if matrixid.upper() in diamond_sm_options:
-            gapextend = int(GetGapExtend(matrixid, gapextend))
-            gapopen_range = diamond_sm_options[matrixid][1][gapextend]
-            if isinstance(gapopen_range, tuple):
-                return str(gapopen_range[1])
-            elif isinstance(gapopen_range, list):
-                return str(max(gapopen_range))
+#     if gapopen is None and gapextend is not None and scoring_matrix_info == "--matrix":
+#         if matrixid.upper() in diamond_sm_options:
+#             gapextend = int(GetGapExtend(matrixid, gapextend))
+#             gapopen_range = diamond_sm_options[matrixid][1][gapextend]
+#             if isinstance(gapopen_range, tuple):
+#                 return str(gapopen_range[1])
+#             elif isinstance(gapopen_range, list):
+#                 return str(max(gapopen_range))
             
-    if gapopen is None and gapextend is not None and scoring_matrix_info == "--custom-matrix":
-        print("--gapopen must be provided when using '--custom-matrix'")
-        util.Fail()
+#     if gapopen is None and gapextend is not None and scoring_matrix_info == "--custom-matrix":
+#         print("--gapopen must be provided when using '--custom-matrix'")
+#         util.Fail()
 
-    if len(gapopen) != 0:
-        try:
-            gapopen_penalty = abs(int(gapopen))
-        except ValueError as e:
-            print(f"Unrecognisable --gapopen value {gapopen}!")
-            print(f"The gapopen penalty needs to be positive integers!")
-            util.Fail()
+#     if len(gapopen) != 0:
+#         try:
+#             gapopen_penalty = abs(int(gapopen))
+#         except ValueError as e:
+#             print(f"Unrecognisable --gapopen value {gapopen}!")
+#             print(f"The gapopen penalty needs to be positive integers!")
+#             util.Fail()
 
-        if matrixid.upper() in diamond_sm_options:
-            allowed_gapextend = [*diamond_sm_options[matrixid][1].keys()]
-            gapextend = int(GetGapExtend(matrixid, gapextend))
-            if gapextend in allowed_gapextend:
-                gapopen_range = diamond_sm_options[matrixid][1][gapextend]
-                if isinstance(gapopen_range, tuple):
-                    if (
-                        gapopen_penalty >= gapopen_range[0]
-                        and gapopen_penalty <= gapopen_range[1]
-                    ):
-                        return str(gapopen_penalty)
-                    else:
-                        raise Exception(
-                            f"User defined --gapopen penalty is not allowed by DIAMOND. Acceptable gapopen when gapextend={gapextend} is between {gapopen_range}"
-                        )
+#         if matrixid.upper() in diamond_sm_options:
+#             allowed_gapextend = [*diamond_sm_options[matrixid][1].keys()]
+#             gapextend = int(GetGapExtend(matrixid, gapextend))
+#             if gapextend in allowed_gapextend:
+#                 gapopen_range = diamond_sm_options[matrixid][1][gapextend]
+#                 if isinstance(gapopen_range, tuple):
+#                     if (
+#                         gapopen_penalty >= gapopen_range[0]
+#                         and gapopen_penalty <= gapopen_range[1]
+#                     ):
+#                         return str(gapopen_penalty)
+#                     else:
+#                         raise Exception(
+#                             f"User defined --gapopen penalty is not allowed by DIAMOND. Acceptable gapopen when gapextend={gapextend} is between {gapopen_range}"
+#                         )
 
-                elif isinstance(gapopen_range, list):
-                    if gapopen_penalty in gapopen_range:
-                        return str(gapopen_penalty)
-                    else:
-                        raise Exception(
-                            f"User defined --gapopen penalty is not allowed by DIAMOND. When gapextend={gapextend} the acceptable gapopen penalties are {gapopen_range}"
-                        )
+#                 elif isinstance(gapopen_range, list):
+#                     if gapopen_penalty in gapopen_range:
+#                         return str(gapopen_penalty)
+#                     else:
+#                         raise Exception(
+#                             f"User defined --gapopen penalty is not allowed by DIAMOND. When gapextend={gapextend} the acceptable gapopen penalties are {gapopen_range}"
+#                         )
 
-        else:
-            return str(gapopen_penalty)
+#         else:
+#             return str(gapopen_penalty)
         
-    else:
-        print(f"Unrecognisable --gapopen value {gapextend}!")
-        print(f"The gapeopen penalty needs to be positive integers!")
-        util.Fail()
+#     else:
+#         print(f"Unrecognisable --gapopen value {gapextend}!")
+#         print(f"The gapeopen penalty needs to be positive integers!")
+#         util.Fail()
 
 def GetProgramCaller():
     config_file = os.path.join(configfile_location, "config.json")
@@ -355,9 +368,9 @@ def ProcessArgs(args):
         printer.print(f"[dark_goldenrod]OrthoFinder[/dark_goldenrod]:v[deep_sky_blue2]{__version__}[/deep_sky_blue2]")
         util.Success()
 
-    if args[0] == "-sm" or args[0] == "--scoring-matrix":
-        printer.print(diamond_sm_options_table)
-        util.Success()
+    # if args[0] == "-sm" or args[0] == "--scoring-matrix":
+    #     printer.print(diamond_sm_options_table)
+    #     util.Success()
             
 
     options = Options()
@@ -412,11 +425,18 @@ def ProcessArgs(args):
             options.qStartFromGroups = True
             continuationDir = GetDirectoryArgument(arg, args)
 
-        elif arg == "-ft" or arg == "--from-trees":
+        elif arg == "-fgt" or arg == "--from-trees":
             if options.qStartFromTrees:
                 print("Repeated argument: -ft/--from-trees\n")
                 util.Fail()
             options.qStartFromTrees = True
+            continuationDir = GetDirectoryArgument(arg, args)
+
+        elif arg == "-fst" or arg == "--from-species-trees":
+            if options.qStartFromSpeciesTrees:
+                print("Repeated argument: -fst/--from-species-trees\n")
+                util.Fail()
+            options.qStartFromSpeciesTrees = True
             continuationDir = GetDirectoryArgument(arg, args)
 
         elif arg == "-t" or arg == "--threads":
@@ -483,82 +503,82 @@ def ProcessArgs(args):
                 print("Incorrect argument for number of method threads: %s\n" % arg)
                 util.Fail()
 
-        elif arg == "-mtl" or arg == "--method-threads-large":
-            if len(args) == 0:
-                print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
-            arg = args.pop(0)
-            try:
-                options.method_threads_large = str(arg)
-                if int(options.method_threads_large) > nThreadsDefault:
-                    print(
-                        "WARNING: The specified number of threads for external commands to process large file exceed the number of cores: %d"
-                        % nThreadsDefault
-                    )
-                    print(
-                        "The number of threads for external commands to process large file is reset to %d"
-                        % nThreadsDefault
-                    )
-                    options.method_threads_large = str(nThreadsDefault)
+        # elif arg == "-mtl" or arg == "--method-threads-large":
+        #     if len(args) == 0:
+        #         print("Missing option for command line argument %s\n" % arg)
+        #         util.Fail()
+        #     arg = args.pop(0)
+        #     try:
+        #         options.method_threads_large = str(arg)
+        #         if int(options.method_threads_large) > nThreadsDefault:
+        #             print(
+        #                 "WARNING: The specified number of threads for external commands to process large file exceed the number of cores: %d"
+        #                 % nThreadsDefault
+        #             )
+        #             print(
+        #                 "The number of threads for external commands to process large file is reset to %d"
+        #                 % nThreadsDefault
+        #             )
+        #             options.method_threads_large = str(nThreadsDefault)
 
-            except:
-                print(
-                    "Incorrect argument for number of method threads for the large files: %s\n"
-                    % arg
-                )
-                util.Fail()
+        #     except:
+        #         print(
+        #             "Incorrect argument for number of method threads for the large files: %s\n"
+        #             % arg
+        #         )
+        #         util.Fail()
 
-        elif arg == "-mts" or arg == "--method-threads-small":
-            if len(args) == 0:
-                print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
-            arg = args.pop(0)
-            try:
-                options.method_threads_small = str(arg)
-                if int(options.method_threads_small) > nThreadsDefault:
-                    print(
-                        "WARNING: The specified number of threads for external commands to process small file exceed the number of cores: %"
-                        % nThreadsDefault
-                    )
-                    print(
-                        "The number of threads for external commands to process small file is reset to %d"
-                        % nThreadsDefault
-                    )
-                    options.method_threads_small = str(nThreadsDefault)
-            except:
-                print(
-                    "Incorrect argument for number of method threads for the small files: %s\n"
-                    % arg
-                )
-                util.Fail()
+        # elif arg == "-mts" or arg == "--method-threads-small":
+        #     if len(args) == 0:
+        #         print("Missing option for command line argument %s\n" % arg)
+        #         util.Fail()
+        #     arg = args.pop(0)
+        #     try:
+        #         options.method_threads_small = str(arg)
+        #         if int(options.method_threads_small) > nThreadsDefault:
+        #             print(
+        #                 "WARNING: The specified number of threads for external commands to process small file exceed the number of cores: %"
+        #                 % nThreadsDefault
+        #             )
+        #             print(
+        #                 "The number of threads for external commands to process small file is reset to %d"
+        #                 % nThreadsDefault
+        #             )
+        #             options.method_threads_small = str(nThreadsDefault)
+        #     except:
+        #         print(
+        #             "Incorrect argument for number of method threads for the small files: %s\n"
+        #             % arg
+        #         )
+        #         util.Fail()
 
-        elif arg == "--order":
-            if len(args) == 0:
-                print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
-            arg = args.pop(0)
-            try:
-                options.cmd_order = str(arg)
-            except:
-                print(
-                    "Incorrect argument for command order: %s. It must be either descending or ascending.\n"
-                    % arg
-                )
-                util.Fail()
+        # elif arg == "--order":
+        #     if len(args) == 0:
+        #         print("Missing option for command line argument %s\n" % arg)
+        #         util.Fail()
+        #     arg = args.pop(0)
+        #     try:
+        #         options.cmd_order = str(arg)
+        #     except:
+        #         print(
+        #             "Incorrect argument for command order: %s. It must be either descending or ascending.\n"
+        #             % arg
+        #         )
+        #         util.Fail()
 
-        elif arg == "--threshold":
-            if len(args) == 0:
-                print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
-            arg = args.pop(0)
-            try:
-                options.threshold = int(arg)
-            except:
-                print(
-                    "Incorrect argument for threshold: %s. Values must be between 0 and 100 inclusive.\n"
-                    % arg
-                )
-                util.Fail()
+        # elif arg == "--threshold":
+        #     if len(args) == 0:
+        #         print("Missing option for command line argument %s\n" % arg)
+        #         util.Fail()
+        #     arg = args.pop(0)
+        #     try:
+        #         options.threshold = int(arg)
+        #     except:
+        #         print(
+        #             "Incorrect argument for threshold: %s. Values must be between 0 and 100 inclusive.\n"
+        #             % arg
+        #         )
+        #         util.Fail()
 
         elif arg == "-ms" or arg == "--min-seq":
             try:
@@ -567,17 +587,38 @@ def ProcessArgs(args):
             except:
                 print(f"Incorrect argument {arg} for the minmum number of sequence. Values must be an integer equal to or greater than 4.")
                 util.Fail()
-        
-        elif arg == "--friendly":
+        elif arg == "--msa-min-seq":
+            try:
+                arg = int(args.pop(0))
+                options.msa_min_seq = arg if arg >= 0 else options.msa_min_seq
+            except:
+                print(f"Incorrect argument {arg} for the minmum number of sequence MSA analysis. Values must be an integer equal to or greater than 4.")
+                util.Fail()            
+                
+        elif arg == "-fd":
+            try:
+                arg = args.pop(0)
+                soft, hard = re.split(r"[,\s;]+", arg)
+                soft = int(soft)
+                hard = int(hard)
+                if soft > hard:
+                    temp = soft
+                    soft, hard = hard, temp
+                options.fd_limit = (soft, hard) if soft > 0 and hard > 0 else None
+            except:
+                print(f"Incorrect argument {arg} for the minmum number of sequence.")
+                util.Fail()
+                
+        # elif arg == "--friendly":
             
-            console = Console()
-            now = datetime.now()
-            time_str = now.strftime("%H:%M")
-            period = period_of_day(now.hour)
-            formatted_date = f"{now.strftime('%A')} the {ordinal(now.day)} {now.strftime('%B, %Y')}"
-            console.print(f"Hey Yo! How's going Bro? It's {time_str} {period} {formatted_date}", style="orange3")
-            console.print("You know what you are using right now??", style="orange3")
-            console.print("The best software on this planet!!! :muscle::sunglasses:", style="orange3")
+        #     console = Console()
+        #     now = datetime.now()
+        #     time_str = now.strftime("%H:%M")
+        #     period = period_of_day(now.hour)
+        #     formatted_date = f"{now.strftime('%A')} the {ordinal(now.day)} {now.strftime('%B, %Y')}"
+        #     console.print(f"Hey Yo! How's going Bro? It's {time_str} {period} {formatted_date}", style="orange3")
+        #     console.print("You know what you are using right now??", style="orange3")
+        #     console.print("The best software on this planet!!! :muscle::sunglasses:", style="orange3")
            
         elif arg == "-rmgt" or arg == "--rm-gene-trees":
             options.rm_gene_trees = False
@@ -587,6 +628,23 @@ def ProcessArgs(args):
 
         elif arg == "--old-version":
             options.old_version = True
+            
+        elif arg == "--no-print-info":
+            options.print_info = False
+
+        elif arg == "-ST" or arg == "--species-tree-program":
+            if len(args) == 0:
+                print("Missing option for command line argument %s\n" % arg)
+                util.Fail()
+            arg = args.pop(0)
+            if "astral" in arg.lower():
+                options.astral = True
+
+        elif arg == "--save-blast-commands":
+            options.save_blast_commands = True
+
+        elif arg == "--restart-of-blast":
+            options.restart_of_blast = True
 
         elif arg == "-1":
             options.qDoubleBlast = False
@@ -603,6 +661,14 @@ def ProcessArgs(args):
         elif arg == "-z":
             options.qTrim = False
 
+        elif arg == "-nk":
+
+            if len(args) == 0:
+                print("Missing option for command line argument %s\n" % arg)
+                util.Fail()
+                
+            options.n_skip = int(args.pop(0))
+
         elif arg == "-I" or arg == "--inflation":
             if len(args) == 0:
                 print("Missing option for command line argument %s\n" % arg)
@@ -614,12 +680,12 @@ def ProcessArgs(args):
                 print("Incorrect argument for MCL inflation parameter: %s\n" % arg)
                 util.Fail()
 
-        elif arg == "-c1":
-            print("\nThe option 'c1' has been renamed '--c-homologs'")
-            util.Fail()
+        # elif arg == "-c1":
+        #     print("\nThe option 'c1' has been renamed '--c-homologs'")
+        #     util.Fail()
 
-        elif arg == "--c-homologs":
-            options.gathering_version = (3, 2)
+        # elif arg == "--c-homologs":
+        #     options.gathering_version = (3, 2)
 
         elif arg == "--save-space":
             options.save_space = True
@@ -627,14 +693,17 @@ def ProcessArgs(args):
         elif arg == "--no-fix-files":
             options.fix_files = False
 
-        elif arg == "-x" or arg == "--orthoxml":
-            if options.speciesXMLInfoFN:
-                print("Repeated argument: -x/--orthoxml")
-                util.Fail()
-            if len(args) == 0:
-                print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
-            options.speciesXMLInfoFN = args.pop(0)
+        elif arg == "-rmlg":
+            options.rm_legacy = False
+
+        # elif arg == "-x" or arg == "--orthoxml":
+        #     if options.speciesXMLInfoFN:
+        #         print("Repeated argument: -x/--orthoxml")
+        #         util.Fail()
+        #     if len(args) == 0:
+        #         print("Missing option for command line argument %s\n" % arg)
+        #         util.Fail()
+        #     options.speciesXMLInfoFN = args.pop(0)
 
         elif arg == "-n" or arg == "--name":
             if options.name:
@@ -728,10 +797,10 @@ def ProcessArgs(args):
             arg = args.pop(0)
             if arg == "msa":
                 options.qMSATrees = True
-            elif arg == "phyldog":
-                options.qPhyldog = True
-                options.recon_method = "phyldog"
-                options.qMSATrees = False
+            # elif arg == "phyldog":
+            #     options.qPhyldog = True
+            #     options.recon_method = "phyldog"
+            #     options.qMSATrees = False
             elif arg == "dendroblast":
                 options.qMSATrees = False
             else:
@@ -739,7 +808,7 @@ def ProcessArgs(args):
                 print("Valid options are 'dendroblast' and 'msa'\n")
                 util.Fail()
 
-        elif arg == "-A" or arg == "--msa_program":
+        elif arg == "-A" or arg == "--msa-program":
             choices = ["mafft"] + prog_caller.ListMSAMethods()
             switch_used = arg
             if len(args) == 0:
@@ -754,7 +823,7 @@ def ProcessArgs(args):
                 print("Valid options are: {%s}\n" % (", ".join(choices)))
                 util.Fail()
 
-        elif arg == "-T" or arg == "--tree_program":
+        elif arg == "-T" or arg == "--tree-program":
             choices = ["fasttree"] + prog_caller.ListTreeMethods()
             switch_used = arg
             if len(args) == 0:
@@ -769,52 +838,58 @@ def ProcessArgs(args):
                 print("Valid options are: {%s}\n" % (", ".join(choices)))
                 util.Fail()
 
-        elif arg == "-R" or arg == "--recon_method":
-            choices = ["of_recon", "dlcpar", "dlcpar_convergedsearch", "only_overlap"]
-            switch_used = arg
-            if len(args) == 0:
-                print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
-            arg = args.pop(0)
-            if arg in choices:
-                options.recon_method = arg
-            else:
-                print("Invalid argument for option %s: %s" % (switch_used, arg))
-                print("Valid options are: {%s}\n" % (", ".join(choices)))
-                util.Fail()
+        # elif arg == "-R" or arg == "--recon_method":
+        #     choices = ["of_recon", "dlcpar", "dlcpar_convergedsearch", "only_overlap"]
+        #     switch_used = arg
+        #     if len(args) == 0:
+        #         print("Missing option for command line argument %s\n" % arg)
+        #         util.Fail()
+        #     arg = args.pop(0)
+        #     if arg in choices:
+        #         options.recon_method = arg
+        #     else:
+        #         print("Invalid argument for option %s: %s" % (switch_used, arg))
+        #         print("Valid options are: {%s}\n" % (", ".join(choices)))
+        #         util.Fail()
 
-        elif arg == "-p":
-            pickleDir_nonDefault = GetDirectoryArgument(arg, args)
+        # elif arg == "-p":
+        #     pickleDir_nonDefault = GetDirectoryArgument(arg, args)
 
         elif arg == "-op" or arg == "--only-prepare":
             options.qStopAfterPrepare = True
 
         elif arg == "-og" or arg == "--only-groups":
-            options.qStopAfterGroups = False
+            options.qStopAfterGroups = True
 
-        elif arg == "-os" or arg == "--only-seqs":
-            options.qStopAfterSeqs = False
+        # elif arg == "-os" or arg == "--only-seqs":
+        #     options.qStopAfterSeqs = False
 
-        elif arg == "-oa" or arg == "--only-alignments":
-            options.qStopAfterAlignments = False
+        # elif arg == "-oa" or arg == "--only-alignments":
+        #     options.qStopAfterAlignments = False
 
-        elif arg == "-ot" or arg == "--only-trees":
-            options.qStopAfterTrees = False
+        elif arg == "-ogt" or arg == "--only-trees":
+            options.qStopAfterTrees = True
+
+        elif arg == "-ost" or arg == "--only-species-trees":
+            options.qStopAfterSpeciesTrees = True
 
         elif arg == "-h" or arg == "--help":
             helpinfo.PrintHelp(prog_caller)
             util.Success()
+### ----------------------------------------------------------
+        # elif arg == "--matrix" or arg == "--custom-matrix":
+        #     options.score_matrix = GetScoreMatrix(args.pop(0))
+        #     if arg == "--custom-matrix":
+        #         scoring_matrix_info = "--custom-matrix"
 
-        elif arg == "--matrix" or arg == "--custom-matrix":
-            options.score_matrix = GetScoreMatrix(args.pop(0))
-            if arg == "--custom-matrix":
-                scoring_matrix_info = "--custom-matrix"
+        # elif arg == "-ge" or arg == "--gapextend":
+        #     options.gapextend = args.pop(0)
 
-        elif arg == "-ge" or arg == "--gapextend":
-            options.gapextend = args.pop(0)
+        # elif arg == "-go" or arg == "--gapopen":
+        #     options.gapopen =  args.pop(0)
 
-        elif arg == "-go" or arg == "--gapopen":
-            options.gapopen =  args.pop(0)
+### ----------------------------------------------------------
+
         # elif arg == "-ge" or arg == "--gapextend":
         #     options.gapextend = GetGapExtend(options.score_matrix, args.pop(0))
 
@@ -827,23 +902,26 @@ def ProcessArgs(args):
 
         elif arg == "-efn" or arg == "--extended-filename":
             options.extended_filename = True
+        
+        # elif arg == "--dythreads":
+        #     options.dynamic_threads = True
 
         else:
             print("Unrecognised argument: %s\n" % arg)
             util.Fail()
 
-    if "diamond" in options.search_program and not options.score_matrix:
-        options.score_matrix = "BLOSUM62"
+    # if "diamond" in options.search_program and not options.score_matrix:
+    #     options.score_matrix = "BLOSUM62"
 
-    if options.score_matrix:
-        if not options.gapextend and not options.gapopen:
-            options.gapextend = GetGapExtend(options.score_matrix)
-            options.gapopen = GetGapOpen(options.score_matrix)
+    # if options.score_matrix:
+    #     if not options.gapextend and not options.gapopen:
+    #         options.gapextend = GetGapExtend(options.score_matrix)
+    #         options.gapopen = GetGapOpen(options.score_matrix)
 
-        elif not options.gapopen and options.gapextend:
-            options.gapopen = GetGapOpen(
-                options.score_matrix, gapextend=options.gapextend
-            )
+    #     elif not options.gapopen and options.gapextend:
+    #         options.gapopen = GetGapOpen(
+    #             options.score_matrix, gapextend=options.gapextend
+    #         )
 
     # set a default for number of algorithm threads
     if options.nProcessAlg is None:
@@ -870,6 +948,7 @@ def ProcessArgs(args):
         or options.qStartFromGroups
         or options.qStartFromTrees
         or options.qFastAdd
+        or options.qStartFromSpeciesTrees
     ):
         print(
             "ERROR: Please specify the input directory for OrthoFinder using one of the options: '-f', '-b', '-fg' or '-ft', '--assign'."
@@ -882,9 +961,10 @@ def ProcessArgs(args):
             or options.qStartFromBlast
             or options.qStartFromGroups
             or options.qStartFromTrees
+            or options.qStartFromSpeciesTrees
         ):
             print(
-                "ERROR: Incompatible options used with --assign, cannot accept: '-f', '-b', '-fg' or '-ft'"
+                "ERROR: Incompatible options used with --assign, cannot accept: '-f', '-b', '-fg', '-ft', '-fst'"
             )
             util.Fail()
         if fastaDir is None:
@@ -904,34 +984,50 @@ def ProcessArgs(args):
             util.Fail()
 
     if options.qStartFromFasta and (
-        options.qStartFromTrees or options.qStartFromGroups
+        options.qStartFromTrees or options.qStartFromGroups or options.qStartFromSpeciesTrees
     ):
-        print(
-            "ERROR: Incompatible arguments, -f (start from fasta files) and"
-            + (
-                " -fg (start from orthogroups)"
-                if options.qStartFromGroups
-                else " -ft (start from trees)"
-            )
-        )
+        
+        err_msg = "ERROR: Incompatible arguments, -f (start from fasta files) and"
+        if options.qStartFromGroups:
+            err_msg += " -fg (start from orthogroups)"
+        elif options.qStartFromTrees:
+            err_msg += " -ft (start from gene trees)"
+        else:
+            err_msg += "-fst (start from species trees)"
+        print(err_msg)
+
         util.Fail()
 
     if options.qStartFromBlast and (
-        options.qStartFromTrees or options.qStartFromGroups
+        options.qStartFromTrees or options.qStartFromGroups or options.qStartFromSpeciesTrees
     ):
-        print(
-            "ERROR: Incompatible arguments, -b (start from pre-calcualted BLAST results) and"
-            + (
-                " -fg (start from orthogroups)"
-                if options.qStartFromGroups
-                else " -ft (start from trees)"
-            )
-        )
+        err_msg = "ERROR: Incompatible arguments, -b (start from pre-calcualted BLAST results) and"
+
+        if options.qStartFromGroups:
+            err_msg += " -fg (start from orthogroups)"
+        elif options.qStartFromGroups:
+            err_msg += " -ft (start from gene trees)"
+        else:
+            err_msg += "-fst (start from species trees)"
+        print(err_msg)
         util.Fail()
 
     if options.qStartFromTrees and options.qStartFromGroups:
         print(
-            "ERROR: Incompatible arguments, -fg (start from orthogroups) and -ft (start from trees)"
+            "ERROR: Incompatible arguments, -fg (start from orthogroups) and -ft (start from gene trees)"
+        )
+        util.Fail()
+
+    if options.qStartFromSpeciesTrees and options.qStartFromGroups:
+        print(
+            "ERROR: Incompatible arguments, -fg (start from orthogroups) and -fst (start from species gene trees)"
+        )
+        util.Fail()
+
+
+    if options.qStartFromSpeciesTrees and options.qStartFromTrees:
+        print(
+            "ERROR: Incompatible arguments, -ft (start from gene trees) and -fst (start from species gene trees)"
         )
         util.Fail()
 
@@ -955,9 +1051,9 @@ def ProcessArgs(args):
         )
         util.Fail()
 
-    if options.qPhyldog and (not options.speciesTreeFN):
-        print("ERROR: Phyldog currently needs a species tree to be provided")
-        util.Fail()
+    # if options.qPhyldog and (not options.speciesTreeFN):
+    #     print("ERROR: Phyldog currently needs a species tree to be provided")
+    #     util.Fail()
 
     if resultsDir_nonDefault != None and (
         (not options.qStartFromFasta) or options.qStartFromBlast
@@ -973,44 +1069,47 @@ def ProcessArgs(args):
             % options.search_program
         )
         util.Fail()
-
-    print()
-    util.PrintTime(f"Starting [dark_goldenrod]OrthoFinder[/dark_goldenrod] v[deep_sky_blue2]{__version__}[/deep_sky_blue2]")
-    print(
-        "%d thread(s) for highly parallel tasks (BLAST searches etc.)" % options.nBlast
-    )
-    print("%d thread(s) for [dark_goldenrod]OrthoFinder[/dark_goldenrod] algorithm\n" % options.nProcessAlg)
-
+        
+    if options.print_info:
+        print()
+        util.PrintTime(f"Starting [dark_goldenrod]OrthoFinder[/dark_goldenrod] v[deep_sky_blue2]{__version__}[/deep_sky_blue2]")
+        print(
+            "%d thread(s) for highly parallel tasks (BLAST searches etc.)" % options.nBlast
+        )
+        print("%d thread(s) for [dark_goldenrod]OrthoFinder[/dark_goldenrod] algorithm\n" % options.nProcessAlg)
+        
     if options.qFastAdd and not q_selected_msa_options:
-        print("INFO: For --assign defaulting to 'famsa' to reduce RAM usage\n")
+        if options.print_info:
+            print("INFO: For --assign defaulting to 'famsa' to reduce RAM usage\n")
         # options.msa_program = "mafft_memsave"
         options.msa_program = "famsa"
 
     if options.qFastAdd and not q_selected_tree_options:
-        print( "INFO: For --assign defaulting to 'FastTree -fastest' to reduce RAM usage\n")
+        if options.print_info:
+            print( "INFO: For --assign defaulting to 'FastTree -fastest' to reduce RAM usage\n")
         options.tree_program = "fasttree_fastest"
         # options.tree_program = "veryfasttree"
-    
-    if options.search_program == "diamond":
-        # check gapextend
-        options.gapextend = GetGapExtend(
-            options.score_matrix, 
-            options.gapextend, 
-            scoring_matrix_info
-        )
+### ---------------------------------------------------------    
+    # if options.search_program == "diamond":
+    #     # check gapextend
+    #     options.gapextend = GetGapExtend(
+    #         options.score_matrix, 
+    #         options.gapextend, 
+    #         scoring_matrix_info
+    #     )
 
-        if options.score_matrix in diamond_sm_options and options.gapextend is None:
-            print("The gapopen penalty cannot be define before gapextend")
-            util.Fail()
+    #     if options.score_matrix in diamond_sm_options and options.gapextend is None:
+    #         print("The gapopen penalty cannot be define before gapextend")
+    #         util.Fail()
 
-        # check gapopen
-        options.gapopen = GetGapOpen(
-            options.score_matrix, 
-            options.gapopen, 
-            options.gapextend,
-            scoring_matrix_info
-        )
-   
+    #     # check gapopen
+    #     options.gapopen = GetGapOpen(
+    #         options.score_matrix, 
+    #         options.gapopen, 
+    #         options.gapextend,
+    #         scoring_matrix_info
+    #     )
+### ---------------------------------------------------------  
     if resultsDir_nonDefault is not None:
         resultsDir_nonDefault = os.path.abspath(resultsDir_nonDefault) + os.path.sep
 
@@ -1053,6 +1152,7 @@ def CheckOptions(options, speciesToUse):
             options.qStopAfterSeqs,
             options.qStopAfterAlignments,
             options.qStopAfterTrees,
+            options.qStopAfterSpeciesTrees
         )
     )
     if q_do_orthologs:

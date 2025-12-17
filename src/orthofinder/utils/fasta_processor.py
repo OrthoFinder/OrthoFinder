@@ -99,7 +99,14 @@ class FastaWriter(object):
                     sys.stderr.write(seq + "\n")
 
 
-def ProcessesNewFasta(fastaDir, q_dna, speciesInfoObj_prev = None, speciesToUse_prev_names=[]):
+def ProcessesNewFasta(
+        fastaDir, 
+        q_dna, 
+        speciesInfoObj_prev = None, 
+        speciesToUse_prev_names=[],
+        species_id_fn="",
+        sequence_id_fn="",
+    ):
     """
     Process fasta files and return a Directory object with all paths completed.
     """
@@ -137,28 +144,42 @@ def ProcessesNewFasta(fastaDir, q_dna, speciesInfoObj_prev = None, speciesToUse_
         print("")
         util.Fail()
 
+    speciesToUse_prev_names = sorted([*speciesToUse_prev_names])
+    originalFastaFilenames = sorted([*originalFastaFilenames])
+
     if len(originalFastaFilenames) == 0:
         print("\nNo fasta files found in supplied directory: %s" % fastaDir)
         util.Fail()
 
     if speciesInfoObj_prev == None:
-        # Then this is a new, clean analysis 
         speciesInfoObj = util.SpeciesInfo()
     else:
         speciesInfoObj = speciesInfoObj_prev
+
+    if not species_id_fn:
+        if files.FileHandler.wd_current:
+            species_id_fn = os.path.join(files.FileHandler.wd_current, "SpeciesIDs.txt")
+        else:
+            species_id_fn = files.FileHandler.GetSpeciesIDsFN()
+
+    if not sequence_id_fn:
+        if files.FileHandler.wd_current:
+            sequence_id_fn = os.path.join(files.FileHandler.wd_current, "SequenceIDs.txt")
+        else:
+            sequence_id_fn = files.FileHandler.GetSequenceIDsFN()
 
     iSeq = 0
     iSpecies = 0
     # If it's a previous analysis:
     if len(speciesToUse_prev_names) != 0:
-        with open(files.FileHandler.GetSpeciesIDsFN(), 'r') as infile:
+        with open(species_id_fn, 'r') as infile:
             for line in infile: pass
         if line.startswith("#"): line = line[1:]
         iSpecies = int(line.split(":")[0]) + 1
     speciesInfoObj.iFirstNewSpecies = iSpecies
     newSpeciesIDs = []
 
-    with open(files.FileHandler.GetSequenceIDsFN(), 'a') as idsFile, open(files.FileHandler.GetSpeciesIDsFN(), 'a') as speciesFile:
+    with open(sequence_id_fn, 'a') as idsFile, open(species_id_fn, 'a') as speciesFile:
         for fastaFilename in originalFastaFilenames:
             newSpeciesIDs.append(iSpecies)
             outputFasta = open(files.FileHandler.GetSpeciesFastaFN(iSpecies, qForCreation=True), 'w')
@@ -189,14 +210,14 @@ def ProcessesNewFasta(fastaDir, q_dna, speciesInfoObj_prev = None, speciesToUse_
             if (not qHasAA) and (not q_dna):
                 qOk = False
                 print("ERROR: %s appears to contain nucleotide sequences instead of amino acid sequences. Use '-d' option" % fastaFilename)
+            outputFasta.close()
             iSpecies += 1
             iSeq = 0
-            outputFasta.close()
         if not qOk:
             util.Fail()
-
     if len(originalFastaFilenames) > 0: outputFasta.close()
     speciesInfoObj.speciesToUse = speciesInfoObj.speciesToUse + newSpeciesIDs
     speciesInfoObj.nSpAll = max(speciesInfoObj.speciesToUse) + 1      # will be one of the new species
     
     return speciesInfoObj
+

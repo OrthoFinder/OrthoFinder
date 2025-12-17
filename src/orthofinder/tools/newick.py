@@ -55,13 +55,13 @@ except ImportError:
 __all__ = ["read_newick", "write_newick"]
 
 # Regular expressions used for reading newick format
-_ILEGAL_NEWICK_CHARS = ":;(),\[\]\t\n\r="
-_NON_PRINTABLE_CHARS_RE = "[\x00-\x1f]+"
+_ILEGAL_NEWICK_CHARS = r":;(),\[\]\t\n\r="
+_NON_PRINTABLE_CHARS_RE = r"[\x00-\x1f]+"
 
-_NHX_RE = "\[&&NHX:[^\]]*\]"
-_FLOAT_RE = "[+-]?\d+\.?\d*(?:[eE][-+]\d+)?"
+_NHX_RE = r"\[&&NHX:[^\]]*\]"
+_FLOAT_RE = r"[+-]?\d+\.?\d*(?:[eE][-+]\d+)?"
 #_FLOAT_RE = "[+-]?\d+\.?\d*"
-_NAME_RE = "[^():,;\[\]]+"
+_NAME_RE = r"[^():,;\[\]]+"
 
 DEFAULT_DIST = 1.0
 DEFAULT_NAME = ''
@@ -160,7 +160,7 @@ def format_node(node, node_type, format):
 
     return "%s%s" %(FIRST_PART, SECOND_PART)
 
-# Used to write into specific formats
+# # Used to write into specific formats
 def node2leafformat(node, format):
     safe_name = re.sub("["+_ILEGAL_NEWICK_CHARS+"]", "_", \
                              str(getattr(node, "name")))
@@ -355,36 +355,36 @@ def _read_node_data(subnw, current_node, node_type, format):
         raise NewickError("Unexpected leaf node format:\n\t"+ subnw[0:50] + "[%s]" %format)
     return
 
-# def write_newick_recursive(node, features=None, format=1, _is_root=True):
-#     """ Recursively reads a tree structure and returns its NHX
-#     representation. """
-#     newick = ""
-#     if not node.children:
-#         safe_name = re.sub("["+_ILEGAL_NEWICK_CHARS+"]", "_", \
-#                                str(getattr(node, "name")))
+def write_newick_recursive(node, features=None, format=1, _is_root=True):
+    """ Recursively reads a tree structure and returns its NHX
+    representation. """
+    newick = ""
+    if not node.children:
+        safe_name = re.sub("["+_ILEGAL_NEWICK_CHARS+"]", "_", \
+                               str(getattr(node, "name")))
 
-#         newick += format_node(node, "leaf", format)
-#         newick += _get_features_string(node, features)
-#         #return newick
+        newick += format_node(node, "leaf", format)
+        newick += _get_features_string(node, features)
+        #return newick
         
-#     else:
-#         if node.children:
-#             newick+= "("
-#         for cnode in node.children:
-#             newick += write_newick(cnode, features, format=format,\
-#                                      _is_root = False)
-#             # After last child is processed, add closing string
-#             if cnode == node.children[-1]:
-#                 newick += ")"
-#                 if node.up is not None:
-#                     newick += format_node(node, "internal", format)
-#                 newick += _get_features_string(node, features)
-#             else:
-#                 newick += ','
+    else:
+        if node.children:
+            newick+= "("
+        for cnode in node.children:
+            newick += write_newick(cnode, features, format=format,\
+                                     _is_root = False)
+            # After last child is processed, add closing string
+            if cnode == node.children[-1]:
+                newick += ")"
+                if node.up is not None:
+                    newick += format_node(node, "internal", format)
+                newick += _get_features_string(node, features)
+            else:
+                newick += ','
                 
-#     if _is_root:
-#         newick += ";"
-#     return newick
+    if _is_root:
+        newick += ";"
+    return newick
 
 def write_newick(rootnode, features=None, format=1, format_root_node=True,
                  is_leaf_fn=None):

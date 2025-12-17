@@ -39,7 +39,7 @@ try:
     from rich import print
 except ImportError:
     ...
-from .util import printer
+    
 try:
     width = os.get_terminal_size().columns
 except OSError as e:
@@ -107,12 +107,12 @@ except RuntimeError as e:
 
 
 def PrintTime(message):
-    printer.print((str(datetime.datetime.now()).rsplit(".", 1)[0] + " : " + message), style="default")
+    util.printer.print((str(datetime.datetime.now()).rsplit(".", 1)[0] + " : " + message), style="default")
     sys.stdout.flush()
 
 
 def PrintNoNewLine(text):
-    printer.print(text, end="")
+    util.printer.print(text, end="")
     sys.stdout.flush()
     # sys.stdout.write(text)
 
@@ -159,7 +159,7 @@ def ManageQueueNew(processes, result_queue, progress_bar, task, update_cycle):
                     if result != "success":
                         for p in processes:
                             p.terminate()
-                        printer.print(f"ERROR: Error processing job {ijob}", style="error")
+                        util.printer.print(f"ERROR: Error processing job {ijob}", style="error")
                         util.Fail()
                 except queue.Empty:
                     if not processes:
@@ -228,13 +228,13 @@ def CanRunCommand(
         and return_code_check
     ):
         if qPrint:
-            printer.print(" - [bold green]ok")
+            util.printer.print(" - [bold green]ok")
         return True
     else:
         if qPrint:
-            printer.print(" - [bold red]failed")
+            util.printer.print(" - [bold red]failed")
         if not return_code_check:
-            printer.print("Returned a non-zero code: %d" % capture.returncode, style="error")
+            util.printer.print("Returned a non-zero code: %d" % capture.returncode, style="error")
         print("\nstdout:")
         for l in stdout:
             print(l)
@@ -289,7 +289,7 @@ def Worker_RunCommands_And_Move(
                 if isinstance(command, types.FunctionType):
                     # This will block the process, but it is ok for trimming, it takes minimal time
                     fn = command
-                    fn(fns)
+                    fn(*fns)
                 else:
                     if not isinstance(command, str):
                         print("ERROR: Cannot run command: " + str(command))
@@ -462,22 +462,22 @@ class ParallelTaskManager_singleton:
                 ParallelTaskManager_singleton.__Singleton()
             )
 
-    def RunParallel(self, func, args_list, nParallel):
-        """
-        Args:
-            cmd_list - list of commands or list of lists of commands (in which elements in inner list must be run in order)
-            nParallel - number of parallel threads to use
-            qShell - should the tasks be run in a shell
-        """
-        self.instance.message_to_spawner.put((func, args_list, nParallel))
-        while True:
-            try:
-                signal = self.instance.message_to_PTM.get()
-                if signal == "Done":
-                    return
-            except queue.Empty:
-                pass
-            time.sleep(1)
+    # def RunParallel(self, func, args_list, nParallel):
+    #     """
+    #     Args:
+    #         cmd_list - list of commands or list of lists of commands (in which elements in inner list must be run in order)
+    #         nParallel - number of parallel threads to use
+    #         qShell - should the tasks be run in a shell
+    #     """
+    #     self.instance.message_to_spawner.put((func, args_list, nParallel))
+    #     while True:
+    #         try:
+    #             signal = self.instance.message_to_PTM.get()
+    #             if signal == "Done":
+    #                 return
+    #         except queue.Empty:
+    #             pass
+    #         time.sleep(1)
 
     def Stop(self):
         """Warning, cannot be restarted"""
@@ -485,13 +485,13 @@ class ParallelTaskManager_singleton:
         self.instance.manager_process.join()
 
 
-def RunParallelMethods(func, args_list, nProcesses):
-    """nProcesss - the number of processes to run in parallel
-    commands - list of lists of commands where the commands in the inner list are completed in order (the i_th won't run until
-    the i-1_th has finished).
-    """
-    ptm = ParallelTaskManager_singleton()
-    ptm.RunParallel(func, args_list, nProcesses)
+# def RunParallelMethods(func, args_list, nProcesses):
+#     """nProcesss - the number of processes to run in parallel
+#     commands - list of lists of commands where the commands in the inner list are completed in order (the i_th won't run until
+#     the i-1_th has finished).
+#     """
+#     ptm = ParallelTaskManager_singleton()
+#     ptm.RunParallel(func, args_list, nProcesses)
 
 
 def Success():
