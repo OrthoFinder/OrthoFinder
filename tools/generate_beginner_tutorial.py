@@ -10,7 +10,7 @@ TUTORIAL = """---
 layout: post
 title:  "Beginner Tutorial"
 date:   {tutorial_datetime}
-updated: 2025-05-08
+updated: {tutorial_update_date}
 docs: /assets/docs/beginner-tutorial.pdf
 pdfs: https://GitHub.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/beginner-tutorial.pdf
 ---
@@ -415,6 +415,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     target_dir = args.path
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S %z")
+    update_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     if not os.path.exists(target_dir):
         print("The target directory doesn't exist")
         raise SystemExit(1)
@@ -435,6 +436,7 @@ if __name__ == "__main__":
 
     tutorial = TUTORIAL.format(
         tutorial_datetime=ts,
+        tutorial_update_date=update_date,
         target_dir=target_dir,
         stats_overall=stats_overall,
         percentage_of_genes_in_orthogroup=percentage_of_genes_in_orthogroup,
