@@ -88,7 +88,7 @@ or the [Advanced Tutorial]({{ site.baseurl }}/tutorials/advanced-tutorial/) page
 
 OrthoFinder creates a results directory named OrthoFinder inside the proteome
 directory, and puts the results here.
-My results directory `ExampleData/OrthoFinder/Results_Dec15` looks like this:
+My results directory `ExampleData/OrthoFinder/Results_Dec17` looks like this:
 
 {% include_relative of-output-tree.md %}
 
