@@ -1,7 +1,7 @@
 from directory_tree import DisplayTree
 import os
 import argparse
-
+from datetime import datetime, timezone
 from ete4 import Tree
 from tabulate import tabulate
 
@@ -9,7 +9,7 @@ from tabulate import tabulate
 TUTORIAL = """---
 layout: post
 title:  "Beginner Tutorial"
-date:   2025-05-01 09:01:16 +0000
+date:   {tutorial_datetime}
 updated: 2025-05-08
 docs: /assets/docs/beginner-tutorial.pdf
 pdfs: https://GitHub.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/beginner-tutorial.pdf
@@ -414,7 +414,7 @@ if __name__ == "__main__":
     parser.add_argument("path")
     args = parser.parse_args()
     target_dir = args.path
-
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S %z")
     if not os.path.exists(target_dir):
         print("The target directory doesn't exist")
         raise SystemExit(1)
@@ -434,6 +434,7 @@ if __name__ == "__main__":
     duplication_table, node_example, number_of_duplications_for_node = gene_duplications(target_dir)
 
     tutorial = TUTORIAL.format(
+        tutorial_datetime=ts,
         target_dir=target_dir,
         stats_overall=stats_overall,
         percentage_of_genes_in_orthogroup=percentage_of_genes_in_orthogroup,
