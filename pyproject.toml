@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=77", "setuptools_scm>=8", "wheel", "packaging>=24.2"]
+requires = ["setuptools>=77", "setuptools-scm[toml]>=8", "wheel", "packaging>=24.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -58,7 +58,7 @@ dev = [
     "pytest-order",
     # "pytest-subtests",
     "setuptools>=77",
-    "setuptools_scm>=8",
+    "setuptools-scm>=8",
     "packaging>=24.2",
 ]
 

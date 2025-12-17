@@ -5,7 +5,7 @@ pytest-cov
 pytest-check
 pytest-order
 setuptools>=77
-setuptools_scm>=8
+setuptools-scm>=8
 packaging>=24.2
 PyQt6
 tabulate
