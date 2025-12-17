@@ -192,33 +192,20 @@ tox.ini
 FixTheFiles_v0/
 README_orig.md
 TestData/
-<<<<<<< HEAD
-tests/
-=======
->>>>>>> dev_master
 everything/
 _site/
 _includes/
 _tutorials/
 docs/
-<<<<<<< HEAD
-.github/
-tests/
-=======
->>>>>>> dev_master
 src/orthofinder/legacy/
 scoring_matrix/
 DEVNOTES.md
 CONDUCT.md
 OrthoFinder-manual.pdf
 setup.py
-<<<<<<< HEAD
-requirements_dev.txt
-=======
 *expected
 Species_*
 tests/data/dna/Genomes_Assign/
 tests/data/dna/Genomes_Core/OrthoFinder/
 .vscode/
 of_structure.sh
->>>>>>> dev_master

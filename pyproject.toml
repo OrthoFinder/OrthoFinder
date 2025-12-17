@@ -120,6 +120,7 @@ markers = [
 ]
 
 [tool.setuptools_scm]
+tag_regex = "^(?:v)?(?P<version>\\d+\\.\\d+\\.\\d+)$"
 write_to = "src/orthofinder/_version.py"
 version_scheme = "no-guess-dev"
 local_scheme = "no-local-version"

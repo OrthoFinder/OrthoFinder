@@ -9,11 +9,7 @@ import argparse
 if __name__ == "__main__" and __package__ is None:   
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-<<<<<<< HEAD
 from src.orthofinder.tools import tree
-=======
-from orthofinder.tools import tree
->>>>>>> dev_master
 from src.orthofinder.utils import util
         
 def ReplaceFileWithNewIDs(idsMap, treeFilename, newTreeFilename):     
