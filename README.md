@@ -1,25 +1,29 @@
 # OrthoFinder
+
 <p align="center">
-  <img src="assets/images/concept_figure.png" alt="concept_figure" width="800"/>
+  <img src="assets/images/coreassignfigure-images-2.png" alt="concept_figure" width="800"/>
 </p>
-OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and analyzes the gene trees to identify the rooted species tree. The method subsequently identifies all gene duplication events in the complete set of gene trees, and analyses them at both gene tree and species tree level. OrthoFinder further analyzes all of this phylogenetic information to identify the complete set of orthologs between all species, and provide extensive comparative genomics statistics.
+
+OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and analyzes the gene trees to identify the rooted species tree. The method subsequently identifies all gene duplication events in the complete set of gene trees, and analyses them at both gene tree and species tree level. OrthoFinder further analyzes all of this phylogenetic information to identify the complete set of orthologs between all species, and provides extensive comparative genomics statistics.
 
 ## Table of contents
-- [Installation](#Installation)
-- [Simple Usage](#Simple-Usage)
-- [Advanced Usage - Scaling to Thousands of Species](#Advanced-Usage-Scaling-to-Thousands-of-Species)
-- [Command line Options](#Command-line-Options)
-- [Output files](#Output-files)
-- [Latest additions](#Latest-additions)
-- [Citation](#Citation)
 
-A single PDF with all documentation and tutorial is available [here](https://github.com/OrthoFinder/OrthoFinder/blob/update_readme/assets/docs/of3_v2.pdf)
+- [Installation](#installation)
+- [Simple Usage](#simple-usage)
+- [Advanced Usage - Scaling to Thousands of Species](#advanced-usage---scaling-to-thousands-of-species)
+- [Command line Options](#command-line-options)
+- [Output files](#output-files)
+- [Latest additions](#latest-additions)
+- [Citation](#citation)
+- [System Requirements](#system-requirements)
+
+For more information please visit [our website](https://orthofinder.github.io/OrthoFinder/).
 
 ## Installation
 
 ### Install in conda (recommended) 
 
-The easiest way to install OrthoFinder is using [conda](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/).
+The simplest way to install OrthoFinder is through [conda](https://anaconda.org/bioconda/orthofinder). If you're unfamiliar with conda, [this tutorial](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/) offers a beginner-friendly introduction.
 
 ```bash
 conda create -n of3_env python=3.10
@@ -30,6 +34,7 @@ conda install orthofinder
 Alternatively, you could install via github, or download the source code and install locally.
 
 ### Install via github
+
 ```bash
 python3 -m venv of3_env 
 . of3_env/bin/activate
@@ -42,16 +47,18 @@ The following commands provide three ways to download the source code of OrthoFi
 ```bash
 # Download via git 
 git clone https://github.com/OrthoFinder/OrthoFinder.git
-# or download the zipfile and unzip it into OrthoFinder
-mkdir OrthoFinder && wget -qO- https://github.com/OrthoFinder/OrthoFinder/archive/refs/heads/master.zip | funzip | tar -x --strip-components=1 -C OrthoFinder
-# or download the tar.gz and unzip it into OrthoFinder
-mkdir OrthoFinder && wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.0.1/orthofinder-3.0.1.tar.gz | tar -xz --strip-components=1 -C OrthoFinder
+
+# or download the orthofinder-linux-intel-3.1.0.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine
+mkdir OrthoFinder && \
+  wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-linux-intel-3.1.0.tar.gz | \
+  tar -xz --strip-components=1 -C OrthoFinder
 ```
 
 Next, you can run the following commands to install OrthoFinder inside the of3_env virtural environment.
 ```bash
 cd OrthoFinder
-python3 -m venv of3_env && . of3_env/bin/activate
+python3 -m venv of3_env # Create an virtural environment named of3_env
+. of3_env/bin/activate # Activate of3_env
 pip install .
 ```
 
@@ -61,18 +68,23 @@ To deactivate the virtual environment when you are finished, run:
 ```bash
 deactivate
 ```
+To activate the virtual environment you have created, run:
 
+```bash
+. of3_env/bin/activate
+```
 ### Test your installation
 
-Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/tree/master/ExampleData).
+Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/ExampleData.tar.gz).
 
 ```bash
 orthofinder --help # Print out help informatioin
 orthofinder --version # Check the version
-orthofinder -f ExampleData # Test OrthoFinder on an example dataset
+orthofinder -f ExampleData # Test OrthoFinder on an example dataset - this should take a few minutes to run. 
 ```
 
 ### Uninstalling
+
 To uninstall on conda:
 ```bash
 conda deactivate
@@ -103,7 +115,7 @@ for f in *fa ; do python primary_transcript.py $f ; done
 
 ## Advanced Usage - Scaling to Thousands of Species
 
-If you are analysing >100 species, we reccommend that you use the scalable implementation. 
+If you are analysing >100 species, we recommend that you use the scalable implementation. 
 
 Add the files for 64 species into one directory `<core>`
 Add the remaining files into another directory `<additional>`
@@ -133,124 +145,153 @@ To choose which 64 species to include in the core, aim to capture a broad range 
 
 Command-line options for OrthoFinder
 
-**Adding additional species**
-| Parameter | Description                               |
-|-----------|-------------------------------------------|
-| `--assign <dir1> --core <dir2>`      | Assign species from `<dir1>` to existing orthogroups in `<dir2>`.                   |
+- **Adding additional species**<br>
+  | Parameter | Description                               |
+  |-----------|-------------------------------------------|
+  | `--assign <dir1> --core <dir2>`      | Assign species from `<dir1>` to existing orthogroups in `<dir2>`.                   |
 
-**Method choices**
-| Parameter | Description                               | Default   | Options                                                                                     |
-|-----------|-------------------------------------------|-----------|---------------------------------------------------------------------------------------------|
-| `-M`      | Method for gene tree inference.           | `msa`     | `dendroblast`, `msa`                                                                        |
-| `-S`      | Sequence search program                   | `diamond` | `blast`, `diamond`, `diamond_ultra_sens`, `blastp`, `mmseqs`, `blastn` |
-| `-A`      | MSA program, requires `-M msa`            | `famsa`   | `famsa`, `mafft`, `muscle`,                                                          |
-| `-T`      | Tree inference method, requires `-M msa`  | `fasttree`| `fasttree`, `fasttree_fastest`, `raxml`, `iqtree`                               |
-| `-I`      | MCL inflation parameter                   | `1.2`     | `1-10`                                                                                         |
+- **Method choices**<br>
+  | Parameter | Description                               | Default   | Options                                                                                     |
+  |-----------|-------------------------------------------|-----------|---------------------------------------------------------------------------------------------|
+  | `-M`      | Method for gene tree inference.           | `msa`     | `dendroblast`, `msa`                                                                        |
+  | `-S`      | Sequence search program                   | `diamond` | `blast`, `diamond`, `diamond_ultra_sens`, `blastp`, `mmseqs`, `blastn` |
+  | `-A`      | MSA program, requires `-M msa`            | `famsa`   | `famsa`, `mafft`, `muscle`,                                                          |
+  | `-T`      | Tree inference method, requires `-M msa`  | `fasttree`| `fasttree`, `fasttree_fastest`, `raxml`, `iqtree`                               |
+  | `-I`      | MCL inflation parameter                   | `1.2`     | `1-10`                                                                                         |
 
-**Input options**
-| Parameter | Description                               |
-|-----------|-------------------------------------------|
-| `-d`      | Input is DNA sequences.                   |
-| `-s`      | User-specified rooted species tree.        |
+- **Input options**<br>
+  | Parameter | Description                               |
+  |-----------|-------------------------------------------|
+  | `-d`      | Input is DNA sequences.                   |
+  | `-s`      | User-specified rooted species tree.        |
 
-**Output options**
-| Parameter   | Description                                                                 |
-|-----------  |-----------------------------------------------------------------------------|
-| `-X`      | Don’t add species names to sequence IDs.                                    |
-| `-n <txt>`      | Name to append to the results directory.                                    |
-| `-o <txt>`      | Specify a non-default results directory.                                    |
+- **Output options**<br>
+  | Parameter   | Description                                                                 |
+  |-----------  |-----------------------------------------------------------------------------|
+  | `-X`      | Don’t add species names to sequence IDs.                                    |
+  | `-n <txt>`      | Name to append to the results directory.                                    |
+  | `-o <txt>`      | Specify a non-default results directory.                                    |
 
-**Parallel processing options**
-| Parameter | Description                                 | Default |
-|-----------|---------------------------------------------|---------|
-| `-t`      | Number of parallel sequence search threads. | `All available`    |
-| `-a`      | Number of parallel analysis threads.        | `16 or t/8 (whichever lower)`     |
+- **Parallel processing options**<br>
+  | Parameter | Description                                 | Default |
+  |-----------|---------------------------------------------|---------|
+  | `-t`      | Number of parallel sequence search threads. | `All available`    |
+  | `-a`      | Number of parallel analysis threads.        | `16 or t/8 (whichever lower)`     |
 
-**Workflow stopping options**
-| Parameter | Description                                                                 |
-|-----------|-----------------------------------------------------------------------------|
-| `-op`     | Stop after preparing input files for BLAST.                                 |
+- **Workflow stopping options**<br>
+  | Parameter | Description                                                                 |
+  |-----------|-----------------------------------------------------------------------------|
+  | `-op`     | Stop after preparing input files for BLAST.                                 |
 
-**Workflow restart options**
-| Parameter  | Description                                                  |
-|------------|--------------------------------------------------------------|
-| `-b <dir>` | Start OrthoFinder from pre-computed BLAST results in `<dir>`. |
+- **Workflow restart options**<br>
+  | Parameter  | Description                                                  |
+  |------------|--------------------------------------------------------------|
+  | `-b <dir>` | Start OrthoFinder from pre-computed BLAST results in `<dir>`. |
 
-**Other options**
-| Parameter        | Description                                                               |
-|------------------|---------------------------------------------------------------------------|
-| `-1`             | Only perform one-way sequence search.                                     |
-| `-z`             | Don’t trim MSAs (columns >= 90% gap, min. alignment length 500).          |
-| `-y`             | Split paralogous clades below the root of a HOG into separate HOGs.        |
-| `-h`             | Print this help text.                                                     |
-| `-v`             | Print version.                                                     |
-
+- **Other options**<br>
+  | Parameter        | Description                                                               |
+  |------------------|---------------------------------------------------------------------------|
+  | `-1`             | Only perform one-way sequence search.                                     |
+  | `-z`             | Don’t trim MSAs (columns >= 90% gap, min. alignment length 500).          |
+  | `-y`             | Split paralogous clades below the root of a HOG into separate HOGs.        |
+  | `-h`             | Print this help text.                                                     |
+  | `-v`             | Print version.                                                     |
 
 ## Output files
 
+> ***From OrthoFinder `v3.1.0`, `N0.tsv` is removed from `/Phylogenetic_Hierarchical_Orthogroups`. Instead, `Orthogroups/Orthogroups.tsv` contains the orthogroups from `N0.tsv`.***
+
 A standard OrthoFinder run produces a set of files describing the orthogroups, orthologs, gene trees, resolve gene trees, the rooted species tree, gene duplication events, and comparative genomic statistics for the set of species being analysed. These files are located in an intuitive directory structure.
 
-Full details on the output files and directories can be found in the PDF [here](link). The directories that are useful for most users are;
+Full details on the output files and directories can be found [here](http://orthofinder.github.io/OrthoFinder/tutorials/guide-to-results/). The directories that are useful for most users are
 
-```/Orthogroups```
-- Orthogroups.tsv is the main orthogroup file. Each row contains the genes belonging to a single orthogroup. The genes from each orthogroup are organized into columns, one per species. 
-- Orthogroups.txt is a text file with each line showing the genes in a single orthogroup. It differs from Orthogroups.tsv in that it doesn’t show the species which each gene belongs to.
-- Orthogroups.GeneCount.tsv is a tab separated text file that contains counts of the number of genes for each species in each orthogroup.
-- Orthogroups_SingleCopyOrthologues.txt is a list of orthogroups that contain exactly one gene per species
-- Orthogrouops_UnassignedGenes.tsv is a tab separated text file that contains all of the genes that were not assigned to any orthogroup.
+**```/Orthogroups```**
+- `Orthogroups.tsv` is the main orthogroup file. Each row contains the genes belonging to a single orthogroup. The genes from each orthogroup are organized into columns, one per species. 
+- `Orthogroups.txt` is a text file with each line showing the genes in a single orthogroup. It differs from Orthogroups.tsv in that it doesn’t show the species which each gene belongs to.
+- `Orthogroups.GeneCount.tsv` is a tab separated text file that contains counts of the number of genes for each species in each orthogroup.
+- `Orthogroups_SingleCopyOrthologues.txt` is a list of orthogroups that contain exactly one gene per species
+- `Orthogrouops_UnassignedGenes.tsv` is a tab separated text file that contains all of the genes that were not assigned to any orthogroup.
 
-```/Phylogenetic_Hierarchical_Orthogroups```
-- Each file is a phylogenetic hierarchical orthogroup (HOG) for a different node of the species tree
-- Each row of a file contain the genes belonging to a single orthogroup
-- Each species is represented by a single column
+**```/Phylogenetic_Hierarchical_Orthogroups```**
+- Each file is a phylogenetic hierarchical orthogroup (HOG) for a different node of the species tree.
+- Each row of a file contain the genes belonging to a single orthogroup.
+- Each species is represented by a single column.
+- `N0.tsv` from the old version is now `Orthogroups/Orthogroups.tsv`
 
-```/Orthologues```
+**```/Orthologues```**
 - Each species has a sub-directory that in turn contains a file for each pairwise species comparison, listing the orthologs between that species pair.
 
-```/Comparative_Genomics_Statistics```
-- Files containing summary statistics across all orthogroups, as well as comparisons between each pair of species
+**```/Comparative_Genomics_Statistics```**
+- Files containing summary statistics across all orthogroups, as well as comparisons between each pair of species.
 
-```/Resolved_Gene_Trees```
+**```/Resolved_Gene_Trees```**
 - A rooted phylogenetic tree inferred for each orthogroup with 4 or more sequences and resolved using the OrthoFinder hybrid species-overlap/duplication-loss coalescent model.
 
-```/Species_Tree```
-- SpeciesTree_rooted.txt = A species tree inferred using ASTRAL-Pro.
-- SpeciesTree_rooted_node_labels.txt = The same tree, but with nodes labels instead of support values. This labelled version is useful for interpreting and analysing the results of the gene duplication analyses.
+**```/Species_Tree```**
+- `SpeciesTree_rooted.txt` is a species tree inferred using STAG or ASTRAL-Pro.
+- `SpeciesTree_rooted_node_labels.txt` is the same tree, but with nodes labels instead of support values. This labelled version is useful for interpreting and analysing the results of the gene duplication analyses.
 
 ```/Gene_Duplication_Events```
 - `Duplications.tsv` has a row for each gene duplication event, with information on orthogroup in which it occured, the species that contain the duplicated gene, the node in the species tree on which the gene duplication event occured, and the support score for the gene duplication event.
 - `SpeciesTree_Gene_Duplications_0.5_Support.txt` provides a summation of the above duplications over the branches of the species tree.
 
-```/Orthogroup_Sequences```
+**```/Orthogroup_Sequences```**
 - A FASTA file for each orthogroup giving the amino acid sequences for each gene in the orthogroup.
 
 
 ## Latest additions
-The current version of OrthoFinder has several major changes comapred to OrthoFinder version 2 (Emms & Kelly 2019)
+The current version of OrthoFinder has several major changes compared to OrthoFinder version 2 ([Emms & Kelly 2019]((https://img.shields.io/badge/DOI-10.1186%2Fs13059--019--1832--y-blue))).
 
 **New workflow for scalability**
 
-The ``--core --assign`` workflow uses [SHOOT](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02652-8) to create profiles for previously computed orthogroups, and adds new genes to these orthogroups without requiring a costly all-versus-all sequence search. Genes that cannot be assigned using the SHOOT approach are analysed using a standard OrthoFinder workflow. 
+The ``--core --assign`` workflow uses the [SHOOT](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02652-8) algorithm to create profiles for previously computed orthogroups, and adds new genes to these orthogroups without requiring a costly all-versus-all sequence search. Genes that cannot be assigned using the SHOOT approach are analysed using a standard OrthoFinder workflow. 
 
 **Phylogenetic Hierarchical Orthogroups**
 
 OrthoFinder has now extended its phylogenetic approach to orthogroups, allowing orthogroups to be defined for each node within the species tree. This significantly increases the accuracy of orthogroups, and enables users to perform orthogroup analyses for any clade of species in the species tree. 
 
 <p align="center">
-  <img src="assets/images/hog.png" alt="HOGs" width="400"/>
+  <img src="assets/images/HOG_figure.png" alt="HOGs" width="400"/>
 </p>
 
 ## Citation
 
-The manuscript "OrthoFinder: scalable phylogenetic orthology inference for comparative genomics" is available as a preprint on biorxiv.
+- Latest<br>
+  [1] *David M Emms, Yi Liu, Laurence Belcher, Jonathan Holmes, Steven Kelly, 2025.* **OrthoFinder: scalable phylogenetic orthology inference for comparative genomics**. bioRxiv. [![DOI:10.1101/2025.07.15.664860](https://img.shields.io/badge/DOI-10.1101%2F2025--07--15--664860-blue)](https://doi.org/10.1101/2025.07.15.664860)
 
-[Emms & Kelly (2015)](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-015-0721-2]) introduced the orthogroup inference method.
+- Introduced the SHOOT method to perform phylogenetic gene search<br>
+  [2] *Emms, D.M., Kelly, S*. **SHOOT: phylogenetic gene search and ortholog inference**. Genome Biol 23, 85 (2022). [![DOI:10.1186/s13059-022-02652-8](https://img.shields.io/badge/DOI-10.1186%2Fs13059--022--02652--8-blue)](https://doi.org/10.1186/s13059-022-02652-8)
 
-[Emms & Kelly (2019)](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1832-y) introduced the phylogenetic inference of orthologs, including rooted gene and species trees, and gene duplication events.
+- Introduced the phylogenetic inference of orthologs, including rooted gene and species trees, and gene duplication events<br>
+  [3] *Emms, D.M., Kelly, S*. **OrthoFinder: phylogenetic orthology inference for comparative genomics**. Genome Biol 20, 238 (2019). [![DOI:10.1186/s13059-019-1832-y](https://img.shields.io/badge/DOI-10.1186%2Fs13059--019--1832--y-blue)](https://doi.org/10.1186/s13059-019-1832-y)
 
-[Emms & Kelly (2017)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5850722/) introduced the STRIDE method to root an unrooted species tree.
+- Introduced the STRIDE method to root an unrooted species tree.<br>
+  [4] *Emms DM, Kelly S*. **STRIDE: Species Tree Root Inference from Gene Duplication Events**. Mol Biol Evol. 2017 Dec 1;34(12):3267-3278. [![DOI:10.1093/molbev/msx259](https://img.shields.io/badge/DOI-10.1093%2Fmolbev%2Fmsx259-blue)](https://doi.org/10.1093/molbev/msx259)
 
-[Emms & Kelly (2017)](https://www.biorxiv.org/content/10.1101/267914v1) introduced the STAG method of species tree inference.
+- Introduced the STAG method of species tree inference<br>
+  [5] *D.M. Emms, S. Kelly, 2017*. **STAG: Species Tree Inference from All Genes** bioRxiv. [![DOI:10.1101/267914](https://img.shields.io/badge/DOI-10.1101%2F267914-blue)](https://doi.org/10.1101/267914)
+
+- Introduced the orthogroup inference method<br>
+  [6] *Emms, D.M., Kelly, S*. **OrthoFinder: solving fundamental biases in whole genome comparisons dramatically improves orthogroup inference accuracy**. Genome Biol 16, 157 (2015). [![DOT:10.1186/s13059-015-0721-2](https://img.shields.io/badge/DOI-10.1186%2Fs13059--015--0723--2-blue)](https://doi.org/10.1186/s13059-015-0721-2)
+
+## System Requirements 
+
+**Operating system** 
+
+OrthoFinder was designed to run on Linux (including WSL2). 
+
+We have tested OrthoFinder v3.1 on debian 12.9, centOS v8, macOS 14.4.1, macOS 13.2.1. 
+
+**Dependencies**
+- Python `<3.12|>=3.8`
+- Diamond `<2.1|>=2.1.7`
+- Famsa `>= 2.2.3`
+- Fasttree `>=2.1.11`
+- Numpy `>=2.3.2`
+- Scipy `>=1.16`
+- Biopython `>=1.85`
+- Rich `>= 14.1.0`
+- Scikit-learn `>= 1.7.1`
 
 ## Meet the team
 

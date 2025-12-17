@@ -1,0 +1,45 @@
+{
+    "__comment": "INPUT : The full path of the input filename for proteomes (fasta file of sequences for and msa method, multiple sequence alignment fasta file for tree method)",
+    "__comment": "DNA_INPUT : The full path of the input filename for genome data",
+    "__comment": "CORE_RESULTS :  Path to the directory containing the core run results",
+    "__comment": "SPECIES_TREE : Path to the species tree file",
+    "__comment": "USER_CONFIG : Path to the user config file",
+    "Direct": {
+        "user_config": "orthofinder -f INPUT --config USER_CONFIG",
+        "methodthreads_minseq": "orthofinder -f INPUT -mt 2 -ms 5",
+        "v2_scores_output_extension": "orthofinder -f INPUT --scores-v2 -efn",
+        "blast": "orthofinder -f INPUT -S blast --no-print-info",
+        "mmseqs": "orthofinder -f INPUT -S mmseqs --no-print-info",
+        "dendroblast": "orthofinder -f INPUT -M dendroblast --no-print-info",
+        "mafft": "orthofinder -f INPUT -A mafft --no-print-info",
+        "iqtree3": "orthofinder -f INPUT -T iqtree3 --no-print-info",
+        "fasttree_fastest": "orthofinder -f INPUT -T fasttree_fastest --no-print-info",
+        "raxml": "orthofinder -f INPUT -T raxml --no-print-info",
+        "astral": "orthofinder -f INPUT -ST astral -nk 2 --no-print-info",
+        "oneway_search": "orthofinder -f INPUT -1 -z -y --no-print-info",
+        "no_fix_files": "orthofinder -f INPUT --no-fix-files --no-print-info",
+        "old_version": "orthofinder -f INPUT --old-version --no-print-info",
+        "dna": "orthofinder -f DNA_INPUT -d --no-print-info"
+    },
+    "Core": {
+        "famsa": "orthofinder -f INPUT --no-print-info",
+        "famsa_species_tree": "orthofinder -f INPUT -s SPECIES_TREE -rmgt -rmrgt -rmlg --save-space --no-print-info"
+    },
+    "StopAfter": {
+        "stop_after_orthogroups": "orthofinder -f INPUT -og",
+        "stop_after_genetrees": "orthofinder -f INPUT -ogt",
+        "stop_after_speciestrees": "orthofinder -f INPUT -ost",
+        "stop_after_prepare_blast": "orthofinder -f INPUT -op --save-blast-commands --no-print-info"
+    },
+    "Assign": {
+        "famsa_assign": "orthofinder --core CORE_RESULTS --assign INPUT -nk 2 --no-print-info",
+        "famsa_species_tree_assign": "orthofinder --core CORE_RESULTS --assign INPUT -s SPECIES_TREE -rmgt -rmrgt -rmlg --save-space --no-print-info"
+    },
+    "Restart": {
+        "stop_after_genetrees_restart": "orthofinder -fgt CORE_RESULTS",
+        "stop_after_speciestrees_restart": "orthofinder -fst CORE_RESULTS",
+        "stop_after_orthogroups_restart": "orthofinder -fg CORE_RESULTS",
+        "stop_after_prepare_blast_restart": "orthofinder -b CORE_RESULTS --restart-of-blast --no-print-info"
+    }
+
+}

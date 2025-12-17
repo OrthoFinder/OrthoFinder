@@ -1,0 +1,7 @@
+Orthogroup	Species Tree Node	Gene Tree Node	Support	Type	Genes 1	Genes 2
+OG0000001	N1	n2	1.0	Non-Terminal	A_DUP_A_1, A_DUP_A_2, B_DUP_B_1, B_DUP_B_2	B_DUP_B_3, B_DUP_B_4, A_DUP_A_3, A_DUP_A_4
+OG0000001	A	n4	1.0	Terminal	A_DUP_A_1	A_DUP_A_2
+OG0000001	B	n5	1.0	Terminal	B_DUP_B_1	B_DUP_B_2
+OG0000001	B	n7	1.0	Terminal	B_DUP_B_3	B_DUP_B_4
+OG0000001	A	n8	1.0	Terminal	A_DUP_A_3	A_DUP_A_4
+

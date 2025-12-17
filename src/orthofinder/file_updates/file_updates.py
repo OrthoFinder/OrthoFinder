@@ -1,5 +1,6 @@
 from . import ogs, trees
 import os
+import shutil
 import tempfile
 import csv
 from collections import defaultdict
@@ -20,28 +21,29 @@ def update_output_files(
         q_incremental=False,
         i_og_restart=0,
         exist_msa=True,
+        prev_wd=None,
     ):
-
-    sequence_id_dict = defaultdict(set)
-    for key, value in id_sequence_dict.items():
-        sequence_id_dict[value].add(key)
-
+     
     iSps = list(map(str, sorted(species_to_use)))   # list of strings
     species_names = [sp_ids[i] for i in iSps]
-
-    species_id_dict = {
-        val: key 
-        for key, val in sp_ids.items()
-    }
+    species_id_dict, sequence_id_dict = id_converter(sp_ids, id_sequence_dict)
 
     ## ------------------------ Fix OGs and OG Sequences -------------------------
+    old_hog_n0_file = files.FileHandler.WDHierarchicalOrthogroupsFNN0()
     hog_n0_file = files.FileHandler.HierarchicalOrthogroupsFNN0()
+    for file in os.listdir(files.FileHandler.GetResultHOGDir()):
+        if file.startswith("N"):
+            shutil.copy2(
+                os.path.join(files.FileHandler.GetResultHOGDir(), file),  
+                files.FileHandler.GetLegacyHOGDir()
+            )
+            
     hogs_converter(hog_n0_file, sequence_id_dict, species_id_dict, species_names)
 
     seq_dir = files.FileHandler.GetResultsSeqsDir()
     util.clear_dir(seq_dir)
 
-    ogSet,  idDict, name_dictionary = ogs.post_hogs_processing(
+    ogSet, idDict, name_dictionary = ogs.post_hogs_processing(
         all_seq_ids,
         speciesInfoObj,
         seqsInfo,
@@ -50,6 +52,7 @@ def update_output_files(
         speciesXML,
         q_incremental=q_incremental,
     )
+
     spec_seq_id_dict = {
         val: key
         for key, val in idDict.items()
@@ -60,11 +63,16 @@ def update_output_files(
     # ## -------------------------- Fix Resolved Gene Trees and Gene Trees -------------------------
     resolved_trees_working_dir = files.FileHandler.GetOGsReconTreeDir(qResults=True)
     resolved_trees_id_dir = files.FileHandler.GetResolvedTreeIDDir()
-    
-    align_dir = files.FileHandler.GetResultsAlignDir()
-    align_id_dir = files.FileHandler.GetAlignIDDir()
-    
-    old_hog_n0 = read_hog_n0_file(hog_n0_file)
+    if exist_msa:
+        align_dir = files.FileHandler.GetResultsAlignDir()
+        align_id_dir = files.FileHandler.GetAlignIDDir()
+    else:
+        align_dir = None
+        align_id_dir = None
+
+    if prev_wd is not None:
+        align_id_dir = os.path.join(prev_wd, "Alignments_ids")
+    old_hog_n0 = read_hog_file(hog_n0_file)
     hog_n0_over4genes = hog_file_over4genes(old_hog_n0, 2)
 
     del old_hog_n0
@@ -79,6 +87,7 @@ def update_output_files(
 
     tree_file_index = index_files(resolved_trees_working_dir, ".txt")
     fasta_file_index = index_files(align_id_dir, ".fa") if align_id_dir is not None else {}
+
     hog_index = {
         unique_og: [row for row in hog_n0_over4genes if unique_og in row["OG"]]
         for unique_og in unique_ogs
@@ -96,7 +105,8 @@ def update_output_files(
         tree_file_index,
         fasta_file_index,  
         align_dir=align_dir,
-        min_seq=options.min_seq
+        min_seq=options.min_seq,
+        exist_msa=exist_msa
     )
 
     util.clear_dir(resolved_trees_working_dir)
@@ -108,6 +118,39 @@ def update_output_files(
 
     return ogSet
 
+
+# def hogs_converter(wd_hogs_n0_file, sequence_id_dict, species_id_dict, species_names, hogs_n0_file, rm_N0_ids=True):
+
+#     with open(wd_hogs_n0_file, newline='') as infile, \
+#         open(hogs_n0_file, mode='w', newline='') as outfile:
+#         reader = csv.DictReader(infile, delimiter='\t')
+
+#         fieldnames = ["HOG", "OG", "Gene Tree Parent Clade"] + species_names
+#         writer = csv.DictWriter(outfile, fieldnames=fieldnames, delimiter='\t', lineterminator="\n")
+
+#         writer.writeheader()
+#         for row in reader:
+#             new_row = {
+#                 key: (
+#                     ", ".join(
+#                         next(iter(
+#                             [s for s in sequence_id_dict.get(gene, set()) 
+#                              if s.split("_")[0] == species_id_dict[key]]
+#                         ), "")
+#                         for gene in str(val).split(", ")
+#                     )
+#                     if (val is not None and "," in str(val))
+#                     else next(
+#                         iter([s for s in sequence_id_dict.get(val, set()) 
+#                               if s.split("_")[0] == species_id_dict[key]]), ""
+#                     )
+#                 ) if key not in {'OG', 'Gene Tree Parent Clade', 'HOG'} else val
+#                 for key, val in row.items()
+#             }
+#             writer.writerow(new_row)
+
+#     os.replace(temp_file.name, hogs_n0_file)
+
 def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_names, rm_N0_ids=True):
 
     with open(hogs_n0_file, newline='') as infile, \
@@ -117,7 +160,7 @@ def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_name
         reader = csv.DictReader(infile, delimiter='\t')
 
         fieldnames = ["HOG", "OG", "Gene Tree Parent Clade"] + species_names
-        writer = csv.DictWriter(temp_file, fieldnames=fieldnames, delimiter='\t')
+        writer = csv.DictWriter(temp_file, fieldnames=fieldnames, delimiter='\t', lineterminator="\n")
 
         writer.writeheader()
         for row in reader:
@@ -140,13 +183,12 @@ def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_name
             }
             writer.writerow(new_row)
     
-
     os.replace(temp_file.name, hogs_n0_file)
-    # shutil.copy(hogs_n0_file, os.path.join(os.path.dirname(hogs_n0_file), "N0_ids.tsv"))
+#     # shutil.copy(hogs_n0_file, os.path.join(os.path.dirname(hogs_n0_file), "N0_ids.tsv"))
 
-def read_hog_n0_file(hog_n0_file):
+def read_hog_file(hog_file):
     hog_n0 = []
-    with open(hog_n0_file, newline = '') as csvfile:
+    with open(hog_file, newline = '') as csvfile:
         reader = csv.DictReader(csvfile, delimiter='\t')
         reader.fieldnames = [
             # fieldname.replace('.', '_') 
@@ -211,8 +253,29 @@ def index_files(id_dir, extension=".fa"):
     file_index = {}
     if id_dir is None:
         return file_index
-    for entry in os.scandir(id_dir):
-        if entry.is_file() and entry.name.endswith(extension) and entry.name.startswith("OG"):
-            key = entry.name[:-len(extension)]
-            file_index[key] = entry.path
+    if os.path.exists(id_dir):
+        if os.path.isdir(id_dir):
+            for entry in os.scandir(id_dir):
+                if entry.is_file() and entry.name.endswith(extension) and entry.name.startswith("OG"):
+                    key = entry.name[:-len(extension)]
+                    file_index[key] = entry.path
+        else:
+            with open(id_dir) as reader:
+                for line in reader:
+                    key, val = line.strip().split(": ", 1)
+                    file_index[key] = val
+    
     return file_index
+
+
+def id_converter(sp_ids, id_sequence_dict):
+    sequence_id_dict = defaultdict(set)
+    for key, value in id_sequence_dict.items():
+        sequence_id_dict[value].add(key)
+
+    species_id_dict = {
+        val: key 
+        for key, val in sp_ids.items()
+    }
+
+    return species_id_dict, sequence_id_dict

@@ -4,8 +4,7 @@ except ImportError:
     ...
 
 from ..utils import util, files
-from ..tools import trees_msa, dendroblast, tree, wrapper_phyldog
-
+from ..tools import tree, trees_msa, dendroblast
 
 def ConvertUserSpeciesTree(speciesTreeFN_in, speciesDict, speciesTreeFN_out):
     t = tree.Tree(speciesTreeFN_in, format=1)  
@@ -39,7 +38,11 @@ def InferGeneAndSpeciesTrees(
         results_name = "",
         root_from_previous = False,
         i_og_restart=0,
-        fix_files=True
+        fix_files=True,
+        astral=True,
+        dynamic_threads=False,
+        n_skip=50,
+        msa_min_seq=10
     ):
     """
     1. Setup:
@@ -100,7 +103,11 @@ def InferGeneAndSpeciesTrees(
             method_threads_small=method_threads_small, 
             threshold=threshold,
             old_version=old_version,
-            fix_files=fix_files
+            fix_files=fix_files,
+            astral=astral,
+            dynamic_threads=dynamic_threads,
+            n_skip=n_skip,
+            msa_min_seq=msa_min_seq
         )
         util.PrintTime("Done MSA/Trees")
         if qDoMSASpeciesTree:
@@ -116,22 +123,24 @@ def InferGeneAndSpeciesTrees(
             util.PrintUnderline("Inferring species tree (calculating gene distances)")
             print("Loading BLAST scores")
             spTreeFN_ids = db.SpeciesTreeOnly()
-        if qPhyldog:
-#            util.PrintTime("Do species tree for phyldog")
-#            spTreeFN_ids, spTreeUnrootedFN = db.SpeciesTreeOnly()
-            if userSpeciesTree: 
-                userSpeciesTree = ConvertUserSpeciesTree(userSpeciesTree, ogSet.SpeciesDict(), files.FileHandler.GetSpeciesTreeUnrootedFN())
-                # not used for subsequent Phyldog steps
-            util.PrintTime("Starting phyldog")
-            species_tree_ids_labelled_phyldog = wrapper_phyldog.RunPhyldogAnalysis(files.FileHandler.GetPhyldogWorkingDirectory(),
-                                                                                   ogSet.Get_iOGs4(), ogSet.OGsAll(), speciesToUse, nHighParallel)
-            spTreeFN_ids = species_tree_ids_labelled_phyldog
+
+#         if qPhyldog:
+# #            util.PrintTime("Do species tree for phyldog")
+# #            spTreeFN_ids, spTreeUnrootedFN = db.SpeciesTreeOnly()
+#             if userSpeciesTree: 
+#                 userSpeciesTree = ConvertUserSpeciesTree(userSpeciesTree, ogSet.SpeciesDict(), files.FileHandler.GetSpeciesTreeUnrootedFN())
+#                 # not used for subsequent Phyldog steps
+#             util.PrintTime("Starting phyldog")
+#             species_tree_ids_labelled_phyldog = wrapper_phyldog.RunPhyldogAnalysis(files.FileHandler.GetPhyldogWorkingDirectory(),
+#                                                                                    ogSet.Get_iOGs4(), ogSet.OGsAll(), speciesToUse, nHighParallel)
+#             spTreeFN_ids = species_tree_ids_labelled_phyldog
     else:
         db = dendroblast.DendroBLASTTrees(ogSet, nLowParallel, nHighParallel, qDoubleBlast)
         spTreeFN_ids, qSTAG = db.RunAnalysis(userSpeciesTree == None)
         if userSpeciesTree != None:
             spTreeFN_ids = files.FileHandler.GetSpeciesTreeUnrootedFN()
-    files.FileHandler.LogWorkingDirectoryTrees()
+    # if not fix_files:
+    #     files.FileHandler.LogWorkingDirectoryTrees()
     qSpeciesTreeSupports = False if (userSpeciesTree or qMSA or qPhyldog) else qSTAG
 
     return None if root_from_previous else spTreeFN_ids, qSpeciesTreeSupports

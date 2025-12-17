@@ -77,6 +77,11 @@ def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller,
     if options.qStopAfterPrepare:
         for command in commands:
             print(command)
+
+        if options.save_blast_commands:
+            with open(files.FileHandler.GetBALSATCommandFN(), "w") as writer:
+                for command in commands:
+                    writer.write(command + "\n")
         util.Success()
     print("Using %d thread(s)" % options.nBlast)
     util.PrintTime("This may take some time...")
@@ -91,7 +96,8 @@ def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller,
         qListOfList=False,
         q_print_on_error=True, 
         q_always_print_stderr=False,
-        old_version=options.old_version
+        old_version=options.old_version,
+        dynamic_threads=options.dynamic_threads
     )
 
     # remove BLAST databases
@@ -120,6 +126,11 @@ def CreateSearchDatabases(speciesInfoObj, options, prog_caller, q_unassigned_gen
 
     for i, iSp in enumerate(iSpeciesToDo):
         fn_fasta = files.FileHandler.GetSpeciesUnassignedFastaFN(iSp) if q_unassigned_genes else files.FileHandler.GetSpeciesFastaFN(iSp)
+        if os.stat(fn_fasta).st_size == 0:
+            if (i + 1) % update_cycle == 0:
+                progressbar.update(task, advance=update_cycle)
+            continue
+
         if options.search_program == "blast":
             command = " ".join(["makeblastdb", "-dbtype", "prot", "-in", fn_fasta, "-out", files.FileHandler.GetSpeciesDatabaseN(iSp)])
             util.PrintTime("Creating Blast database %d of %d" % (iSp + 1, len(iSpeciesToDo)))
@@ -140,6 +151,7 @@ def CreateSearchDatabases(speciesInfoObj, options, prog_caller, q_unassigned_gen
 
         if (i + 1) % update_cycle == 0:
             progressbar.update(task, advance=update_cycle)
+
     progressbar.stop()
 
 def RunSearch_accelerate(options, 
@@ -174,7 +186,8 @@ def RunSearch_accelerate(options,
                                        qListOfList=False,
                                        q_print_on_error=True, 
                                        q_always_print_stderr=False,
-                                       old_version=options.old_version
+                                       old_version=options.old_version,
+                                       dynamic_threads=options.dynamic_threads
                                        )
 
     util.PrintTime("Done profiles search")

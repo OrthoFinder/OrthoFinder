@@ -90,67 +90,67 @@ def kmers_in_seqs(accs, fw, k):
     return kmer_per_seq, d
 
 
-def select_from_unaligned(infn, k, n, nmax=50000):
-    """
-    Identify the representative sequences
-    Args:
-        infn - input filename
-        k - k-mer length
-        n - number to select
-    Returns:
-        seq_dict - dictionary: acc -> sequence of the selected sequences
-        FastaWriter - The FastaWriter for all sequences in input file
-    """
-    fw = fasta_processor.FastaWriter(infn)
-    print("Read sequences")
-    accs = list(fw.SeqLists.keys())    # ordered list for the sequences
-    if len(accs) > nmax:
-        accs = np.random.choice(accs, nmax, replace=False)
-    # get k-mers in each sequence
-    kmer_per_seq, d = kmers_in_seqs(accs, fw, k)
-    # create a vector space of sequences based on their kmer content
-    K = list(d.keys()) # the basis
-    lookup = {kmer:i for i, kmer in enumerate(K)}
-    print("%d unique %d-mers found" % (len(K), k))
-    L = list(map(len, kmer_per_seq))
-    print("Mean %0.1f unique kmers per sequence" % np.mean(L))
-    # S = np.array([[kmer in kmers for kmer in K] for kmers in kmer_per_seq])
-    S = [np.zeros(len(K)) for _ in accs]
-    for i, seq_kmers in enumerate(kmer_per_seq):
-        for kmer in seq_kmers:
-            # print((i, lookup[kmer]))
-            S[i][lookup[kmer]] = 1
-    print("Constructed features matrix")
-    # Now just need to pick the most representative ones, use a heuristic k-means clustering
-    if use_n_auto:
-        kmeans = cluster.KMeans(n_clusters=n, random_state=0, n_init='auto').fit(S)
-    else:
-        kmeans = cluster.KMeans(n_clusters=n, random_state=0).fit(S)
-    labels = kmeans.predict(S)
-    # clusters = cluster.Birch(n_clusters=n).fit_predict(S)
-    print(labels)
-    print(kmeans.cluster_centers_)
-    print((max(labels), len(kmeans.cluster_centers_)))
-    cluster_representative = []
-    for i_clust, centre in enumerate(kmeans.cluster_centers_):
-        c = centre > 0.5
-        reps = []
-        similarity = []
-        for i_sample, l in enumerate(labels):
-            if l == i_clust:
-                reps.append(i_sample)
-                similarity.append(S[i_sample].dot(c))
-        print("%d sequences for cluster" % len(similarity))
-        if len(similarity) == 0:
-            continue
-        j = np.argmax(similarity)
-        # print(reps[j])
-        # print(np.where(c))
-        cluster_representative.append(reps[j])
-    cluster_representative = set(cluster_representative)
-    print("Requested %d, %d were unique" % (n, len(cluster_representative)))
-    rep_seqs = [accs[j] for j in cluster_representative]
-    return rep_seqs, fw
+# def select_from_unaligned(infn, k, n, nmax=50000):
+#     """
+#     Identify the representative sequences
+#     Args:
+#         infn - input filename
+#         k - k-mer length
+#         n - number to select
+#     Returns:
+#         seq_dict - dictionary: acc -> sequence of the selected sequences
+#         FastaWriter - The FastaWriter for all sequences in input file
+#     """
+#     fw = fasta_processor.FastaWriter(infn)
+#     print("Read sequences")
+#     accs = list(fw.SeqLists.keys())    # ordered list for the sequences
+#     if len(accs) > nmax:
+#         accs = np.random.choice(accs, nmax, replace=False)
+#     # get k-mers in each sequence
+#     kmer_per_seq, d = kmers_in_seqs(accs, fw, k)
+#     # create a vector space of sequences based on their kmer content
+#     K = list(d.keys()) # the basis
+#     lookup = {kmer:i for i, kmer in enumerate(K)}
+#     print("%d unique %d-mers found" % (len(K), k))
+#     L = list(map(len, kmer_per_seq))
+#     print("Mean %0.1f unique kmers per sequence" % np.mean(L))
+#     # S = np.array([[kmer in kmers for kmer in K] for kmers in kmer_per_seq])
+#     S = [np.zeros(len(K)) for _ in accs]
+#     for i, seq_kmers in enumerate(kmer_per_seq):
+#         for kmer in seq_kmers:
+#             # print((i, lookup[kmer]))
+#             S[i][lookup[kmer]] = 1
+#     print("Constructed features matrix")
+#     # Now just need to pick the most representative ones, use a heuristic k-means clustering
+#     if use_n_auto:
+#         kmeans = cluster.KMeans(n_clusters=n, random_state=0, n_init='auto').fit(S)
+#     else:
+#         kmeans = cluster.KMeans(n_clusters=n, random_state=0).fit(S)
+#     labels = kmeans.predict(S)
+#     # clusters = cluster.Birch(n_clusters=n).fit_predict(S)
+#     print(labels)
+#     print(kmeans.cluster_centers_)
+#     print((max(labels), len(kmeans.cluster_centers_)))
+#     cluster_representative = []
+#     for i_clust, centre in enumerate(kmeans.cluster_centers_):
+#         c = centre > 0.5
+#         reps = []
+#         similarity = []
+#         for i_sample, l in enumerate(labels):
+#             if l == i_clust:
+#                 reps.append(i_sample)
+#                 similarity.append(S[i_sample].dot(c))
+#         print("%d sequences for cluster" % len(similarity))
+#         if len(similarity) == 0:
+#             continue
+#         j = np.argmax(similarity)
+#         # print(reps[j])
+#         # print(np.where(c))
+#         cluster_representative.append(reps[j])
+#     cluster_representative = set(cluster_representative)
+#     print("Requested %d, %d were unique" % (n, len(cluster_representative)))
+#     rep_seqs = [accs[j] for j in cluster_representative]
+#     return rep_seqs, fw
 
 def write_accession_list(infn, seqs):
     outfn = infn + ".selected.txt"
@@ -211,10 +211,12 @@ def select_from_aligned(infn, n_sample, q_trim=True):
     # or better yet, the penalty for gaps should be increased for the MSA inference
     fn_trim_temp_out = "/tmp/" + os.path.basename(infn)
     fn_align_to_use = infn
-    if q_trim:
-        import trim
-        trim.main(infn, fn_trim_temp_out)
-        fn_align_to_use = fn_trim_temp_out
+
+    # if q_trim:
+    #     from ..tools import trim
+    #     trim.main(infn, fn_trim_temp_out)
+    #     fn_align_to_use = fn_trim_temp_out
+
     m, accs = msa_biopython_matrix(fn_align_to_use)
     n_seqs, n_cols = m.shape
     if n_seqs <= n_sample:
@@ -263,7 +265,7 @@ def select_from_aligned(infn, n_sample, q_trim=True):
     if n_extra > 0:
         # select some more to make it up to the total 
         not_used = set(range(n_keep)).difference(cluster_representative)
-        cluster_representative.extend(random.sample(not_used, n_extra))
+        cluster_representative.extend(random.sample(sorted(not_used), n_extra))
         # print("Found extra sequences. Have %d" % len(cluster_representative))
     # print(cluster_representative)
     selected = [accs[d_new_old[i]] for i in cluster_representative]
@@ -272,27 +274,27 @@ def select_from_aligned(infn, n_sample, q_trim=True):
     return selected
 
 
-def run(infn, q_aligned, k, n):
-    """
-    Main function. Read file, select representatives, write.
-    Args:
-        infn - input filename
-        k - k-mer length
-        n - number to select
-    """
-    if q_aligned:
-        run_from_aligned(infn, n)
-    else:
-        rep_seqs, fw = select_from_unaligned(infn, k, n)
-        outfn = infn + ".selected.fa"
-        fw.WriteSeqsToFasta(rep_seqs, outfn)
+# def run(infn, q_aligned, k, n):
+#     """
+#     Main function. Read file, select representatives, write.
+#     Args:
+#         infn - input filename
+#         k - k-mer length
+#         n - number to select
+#     """
+#     if q_aligned:
+#         run_from_aligned(infn, n)
+#     else:
+#         rep_seqs, fw = select_from_unaligned(infn, k, n)
+#         outfn = infn + ".selected.fa"
+#         fw.WriteSeqsToFasta(rep_seqs, outfn)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("fasta", help="Fasta file of unaligned sequences")
-    parser.add_argument("-k", "--kmer", type=int, help="Length of k-mers to use", default=3)
-    parser.add_argument("-n", "--number", type=int, help="Number of sequences to select", default=100)
-    parser.add_argument("-a", "--aligned", action='store_true', help="Input is a MSA")
-    args = parser.parse_args()
-    run(args.fasta, args.aligned, args.kmer, args.number)
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("fasta", help="Fasta file of unaligned sequences")
+#     parser.add_argument("-k", "--kmer", type=int, help="Length of k-mers to use", default=3)
+#     parser.add_argument("-n", "--number", type=int, help="Number of sequences to select", default=100)
+#     parser.add_argument("-a", "--aligned", action='store_true', help="Input is a MSA")
+#     args = parser.parse_args()
+#     run(args.fasta, args.aligned, args.kmer, args.number)

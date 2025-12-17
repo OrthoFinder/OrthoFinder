@@ -1,0 +1,4 @@
+Orthogroup	Species Tree Node	Gene Tree Node	Support	Type	Genes 1	Genes 2
+OG0000002	N1	n1	1.0	Non-Terminal	A_DUPassign_A_1, B_DUPassign_B_1	A_DUPassign_A_2, B_DUPassign_B_2
+OG0000002	C	n5	1.0	Terminal	C_DUPassign_C_1	C_DUPassign_C_2
+OG0000002	N3	n6	1.0	Non-Terminal	D_DUPassign_D_1, E_DUPassign_E_1	D_DUPassign_D_2, E_DUPassign_E_2

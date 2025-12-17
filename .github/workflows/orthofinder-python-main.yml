@@ -1,0 +1,272 @@
+name: OrthoFinder CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [
+        "main",
+        "dev-*",
+        "feat/**",
+      ]
+    paths-ignore:
+      - ".gitignore"
+      - "README.md"
+      - "LICENSE"
+      - "DEVNOTES.md"
+      - "CONTRIBUTING.md"
+      - "CONDUCT.md"
+      - "badge-status.json" # prevent CI loops from badge commits
+  pull_request:
+    branches: ["main", "dev-*", "feat/**"]
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - ".github/workflows/*" # keep if you don't want PRs to touch workflows
+
+permissions:
+  contents: write # needed only for the badge commit step (guarded to run on push to main)
+
+concurrency:
+  group: ortho-ci-${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / py${{ matrix.python }} / tests
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: "pip"
+
+      - name: Show environment
+        run: |
+          python -V
+          pip -V
+
+      - name: Install project (with dev extras if present)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip install --upgrade pip
+          # Prefer pyproject editable install; fall back if no extras
+          pip install -e ".[dev]" || pip install -e .
+          # test/lint tools if not in [dev]
+          pip install pytest build || true
+
+      - name: Ensure bundled binaries are executable & on PATH
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if [ -d "src/orthofinder/bin" ]; then
+            chmod +x src/orthofinder/bin/* || true
+            echo "$(pwd)/src/orthofinder/bin" >> "$GITHUB_PATH"
+            ls -al src/orthofinder/bin || true
+          fi
+          which famsa || true
+
+      - name: Smoke test (help/print)
+        run: python orthofinder.py --help || python orthofinder.py
+
+      # - name: Run on ExampleData
+      #   run: python3 orthofinder.py -f ExampleData
+
+      # - name: List OrthoFinder output
+      #   shell: bash
+      #   run: |
+      #     set -euxo pipefail
+      #     ls -al
+      #     if [ -d "ExampleData/OrthoFinder" ]; then
+      #       ls -al ExampleData/OrthoFinder
+      #     else
+      #       echo "No OrthoFinder output directory found."
+      #     fi
+
+      # - name: Upload ExampleData artifacts
+      #   if: failure()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: ExampleData-Output-py${{ matrix.python }}
+      #     path: |
+      #       ExampleData/OrthoFinder/**
+      #     if-no-files-found: warn
+      #     retention-days: 7
+
+      - name: Run pytest
+        run: pytest -sv tests/ --skip-runs=mmseqs,iqtree3,raxml,blast
+
+      # Badge writing (single leg, only on push to main)
+      - name: Configure Git for badge commit
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.python == '3.12'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Update badge to passing
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.python == '3.12' && success()
+        run: |
+          echo '{"schemaVersion":1,"label":"Tested","message":"passing","color":"brightgreen"}' > badge-status.json
+          git add badge-status.json
+          git commit -m "CI: badge passing [skip ci]" || echo "No changes to commit"
+          git push origin HEAD:main
+
+      - name: Update badge to failing
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.python == '3.12' && failure()
+        run: |
+          echo '{"schemaVersion":1,"label":"Tested","message":"failing","color":"red"}' > badge-status.json
+          git add badge-status.json
+          git commit -m "CI: badge failing [skip ci]" || echo "No changes to commit"
+          git push origin HEAD:main
+
+  update-example-output-doc:
+    name: Update example output tree (docs)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxcb-cursor0 \
+            libxkbcommon-x11-0 \
+            libxcb-xinerama0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-render-util0 \
+            libegl1 \
+            libgl1 \
+            libopengl0
+
+      - name: Set Qt to offscreen
+        run: echo "QT_QPA_PLATFORM=offscreen" >> $GITHUB_ENV
+
+      - name: Install OrthoFinder
+        run: |
+          set -euxo pipefail
+          python -m pip install --upgrade pip
+          pip install -e ".[docs]"
+
+      - name: Run OrthoFinder on ExampleData
+        run: |
+          set -euxo pipefail
+          rm -rf ExampleData/OrthoFinder || true
+          python orthofinder.py -f ExampleData
+
+      - name: Locate results directory
+        id: locate
+        shell: bash
+        run: |
+          set -euxo pipefail
+          RESULT_DIR=$(ls -d ExampleData/OrthoFinder/* | sort | tail -n 1)
+          echo "Found results dir: $RESULT_DIR"
+          echo "result-dir=$RESULT_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Generate tutorial markdown + snippet + figures (on main)
+        id: makemd
+        shell: bash
+        run: |
+          set -euxo pipefail
+          RESULT_DIR="${{ steps.locate.outputs.result-dir }}"
+          echo "Using result dir: $RESULT_DIR"
+
+          OUT_MAIN_BEGIN=beginner-tutorial.md
+          python tools/generate_beginner_tutorial.py "$RESULT_DIR" > "$OUT_MAIN_BEGIN"
+
+          OUT_SNIPPET=of-output-tree.md
+          cat > "$OUT_SNIPPET" <<'EOF'
+          <div style="text-align: center;">
+            <pre style="
+              display: inline-block;
+              text-align: left;
+              font-family: monospace;
+              font-size: 18px;
+              line-height: 1.5;
+            ">
+          EOF
+
+          python tools/generate_output_structure.py "$RESULT_DIR" >> "$OUT_SNIPPET"
+
+          cat >> "$OUT_SNIPPET" <<'EOF'
+            </pre>
+          </div>
+          EOF
+
+          python tools/generate_species_tree.py "$RESULT_DIR"
+          python tools/generate_gene_tree.py "$RESULT_DIR"
+          python tools/generate_duplication_tree.py "$RESULT_DIR"
+
+          cp "$OUT_MAIN_BEGIN" /tmp/beginner-tutorial.md
+          cp "$OUT_SNIPPET"    /tmp/of-output-tree.md
+
+          echo "=== Preview of generated beginner tutorial (first 40 lines) ==="
+          sed -n '1,40p' beginner-tutorial.md || true
+
+      - name: Checkout gh-pages into ./site
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: site
+          fetch-depth: 0
+
+
+      - name: Switch to gh-pages and copy generated docs
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p site/_tutorials site/assets/images
+
+          cp /tmp/beginner-tutorial.md site/_tutorials/beginner-tutorial.md
+          cp /tmp/of-output-tree.md    site/_tutorials/of-output-tree.md
+          cp /tmp/species_tree.png     site/assets/images/species_tree.png
+          cp /tmp/gene_tree.png        site/assets/images/gene_tree.png
+          cp /tmp/duplication_tree.png site/assets/images/duplication_tree.png
+
+          echo "Updated files on gh-pages:"
+          ls -l site/_tutorials/beginner-tutorial.md site/_tutorials/of-output-tree.md site/assets/images/*tree.png
+
+      - name: Commit and push updated docs (gh-pages)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd site
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add _tutorials/beginner-tutorial.md \
+                 _tutorials/of-output-tree.md \
+                 assets/images/species_tree.png \
+                 assets/images/gene_tree.png \
+                 assets/images/duplication_tree.png
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Docs: update beginner tutorial and example output [skip ci]"
+            git push origin gh-pages
+          fi

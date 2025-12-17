@@ -26,6 +26,8 @@
 import gzip
 import os
 import sys
+import csv 
+import glob
 import numpy as np
 import datetime
 from collections import namedtuple
@@ -121,25 +123,45 @@ nSeqsPerSpecies: Dict[int, int] - indexed by OrthoFinder species ID, info on all
 
 # Get Info from seqs IDs file?
 def GetSeqsInfo(inputDirectory_list, speciesToUse, nSpAll):
+    inputDirectory_list = list(inputDirectory_list)
+    speciesToUse = list(speciesToUse)
     seqStartingIndices = [0]
     nSeqs = 0
-    nSeqsPerSpecies = dict()
+    nSeqsPerSpecies = {}
+
     for iFasta in range(nSpAll):
+        fastaFilename = None
+
         for d in inputDirectory_list:
-            fastaFilename = d + "Species%d.fa" % iFasta
-            if os.path.exists(fastaFilename):
+            candidate = os.path.join(d, f"Species{iFasta}.fa")
+            if os.path.exists(candidate):
+                fastaFilename = candidate
                 break
+
+        if fastaFilename is None:
+            if iFasta in speciesToUse:
+                raise FileNotFoundError(
+                    f"Species{iFasta}.fa not found in any of the input "
+                    f"directories: {inputDirectory_list}"
+                )
+            continue
         n = 0
         with open(fastaFilename) as infile:
             for line in infile:
-                if len(line) > 1 and line[0] == ">":
+                if line.startswith(">"):
                     n += 1
+
         nSeqsPerSpecies[iFasta] = n
+
         if iFasta in speciesToUse:
             nSeqs += n
             seqStartingIndices.append(nSeqs)
-    seqStartingIndices = seqStartingIndices[:-1]
+
+    if seqStartingIndices:
+        seqStartingIndices = seqStartingIndices[:-1]
+
     nSpecies = len(speciesToUse)
+
     return SequencesInfo(
         nSeqs=nSeqs,
         nSpecies=nSpecies,
@@ -147,6 +169,36 @@ def GetSeqsInfo(inputDirectory_list, speciesToUse, nSpAll):
         seqStartingIndices=seqStartingIndices,
         nSeqsPerSpecies=nSeqsPerSpecies,
     )
+
+
+    # seqStartingIndices = [0]
+    # nSeqs = 0
+    # nSeqsPerSpecies = dict()
+    # for iFasta in range(nSpAll):
+    #     for d in inputDirectory_list:
+    #         fastaFilename = os.path.join(d, "Species%d.fa" % iFasta) 
+    #         if os.path.exists(fastaFilename):
+    #             break
+    #     n = 0
+    #     with open(fastaFilename) as infile:
+    #         for line in infile:
+    #             if len(line) > 1 and line[0] == ">":
+    #                 n += 1
+    #     nSeqsPerSpecies[iFasta] = n
+    #     if iFasta in speciesToUse:
+    #         nSeqs += n
+    #         seqStartingIndices.append(nSeqs)
+
+    # seqStartingIndices = seqStartingIndices[:-1]
+    # nSpecies = len(speciesToUse)
+
+    # return SequencesInfo(
+    #     nSeqs=nSeqs,
+    #     nSpecies=nSpecies,
+    #     speciesToUse=speciesToUse,
+    #     seqStartingIndices=seqStartingIndices,
+    #     nSeqsPerSpecies=nSeqsPerSpecies,
+    # )
 
 
 def SeqsInfoRecompute(seqs_info_orig, new_species_to_use):
@@ -269,6 +321,7 @@ def CreateNewWorkingDirectory(
     gapopen=None,
     gapextend=None,
     extended_filename=False,
+    makedir=True
 ):
     dateStr = datetime.date.today().strftime("%b%d") if qDate else ""
     iAppend = 0
@@ -283,20 +336,21 @@ def CreateNewWorkingDirectory(
         gapextend,
         extended_filename,
     )
-    while os.path.exists(newDirectoryName):
-        iAppend += 1
-        newDirectoryName = GetDirectoryName(
-            baseDirectoryName + dateStr,
-            iAppend,
-            search_program,
-            msa_program,
-            tree_program,
-            scorematrix,
-            gapopen,
-            gapextend,
-            extended_filename,
-        )
-    os.mkdir(newDirectoryName)
+    if makedir:
+        while os.path.exists(newDirectoryName):
+            iAppend += 1
+            newDirectoryName = GetDirectoryName(
+                baseDirectoryName + dateStr,
+                iAppend,
+                search_program,
+                msa_program,
+                tree_program,
+                scorematrix,
+                gapopen,
+                gapextend,
+                extended_filename,
+            )
+        os.mkdir(newDirectoryName)
     return newDirectoryName
 
 
@@ -395,8 +449,10 @@ def GetSpeciesToUse(speciesIDsFN):
                 nSkipped += 1
             else:
                 iSp, spName = line.split(": ")
-                speciesToUse.append(int(iSp))
-                speciesToUse_names.append(spName)
+                if spName not in speciesToUse_names:
+                    speciesToUse.append(int(iSp))
+                    speciesToUse_names.append(spName)
+
     return speciesToUse, len(speciesToUse) + nSkipped, speciesToUse_names
 
 
@@ -590,6 +646,8 @@ def PrintCitation(d=None):
     # printer.print(print_citation)
     printer.print("\nCITATION:")
     printer.print(" When publishing work that uses [dark_goldenrod]OrthoFinder[/dark_goldenrod] please cite:")
+    printer.print(" Emms D.M., Liu Y., Belcher L., Holmes J. & Kelly S. (2025), bioRxiv ", end="")
+    printer.print("[dark_cyan][link=https://doi.org/10.1101/2025.07.15.664860]https://doi.org/10.1101/2025.07.15.664860[/link]")
     printer.print(" Emms D.M. & Kelly S. (2019), Genome Biology 20:238\n")
 
     printer.print(" If you use the species tree in your work then please also cite:")
@@ -605,29 +663,29 @@ def PrintUnderline(text, qHeavy=False):
     print((("=" if qHeavy else "-") * n))
 
 
-def FlowText(text, n=60):
-    """Split text onto lines of no more that n characters long"""
-    lines = ""
-    while len(text) > 0:
-        if len(lines) > 0:
-            lines += "\n"
-        if len(text) > n:
-            # split at no more than 60
-            iEnd = n
-            while iEnd > 0 and text[iEnd] != " ":
-                iEnd -= 1
-            if iEnd == 0:
-                # there was nowhere to split it at a blank, just have to split at 60
-                lines += text[:n]
-                text = text[n:]
-            else:
-                # split at blank
-                lines += text[:iEnd]
-                text = text[iEnd + 1 :]  # skip blank
-        else:
-            lines += text
-            text = ""
-    return lines
+# def FlowText(text, n=60):
+#     """Split text onto lines of no more that n characters long"""
+#     lines = ""
+#     while len(text) > 0:
+#         if len(lines) > 0:
+#             lines += "\n"
+#         if len(text) > n:
+#             # split at no more than 60
+#             iEnd = n
+#             while iEnd > 0 and text[iEnd] != " ":
+#                 iEnd -= 1
+#             if iEnd == 0:
+#                 # there was nowhere to split it at a blank, just have to split at 60
+#                 lines += text[:n]
+#                 text = text[n:]
+#             else:
+#                 # split at blank
+#                 lines += text[:iEnd]
+#                 text = text[iEnd + 1 :]  # skip blank
+#         else:
+#             lines += text
+#             text = ""
+#     return lines
 
 
 def number_open_files_exception_advice(n_species, q_at_trees):
@@ -739,12 +797,16 @@ class Finalise(object):
 
 def writerow(fh, row):
     # CSV format specifies CRLF line endings: https://tools.ietf.org/html/rfc4180
-    fh.write("\t".join(map(str, row)) + "\r\n")
+    # fh.write("\t".join(map(str, row)) + "\r\n")
+    cleaned = [str(x).rstrip("\r\n") for x in row]
+    fh.write("\t".join(cleaned) + "\n")
 
 
 def getrow(row):
     # CSV format specifies CRLF line endings: https://tools.ietf.org/html/rfc4180
-    return "\t".join(map(str, row)) + "\r\n"
+    # return "\t".join(map(str, row)) + "\r\n"
+    cleaned = [str(x).rstrip("\r\n") for x in row]
+    return "\t".join(cleaned) + "\n"
 
 
 def version_parse_simple(sem_version):
@@ -815,14 +877,44 @@ def get_progressbar(len_task, visible=True):
     return progressbar, task
 
 def clear_dir(of3_dir):
-    with os.scandir(of3_dir) as entries:
-        for entry in entries:
-            try:
-                if entry.is_file() or entry.is_symlink():
-                    os.unlink(entry.path) 
-                elif entry.is_dir():
-                    shutil.rmtree(entry.path) 
-                    
-            except Exception as e:
-                printer.print(f'Failed to delete {entry.path}. Reason: {e}', style="error")
+    if os.path.exists(of3_dir):
+        with os.scandir(of3_dir) as entries:
+            for entry in entries:
+                try:
+                    if entry.is_file() or entry.is_symlink():
+                        os.unlink(entry.path) 
+                    elif entry.is_dir():
+                        shutil.rmtree(entry.path) 
+                        
+                except Exception as e:
+                    printer.print(f'Failed to delete {entry.path}. Reason: {e}', style="error")
 
+
+def split_ortholog_files(d_ologs, q_compress=False):
+    if not d_ologs.endswith("/"):
+        d_ologs += "/"
+    filenames = list(glob.glob(d_ologs + "*.tsv") + glob.glob(d_ologs + "*.tsv.gz"))
+    species = [
+        os.path.splitext(os.path.splitext(os.path.basename(fn))[0])[0] if fn.endswith(".gz") else os.path.splitext(os.path.basename(fn))[0]
+        for fn in filenames]
+    for fn, sp0 in zip(filenames, species):
+        d_out = d_ologs + "Orthologues_" + sp0 + "/"
+        if not os.path.exists(d_out):
+            os.mkdir(d_out)
+        file_handles = []
+        csv_writers = {}
+        for sp1 in species:
+            if sp0 == sp1:
+                continue
+            if q_compress:
+                file_handles.append(gzip.open(d_out + '%s__v__%s.tsv.gz' % (sp0, sp1), csv_write_mode))
+            else:
+                file_handles.append(open(d_out + '%s__v__%s.tsv' % (sp0, sp1), csv_write_mode))
+            csv_writers[sp1] = csv.writer(file_handles[-1], delimiter="\t")
+            csv_writers[sp1].writerow(("Orthogroup", sp0, sp1))
+        with gzip.open(fn, csv_read_mode) if fn.endswith(".gz") else open(fn, csv_read_mode) as infile:
+            reader = csv.reader(infile, delimiter="\t")
+            next(reader)  # skip header
+            for row in reader:
+                if len(row) == 4: # OG,species,genes1,genes2
+                    csv_writers[row[1]].writerow(row[:1] + row[2:])

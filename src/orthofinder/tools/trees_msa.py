@@ -40,9 +40,9 @@ try:
 except ImportError:
     ...
 
-from ..utils import util, program_caller as pc
+from ..utils import util, program_caller as pc, parallel_task_manager
 from ..utils import files
-from ..tools import trim
+from ..tools import trim, astral as astral_pro
 
 
 class FastaWriter(object):
@@ -150,16 +150,28 @@ def GetOrthogroupOccupancyInfo(m):
     Args:
         m - orthogroup matrix
     """
+    if getattr(m, "ndim", None) is None or m.ndim < 2:
+        raise ValueError("m must be a 2D array/matrix")
     N = m.shape[1]
-    f = 1./N
-    fractions = []
-    nOrtho = []
-    for n in range(N):
-        F = 1.-n*f
-        fractions.append(F)
-        nOrtho.append(len(SingleCopy_WithProbabilityTest(F-1e-5, m)))
-    nOrtho = list(map(float, nOrtho))
+    if N == 0:
+        raise ValueError("Matrix has zero columns; cannot compute occupancy.")
+    eps = 1e-5
+    fractions = [1.0 - n / N for n in range(N)]              # length N
+    nOrtho = [float(len(SingleCopy_WithProbabilityTest(F - eps, m)))
+              for F in fractions]
+
     return fractions, nOrtho
+
+    # N = m.shape[1]
+    # f = 1./N
+    # fractions = []
+    # nOrtho = []
+    # for n in range(N):
+    #     F = 1.-n*f
+    #     fractions.append(F)
+    #     nOrtho.append(len(SingleCopy_WithProbabilityTest(F-1e-5, m)))
+    # nOrtho = list(map(float, nOrtho))
+    # return fractions, nOrtho
     
 def DetermineOrthogroupsForSpeciesTree(m, iogs4, nOGsMin=100, nSufficient=1000, increase_required=2.):
     """Orthogroups can be used if at least a fraction f of the species in the orthogroup are single copy, f is determined as described 
@@ -266,8 +278,8 @@ def CreateConcatenatedAlignment(ogsToUse_ids, ogs, alignment_filename_function, 
             for i in range(0, len(seq), nChar):
                 outfile.write("".join(seq[i:i+nChar]) + "\n")
             
-def trim_fn(fn):
-    trim.main(fn, fn, 0.1, 500, 0.75, False)
+def trim_fn(fn, msa_min_seq):
+    trim.main(fn, fn, msa_min_seq, 0.1, 500, 0.75, False)
 
 """ 
 -----------------------------------------------------------------------------
@@ -356,7 +368,11 @@ class TreesForOrthogroups(object):
             method_threads_small=None, 
             threshold=None,
             old_version=False,
-            fix_files=True
+            fix_files=True,
+            astral=False,
+            dynamic_threads=False,
+            n_skip=50,
+            msa_min_seq=10,
         ):
 
         print_on_error = True
@@ -418,20 +434,22 @@ class TreesForOrthogroups(object):
                 cmd_order=cmd_order,
                 qTrim=qTrim,
                 q_print_on_error=print_on_error,
-                old_version=old_version
+                old_version=old_version,
+                dynamic_threads=dynamic_threads
             )
             if qDoSpeciesTree:
-                CreateConcatenatedAlignment(
-                    iOgsForSpeciesTree, 
-                    ogs, 
-                    self.GetAlignmentFilename, 
-                    concatenated_algn_fn, 
-                    fSingleCopy
-                )
-                # write OGs used to file
-                dSpeciesTree = os.path.split(files.FileHandler.GetSpeciesTreeResultsFN(0, True))[0] + "/"
-                with open(dSpeciesTree + "Orthogroups_for_concatenated_alignment.txt", 'w') as outfile:
-                    for iog in iOgsForSpeciesTree: outfile.write("OG%07d\n" % iog)
+                if not astral:
+                    CreateConcatenatedAlignment(
+                        iOgsForSpeciesTree, 
+                        ogs, 
+                        self.GetAlignmentFilename, 
+                        concatenated_algn_fn, 
+                        fSingleCopy
+                    )
+                    # write OGs used to file
+                    dSpeciesTree = os.path.split(files.FileHandler.GetSpeciesTreeResultsFN(0, True))[0] + "/"
+                    with open(dSpeciesTree + "Orthogroups_for_concatenated_alignment.txt", 'w') as outfile:
+                        for iog in iOgsForSpeciesTree: outfile.write("OG%07d\n" % iog)
             
             # ------------------ this section is not needed at this stage for the new procedure -------------
             # ids -> accessions
@@ -464,7 +482,8 @@ class TreesForOrthogroups(object):
         commands_and_filenames = []
         tree_tasksize = None
         if qDoSpeciesTree:
-            print(("Species tree: Using %d orthogroups with minimum of %0.1f%% of species having single-copy genes in any orthogroup" % (len(iOgsForSpeciesTree), 100.*fSingleCopy)))
+            if not astral:
+                print(("Species tree: Using %d orthogroups with minimum of %0.1f%% of species having single-copy genes in any orthogroup" % (len(iOgsForSpeciesTree), 100.*fSingleCopy)))
             util.PrintUnderline("Inferring multiple sequence alignments for species tree") 
             # util.PrintTime("This may take some time...")
             # Do required alignments and trees
@@ -473,7 +492,7 @@ class TreesForOrthogroups(object):
             if qTrim:
                 for i in iOgsForSpeciesTree:
                     orig_commands_and_filenames.append([alignCommands_and_filenames[i], 
-                                                (trim_fn, alignmentFilesToUse[i]), 
+                                                (trim_fn, (alignmentFilesToUse[i], msa_min_seq)), 
                                                 treeCommands_and_filenames[i]])
             else:
                 for i in iOgsForSpeciesTree:
@@ -488,7 +507,7 @@ class TreesForOrthogroups(object):
                         for cmd in orig_commands_and_filenames
                         for item in cmd[0][0].split() if os.path.isfile(item) and os.path.exists(item)
                     ]
-
+                
             pc.RunParallelCommandsAndMoveResultsFile(
                 nProcesses, 
                 orig_commands_and_filenames, 
@@ -501,7 +520,8 @@ class TreesForOrthogroups(object):
                 cmd_order=cmd_order,
                 qTrim=qTrim,
                 q_print_on_error=print_on_error,
-                old_version=old_version
+                old_version=old_version,
+                dynamic_threads=dynamic_threads
             )
             CreateConcatenatedAlignment(iOgsForSpeciesTree, ogs, self.GetAlignmentFilename, concatenated_algn_fn, fSingleCopy)
             # write OGs used to file
@@ -509,15 +529,16 @@ class TreesForOrthogroups(object):
             with open(dSpeciesTree + "Orthogroups_for_concatenated_alignment.txt", 'w') as outfile:
                 for iog in iOgsForSpeciesTree: outfile.write("OG%07d\n" % iog)
             # Add species tree to list of commands to run
-            commands_and_filenames = [
-                self.program_caller.GetTreeCommands(
-                        self.tree_program, 
-                        [concatenated_algn_fn], 
-                        [speciesTreeFN_ids], 
-                        ["SpeciesTree"],
-                        method_threads=method_threads 
-                    )
-                ]
+            if not astral:
+                commands_and_filenames = [
+                    self.program_caller.GetTreeCommands(
+                            self.tree_program, 
+                            [concatenated_algn_fn], 
+                            [speciesTreeFN_ids], 
+                            ["SpeciesTree"],
+                            method_threads=method_threads 
+                        )
+                    ]
             util.PrintUnderline("Inferring remaining multiple sequence alignments and gene trees") 
         else:
             util.PrintUnderline("Inferring multiple sequence alignments and gene trees")
@@ -526,16 +547,18 @@ class TreesForOrthogroups(object):
         iOgsForSpeciesTree = set(iOgsForSpeciesTree)
         iog_to_align_index = {iog: index for index, iog in enumerate(iogs_align)}
         for i, iog in enumerate(iogs_tree):
-            if iog in iOgsForSpeciesTree: continue
+            if iog in iOgsForSpeciesTree: 
+                continue
             if qTrim:
                 commands_and_filenames.append([alignCommands_and_filenames[iog_to_align_index[iog]],
-                                              (trim_fn, alignmentFilesToUse[iog_to_align_index[iog]]),
+                                              (trim_fn, (alignmentFilesToUse[iog_to_align_index[iog]], msa_min_seq)),
                                               treeCommands_and_filenames[i]])
             else:
                 commands_and_filenames.append([alignCommands_and_filenames[iog_to_align_index[iog]],
                                               treeCommands_and_filenames[i]])
         for iog in set(iogs_align).difference(iogs_tree):
-            if iog in iOgsForSpeciesTree: continue
+            if iog in iOgsForSpeciesTree: 
+                continue
             commands_and_filenames.append([alignCommands_and_filenames[iog_to_align_index[iog]]])
         
         if cmd_order == "ascending":
@@ -545,7 +568,6 @@ class TreesForOrthogroups(object):
                         for cmd in orig_commands_and_filenames
                         for item in cmd[0][0].split() if os.path.isfile(item) and os.path.exists(item)
                     ]
-
         pc.RunParallelCommandsAndMoveResultsFile(nProcesses, 
                                                  commands_and_filenames, 
                                                  True, 
@@ -557,7 +579,8 @@ class TreesForOrthogroups(object):
                                                  cmd_order=cmd_order,
                                                  qTrim=qTrim,
                                                  q_print_on_error=print_on_error,
-                                                 old_version=old_version
+                                                 old_version=old_version,
+                                                 dynamic_threads=dynamic_threads
                                                  )
         
         # # Convert ids to accessions for MSA
@@ -577,12 +600,24 @@ class TreesForOrthogroups(object):
 
         # Add concatenated Alignment
         if qDoSpeciesTree:
+            if astral:
+                util.PrintUnderline("Inferring unrooted species tree using Astral-Pro.") 
+                astral_fn = files.FileHandler.GetCoreAstralFilename()
+                astral_pro.create_input_file(files.FileHandler.GetOGsTreeDir(), astral_fn, n_skip=n_skip)
+                speciesTreeFN_ids = files.FileHandler.GetSpeciesTreeUnrootedFN()
+                parallel_task_manager.RunCommand(
+                    astral_pro.get_astral_command(
+                        astral_fn, speciesTreeFN_ids, nProcesses
+                    )
+                )
+
             qHaveSupport = util.HaveSupportValues(speciesTreeFN_ids)
             if os.path.exists(speciesTreeFN_ids):
                 util.RenameTreeTaxa(speciesTreeFN_ids, files.FileHandler.GetSpeciesTreeUnrootedFN(True), idDict, qSupport=qHaveSupport, qFixNegatives=True)
             else:
                 text = "ERROR: Species tree inference failed"
                 files.FileHandler.LogFailAndExit(text)
+
 
          # ------------------ this section is not needed at this stage for the new procedure -------------
         if not fix_files:
@@ -594,5 +629,5 @@ class TreesForOrthogroups(object):
                 accessionAlignmentFNs.append(files.FileHandler.GetSpeciesTreeConcatAlignFN(True))
 
             self.RenameAlignmentTaxa(alignmentFilesToUse, accessionAlignmentFNs, idDict)
-
+        
         return resultsDirsFullPath[:2]

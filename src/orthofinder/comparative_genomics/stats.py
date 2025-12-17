@@ -4,7 +4,7 @@ import os
 import csv
 import datetime
 import numpy as np
-from collections import Counter
+from collections import Counter, defaultdict
 try:
     from rich import print
 except ImportError:
@@ -14,8 +14,83 @@ from rich.table import Table
 from rich.console import Console
 
 from ..utils import util, files
+from ..tools import tree
 
 
+def WriteOrthologuesStats(ogSet, nOrtho_sp):
+    """
+    nOrtho_sp is a util.nOrtho_sp object
+    """
+    speciesToUse = ogSet.speciesToUse
+    speciesDict = ogSet.SpeciesDict()
+    d = files.FileHandler.GetOGsStatsResultsDirectory()
+
+    # print(nOrtho_sp.n)
+    # print(nOrtho_sp.n_121)
+    # print(nOrtho_sp.n_12m)
+    # print( nOrtho_sp.n_m21)
+    # print(nOrtho_sp.n_m2m)
+    
+    WriteOrthologuesMatrix(d + "OrthologuesStats_Totals.tsv", nOrtho_sp.n, speciesToUse, speciesDict)
+    WriteOrthologuesMatrix(d + "OrthologuesStats_one-to-one.tsv", nOrtho_sp.n_121, speciesToUse, speciesDict)
+    WriteOrthologuesMatrix(d + "OrthologuesStats_one-to-many.tsv", nOrtho_sp.n_12m, speciesToUse, speciesDict)
+    WriteOrthologuesMatrix(d + "OrthologuesStats_many-to-one.tsv", nOrtho_sp.n_m21, speciesToUse, speciesDict)
+    WriteOrthologuesMatrix(d + "OrthologuesStats_many-to-many.tsv", nOrtho_sp.n_m2m, speciesToUse, speciesDict)
+    
+    # Duplications
+    nodeCount = defaultdict(int)
+    nodeCount_50 = defaultdict(int)
+    ogCount = defaultdict(int)
+    ogCount_50 = defaultdict(int)
+    if not os.path.exists(files.FileHandler.GetDuplicationsFN()): return
+    with open(files.FileHandler.GetDuplicationsFN(), util.csv_read_mode) as infile:
+        reader = csv.reader(infile, delimiter="\t")
+        next(reader)
+        # for line in reader:
+        #     try:
+        #         og, node, _, support, _, _, _ = line
+        #     except:
+        #         print(line)
+        #         raise
+        for og, node, _, support, _, _, _ in reader:
+            support = float(support)
+            nodeCount[node] += 1
+            ogCount[og] += 1
+            if support >= 0.5:
+                nodeCount_50[node] += 1
+                ogCount_50[og] += 1
+    with open(d + "Duplications_per_Species_Tree_Node.tsv", util.csv_write_mode) as outfile:
+        writer = csv.writer(outfile, delimiter="\t")
+        writer.writerow(["Species Tree Node", "Duplications (all)", "Duplications (50% support)"])
+#        max_node = max([int(s[1:]) for s in nodeCount.keys()])    # Get largest node number
+        for node in nodeCount:
+            writer.writerow([node, nodeCount[node], nodeCount_50[node]])
+    # Write on species tree
+    in_tree_fn = files.FileHandler.GetSpeciesTreeResultsNodeLabelsFN()
+    out_tree_fn = os.path.split(files.FileHandler.GetDuplicationsFN())[0] + "/SpeciesTree_Gene_Duplications_0.5_Support.txt"
+    t = tree.Tree(in_tree_fn, format=1)
+    for n in t.traverse():
+        n.name = n.name + "_" + str(nodeCount_50[n.name])
+    with open(out_tree_fn, 'w') as outfile:
+        outfile.write(t.write(format=1)[:-1] + t.name + ";")
+    with open(d + "Duplications_per_Orthogroup.tsv", util.csv_write_mode) as outfile:
+        writer = csv.writer(outfile, delimiter="\t")
+        writer.writerow(["Orthogroup", "Duplications (all)", "Duplications (50% support)"])
+        if len(ogCount) > 0:
+            max_og = max([int(s[2:]) for s in ogCount.keys()]) 
+            pat = files.FileHandler.baseOgFormat 
+            for i in range(max_og + 1):
+                og = pat % i
+                writer.writerow([og, ogCount[og], ogCount_50[og]])
+
+def WriteOrthologuesMatrix(fn, matrix, speciesToUse, speciesDict):
+    with open(fn, util.csv_write_mode) as outfile:
+        writer = csv.writer(outfile, delimiter="\t")
+        writer.writerow([""] + [speciesDict[str(index)] for index in speciesToUse])
+        for ii, iSp in enumerate(speciesToUse):
+            overlap = [matrix[ii, jj] for jj, jSp in enumerate(speciesToUse)]
+            writer.writerow([speciesDict[str(iSp)]] + overlap)   
+    
 def OrthogroupsMatrix(iSpecies, properOGs):
     speciesIndexDict = {iSp: iCol for iCol, iSp in enumerate(iSpecies)}
     nSpecies = len(iSpecies)
@@ -28,14 +103,14 @@ def OrthogroupsMatrix(iSpecies, properOGs):
     return ogMatrix
 
 
-def Stats_SpeciesOverlaps(fn, speciesNamesDict, iSpecies, speciesPresence):
-    """ Number of orthogroups in which each species-pair is present. Called by Stats"""
-    with open(fn, util.csv_write_mode) as outfile:
-        writer = csv.writer(outfile, delimiter="\t")
-        writer.writerow([""] + [speciesNamesDict[index] for index in iSpecies])
-        for iSp in iSpecies:
-            overlap = [len([1 for og in speciesPresence if (iSp in og and jSp in og)]) for jSp in iSpecies]
-            writer.writerow([speciesNamesDict[iSp]] + overlap)
+# def Stats_SpeciesOverlaps(fn, speciesNamesDict, iSpecies, speciesPresence):
+#     """ Number of orthogroups in which each species-pair is present. Called by Stats"""
+#     with open(fn, util.csv_write_mode) as outfile:
+#         writer = csv.writer(outfile, delimiter="\t")
+#         writer.writerow([""] + [speciesNamesDict[index] for index in iSpecies])
+#         for iSp in iSpecies:
+#             overlap = [len([1 for og in speciesPresence if (iSp in og and jSp in og)]) for jSp in iSpecies]
+#             writer.writerow([speciesNamesDict[iSp]] + overlap)
 
 
 def Stats_SizeTable(writer_sum, writer_sp, properOGs, allGenesCounter, iSpecies, speciesPresence):
@@ -227,12 +302,12 @@ def Stats(ogs, speciesNamesDict, iSpecies, iResultsVersion, fastaWriter, ids_dic
 
         # Sizes
         Stats_SizeTable(writer_sum, writer_sp, properOGs, allGenesCounter, iSpecies, speciesPresence)
-        Stats_SpeciesOverlaps(filename_overlap, speciesNamesDict, iSpecies, speciesPresence)
-    
+        # Stats_SpeciesOverlaps(filename_overlap, speciesNamesDict, iSpecies, speciesPresence)
+    # 
     util.PrintTime("Done writing files")
     print("\n[bold]Summary: [/bold]")
-    summaryText1 = f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] assigned [deep_sky_blue2]{nAssigned}[/deep_sky_blue2] genes (%{pAssigned:0.1f}% of total) to [deep_sky_blue2]{nOgs}[/deep_sky_blue2] orthogroups. "
-    summaryText2 = f"[deep_sky_blue2]50[/deep_sky_blue2]%% of genes were in orthogroups with [deep_sky_blue2]{G50}[/deep_sky_blue2] or more genes (G50 was [deep_sky_blue2]{G50}[/deep_sky_blue2]) and were contained in the largest [deep_sky_blue2]{O50}[/deep_sky_blue2] orthogroups (O50 was [deep_sky_blue2]{O50}[/deep_sky_blue2]). "
+    summaryText1 = f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] assigned [deep_sky_blue2]{nAssigned}[/deep_sky_blue2] genes ({pAssigned:0.1f}% of total) to [deep_sky_blue2]{nOgs}[/deep_sky_blue2] orthogroups. "
+    summaryText2 = f"[deep_sky_blue2]50[/deep_sky_blue2]% of genes were in orthogroups with [deep_sky_blue2]{G50}[/deep_sky_blue2] or more genes (G50 was [deep_sky_blue2]{G50}[/deep_sky_blue2]) and were contained in the largest [deep_sky_blue2]{O50}[/deep_sky_blue2] orthogroups (O50 was [deep_sky_blue2]{O50}[/deep_sky_blue2]). "
     summaryText3 = f"There were [deep_sky_blue2]{nCompleteOGs}[/deep_sky_blue2] orthogroups with all species present and [deep_sky_blue2]{nSingleCopy}[/deep_sky_blue2] of these consisted entirely of single-copy genes."
 
     console = Console()

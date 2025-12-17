@@ -8,10 +8,11 @@ try:
     from rich import print
 except ImportError:
     ...
-    
-PY2 = sys.version_info <= (3,)
-csv_write_mode = 'wb' if PY2 else 'wt'
-csv_read_mode = 'rb' if PY2 else 'rt'
+
+from . import util
+# PY2 = sys.version_info <= (3,)
+# csv_write_mode = 'wb' if PY2 else 'wt'
+# csv_read_mode = 'rb' if PY2 else 'rt'
 
 
 def split_ortholog_files(d_ologs, q_compress=False):
@@ -31,12 +32,12 @@ def split_ortholog_files(d_ologs, q_compress=False):
             if sp0 == sp1:
                 continue
             if q_compress:
-                file_handles.append(gzip.open(d_out + '%s__v__%s.tsv.gz' % (sp0, sp1), csv_write_mode))
+                file_handles.append(gzip.open(d_out + '%s__v__%s.tsv.gz' % (sp0, sp1), util.csv_write_mode))
             else:
-                file_handles.append(open(d_out + '%s__v__%s.tsv' % (sp0, sp1), csv_write_mode))
+                file_handles.append(open(d_out + '%s__v__%s.tsv' % (sp0, sp1), util.csv_write_mode))
             csv_writers[sp1] = csv.writer(file_handles[-1], delimiter="\t")
             csv_writers[sp1].writerow(("Orthogroup", sp0, sp1))
-        with gzip.open(fn, csv_read_mode) if fn.endswith(".gz") else open(fn, csv_read_mode) as infile:
+        with gzip.open(fn, util.csv_read_mode) if fn.endswith(".gz") else open(fn, util.csv_read_mode) as infile:
             reader = csv.reader(infile, delimiter="\t")
             next(reader)  # skip header
             for row in reader:
@@ -44,12 +45,12 @@ def split_ortholog_files(d_ologs, q_compress=False):
                     csv_writers[row[1]].writerow(row[:1] + row[2:])
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("orthologs_directory", help="Input directory")
-    parser.add_argument("-c", "--compress", action="store_true", help="Compress output files")
-    args = parser.parse_args()
-    if not os.path.exists(args.orthologs_directory):
-        print("Directory not found: %s" % args.orthologs_directory)
-        sys.exit(1)
-    split_ortholog_files(args.orthologs_directory, q_compress=args.compress)
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("orthologs_directory", help="Input directory")
+#     parser.add_argument("-c", "--compress", action="store_true", help="Compress output files")
+#     args = parser.parse_args()
+#     if not os.path.exists(args.orthologs_directory):
+#         print("Directory not found: %s" % args.orthologs_directory)
+#         sys.exit(1)
+#     split_ortholog_files(args.orthologs_directory, q_compress=args.compress)

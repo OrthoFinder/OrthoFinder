@@ -291,24 +291,37 @@ def post_clustering_orthogroups(
     ogs = mcl.GetPredictedOGs(clustersFilename_pairs)
     resultsBaseFilename = files.FileHandler.GetOrthogroupResultsFNBase()
 
-
-    util.PrintUnderline("Writing orthogroups to file")
-    idsDict = mcl.MCL.WriteOrthogroupFiles(
-        ogs,
-        [files.FileHandler.GetSequenceIDsFN()],
-        resultsBaseFilename,
-        clustersFilename_pairs,
-    )
-
+    # if not options.fix_files:
+    if not options.qStopAfterTrees:
+        util.PrintUnderline("Writing orthogroups to file")
+        idsDict = mcl.MCL.WriteOrthogroupFiles(
+            ogs,
+            [files.FileHandler.GetSequenceIDsFN()],
+            resultsBaseFilename,
+            clustersFilename_pairs,
+        )
+    else:
+        try:
+            idsDict = mcl.IDFullDict(
+                [files.FileHandler.GetSequenceIDsFN()], 
+                func=util.FirstWordExtractor
+            )
+        except:
+            idsDict = mcl.IDFullDict(
+                [files.FileHandler.GetSequenceIDsFN()], 
+                func=util.FullAccession
+            )
+    
     ## --------- this doesn't need to run at this point with the new process --------
-    # if not q_incremental:
-    #     mcl.MCL.CreateOrthogroupTable(
-    #         ogs,
-    #         idsDict,
-    #         speciesNamesDict,
-    #         speciesInfoObj.speciesToUse,
-    #         resultsBaseFilename,
-    #     )
+    if not options.fix_files:
+        if not q_incremental:
+            mcl.MCL.CreateOrthogroupTable(
+                ogs,
+                idsDict,
+                speciesNamesDict,
+                speciesInfoObj.speciesToUse,
+                resultsBaseFilename,
+            )
 
     # Write Orthogroup FASTA files
     ogSet = orthogroups_set.OrthoGroupsSet(

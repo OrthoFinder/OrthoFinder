@@ -41,34 +41,34 @@ from . import consensus_tree as cons
 # import tree, newick, util, parallel_task_manager
 # import consensus_tree as cons
         
-def CanRunCommand(command, qAllowStderr = False, qPrint = True):
-    if qPrint: sys.stdout.write("Test can run \"%s\"" % command)      
-    capture = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout = [x for x in capture.stdout]
-    stderr = [x for x in capture.stderr]
+# def CanRunCommand(command, qAllowStderr = False, qPrint = True):
+#     if qPrint: sys.stdout.write("Test can run \"%s\"" % command)      
+#     capture = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#     stdout = [x for x in capture.stdout]
+#     stderr = [x for x in capture.stderr]
 
-    if len(stdout) > 0 and (qAllowStderr or len(stderr) == 0):
-        if qPrint: print(" - ok")
-        return True
-    else:
-        if qPrint: print(" - failed")
-        return False
+#     if len(stdout) > 0 and (qAllowStderr or len(stderr) == 0):
+#         if qPrint: print(" - ok")
+#         return True
+#     else:
+#         if qPrint: print(" - failed")
+#         return False
         
-def CheckFastME(workingDir):
-    testFN = workingDir + "SimpleTest.phy"
-    with open(testFN, 'w') as outfile:
-        outfile.write("4\n1_1 0 0 0.2 0.25\n0_2 0 0 0.21 0.28\n3_1 0.2 0.21 0 0\n4_1 0.25 0.28 0 0")
-    outFN = workingDir + "SimpleTest.tre"
-    if os.path.exists(outFN): os.remove(outFN)  
-    print("")      
-    if not CanRunCommand("fastme -i %s -o %s" % (testFN, outFN), qAllowStderr=False):
-        print("ERROR: Cannot run fastme")
-        print('Please check "fastme" is installed and that the executable is in the system path.\n')
-        return False
-    os.remove(testFN)
-    os.remove(outFN)
-    fastme_stat_fn = workingDir + "SimpleTest.phy_fastme_stat.txt"
-    if os.path.exists(fastme_stat_fn): os.remove(fastme_stat_fn)
+# def CheckFastME(workingDir):
+#     testFN = workingDir + "SimpleTest.phy"
+#     with open(testFN, 'w') as outfile:
+#         outfile.write("4\n1_1 0 0 0.2 0.25\n0_2 0 0 0.21 0.28\n3_1 0.2 0.21 0 0\n4_1 0.25 0.28 0 0")
+#     outFN = workingDir + "SimpleTest.tre"
+#     if os.path.exists(outFN): os.remove(outFN)  
+#     print("")      
+#     if not CanRunCommand("fastme -i %s -o %s" % (testFN, outFN), qAllowStderr=False):
+#         print("ERROR: Cannot run fastme")
+#         print('Please check "fastme" is installed and that the executable is in the system path.\n')
+#         return False
+#     os.remove(testFN)
+#     os.remove(outFN)
+#     fastme_stat_fn = workingDir + "SimpleTest.phy_fastme_stat.txt"
+#     if os.path.exists(fastme_stat_fn): os.remove(fastme_stat_fn)
 
 def WritePhylipMatrix(m, names, outFN, max_og=1e6):
     """
@@ -250,37 +250,37 @@ def Run_ForOrthoFinder(dir_in, d_working, speciesToUse, speciesTreeIds_FN_out):
     ProcessTrees(dir_in, dir_matrices, dir_trees_out, gene_to_species, qVerbose=False, qForOF=True)
     InferSpeciesTree(dir_trees_out, gene_to_species.species, speciesTreeIds_FN_out)
     
-def main(args):
-    dir_in = args.gene_trees
-    astral_jar = None
-    gene_to_species = GeneToSpecies(args.species_map)
-    dir_out = util.CreateNewWorkingDirectory(dir_in + "/../STAG_Results")
-    CheckFastME(dir_out)
-    dir_matrices = dir_out + "DistanceMatrices/"
-    os.mkdir(dir_matrices)
-    dir_trees_out = dir_out + "Trees/"
-    os.mkdir(dir_trees_out)
-    ProcessTrees(dir_in, dir_matrices, dir_trees_out, gene_to_species, qVerbose=(not args.quiet))
-    outputFN = dir_out + "SpeciesTree.tre"
-#    if args.astral_jar == None:
-    if astral_jar == None:
-        InferSpeciesTree(dir_trees_out, gene_to_species.species, outputFN)
-    else:
-        InferSpeciesTree(dir_trees_out, gene_to_species.species, outputFN, astral_jar=astral_jar)
-    print(("STAG species tree: " + os.path.abspath(outputFN) + "\n"))
+# def main(args):
+#     dir_in = args.gene_trees
+#     astral_jar = None
+#     gene_to_species = GeneToSpecies(args.species_map)
+#     dir_out = util.CreateNewWorkingDirectory(dir_in + "/../STAG_Results")
+#     CheckFastME(dir_out)
+#     dir_matrices = dir_out + "DistanceMatrices/"
+#     os.mkdir(dir_matrices)
+#     dir_trees_out = dir_out + "Trees/"
+#     os.mkdir(dir_trees_out)
+#     ProcessTrees(dir_in, dir_matrices, dir_trees_out, gene_to_species, qVerbose=(not args.quiet))
+#     outputFN = dir_out + "SpeciesTree.tre"
+# #    if args.astral_jar == None:
+#     if astral_jar == None:
+#         InferSpeciesTree(dir_trees_out, gene_to_species.species, outputFN)
+#     else:
+#         InferSpeciesTree(dir_trees_out, gene_to_species.species, outputFN, astral_jar=astral_jar)
+#     print(("STAG species tree: " + os.path.abspath(outputFN) + "\n"))
 
-if __name__ == "__main__":
-    text = """
-*********************************************************
-*                                                       *
-*      STAG: Species Tree inference from All Genes      *
-*                                                       *
-*********************************************************"""
-    print((text[1:] + "\n"))
-    parser = argparse.ArgumentParser()
-    parser.add_argument("species_map", help = "Map file from gene names to species names, or SpeciesIDs.txt file from OrthoFinder")
-    parser.add_argument("gene_trees", help = "Directory conaining gene trees")
-    parser.add_argument("-q", "--quiet", help = "Only print sparse output", action="store_true")
-#    parser.add_argument("-a", "--astral_jar", help = "ASTRAL jar file. Use ASTRAL to combine STAG species tree estimates instead of greedy consensus tree.")
-    args = parser.parse_args()
-    main(args)
+# if __name__ == "__main__":
+#     text = """
+# *********************************************************
+# *                                                       *
+# *      STAG: Species Tree inference from All Genes      *
+# *                                                       *
+# *********************************************************"""
+#     print((text[1:] + "\n"))
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("species_map", help = "Map file from gene names to species names, or SpeciesIDs.txt file from OrthoFinder")
+#     parser.add_argument("gene_trees", help = "Directory conaining gene trees")
+#     parser.add_argument("-q", "--quiet", help = "Only print sparse output", action="store_true")
+# #    parser.add_argument("-a", "--astral_jar", help = "ASTRAL jar file. Use ASTRAL to combine STAG species tree estimates instead of greedy consensus tree.")
+#     args = parser.parse_args()
+#     main(args)

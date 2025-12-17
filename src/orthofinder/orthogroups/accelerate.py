@@ -197,10 +197,17 @@ def create_profiles_database(
     else:
         subtrees_label = ""
     fn_base = "profile_sequences.hogs" if q_hogs else "profile_sequences"
-    if selection == "all":
-        fn_fasta = wd + fn_base + ".%s.all.fa" % subtrees_label
+    if subtrees_label:
+        if selection == "all":
+            fn_fasta = wd + fn_base + ".%s.all.fa" % subtrees_label
+        else:
+            fn_fasta = wd + fn_base + ".%s.%d_%s.fa" % (subtrees_label, n_for_profile, selection)
     else:
-        fn_fasta = wd + fn_base + ".%s.%d_%s.fa" % (subtrees_label, n_for_profile, selection)
+        if selection == "all":
+            fn_fasta = wd + fn_base + ".all.fa"
+        else:
+            fn_fasta = wd + fn_base + ".%d_%s.fa" % (n_for_profile, selection)  
+  
     fn_diamond_db = fn_fasta + ".dmnd"
     if os.path.exists(fn_diamond_db):
         # print("Profiles database already exists and will be reused: %s" % fn_diamond_db)
@@ -317,7 +324,7 @@ def read_hogs(din, hog_name, ids_rev=None):
     elif ids_rev is None:
         return []
     else:
-        fn = din + "Phylogenetic_Hierarchical_Orthogroups/%s.tsv" % hog_name
+        fn = os.path.join(din, "Phylogenetic_Hierarchical_Orthogroups/%s.tsv" % hog_name)
     if not os.path.exists(fn):
         print("ERROR: %s does not exist" % fn)
         raise RuntimeError
@@ -362,7 +369,7 @@ def sample_random(og, n_max):
     Returns:
         genes - list of genes
     """
-    return random.sample(og, min(n_max, len(og)))
+    return random.sample(sorted(og), min(n_max, len(og)))
 
 
 def get_new_species_clades(rooted_species_tree_fn, core_species_ids, n_core_species=2):
