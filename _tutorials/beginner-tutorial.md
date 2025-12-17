@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Beginner Tutorial"
-date:   2025-05-01 09:01:16 +0000
+date:   2025-12-17 22:33:38 +0000
 updated: 2025-05-08
 docs: /assets/docs/beginner-tutorial.pdf
 pdfs: https://GitHub.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/beginner-tutorial.pdf
