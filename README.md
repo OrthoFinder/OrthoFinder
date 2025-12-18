@@ -1,6 +1,5 @@
-[![CI](https://github.com/OrthoFinder/OrthoFinder/actions/workflows/orthofinder-python-main.yml/badge.svg?branch=main)](https://github.com/OrthoFinder/OrthoFinder/actions/workflows/orthofinder-python-main.yml)
+# OrthoFinder [![CI](https://github.com/OrthoFinder/OrthoFinder/actions/workflows/orthofinder-python-main.yml/badge.svg?branch=main)](https://github.com/OrthoFinder/OrthoFinder/actions/workflows/orthofinder-python-main.yml)[![GitHub release](https://img.shields.io/github/v/release/OrthoFinder/OrthoFinder)](https://github.com/OrthoFinder/OrthoFinder/releases)![License](https://img.shields.io/github/license/OrthoFinder/OrthoFinder)![Stars](https://img.shields.io/github/stars/OrthoFinder/OrthoFinder?style=social)
 
-# OrthoFinder
 
 <p align="center">
   <img src="assets/images/coreassignfigure-images-2.png" alt="concept_figure" width="800"/>
