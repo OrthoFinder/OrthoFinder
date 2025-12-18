@@ -1,4 +1,4 @@
-![CI](https://github.com/OrthoFinder/OrthoFinder/actions/workflows/ci.yml/badge.svg?branch=main)
+[![CI](https://github.com/OrthoFinder/OrthoFinder/actions/workflows/orthofinder-python-main.yml/badge.svg?branch=main)](https://github.com/OrthoFinder/OrthoFinder/actions/workflows/orthofinder-python-main.yml)
 
 # OrthoFinder
 
