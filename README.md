@@ -49,9 +49,9 @@ The following commands provide three ways to download the source code of OrthoFi
 # Download via git 
 git clone https://github.com/OrthoFinder/OrthoFinder.git
 
-# or download the orthofinder-linux-intel-3.1.0.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine
+# or download the orthofinder-linux-intel-3.1.1.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine
 mkdir OrthoFinder && \
-  wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-linux-intel-3.1.0.tar.gz | \
+  wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.1/orthofinder-linux-intel-3.1.1.tar.gz | \
   tar -xz --strip-components=1 -C OrthoFinder
 ```
 
@@ -76,7 +76,7 @@ To activate the virtual environment you have created, run:
 ```
 ### Test your installation
 
-Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/ExampleData.tar.gz).
+Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.1/ExampleData.tar.gz).
 
 ```bash
 orthofinder --help # Print out help informatioin
@@ -200,7 +200,7 @@ Command-line options for OrthoFinder
 
 ## Output files
 
-> ***From OrthoFinder `v3.1.0`, `N0.tsv` is removed from `/Phylogenetic_Hierarchical_Orthogroups`. Instead, `Orthogroups/Orthogroups.tsv` contains the orthogroups from `N0.tsv`.***
+> ***From OrthoFinder `v3.1.1`, `N0.tsv` is removed from `/Phylogenetic_Hierarchical_Orthogroups`. Instead, `Orthogroups/Orthogroups.tsv` contains the orthogroups from `N0.tsv`.***
 
 A standard OrthoFinder run produces a set of files describing the orthogroups, orthologs, gene trees, resolve gene trees, the rooted species tree, gene duplication events, and comparative genomic statistics for the set of species being analysed. These files are located in an intuitive directory structure.
 
