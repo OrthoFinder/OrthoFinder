@@ -108,27 +108,27 @@ jobs:
         run: pytest -sv tests/ --skip-runs=mmseqs,iqtree3,raxml,blast
 
       # Badge writing (single leg, only on push to main)
-      - name: Configure Git for badge commit
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.python == '3.12'
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      # - name: Configure Git for badge commit
+      #   if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.python == '3.12'
+      #   run: |
+      #     git config --global user.name "github-actions[bot]"
+      #     git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Update badge to passing
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.python == '3.12' && success()
-        run: |
-          echo '{"schemaVersion":1,"label":"Tested","message":"passing","color":"brightgreen"}' > badge-status.json
-          git add badge-status.json
-          git commit -m "CI: badge passing [skip ci]" || echo "No changes to commit"
-          git push origin HEAD:main
+      # - name: Update badge to passing
+      #   if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.python == '3.12' && success()
+      #   run: |
+      #     echo '{"schemaVersion":1,"label":"Tested","message":"passing","color":"brightgreen"}' > badge-status.json
+      #     git add badge-status.json
+      #     git commit -m "CI: badge passing [skip ci]" || echo "No changes to commit"
+      #     git push origin HEAD:main
 
-      - name: Update badge to failing
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.python == '3.12' && failure()
-        run: |
-          echo '{"schemaVersion":1,"label":"Tested","message":"failing","color":"red"}' > badge-status.json
-          git add badge-status.json
-          git commit -m "CI: badge failing [skip ci]" || echo "No changes to commit"
-          git push origin HEAD:main
+      # - name: Update badge to failing
+      #   if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.python == '3.12' && failure()
+      #   run: |
+      #     echo '{"schemaVersion":1,"label":"Tested","message":"failing","color":"red"}' > badge-status.json
+      #     git add badge-status.json
+      #     git commit -m "CI: badge failing [skip ci]" || echo "No changes to commit"
+      #     git push origin HEAD:main
 
   update-example-output-doc:
     name: Update example output tree (docs)

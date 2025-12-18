@@ -1,3 +1,5 @@
+![CI](https://github.com/OrthoFinder/OrthoFinder/actions/workflows/ci.yml/badge.svg?branch=main)
+
 # OrthoFinder
 
 <p align="center">
