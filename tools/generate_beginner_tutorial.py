@@ -75,7 +75,7 @@ error message, the best way to troubleshoot is to just google the error message.
 can also ask a question on our [GitHub](https://GitHub.com/OrthoFinder/OrthoFinder/issues).
 
 When OrthoFinder has finished running, it will generate a folder containing the output,
-with the folder named according to today’s date, for example, `ExampleData/OrthoFinder/Results_Dec08`. We’ll discuss how to interpret and analyse these files and folders later on, in the
+with the folder named according to today’s date, for example, `ExampleData/OrthoFinder/Results_Dec18`. We’ll discuss how to interpret and analyse these files and folders later on, in the
 [Exploring the results](#exploring-the-results-of-orthofinder) section of the tutorial.
 
 ### Running OrthoFinder
@@ -134,8 +134,8 @@ one species, we might want to consider sampling more species to fill in the long
 evolutionary divergence between species.
 
 One more useful thing to do before we really start to dive in is to look at the species
-tree. You can do this by opening the tree in [iTOL](https://itol.embl.de/upload.cgi) by either copy and pasting the file content 
-or uploading the file directly. 
+tree. You can do this by opening the tree in [iTOL](https://itol.embl.de/upload.cgi) by either copy and pasting the file content
+or uploading the file directly.
 
 <p align="center" class="figure-wrapper">
   <img src="{{{{ site.baseurl }}}}/assets/images/species_tree.png" alt="species_tree" width="500"/>
@@ -161,7 +161,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     if necessary). The file has three columns, `Orthogroup`, `{species1}`, and
     `{species2}`. Find `{gene_of_interest}` in the table, I can see that
     the gene is in orthogroup `{orthogroup}` and that its orthologs are:
-    `{orthologs}`. 
+    `{orthologs}`.
 
 - ***Gene trees***<br>
     Next, we are going to look at the gene tree to see how these orthologues arose.
@@ -174,7 +174,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     gene tree for that orthogroup. To find the tree for certain orthogroup, just search for the
     orthogroup ID.
 
-    We are going to view the tree for `{gene_tree_orthogroup}`. 
+    We are going to view the tree for `{gene_tree_orthogroup}`.
 
     <p align="center" class="figure-wrapper">
         <img src="{{{{ site.baseurl }}}}/assets/images/gene_tree.png" alt="gene_tree" width="1000"/>
@@ -200,7 +200,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     followed by an underscore and then the number of well-supported gene duplication
     events mapped to each node in the species tree. Gene-duplication events are
     considered `well-supported` if at least `50%` of the descendant species have retained
-    both copies of the duplicated gene. For the common ancestor of the mammals, `{node_example}`,
+    both copies of the duplicated gene. For the node `{node_example}`,
     there were `{number_of_duplications_for_node}` of these well-supported gene duplication events. The numbers after the
     species names are the number of `terminal` duplications that map to that species, rather
     than an internal node of the species tree.
@@ -213,8 +213,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
 
     Each gene duplication event is cross-referenced to the species tree node, and the node
     in the gene tree. It also lists the genes descended from each of the two copies arising
-    from the gene duplication event. We can check this out for our wombat olfactory
-    receptor orthologues.
+    from the gene duplication event.
 
     These events are also summarised by orthogroup and by species tree node in the files
     `Duplications_per_Orthogroup.tsv` and `Duplications_per_Species_Tree_Node.tsv` which are
@@ -239,7 +238,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
 - ***Hierarchical Orthogroups***<br>
     OrthoFinder3 also infers hierarchical orthogroups for each node in the species tree. A
     file equivalent to `Orthogroups/Orthogroups.tsv` is available for each node in
-    `/Phylogenetic_Hierarchical_Orthogroups`. You can compare the node number (e.g. `N3`)
+    `/Phylogenetic_Hierarchical_Orthogroups`. You can compare the node number (e.g. `N2`)
     to the species tree, to see which species will be included.
 
 - ***Orthogroup sequences***<br>
