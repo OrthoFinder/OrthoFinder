@@ -141,7 +141,7 @@ def run_in_process(infn, outfn, msa_min_seq, f, n_min, c):
     ### This will take to long for large alignments...
     for i in range(0,n):
         index = (seq_data[i,].tocoo().col)
-        if True in np.in1d(index, to_keep):
+        if True in np.isin(index, to_keep):
             trim = True
         else:
             trim  = False
