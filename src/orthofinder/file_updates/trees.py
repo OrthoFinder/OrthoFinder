@@ -100,7 +100,7 @@ def write_fasta(align_dir, hog_name, sequences, idDict):
 def read_files(unique_og, spec_seq_id_dict, tree_file_index, fasta_file_index, exist_msa=True):
    
     gene_tree = read_tree_file(unique_og, tree_file_index, spec_seq_id_dict)
-    gene_dict = read_fasta_file(unique_og, fasta_file_index, exist_msa=True)
+    gene_dict = read_fasta_file(unique_og, fasta_file_index, exist_msa=exist_msa)
     return (unique_og, gene_tree, gene_dict)
 
     # gene_tree = None

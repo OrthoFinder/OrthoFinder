@@ -290,8 +290,14 @@ def Worker_OGMatrices_ReadBLASTAndUpdateDistances(cmd_queue, worker_status_queue
                 for jjSp, B  in enumerate(Bs):
                     for og, m in zip(ogsPerSpecies, ogMatrices):
                         for gi, i in og[iiSp]:
+                            a = int(np.asarray(gi.iSeq).item())
+                            mi  = float(np.asarray(mins[a]).item())
+                            inv = float(np.asarray(maxes_inv[a]).item())
                             for gj, j in og[jjSp]:
-                                    m[i][j] = 0.5*max(B[gi.iSeq, gj.iSeq], mins[gi.iSeq]) * maxes_inv[gi.iSeq]
+                                    b = int(np.asarray(gj.iSeq).item())
+                                    bij = float(np.asarray(B[a, b].item()))
+                                    m[i][j] = 0.5 * max(bij, mi) * inv
+                                    # m[i][j] = 0.5*max(B[gi.iSeq, gj.iSeq], mins[gi.iSeq]) * maxes_inv[gi.iSeq]
                 del Bs, B, mins, maxes, m0, m1, maxes_inv    # significantly reduces RAM usage
                 worker_status_queue.put(("finish", iWorker, iiSp))
             except queue.Empty:
