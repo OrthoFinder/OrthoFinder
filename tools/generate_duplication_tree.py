@@ -2,7 +2,6 @@ import os
 import argparse
 
 from ete4 import Tree
-from tabulate import tabulate
 from ete4 import Tree
 from ete4.treeview import TreeStyle, TextFace
 

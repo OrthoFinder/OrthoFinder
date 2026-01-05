@@ -1,4 +1,3 @@
-from directory_tree import DisplayTree
 import os
 import argparse
 from datetime import datetime, timezone
