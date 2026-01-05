@@ -36,11 +36,12 @@ classifiers = [
     # 'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
 
     # Specify the Python versions you support here.
-    'Programming Language :: Python :: 3.8',  # tested
-    'Programming Language :: Python :: 3.9',  # tested
-    "Programming Language :: Python :: 3.10", # base version, tested
+    "Programming Language :: Python :: 3.9",  # tested
+    "Programming Language :: Python :: 3.10", # tested
     "Programming Language :: Python :: 3.11", # tested
     "Programming Language :: Python :: 3.12", # tested
+    "Programming Language :: Python :: 3.13", # tested
+    "Programming Language :: Python :: 3.14", # tested
 ]
 dependencies = ["numpy", "scipy", "scikit-learn", "biopython", "rich", "ete4"]
 
