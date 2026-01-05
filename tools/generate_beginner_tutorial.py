@@ -11,7 +11,7 @@ title:  "Beginner Tutorial"
 date:   {tutorial_datetime}
 updated: {tutorial_update_date}
 docs: /assets/docs/beginner-tutorial.pdf
-pdfs: https://GitHub.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/beginner-tutorial.pdf
+pdfs: https://github.com/OrthoFinder/OrthoFinder/blob/gh-pages/assets/docs/beginner-tutorial.pdf
 ---
 
 

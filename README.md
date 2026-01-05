@@ -27,7 +27,7 @@ For more information please visit [our website](https://orthofinder.github.io/Or
 The simplest way to install OrthoFinder is through [conda](https://anaconda.org/bioconda/orthofinder). If you're unfamiliar with conda, [this tutorial](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/) offers a beginner-friendly introduction.
 
 ```bash
-conda create -n of3_env python=3.10
+conda create -n of3_env python=3.12
 conda activate of3_env
 conda install orthofinder
 ```
@@ -49,9 +49,9 @@ The following commands provide three ways to download the source code of OrthoFi
 # Download via git 
 git clone https://github.com/OrthoFinder/OrthoFinder.git
 
-# or download the orthofinder-linux-intel-3.1.1.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine
+# or download the orthofinder-linux-intel-3.1.2.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine
 mkdir OrthoFinder && \
-  wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.1/orthofinder-linux-intel-3.1.1.tar.gz | \
+  wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.2/orthofinder-linux-intel-3.1.2.tar.gz | \
   tar -xz --strip-components=1 -C OrthoFinder
 ```
 
@@ -76,7 +76,7 @@ To activate the virtual environment you have created, run:
 ```
 ### Test your installation
 
-Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.1/ExampleData.tar.gz).
+Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.2/ExampleData.tar.gz).
 
 ```bash
 orthofinder --help # Print out help informatioin
@@ -200,7 +200,7 @@ Command-line options for OrthoFinder
 
 ## Output files
 
-> ***From OrthoFinder `v3.1.1`, `N0.tsv` is removed from `/Phylogenetic_Hierarchical_Orthogroups`. Instead, `Orthogroups/Orthogroups.tsv` contains the orthogroups from `N0.tsv`.***
+> ***From OrthoFinder `v3.1.2`, `N0.tsv` is removed from `/Phylogenetic_Hierarchical_Orthogroups`. Instead, `Orthogroups/Orthogroups.tsv` contains the orthogroups from `N0.tsv`.***
 
 A standard OrthoFinder run produces a set of files describing the orthogroups, orthologs, gene trees, resolve gene trees, the rooted species tree, gene duplication events, and comparative genomic statistics for the set of species being analysed. These files are located in an intuitive directory structure.
 
@@ -284,15 +284,15 @@ OrthoFinder was designed to run on Linux (including WSL2).
 We have tested OrthoFinder v3.1 on debian 12.9, centOS v8, macOS 14.4.1, macOS 13.2.1. 
 
 **Dependencies**
-- Python `<3.12|>=3.8`
-- Diamond `<2.1|>=2.1.7`
-- Famsa `>= 2.2.3`
+- Python `>=3.11`
+- Diamond `>=2.1.7,<2.2`
+- Famsa `>=2.2.3`
 - Fasttree `>=2.1.11`
 - Numpy `>=2.3.2`
 - Scipy `>=1.16`
 - Biopython `>=1.85`
-- Rich `>= 14.1.0`
-- Scikit-learn `>= 1.7.1`
+- Rich `>=14.1.0`
+- Scikit-learn `>=1.7.1`
 
 ## Meet the team
 
