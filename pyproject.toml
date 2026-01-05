@@ -36,8 +36,8 @@ classifiers = [
     # 'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
 
     # Specify the Python versions you support here.
-    "Programming Language :: Python :: 3.9",  # tested
-    "Programming Language :: Python :: 3.10", # tested
+    # "Programming Language :: Python :: 3.9",  # tested
+    # "Programming Language :: Python :: 3.10", # tested
     "Programming Language :: Python :: 3.11", # tested
     "Programming Language :: Python :: 3.12", # tested
     "Programming Language :: Python :: 3.13", # tested
@@ -61,6 +61,7 @@ dev = [
     "setuptools>=77",
     "setuptools-scm>=8",
     "packaging>=24.2",
+    "build",
 ]
 
 [project.scripts]
