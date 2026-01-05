@@ -14,10 +14,10 @@ Please pick the right `.tar.gz` file to download from the list.
 
 <div class="download-item">
   📦 
-    <a href="https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.1/orthofinder-linux-intel-3.1.1.tar.gz" class="btn">
-        orthofinder-linux-intel-3.1.1.tar.gz
+    <a href="https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.2/orthofinder-linux-intel-3.1.2.tar.gz" class="btn">
+        orthofinder-linux-intel-3.1.2.tar.gz
     </a>
-    <span class="download-count" data-asset="orthofinder-linux-intel-3.1.1.tar.gz">
+    <span class="download-count" data-asset="orthofinder-linux-intel-3.1.2.tar.gz">
     <i class="fa fa-download" aria-hidden="true"></i>
     </span>
 </div>
@@ -34,7 +34,7 @@ For a full list of OrthoFinder before v3.0.1b1, see the [GitHub Releases](https:
 The simplest way to install OrthoFinder is through [conda](https://anaconda.org/bioconda/orthofinder). If you're unfamiliar with conda, [this tutorial](https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/) offers a beginner-friendly introduction.
 
 ```bash
-conda create -n of3_env python=3.10
+conda create -n of3_env python=3.12
 conda activate of3_env
 conda install orthofinder
 ```
@@ -54,9 +54,9 @@ The following commands provide three ways to download the source code of OrthoFi
 ```bash
 # Download via git 
 git clone https://github.com/OrthoFinder/OrthoFinder.git
-# or download the orthofinder-linux-intel-3.1.1.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine
+# or download the orthofinder-linux-intel-3.1.2.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine
 mkdir OrthoFinder && \
-  wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.1/orthofinder-linux-intel-3.1.1.tar.gz | \
+  wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.2/orthofinder-linux-intel-3.1.2.tar.gz | \
   tar -xz --strip-components=1 -C OrthoFinder
 ```
 

@@ -4,7 +4,7 @@ title:  "Beginner Tutorial"
 date:   2026-01-05 22:07:08 +0000
 updated: 2026-01-05
 docs: /assets/docs/beginner-tutorial.pdf
-pdfs: https://GitHub.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/beginner-tutorial.pdf
+pdfs: https://github.com/OrthoFinder/OrthoFinder/blob/gh-pages/assets/docs/beginner-tutorial.pdf
 ---
 
 

@@ -1,4 +1,31 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/OrthoFinder/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/OrthoFinder/" rel="alternate" type="text/html" /><updated>2025-12-18T10:13:34+00:00</updated><id>http://localhost:4000/OrthoFinder/feed.xml</id><title type="html">OrthoFinder</title><subtitle>This is a software developed by the [Steven Kelly Lab](http://www.stevekellylab.com/).</subtitle><author><name>David Emms, Jonathan Holmes, Laurence Belcher, Yi Liu</name></author><entry><title type="html">OrthoFinder-v3.1.0</title><link href="http://localhost:4000/OrthoFinder/release/07/05/2025/OrthoFinder-v3.1.0.html" rel="alternate" type="text/html" title="OrthoFinder-v3.1.0" /><published>2025-05-07T10:16:16+01:00</published><updated>2025-05-07T10:16:16+01:00</updated><id>http://localhost:4000/OrthoFinder/release/07/05/2025/OrthoFinder-v3.1.0</id><content type="html" xml:base="http://localhost:4000/OrthoFinder/release/07/05/2025/OrthoFinder-v3.1.0.html"><![CDATA[<div class="download-item">
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="http://localhost:4000/OrthoFinder/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/OrthoFinder/" rel="alternate" type="text/html" /><updated>2026-01-05T23:00:50+00:00</updated><id>http://localhost:4000/OrthoFinder/feed.xml</id><title type="html">OrthoFinder</title><subtitle>This is a software developed by the [Steven Kelly Lab](http://www.stevekellylab.com/).</subtitle><author><name>David Emms, Jonathan Holmes, Laurence Belcher, Yi Liu</name></author><entry><title type="html">OrthoFinder-v3.1.1</title><link href="http://localhost:4000/OrthoFinder/release/05/01/2026/OrthoFinder-v3.1.1.html" rel="alternate" type="text/html" title="OrthoFinder-v3.1.1" /><published>2026-01-05T22:42:16+00:00</published><updated>2026-01-05T22:42:16+00:00</updated><id>http://localhost:4000/OrthoFinder/release/05/01/2026/OrthoFinder-v3.1.1</id><content type="html" xml:base="http://localhost:4000/OrthoFinder/release/05/01/2026/OrthoFinder-v3.1.1.html"><![CDATA[<div class="download-item">
+  📦 
+    <a href="https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.1/orthofinder-linux-intel-3.1.1.tar.gz" class="btn">
+        orthofinder-linux-intel-3.1.1.tar.gz
+    </a>
+    <span class="download-count" data-asset="orthofinder-linux-intel-3.1.1.tar.gz">
+    <i class="fa fa-download" aria-hidden="true"></i>
+    </span>
+</div>
+<!--more-->
+
+<h3 id="new">New</h3>
+<ul>
+  <li>Added a test module to improve robustness of future changes.</li>
+</ul>
+
+<h3 id="improvements">Improvements</h3>
+<ul>
+  <li>Upgraded the tree-handling backend from <strong>ete3</strong> to <strong>ete4</strong>.</li>
+  <li>Updated the README to better highlight and clarify the changes introduced in <strong>v3.1.0</strong>.</li>
+</ul>
+
+<h3 id="bug-fixes">Bug Fixes</h3>
+<ul>
+  <li>Fixed an issue affecting the trimming of multiple sequence alignments.</li>
+  <li>Resolved a newline character handling bug.</li>
+  <li>Applied additional minor bug fixes and internal code clean-ups.</li>
+</ul>]]></content><author><name>David Emms, Jonathan Holmes, Laurence Belcher, Yi Liu</name></author><category term="release" /><summary type="html"><![CDATA[📦 orthofinder-linux-intel-3.1.1.tar.gz]]></summary></entry><entry><title type="html">OrthoFinder-v3.1.0</title><link href="http://localhost:4000/OrthoFinder/release/07/05/2025/OrthoFinder-v3.1.0.html" rel="alternate" type="text/html" title="OrthoFinder-v3.1.0" /><published>2025-05-07T10:16:16+01:00</published><updated>2025-05-07T10:16:16+01:00</updated><id>http://localhost:4000/OrthoFinder/release/07/05/2025/OrthoFinder-v3.1.0</id><content type="html" xml:base="http://localhost:4000/OrthoFinder/release/07/05/2025/OrthoFinder-v3.1.0.html"><![CDATA[<div class="download-item">
   📦 
     <a href="https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-linux-intel-3.1.0.tar.gz" class="btn">
         orthofinder-linux-intel-3.1.0.tar.gz
@@ -9,97 +36,15 @@
 </div>
 <!--more-->
 
-<h3 id="-input">🧬 Input</h3>
-<ul>
-  <li>Protein or codon MSA (FASTA format)</li>
-  <li>Defined outgroup species or clade</li>
-  <li><em>(Optional)</em> Species tree in Newick format — used to constrain phylogenetic inference if provided</li>
-</ul>
+<h3 id="faster-leaner-and-ready-for-thousands-of-genomes">Faster, leaner, and ready for thousands of genomes</h3>
 
-<hr />
+<p>This is the new release of OrthoFinder, to allow scalable analysis. This version replaces the beta version of OrthoFinder v3 (v3.0.1b1), which was released October 7th 2024.</p>
 
-<h3 id="-output">📤 Output</h3>
-<ul>
-  <li><code class="language-plaintext highlighter-rouge">*.OrthoFinder.tsv</code> — list of OrthoFinderrent amino acid substitutions inferred from the tree</li>
-  <li><code class="language-plaintext highlighter-rouge">.OrthoFinder/</code> — directory containing intermediate files:
-    <ul>
-      <li>Model selection output</li>
-      <li>Inferred phylogenetic tree</li>
-      <li>Ancestral state reconstructions</li>
-      <li>Site substitution matrices</li>
-    </ul>
-  </li>
-</ul>
-
-<hr />
-
-<h3 id="️-dependencies">⚙️ Dependencies</h3>
-<ul>
-  <li>OrthoFinder v3.1.0 includes the <strong>IQ-TREE2</strong> binary (bundled in <code class="language-plaintext highlighter-rouge">OrthoFinder/bin/</code>) and uses it for:
-    <ul>
-      <li>Phylogenetic tree inference</li>
-      <li>Ancestral sequence reconstruction</li>
-      <li>Simulation of alignments for null models</li>
-    </ul>
-  </li>
-</ul>
-
-<p>No external installation of <strong>IQ-TREE2</strong> is required.</p>
-
-<hr />
-<h3 id="️--dowload">⬇️  Dowload</h3>
+<h3 id="new-in-this-release">New in this release</h3>
 
 <ul>
-  <li>orthofinder-linux-intel-3.1.0.tar.gz
-    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">mkdir </span>OrthoFinder <span class="o">&amp;&amp;</span> <span class="se">\</span>
-  wget <span class="nt">-qO-</span> https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder--linux-intel-3.1.0.tar.gz | <span class="se">\</span>
-  <span class="nb">tar</span> <span class="nt">-xz</span> <span class="nt">--strip-components</span><span class="o">=</span>1 <span class="nt">-C</span> OrthoFinder
-</code></pre></div>    </div>
-  </li>
-  <li>orthofinder-linux-arm-3.1.0.tar.gz
-    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">mkdir </span>OrthoFinder <span class="o">&amp;&amp;</span> <span class="se">\</span>
-  wget <span class="nt">-qO-</span> https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-linux-arm-3.1.0.tar.gz | <span class="se">\</span>
-  <span class="nb">tar</span> <span class="nt">-xz</span> <span class="nt">--strip-components</span><span class="o">=</span>1 <span class="nt">-C</span> OrthoFinder
-</code></pre></div>    </div>
-  </li>
-  <li>orthofinder-macos-arm-3.1.0.tar.gz
-    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">mkdir </span>OrthoFinder <span class="o">&amp;&amp;</span> <span class="se">\</span>
-  wget <span class="nt">-qO-</span> https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-macos-arm-3.1.0.tar.gz | <span class="se">\</span>
-  <span class="nb">tar</span> <span class="nt">-xz</span> <span class="nt">--strip-components</span><span class="o">=</span>1 <span class="nt">-C</span> OrthoFinder
-</code></pre></div>    </div>
-  </li>
-  <li>orthofinder-macos-intel-3.1.0.tar.gz
-    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">mkdir </span>OrthoFinder <span class="o">&amp;&amp;</span> <span class="se">\</span>
-  wget <span class="nt">-qO-</span> https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-macos-intel-3.1.0.tar.gz | <span class="se">\</span>
-  <span class="nb">tar</span> <span class="nt">-xz</span> <span class="nt">--strip-components</span><span class="o">=</span>1 <span class="nt">-C</span> OrthoFinder
-</code></pre></div>    </div>
-  </li>
-  <li>orthofinder-macos-universal-3.1.0.tar.gz
-    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">mkdir </span>OrthoFinder <span class="o">&amp;&amp;</span> <span class="se">\</span>
-  wget <span class="nt">-qO-</span> https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/OrthoFinder-iqtree2-macos-universal-3.1.0.tar.gz | <span class="se">\</span>
-  <span class="nb">tar</span> <span class="nt">-xz</span> <span class="nt">--strip-components</span><span class="o">=</span>1 <span class="nt">-C</span> OrthoFinder
-</code></pre></div>    </div>
-  </li>
-</ul>
-
-<h3 id="-install">📦 Install</h3>
-
-<ul>
-  <li>Linux and MacOS
-    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="nb">cd </span>OrthoFinder
-  python3 <span class="nt">-m</span> venv of3_env 
-  <span class="nb">.</span> of3_env/bin/activate
-  pip <span class="nb">install</span> <span class="nb">.</span>
-  OrthoFinder <span class="nt">--version</span>
-  OrthoFinder <span class="nt">-f</span> ExampleData/example_alignments.aln <span class="nt">-st</span> AA <span class="nt">--outgroups</span> ExampleData/example_alignments.outgroups.txt 
-</code></pre></div>    </div>
-
-    <p>To deactivate the virtual environment, run</p>
-    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  deactivate
-</code></pre></div>    </div>
-    <p>Having deactivated the virtual environment, to remove OrthoFinder, please run</p>
-    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="nb">cd</span> ..
-  <span class="nb">rm</span> <span class="nt">-rf</span> OrthoFinder
-</code></pre></div>    </div>
-  </li>
+  <li>All output files now refer to phylogenetic hierarchical orthogroups, rather than orthogroups solely determined by MCL clustering</li>
+  <li>FAMSA is now the default program for multiple sequence alignment</li>
+  <li>Accurate progress bar to monitor the progress of each step of the OrthoFinder workflow</li>
+  <li>The ability to use a custom config file is now available to conda users</li>
 </ul>]]></content><author><name>David Emms, Jonathan Holmes, Laurence Belcher, Yi Liu</name></author><category term="release" /><summary type="html"><![CDATA[📦 orthofinder-linux-intel-3.1.0.tar.gz]]></summary></entry></feed>

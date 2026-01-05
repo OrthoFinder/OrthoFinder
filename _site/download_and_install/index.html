@@ -63,10 +63,10 @@
 
 <div class="download-item">
   📦 
-    <a href="https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.1/orthofinder-linux-intel-3.1.1.tar.gz" class="btn">
-        orthofinder-linux-intel-3.1.1.tar.gz
+    <a href="https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.2/orthofinder-linux-intel-3.1.2.tar.gz" class="btn">
+        orthofinder-linux-intel-3.1.2.tar.gz
     </a>
-    <span class="download-count" data-asset="orthofinder-linux-intel-3.1.1.tar.gz">
+    <span class="download-count" data-asset="orthofinder-linux-intel-3.1.2.tar.gz">
     <i class="fa fa-download" aria-hidden="true"></i>
     </span>
 </div>
@@ -81,7 +81,7 @@ For a full list of OrthoFinder before v3.0.1b1, see the <a href="https://github.
 
 <p>The simplest way to install OrthoFinder is through <a href="https://anaconda.org/bioconda/orthofinder">conda</a>. If you’re unfamiliar with conda, <a href="https://www.machinelearningplus.com/deployment/conda-create-environment-and-everything-you-need-to-know-to-manage-conda-virtual-environment/">this tutorial</a> offers a beginner-friendly introduction.</p>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>conda create <span class="nt">-n</span> of3_env <span class="nv">python</span><span class="o">=</span>3.10
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>conda create <span class="nt">-n</span> of3_env <span class="nv">python</span><span class="o">=</span>3.12
 conda activate of3_env
 conda <span class="nb">install </span>orthofinder
 </code></pre></div></div>
@@ -99,9 +99,9 @@ pip <span class="nb">install </span>git+https://github.com/OrthoFinder/OrthoFind
 <p>The following commands provide three ways to download the source code of OrthoFinder locally into a directory named <code class="language-plaintext highlighter-rouge">OrthoFinder</code>.</p>
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Download via git </span>
 git clone https://github.com/OrthoFinder/OrthoFinder.git
-<span class="c"># or download the orthofinder-linux-intel-3.1.1.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine</span>
+<span class="c"># or download the orthofinder-linux-intel-3.1.2.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine</span>
 <span class="nb">mkdir </span>OrthoFinder <span class="o">&amp;&amp;</span> <span class="se">\</span>
-  wget <span class="nt">-qO-</span> https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.1/orthofinder-linux-intel-3.1.1.tar.gz | <span class="se">\</span>
+  wget <span class="nt">-qO-</span> https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.2/orthofinder-linux-intel-3.1.2.tar.gz | <span class="se">\</span>
   <span class="nb">tar</span> <span class="nt">-xz</span> <span class="nt">--strip-components</span><span class="o">=</span>1 <span class="nt">-C</span> OrthoFinder
 </code></pre></div></div>
 

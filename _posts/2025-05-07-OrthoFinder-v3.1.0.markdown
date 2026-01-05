@@ -18,89 +18,15 @@ permalink: /:categories/:day/:month/:year/:title.html
 <!--more-->
 
 
-### 🧬 Input
-- Protein or codon MSA (FASTA format)
-- Defined outgroup species or clade
-- *(Optional)* Species tree in Newick format — used to constrain phylogenetic inference if provided
-
----
-
-### 📤 Output
-- `*.OrthoFinder.tsv` — list of OrthoFinderrent amino acid substitutions inferred from the tree
-- `.OrthoFinder/` — directory containing intermediate files:
-  - Model selection output
-  - Inferred phylogenetic tree
-  - Ancestral state reconstructions
-  - Site substitution matrices
-
----
-
-### ⚙️ Dependencies
-- OrthoFinder v3.1.0 includes the **IQ-TREE2** binary (bundled in `OrthoFinder/bin/`) and uses it for:
-  - Phylogenetic tree inference
-  - Ancestral sequence reconstruction
-  - Simulation of alignments for null models
-
-No external installation of **IQ-TREE2** is required.
-
----
-### ⬇️  Dowload 
-
-- orthofinder-linux-intel-3.1.0.tar.gz
-```bash
-mkdir OrthoFinder && \
-    wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder--linux-intel-3.1.0.tar.gz | \
-    tar -xz --strip-components=1 -C OrthoFinder
-```
-
-- orthofinder-linux-arm-3.1.0.tar.gz
-```bash
-mkdir OrthoFinder && \
-    wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-linux-arm-3.1.0.tar.gz | \
-    tar -xz --strip-components=1 -C OrthoFinder
-```
-
-- orthofinder-macos-arm-3.1.0.tar.gz
-```bash
-mkdir OrthoFinder && \
-    wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-macos-arm-3.1.0.tar.gz | \
-    tar -xz --strip-components=1 -C OrthoFinder
-```
-
-- orthofinder-macos-intel-3.1.0.tar.gz
-```bash
-mkdir OrthoFinder && \
-    wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/orthofinder-macos-intel-3.1.0.tar.gz | \
-    tar -xz --strip-components=1 -C OrthoFinder
-```
-
-- orthofinder-macos-universal-3.1.0.tar.gz
-```bash
-mkdir OrthoFinder && \
-    wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/OrthoFinder-iqtree2-macos-universal-3.1.0.tar.gz | \
-    tar -xz --strip-components=1 -C OrthoFinder
-```
-
-### 📦 Install 
-
-- Linux and MacOS
-    ```bash
-    cd OrthoFinder
-    python3 -m venv of3_env 
-    . of3_env/bin/activate
-    pip install .
-    OrthoFinder --version
-    OrthoFinder -f ExampleData/example_alignments.aln -st AA --outgroups ExampleData/example_alignments.outgroups.txt 
-    ```
-
-    To deactivate the virtual environment, run
-    ```bash
-    deactivate
-    ```
-    Having deactivated the virtual environment, to remove OrthoFinder, please run
-    ```bash
-    cd ..
-    rm -rf OrthoFinder
-    ```
+### Faster, leaner, and ready for thousands of genomes
+ 
+This is the new release of OrthoFinder, to allow scalable analysis. This version replaces the beta version of OrthoFinder v3 (v3.0.1b1), which was released October 7th 2024. 
+ 
+### New in this release
+ 
+- All output files now refer to phylogenetic hierarchical orthogroups, rather than orthogroups solely determined by MCL clustering
+- FAMSA is now the default program for multiple sequence alignment
+- Accurate progress bar to monitor the progress of each step of the OrthoFinder workflow
+- The ability to use a custom config file is now available to conda users
 
 
