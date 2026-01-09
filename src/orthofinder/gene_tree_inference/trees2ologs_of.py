@@ -1857,7 +1857,7 @@ def Worker_RunOrthologsMethod_New(
                     break
                 results = tree_analyser.AnalyseTree(iog)
                 if results is None:
-                    results_queue.put(0)  
+                    results_queue.put(("task", None)) 
                     continue
 
                 nOrtho, olog_lines, olog_sus_lines = results
@@ -1892,7 +1892,7 @@ def Worker_RunOrthologsMethod_New(
                         )
                         olog_lines_tot[i][j] = ""
 
-                results_queue.put(nOrtho)
+                results_queue.put(("task", nOrtho))
 
             except parallel_task_manager.queue.Empty:
                 continue
@@ -2036,7 +2036,7 @@ def RunOrthologsParallel(
         # Add sentinels to the args_queue to signal workers to terminate
         for _ in range(nProcesses):
             args_queue.put(None)
-            
+
         runningProcesses = [
             mp.Process(
                 target=Worker_RunOrthologsMethod_New,
@@ -2090,9 +2090,15 @@ def RunOrthologsParallel(
                             proc.terminate()
                     util.Fail()
 
-                nOrthologues_SpPair += msg
-                completed_tasks += 1
-                progressbar.update(task, advance=1)
+                if isinstance(msg, tuple) and msg[0] == "task":
+                    nOrtho = msg[1]
+                    if nOrtho is not None:
+                        nOrthologues_SpPair += nOrtho
+                    completed_tasks += 1
+                    progressbar.update(task, advance=1)
+                    last_completed_tasks = completed_tasks
+                    last_progress_time = time.time()
+                    continue
 
                 last_completed_tasks = completed_tasks
                 last_progress_time = time.time()
