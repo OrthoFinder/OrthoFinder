@@ -100,6 +100,8 @@ class RootMap(object):
         #     raise Exception
         
 def StoreSpeciesSets(t, GeneMap, tag="sp_"):
+    if t is None:
+        raise ValueError("StoreSpeciesSets got t=None (tree is None)")
     tag_up = tag + "up"
     tag_down = tag + "down"  
     for node in t.traverse('postorder'):
@@ -1014,9 +1016,13 @@ def GetLinesForOlogFiles(
     return nOrtho
                                       
 def Resolve(tree, GeneToSpecies):
+    if tree is None:
+        raise ValueError("Resolve got tree=None")
     StoreSpeciesSets(tree, GeneToSpecies)
     for n in tree.traverse("postorder"):
-        tree = resolve.resolve(n, GeneToSpecies)
+        new_tree = resolve.resolve(n, GeneToSpecies)
+        if new_tree is not None:
+            tree = new_tree
     return tree
 
 def GetSpeciesNeighbours(t):
@@ -2099,6 +2105,9 @@ def RunOrthologsParallel(
                     last_completed_tasks = completed_tasks
                     last_progress_time = time.time()
                     continue
+
+                if not hasattr(msg, "n"):
+                    raise TypeError(f"Expected nOrtho_sp-like object, got {type(msg)}: {msg!r}")
 
                 last_completed_tasks = completed_tasks
                 last_progress_time = time.time()
