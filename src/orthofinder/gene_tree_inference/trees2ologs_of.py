@@ -20,6 +20,8 @@ import traceback
 import multiprocessing as mp
 from collections import defaultdict
 import warnings
+import queue
+import time
 try:
     from rich import print
 except ImportError:
@@ -1855,7 +1857,7 @@ def Worker_RunOrthologsMethod_New(
                     break
                 results = tree_analyser.AnalyseTree(iog)
                 if results is None:
-                    results_queue.put(False)  
+                    results_queue.put(0)  
                     continue
 
                 nOrtho, olog_lines, olog_sus_lines = results
@@ -1967,6 +1969,8 @@ def RunOrthologsParallel(
         write_hog_tree=False,
         fix_files=False,
         fd_limit=None,
+        GRACE_PERIOD=10.0,
+        STALL_TIMEOUT=120.0, 
     ):
     """
     Run the ortholog analysis in parallel using multiprocessing.
@@ -2032,6 +2036,7 @@ def RunOrthologsParallel(
         # Add sentinels to the args_queue to signal workers to terminate
         for _ in range(nProcesses):
             args_queue.put(None)
+            
         runningProcesses = [
             mp.Process(
                 target=Worker_RunOrthologsMethod_New,
@@ -2053,35 +2058,65 @@ def RunOrthologsParallel(
         nOrthologues_SpPair = util.nOrtho_sp(nspecies)
         completed_tasks = 0
         active_workers = nProcesses
-        while completed_tasks < total_tasks or active_workers > 0:
-            try:
-                nOrtho = results_queue.get(True, 0.1)
-                
-                if nOrtho is None:
+
+        last_progress_time = time.time()
+        last_completed_tasks = 0
+
+        try:
+            while completed_tasks < total_tasks or active_workers > 0:
+                try:
+                    msg = results_queue.get(timeout=0.1)
+                except queue.Empty:
+                    now = time.time()
+                    if completed_tasks > last_completed_tasks:
+                        last_completed_tasks = completed_tasks
+                        last_progress_time = now
+                    elif now - last_progress_time > STALL_TIMEOUT:
+                        print(f"ERROR: Stalled for {STALL_TIMEOUT} seconds (completed {completed_tasks}/{total_tasks}). Terminating workers.")
+                        for proc in runningProcesses:
+                            if proc.is_alive():
+                                proc.terminate()
+                        util.Fail()
+                    continue
+
+                if msg is None:
                     active_workers -= 1
-                elif nOrtho is False:
+                    continue
+
+                if msg is False:
                     print("ERROR in parallel process, exiting.")
                     for proc in runningProcesses:
-                        proc.terminate()
-                    print(traceback.print_exc())
+                        if proc.is_alive():
+                            proc.terminate()
                     util.Fail()
-                else:
-                    nOrthologues_SpPair += nOrtho
-                    completed_tasks += 1
-                    if (completed_tasks + 1) % update_cycle == 0:
-                        progressbar.update(task, advance=update_cycle)
 
-            except mp.queues.Empty:
-                if all(not proc.is_alive() for proc in runningProcesses):
-                    print("All worker processes have terminated but not all tasks are completed.")
-                    break
+                nOrthologues_SpPair += msg
+                completed_tasks += 1
+                progressbar.update(task, advance=1)
 
-        for proc in runningProcesses:
-            if proc.is_alive():
-                proc.terminate()
-            proc.join()
+                last_completed_tasks = completed_tasks
+                last_progress_time = time.time()
 
-        progressbar.stop()
+        finally:
+            for proc in runningProcesses:
+                proc.join(timeout=GRACE_PERIOD)
+
+            for proc in runningProcesses:
+                if proc.is_alive():
+                    print(f"WARNING: forcing termination of worker {proc.pid}")
+                    proc.terminate()
+
+            for proc in runningProcesses:
+                proc.join()
+
+            progressbar.stop()
+
+            try:
+                results_queue.close()
+                results_queue.join_thread()
+            except Exception:
+                pass
+
         return nOrthologues_SpPair
 
 

@@ -428,8 +428,12 @@ class __Files_new_dont_manually_create__(object):
         """
         if len(self.wd_base) == 0: raise Exception("No wd1")
         if qForCreation:
+            if self.wd_base[0][-1] != os.sep:
+                self.wd_base[0] += os.sep
             return "%sSpecies%d.fa" % (self.wd_base[0], iSpecies)
         for d in self.wd_base:
+            if d[-1] != os.sep:
+                d += os.sep
             fn = "%sSpecies%d.fa" % (d, iSpecies)
             if os.path.exists(fn): return fn
         raise Exception(fn + " not found")
@@ -465,9 +469,15 @@ class __Files_new_dont_manually_create__(object):
         return self.wd_base
         
     def GetBlastResultsFN(self, iSpeciesSearch, jSpeciesDB, qForCreation=False, raise_exception=True):
+
         if len(self.wd_base) == 0: raise Exception("No wd1")
-        if qForCreation: return "%sBlast%d_%d.txt" % (self.wd_base[0], iSpeciesSearch, jSpeciesDB)     
+        if self.wd_base[0][-1] != os.sep:
+            self.wd_base[0] += os.sep
+        if qForCreation: 
+            return "%sBlast%d_%d.txt" % (self.wd_base[0], iSpeciesSearch, jSpeciesDB)     
         for d in self.wd_base:
+            if d[-1] != os.sep:
+                d += os.sep
             fn = "%sBlast%d_%d.txt" % (d, iSpeciesSearch, jSpeciesDB)
             if os.path.exists(fn) or os.path.exists(fn + ".gz"): return fn
         if raise_exception:
@@ -976,6 +986,8 @@ class PreviousFilesLocator_new(PreviousFilesLocator):
                     path, d_res = os.path.split(path)
                     wd = wd_base_anchor + ("/../../%s/%s/" % (d_res, d_wd))
                     wd = os.path.abspath(wd)
+                    if wd[-1] != os.sep:
+                        wd += os.sep
                 chain.append(wd)
         return chain
                 
@@ -1178,6 +1190,8 @@ def InitialiseFileHandler(
                 util.Fail()
             base_dir = resultsDir_nonDefault if resultsDir_nonDefault is not None else pfl.GetHomeForResults()
     if not os.path.exists(base_dir): os.mkdir(base_dir)
+    if base_dir[-1] != os.sep:
+        base_dir += os.sep
     # 3 
     # RefactorDS - this might be suitable as a constructor now
     # base_dir - should now exist

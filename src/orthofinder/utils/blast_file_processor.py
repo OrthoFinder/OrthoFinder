@@ -60,6 +60,8 @@ def GetBLAST6Scores(seqsInfo, blastDir_list, iSpecies, jSpecies, qExcludeSelfHit
     B = sparse.lil_matrix((nSeqs_i, nSeqs_j))
     row = ""
     for d in blastDir_list:
+        if d[-1] != os.sep:
+            d += os.sep
         fn = d + "Blast%d_%d.txt" % (iSpeciesOpen, jSpeciesOpen)
         if os.path.exists(fn) or os.path.exists(fn + ".gz"): break
     if q_allow_empty and not os.path.exists(fn) and not os.path.exists(fn + ".gz"):
