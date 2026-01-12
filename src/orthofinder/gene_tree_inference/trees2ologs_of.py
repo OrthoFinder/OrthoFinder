@@ -1900,7 +1900,8 @@ def Worker_RunOrthologsMethod_New(
 
                 results_queue.put(("task", nOrtho))
 
-            except parallel_task_manager.queue.Empty:
+            # except parallel_task_manager.queue.Empty:
+            except queue.Empty:
                 continue
 
             except Exception as e:
@@ -1941,7 +1942,7 @@ def Worker_RunOrthologsMethod_New(
                     fix_files=fix_files
                 )
             # results_queue.put(nOrthologues_SpPair)
-
+            # results_queue.put(("task", nOrthologues_SpPair))
         except Exception as cleanup_error:
             print(f"ERROR during cleanup: {cleanup_error}")
             # results_queue.put(False)  # Signal error during cleanup
@@ -2064,25 +2065,19 @@ def RunOrthologsParallel(
         nOrthologues_SpPair = util.nOrtho_sp(nspecies)
         completed_tasks = 0
         active_workers = nProcesses
-
+        skipped_tasks = 0
+        fatal = False
         last_progress_time = time.time()
-        last_completed_tasks = 0
 
         try:
             while completed_tasks < total_tasks or active_workers > 0:
                 try:
                     msg = results_queue.get(timeout=0.1)
                 except queue.Empty:
-                    now = time.time()
-                    if completed_tasks > last_completed_tasks:
-                        last_completed_tasks = completed_tasks
-                        last_progress_time = now
-                    elif now - last_progress_time > STALL_TIMEOUT:
-                        print(f"ERROR: Stalled for {STALL_TIMEOUT} seconds (completed {completed_tasks}/{total_tasks}). Terminating workers.")
-                        for proc in runningProcesses:
-                            if proc.is_alive():
-                                proc.terminate()
-                        util.Fail()
+                    if time.time() - last_progress_time > STALL_TIMEOUT:
+                        print(f"ERROR: Stalled for {STALL_TIMEOUT}s (completed {completed_tasks}/{total_tasks}).")
+                        fatal = True
+                        break
                     continue
 
                 if msg is None:
@@ -2090,47 +2085,47 @@ def RunOrthologsParallel(
                     continue
 
                 if msg is False:
-                    print("ERROR in parallel process, exiting.")
-                    for proc in runningProcesses:
-                        if proc.is_alive():
-                            proc.terminate()
-                    util.Fail()
+                    print("ERROR: worker reported fatal error.")
+                    fatal = True
+                    break
 
-                if isinstance(msg, tuple) and msg[0] == "task":
+                if isinstance(msg, tuple) and len(msg) == 2 and msg[0] == "task":
                     nOrtho = msg[1]
-                    if nOrtho is not None:
+                    if nOrtho is None:
+                        skipped_tasks += 1
+                    else:
                         nOrthologues_SpPair += nOrtho
                     completed_tasks += 1
-                    progressbar.update(task, advance=1)
-                    last_completed_tasks = completed_tasks
+                    progressbar.update(task, advance=update_cycle)
                     last_progress_time = time.time()
                     continue
 
-                if not hasattr(msg, "n"):
-                    raise TypeError(f"Expected nOrtho_sp-like object, got {type(msg)}: {msg!r}")
-
-                last_completed_tasks = completed_tasks
-                last_progress_time = time.time()
+                fatal = True
+                raise TypeError(f"Unexpected message from worker: {type(msg)} {msg!r}")
 
         finally:
             for proc in runningProcesses:
                 proc.join(timeout=GRACE_PERIOD)
-
             for proc in runningProcesses:
                 if proc.is_alive():
-                    print(f"WARNING: forcing termination of worker {proc.pid}")
                     proc.terminate()
-
             for proc in runningProcesses:
                 proc.join()
 
             progressbar.stop()
-
             try:
                 results_queue.close()
                 results_queue.join_thread()
             except Exception:
                 pass
+
+        skip_rate = skipped_tasks / max(1, total_tasks)
+        if skip_rate > 0.02:
+            print(f"ERROR: skipped {skipped_tasks}/{total_tasks} tasks ({skip_rate:.1%}).")
+            fatal = True
+
+        if fatal:
+            util.Fail()
 
         return nOrthologues_SpPair
 

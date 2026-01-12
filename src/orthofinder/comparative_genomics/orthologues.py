@@ -689,6 +689,7 @@ def OrthologuesWorkflow(
             util.Success()
             
         util.PrintTime("Done updating MSA/Trees")
+
         InferOrthologs(
             ogSet, 
             rooted_sp_tree, 

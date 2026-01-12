@@ -86,10 +86,16 @@ def update_output_files(
 
 
     tree_file_index = index_files(resolved_trees_working_dir, ".txt")
+    missing = sorted(set(unique_ogs) - set(tree_file_index))
+    if missing:
+        print(f"ERROR: {len(missing)} OG recon trees missing in {resolved_trees_working_dir}")
+        print("First missing:", missing[:20])
+        util.Fail()
+
     fasta_file_index = index_files(align_id_dir, ".fa") if align_id_dir is not None else {}
 
     hog_index = {
-        unique_og: [row for row in hog_n0_over4genes if unique_og in row["OG"]]
+        unique_og: [row for row in hog_n0_over4genes if unique_og == row["OG"]]
         for unique_og in unique_ogs
     }
 
@@ -109,8 +115,14 @@ def update_output_files(
         exist_msa=exist_msa
     )
 
-    util.clear_dir(resolved_trees_working_dir)
+    id_index = index_files(resolved_trees_id_dir, ".txt")
+    missing_ids = sorted(set(unique_ogs) - set(id_index))
+    if missing_ids:
+        print(f"ERROR: {len(missing_ids)} ID trees missing in {id_dir}")
+        print("First missing:", missing_ids[:20])
+        util.Fail()
 
+    util.clear_dir(resolved_trees_working_dir)
     ## ----------------------- Fix MSA Alignments --------------------------
 
     if exist_msa:
