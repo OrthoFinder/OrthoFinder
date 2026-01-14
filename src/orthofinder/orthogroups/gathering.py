@@ -101,6 +101,8 @@ def DoOrthogroups(
         speciesNamesDict,
         speciesXML=None,
         i_unassigned=None,
+        GRACE_PERIOD = 10.,
+        STALL_TIMEOUT = 200.
     ):
 
     # Run Algorithm, cluster and output cluster files with original accessions
@@ -155,19 +157,27 @@ def DoOrthogroups(
             proc.start()
         parallel_task_manager.ManageQueue(runningProcesses, cmd_queue)
     else:
-        gathering_progress, task = util.get_progressbar(seqsInfo.nSpecies)
-        update_cycle = 1
-        gathering_progress.start()
+
+        cmd_queue = mp.Queue()  
+        for iSpeciesJob in range(seqsInfo.nSpecies):  # The i-th job, not the OrthoFinder species ID
+            cmd_queue.put(iSpeciesJob)
+
+        for _ in range(options.nProcessAlg):
+            cmd_queue.put(None)
+        
+        total_tasks = seqsInfo.nSpecies
+        # progressbar, task = util.get_progressbar(total_tasks)
+        # update_cycle = 1
+        # progressbar.start()
         result_queue = mp.Queue()
-        runningProcesses = []
-        for iSpecies in range(seqsInfo.nSpecies):
-            proc = mp.Process(
+        runningProcesses = [
+            mp.Process(
                 target=waterfall.WaterfallMethod.Worker_ProcessBlastHits_New,
                 args=(
                     seqsInfo,
                     blastDir_list,
                     Lengths,
-                    iSpecies,
+                    cmd_queue,
                     files.FileHandler.GetPickleDir(),
                     options.qDoubleBlast,
                     options.v2_scores,
@@ -175,13 +185,17 @@ def DoOrthogroups(
                     result_queue,
                 ),
             )
-            runningProcesses.append(proc)
-            proc.start()
-            if len(runningProcesses) >= options.nProcessAlg:
-                parallel_task_manager.ManageQueueNew(runningProcesses, result_queue, gathering_progress, task, update_cycle)
-                
-        parallel_task_manager.ManageQueueNew(runningProcesses, result_queue, gathering_progress, task, update_cycle)
-        gathering_progress.stop()
+            for _ in range(options.nProcessAlg)
+        ]
+
+        parallel_task_manager.ManageQueueNew(
+            runningProcesses, 
+            total_tasks, 
+            options.nProcessAlg, 
+            result_queue, 
+            GRACE_PERIOD = GRACE_PERIOD,
+            STALL_TIMEOUT = STALL_TIMEOUT
+        )
 
     if options.gathering_version < (3, 0):
         util.PrintTime("Connected putative homologues")
@@ -206,28 +220,34 @@ def DoOrthogroups(
 
         else:
             ## -------------------------------------------------------------------------
-            gathering_progress, task = util.get_progressbar(seqsInfo.nSpecies)
-            gathering_progress.start()
-            result_queue = mp.Queue()
-            runningProcesses = []
+            cmd_queue = mp.Queue()
             for iSpecies in range(seqsInfo.nSpecies):
-                proc = mp.Process(
+                cmd_queue.put((seqsInfo, iSpecies))
+
+            for _ in range(options.nProcessAlg):
+                cmd_queue.put(None)
+            result_queue = mp.Queue()
+
+            runningProcesses = [
+                mp.Process(
                     target=waterfall.WaterfallMethod.Worker_ConnectCognates_New,
                     args=(
-                        seqsInfo,
-                        iSpecies,
-                        files.FileHandler.GetPickleDir(),
-                        result_queue,
-                        options.v2_scores,
+                        cmd_queue,  
+                        result_queue, 
+                        files.FileHandler.GetPickleDir(), 
+                        options.v2_scores
                     ),
                 )
-                runningProcesses.append(proc)
-                proc.start()
-                if len(runningProcesses) >= options.nProcessAlg:
-                    parallel_task_manager.ManageQueueNew(runningProcesses, result_queue, gathering_progress, task, update_cycle)
-                
-            parallel_task_manager.ManageQueueNew(runningProcesses, result_queue, gathering_progress, task, update_cycle)
-            gathering_progress.stop()
+                for i_ in range(options.nProcessAlg)
+            ]
+            parallel_task_manager.ManageQueueNew(
+                runningProcesses, 
+                total_tasks, 
+                options.nProcessAlg, 
+                result_queue, 
+                GRACE_PERIOD = GRACE_PERIOD,
+                STALL_TIMEOUT = STALL_TIMEOUT
+            )
  
         graphFilename = waterfall.WaterfallMethod.WriteGraphParallel(
             WriteGraph_perSpecies, seqsInfo, options.nProcessAlg, i_unassigned

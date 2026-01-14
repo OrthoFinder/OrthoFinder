@@ -7,55 +7,43 @@ from concurrent.futures import ThreadPoolExecutor
 import ete4
 import tempfile
 import traceback
+import time
+from ..utils import util
+
 
 def write_tree(hog_name, newick_string, resolved_trees_id_dir):
+
     try:
+
+        if resolved_trees_id_dir is None:
+            raise ValueError("resolved_trees_id_dir is None")
+
         os.makedirs(resolved_trees_id_dir, exist_ok=True)
-        tree_id_file = os.path.join(resolved_trees_id_dir, hog_name + ".txt")
+        tree_id_file = os.path.join(resolved_trees_id_dir, f"{hog_name}.txt")
 
         if newick_string is None:
-            raise ValueError("Empty or None tree string for HOG " + hog_name)
+            raise ValueError(f"Empty or None tree string for '{hog_name}'")
 
         if isinstance(newick_string, str):
-            data = newick_string.encode('utf-8')
+            data = newick_string.encode("utf-8")
         elif isinstance(newick_string, bytes):
             data = newick_string
         else:
             raise TypeError(f"Unexpected type for newick_string: {type(newick_string)}")
-        
-        with tempfile.NamedTemporaryFile('wb', dir=resolved_trees_id_dir, delete=False) as tmp:
+
+        with tempfile.NamedTemporaryFile("wb", dir=resolved_trees_id_dir, delete=False) as tmp:
             tmp.write(data)
             tmp.flush()
             os.fsync(tmp.fileno())
             tmp_name = tmp.name
+
         os.replace(tmp_name, tree_id_file)
+        return True
+
     except Exception as e:
-        
-        print(f"ERROR writing tree {hog_name}: {e}\n{traceback.format_exc()}")
+        print(f"ERROR writing tree '{hog_name}': {e}\n{traceback.format_exc()}")
+        return False
 
-
-
-# def write_tree(hog_name, subtree, resolved_trees_id_dir):
-#     try:
-#         tree_id_file = os.path.join(resolved_trees_id_dir, hog_name + ".txt")
-#         # tree_string = subtree.write(outfile=None, format=5)
-#         tree_string = subtree.write(outfile=None, parser=5)
-#     #     with open(tree_id_file, "wb") as f:
-#     #         f.write(tree_string.encode("utf-8"))
-#     # except Exception as e:
-#     #     print(f"ERROR writing tree {hog_name}: {e}")
-#         if tree_string is None:
-#             raise ValueError("ETE write() returned None")
-#         if isinstance(tree_string, str):
-#             data = tree_string.encode('utf-8')
-#         else:
-#             data = tree_string  # assume bytes
-#         with open(tree_id_file, "wb") as f:
-#             f.write(data)
-#             f.flush()
-#             os.fsync(f.fileno())
-#     except Exception as e:
-#         print(f"ERROR writing tree {hog_name}: {e}")
 
 def read_fasta(file_path):
     genes_dict = {}
@@ -103,41 +91,6 @@ def read_files(unique_og, spec_seq_id_dict, tree_file_index, fasta_file_index, e
     gene_tree = read_tree_file(unique_og, tree_file_index, spec_seq_id_dict)
     gene_dict = read_fasta_file(unique_og, fasta_file_index, exist_msa=exist_msa)
     return (unique_og, gene_tree, gene_dict)
-
-    # gene_tree = None
-    # gene_dict = {}
-
-    # if unique_og in tree_file_index:
-    #     try:
-    #         with open(tree_file_index[unique_og], "r") as file:
-    #             tree_data = file.read().strip()
-    #             gene_tree = ete4.Tree(tree_data, parser=1) #quoted_node_names=True, format=1
-    #             for leaf in gene_tree.leaves(): #.iter_leaves():
-    #                 original = leaf.name
-    #                 if original is None or not original.strip():
-    #                     print(f"Warning: Null or empty leaf name in tree {unique_og}")
-    #                     continue
-    #                 if original not in spec_seq_id_dict:
-    #                     print(f"Warning: Leaf name '{original}' not found in mapping dictionary for {unique_og}")
-    #                 leaf.name = spec_seq_id_dict.get(original, original)
-    #     except Exception as e:
-    #         print(f"ERROR reading tree for {unique_og}: {e}")
-    #         raise
-    # else:
-    #     print(f"WARNING: Tree file not found for {unique_og}")
-
-    # if unique_og in fasta_file_index:
-    #     try:
-    #         gene_dict = read_fasta(fasta_file_index[unique_og])
-    #     except Exception as e:
-    #         print(f"ERROR reading FASTA for {unique_og}: {e}")
-    #         raise
-    # else:
-    #     if exist_msa:
-    #         print(f"WARNING: FASTA file not found for {unique_og}")
-
-    # return (unique_og, gene_tree, gene_dict)
-
 
 def check_path(s):
     s = s.strip().strip('"').strip("'")
@@ -191,120 +144,122 @@ def read_fasta_file(unique_og, fasta_file_index, exist_msa=True):
             print(f"WARNING: FASTA file not found for {unique_og}")
     return gene_dict
 
+def process_task(
+        read_queue, 
+        process_queue, 
+        hog_index, 
+        name_dict, 
+        species_names, 
+        stop_event,
+        strict_prune_fail=False
+    ):
+    try:
+        while not stop_event.is_set():
+            try:
+                task = read_queue.get(timeout=1)
+            except queue.Empty:
+                continue
 
-# def process_task(read_queue, process_queue, hog_index, name_dict, species_names, stop_event):
-#     try:
-#         while not stop_event.is_set():
-#             try:
-#                 task = read_queue.get(timeout=1)
-#             except queue.Empty:
-#                 continue
+            if task is None:
+                break
 
-#             if task is None:
-#                 break
+            unique_og, gene_tree, gene_dict = task
+            hog_entries = hog_index.get(unique_og, [])
+            results = []
 
-#             unique_og, gene_tree, gene_dict = task
-#             hog_entries = hog_index.get(unique_og, [])
-#             results = []
+            if gene_tree is None:
+                process_queue.put(("skip", unique_og, "no_gene_tree"))
+                continue
 
-#             if gene_tree is None:
-#                 process_queue.put(("skip", unique_og, "no_gene_tree"))
-#                 continue
+            if not hog_entries:
+                process_queue.put(("skip", unique_og, "no_hog_entries"))
+                continue
 
-#             if not hog_entries:
-#                 process_queue.put(("skip", unique_og, "no_hog_entries"))
-#                 continue
+            hog_entries = sorted(hog_entries, key=lambda r: str(r.get("HOG", "")))
 
-#             for row in hog_entries:
-#                 hog_name = name_dict.get(row.get("HOG"), row.get("HOG"))
-#                 parent_node = row.get("Gene Tree Parent Clade")
-#                 if not parent_node:
-#                     print(f"WARNING: Missing parent node for HOG {hog_name} in {unique_og}")
-#                     continue
-#                 if parent_node == "n0":
-#                     subtree = gene_tree.copy()
-#                 else:
-#                     # subtree_nodes = gene_tree.search_nodes(name=parent_node)
-#                     subtree_nodes = list(gene_tree.search_nodes(name=parent_node))
-#                     if not subtree_nodes:
-#                         print(f"WARNING: Parent node '{parent_node}' not found in gene tree for {unique_og}, HOG {hog_name}")
-#                         continue
-                    
-#                     subtree = subtree_nodes[0].copy()
-#                     # subtree = subtree_nodes
-#                 # current_leaves = [leaf.name for leaf in subtree.get_leaves() if leaf.name]
-#                 current_leaves = [leaf.name for leaf in subtree.leaves() if leaf.name]
-#                 expected_leaves = [x.strip() for col in species_names if row.get(col) for x in row[col].split(',')]
-#                 if not expected_leaves:
-#                     print(f"WARNING: No expected leaves found for {hog_name} in {unique_og}")
-#                     continue
-#                 missing_in_tree = [name for name in expected_leaves if name not in current_leaves]
+            for row in hog_entries:
+                hog_name = name_dict.get(row.get("HOG"), row.get("HOG"))
+                parent_node = row.get("Gene Tree Parent Clade")
+
+                if not parent_node:
+                    continue
+
+                if parent_node == "n0":
+                    subtree = gene_tree.copy()
+                else:
+                    subtree_nodes = list(gene_tree.search_nodes(name=parent_node))
+                    if not subtree_nodes:
+                        continue
+                    subtree = subtree_nodes[0].copy()
+
+                current_leaves = [leaf.name for leaf in subtree.leaves() if leaf.name]
+
+                expected_leaves = []
+                for col in species_names:
+                    v = row.get(col)
+                    if not v:
+                        continue
+                    for x in str(v).split(","):
+                        x = x.strip()
+                        if x:
+                            expected_leaves.append(x)
+
+                expected_leaves = sorted(set(expected_leaves))
+                if not expected_leaves:
+                    continue
                 
-#                 if missing_in_tree:
-#                     print(f"INFO: Some expected leaves not found in subtree for {hog_name} ({unique_og}): {missing_in_tree}")
-                
-#                 # try:
-#                 #     valid_leaves = [leaf for leaf in expected_leaves if leaf in current_leaves]
-#                 #     subtree.prune(valid_leaves)
-#                 # except Exception as e:
-#                 #     print(f"WARNING: Could not prune subtree for {hog_name} in {unique_og}: {e}")
-#                 #     raise
+                valid_leaves = [leaf for leaf in expected_leaves if leaf in current_leaves]
+                if len(valid_leaves) < 2:
+                    continue
+                valid_leaves = sorted(set(valid_leaves))
+                try:
+                    subtree.prune(valid_leaves)
+                except Exception:
+                    if strict_prune_fail:
+                        process_queue.put(("error", unique_og, f"prune_failed:{hog_name}", traceback.format_exc()))
+                        stop_event.set()
+                        break
+                    else:
+                        continue
+               
+                pruned_alignments = None
+                if gene_dict:
+                    pruned_alignments = {g: gene_dict[g] for g in valid_leaves if g in gene_dict}
+                try:
+                    newick = subtree.write(outfile=None, parser=5)
+                except Exception:
+                    if strict_prune_fail:
+                        process_queue.put(("error", unique_og, f"prune_failed:{hog_name}"))
+                        stop_event.set()
+                        break
+                    else:
+                        continue
+                results.append((hog_name, newick, pruned_alignments))
 
-#                 valid_leaves = [leaf for leaf in expected_leaves if leaf in current_leaves]
-#                 if len(valid_leaves) < 2:
-#                     continue
+            if not results:
+                process_queue.put(("skip", unique_og, "no_outputs_from_hog_entries"))
+            else:
+                process_queue.put(("og", unique_og, results))
 
-#                 try:
-#                     subtree.prune(valid_leaves)
-#                 except Exception:
-#                     process_queue.put(("error", unique_og, f"prune_failed:{hog_name}", traceback.format_exc()))
-#                     stop_event.set()
-#                     break
-
-#                 pruned_alignments = None
-#                 if gene_dict:
-#                     pruned_alignments = {gene: gene_dict[gene] for gene in expected_leaves if gene in gene_dict}
-#                 newick = subtree.write(outfile=None, parser=5)
-#                 results.append((hog_name, newick, pruned_alignments))
-#                 # results.append((hog_name, subtree, pruned_alignments))
-
-#             if not results:
-#                 process_queue.put(("skip", unique_og, "no_outputs_from_hog_entries"))
-#             else:
-#                 process_queue.put(("og", unique_og, results))
-
-#     except Exception:
-#         process_queue.put(("error", None, "process_task_crash", traceback.format_exc()))
-#         stop_event.set()
-#         raise
-
-
-# def writer_task(process_queue, min_seq, idDict, resolved_trees_id_dir, align_dir, stop_event, exist_msa=True):
-#     try:
-#         while not stop_event.is_set():
-#             try:
-#                 task = process_queue.get(timeout=1)
-#             except queue.Empty:
-#                 continue
-
-#             if task is None:
-#                 break
-
-#             for hog_name, subtree, pruned_alignments in task:
-#                 if exist_msa:
-#                     write_tree(hog_name, subtree, resolved_trees_id_dir)
-#                     if pruned_alignments is not None and len(pruned_alignments) >= min_seq:
-#                         if align_dir is not None:
-#                             write_fasta(align_dir, hog_name, pruned_alignments, idDict)
-#                 else:
-#                     write_tree(hog_name, subtree, resolved_trees_id_dir)
-#     except Exception as e:
-#         print(f"ERROR in writer_task: {e}")
-#         os._exit(1)
-#     return
+            if stop_event.is_set():
+                break
+          
+    except Exception:
+        process_queue.put(("error", None, "process_task_crash"))
+        stop_event.set()
+        raise
 
 
-def writer_task(process_queue, min_seq, idDict, resolved_trees_id_dir, align_dir, stop_event, exist_msa=True):
+def writer_task(
+        process_queue, 
+        min_seq, 
+        idDict,
+        resolved_trees_id_dir, 
+        align_dir, 
+        stop_event, 
+        exist_msa=True
+    ):
+
     try:
         while not stop_event.is_set():
             try:
@@ -318,114 +273,31 @@ def writer_task(process_queue, min_seq, idDict, resolved_trees_id_dir, align_dir
             kind = msg[0]
 
             if kind == "skip":
-                _, unique_og, reason = msg
                 continue
-
-            if kind == "error":
-                _, unique_og, tag, tb = msg
+            elif kind == "error":
                 stop_event.set()
                 continue
-
-            # if kind != "og":
-            #     stop_event.set()
-            #     continue
-
-            if kind != "og":
-                raise TypeError(f"Unexpected message {msg!r}")
+            elif kind != "og":
+                continue
 
             _, unique_og, results = msg
 
-            for hog_name, subtree_newick, pruned_alignments in results:
-                write_tree(hog_name, subtree_newick, resolved_trees_id_dir)
+            for out_name, newick_string, pruned_alignments in results:
+                try:
+                    ok = write_tree(out_name, newick_string, resolved_trees_id_dir)
+                    if not ok:
+                        raise RuntimeError("write_tree returned False")
+                except Exception:
+                    stop_event.set()
+                    break
+
                 if exist_msa and pruned_alignments is not None and len(pruned_alignments) >= min_seq:
                     if align_dir is not None:
-                        write_fasta(align_dir, hog_name, pruned_alignments, idDict)
+                        write_fasta(align_dir, out_name, pruned_alignments, idDict)
 
-    except Exception:
+    except Exception as e:
         stop_event.set()
         raise
-
-
-def process_task(read_queue, process_queue, hog_index, name_dict, species_names, stop_event):
-    try:
-        while not stop_event.is_set():
-            try:
-                task = read_queue.get(timeout=1)
-            except queue.Empty:
-                continue
-
-            if task is None:
-                break
-
-            unique_og, gene_tree, gene_dict = task
-            hog_entries = hog_index.get(unique_og, [])
-
-            if gene_tree is None:
-                process_queue.put(("skip", unique_og, "no_gene_tree"))
-                continue
-
-            if not hog_entries:
-                process_queue.put(("skip", unique_og, "no_hog_entries"))
-                continue
-
-            results = []
-            skip_counts = {
-                "missing_parent": 0,
-                "parent_not_found": 0,
-                "no_expected_leaves": 0,
-                "no_valid_leaves": 0,
-                "prune_failed": 0,
-            }
-
-            for row in hog_entries:
-                hog_name = name_dict.get(row.get("HOG"), row.get("HOG"))
-                parent_node = row.get("Gene Tree Parent Clade")
-                if not parent_node:
-                    skip_counts["missing_parent"] += 1
-                    continue
-
-                if parent_node == "n0":
-                    subtree = gene_tree.copy()
-                else:
-                    subtree_nodes = list(gene_tree.search_nodes(name=parent_node))
-                    if not subtree_nodes:
-                        skip_counts["parent_not_found"] += 1
-                        continue
-                    subtree = subtree_nodes[0].copy()
-
-                current_leaves = [leaf.name for leaf in subtree.leaves() if leaf.name]
-                expected_leaves = [x.strip() for col in species_names if row.get(col) for x in row[col].split(',')]
-                if not expected_leaves:
-                    skip_counts["no_expected_leaves"] += 1
-                    continue
-
-                valid_leaves = [leaf for leaf in expected_leaves if leaf in current_leaves]
-                if len(valid_leaves) < 2:
-                    skip_counts["no_valid_leaves"] += 1
-                    continue
-
-                try:
-                    subtree.prune(valid_leaves)
-                except Exception:
-                    skip_counts["prune_failed"] += 1
-                    continue
-
-                pruned_alignments = None
-                if gene_dict:
-                    pruned_alignments = {gene: gene_dict[gene] for gene in expected_leaves if gene in gene_dict}
-                newick = subtree.write(outfile=None, parser=5)
-                results.append((hog_name, newick, pruned_alignments))
-
-            if not results:
-                process_queue.put(("skip", unique_og, f"no_outputs:{skip_counts}"))
-            else:
-                process_queue.put(("og", unique_og, results))
-
-    except Exception:
-        process_queue.put(("error", None, "process_task_crash", traceback.format_exc()))
-        stop_event.set()
-        raise
-
 
 
 def threaded_reader(read_queue, unique_ogs, spec_seq_id_dict, tree_file_index, fasta_file_index, n_threads=4, stop_event=None, exist_msa=True):
@@ -442,22 +314,22 @@ def threaded_reader(read_queue, unique_ogs, spec_seq_id_dict, tree_file_index, f
             stop_event.set()
         raise
 
-
 def post_ogs_processing(
-    unique_ogs,  
+    unique_ogs,
     resolved_trees_id_dir,
-    hog_index, 
-    name_dict, 
+    hog_index,
+    name_dict,
     idDict,
     spec_seq_id_dict,
-    species_names, 
+    species_names,
     nprocess,
     tree_file_index,
-    fasta_file_index,            
-    align_dir=None,   
+    fasta_file_index,
+    align_dir=None,
     min_seq=4,
-    exist_msa=True,    
+    exist_msa=True,
 ):
+
     if nprocess >= 128:
         n_reader_threads = min(max(nprocess // 4, 2), 32)
         n_processor_processes = max(nprocess * 3 // 4, 1)
@@ -466,58 +338,71 @@ def post_ogs_processing(
         n_reader_threads = max(min(nprocess // 2, 16), 4)
         n_processor_processes = max(nprocess // 2, 1)
         n_writer_processes = max(1, min(int(np.ceil(np.abs(nprocess // 2 - 1))), max(4, nprocess // 4)))
-   
+
     process_queue = mp.Queue()
     read_queue = mp.Queue()
     stop_event = mp.Event()
+    report_queue = mp.Queue()
 
+    # Start reader
     file_reader = mp.Process(
         target=threaded_reader,
-        args=(read_queue, unique_ogs, spec_seq_id_dict, tree_file_index, fasta_file_index, n_reader_threads, stop_event, exist_msa)
+        args=(read_queue, unique_ogs, spec_seq_id_dict, tree_file_index, fasta_file_index,
+              n_reader_threads, stop_event, exist_msa)
     )
     file_reader.start()
 
+    # Start processors
     file_processors = []
     for _ in range(n_processor_processes):
         p = mp.Process(
             target=process_task,
-            args=(read_queue, process_queue, hog_index, name_dict, species_names, stop_event)
+            args=(read_queue, process_queue, hog_index, name_dict, species_names,
+                  stop_event)
         )
         p.start()
         file_processors.append(p)
 
+    # Start writers
     writer_processes = []
     for _ in range(n_writer_processes):
-        writer_process = mp.Process(
+        w = mp.Process(
             target=writer_task,
-            args=(process_queue, min_seq, idDict, resolved_trees_id_dir, align_dir, stop_event, exist_msa)
+            args=(process_queue, min_seq, idDict, resolved_trees_id_dir,
+                  align_dir, stop_event, exist_msa)
         )
-        writer_process.start()
-        writer_processes.append(writer_process)
+        w.start()
+        writer_processes.append(w)
 
     all_processes = [file_reader] + file_processors + writer_processes
 
+    # Join reader
     try:
         file_reader.join()
     except KeyboardInterrupt:
-        print("KeyboardInterrupt detected during file reading. Initiating shutdown.")
+        print("KeyboardInterrupt detected during file reading. Initiating shutdown.", flush=True)
         stop_event.set()
         file_reader.terminate()
+        file_reader.join()
 
-    if file_reader.exitcode is not None and file_reader.exitcode != 0:
-        print(f"Reader process failed with exit code {file_reader.exitcode}. Initiating shutdown.")
+    if file_reader.exitcode not in (0, None):
+        print(f"Reader process failed with exit code {file_reader.exitcode}. Initiating shutdown.", flush=True)
         stop_event.set()
 
+    # Stop processors
     for _ in range(n_processor_processes):
         read_queue.put(None)
     for p in file_processors:
         p.join()
 
+    # Stop writers
     for _ in range(n_writer_processes):
         process_queue.put(None)
-    for p in writer_processes:
-        p.join()
+    for w in writer_processes:
+        w.join()
 
     for proc in all_processes:
-        if proc.exitcode is not None and proc.exitcode != 0:
-            print(f"Process {proc.pid} terminated with exit code {proc.exitcode}.")
+        if proc.exitcode not in (0, None):
+            print(f"ERROR: process {proc.pid} terminated with exit code {proc.exitcode}.", flush=True)
+            util.Fail()
+
