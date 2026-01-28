@@ -2138,20 +2138,6 @@ def Worker_RunOrthologsMethod_New(
     finally:
         results_queue.put(None)
 
-        
-def set_file_descriptor_limit(fd_limit: int) -> None:
-    try:
-        new_soft_limit, new_hard_limit = fd_limit
-        soft_limit, hard_limit = resource.getrlimit(resource.RLIMIT_NOFILE)
-        print(f"Current file descriptor limits: soft={soft_limit}, hard={hard_limit}")
-        resource.setrlimit(resource.RLIMIT_NOFILE, (new_soft_limit, new_hard_limit))
-        print(f"New file descriptor limits: soft={new_soft_limit}, hard={new_hard_limit}")
-    except AttributeError:
-        print("File descriptor limit functions not available on this platform.")
-    except ValueError as e:
-        print(f"Invalid limit value: {e}")
-    except Exception as e:
-        print(f"Unexpected error: {e}")
 
 def RunOrthologsParallel(
         tree_analyser, 
@@ -2177,8 +2163,6 @@ def RunOrthologsParallel(
             set_file_descriptor_limit(fd_limit)
         else:
             warnings.warn(f"File descriptor limit adjustment is not supported on {sys.platform}.")
-
-    
     
     if old_version:
         results_queue = mp.Queue()
@@ -2224,7 +2208,7 @@ def RunOrthologsParallel(
                 break
         return nOrthologues_SpPair
     else:
-        results_queue = mp.Queue()
+        results_queue = mp.Queue(maxsize=1000)
         progressbar, task = util.get_progressbar(total_tasks)
         progressbar.start()
         update_cycle = 1 
@@ -2324,6 +2308,20 @@ def RunOrthologsParallel(
         return nOrthologues_SpPair
 
 
+def set_file_descriptor_limit(fd_limit: int) -> None:
+    try:
+        new_soft_limit, new_hard_limit = fd_limit
+        soft_limit, hard_limit = resource.getrlimit(resource.RLIMIT_NOFILE)
+        print(f"Current file descriptor limits: soft={soft_limit}, hard={hard_limit}")
+        resource.setrlimit(resource.RLIMIT_NOFILE, (new_soft_limit, new_hard_limit))
+        print(f"New file descriptor limits: soft={new_soft_limit}, hard={new_hard_limit}")
+    except AttributeError:
+        print("File descriptor limit functions not available on this platform.")
+    except ValueError as e:
+        print(f"Invalid limit value: {e}")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+
 def WriteOlogLinesToFile(fh, text, lock, write_hog_tree=False, fix_files=False):
     if not write_hog_tree or not fix_files: 
         if len(text) == 0:
@@ -2358,9 +2356,8 @@ def SortParallelFiles(
 
     # HOGs
     hog_type = [(fn, "h") for fn in glob.glob(os.path.dirname(files.FileHandler.GetHierarchicalOrthogroupsFN("N0")) + "/*")]
-    if write_hog_tree:
+    if not write_hog_tree:
         hog_type.append((files.FileHandler.GetWorkingDirectory_Write() + "N0.ids.tsv", "h"))
-    else:
         if os.path.exists(os.path.join(files.FileHandler.GetLegacyHOGDir(), "N0.ids.tsv")):
             hog_type.append((os.path.join(files.FileHandler.GetLegacyHOGDir(), "N0.ids.tsv"), "h"))
         

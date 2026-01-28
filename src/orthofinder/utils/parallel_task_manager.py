@@ -146,30 +146,6 @@ def ManageQueue(runningProcesses, cmd_queue):
     if qError:
         Fail()
 
-
-# def ManageQueueNew(processes, result_queue, progress_bar, task, update_cycle):
-#     while processes:
-#         for i, proc in enumerate(processes[:]):
-#             if not proc.is_alive():
-#                 proc.join()
-#                 processes.remove(proc)
-                
-#                 try:
-#                     ijob, result = result_queue.get(True, 0.1)
-#                     if result != "success":
-#                         for p in processes:
-#                             p.terminate()
-#                         util.printer.print(f"ERROR: Error processing job {ijob}", style="error")
-#                         util.Fail()
-#                 except queue.Empty:
-#                     if not processes:
-#                         break
-#                 if (i + 1) % update_cycle == 0:
-#                     progress_bar.update(task, advance=update_cycle)
-
-#         time.sleep(0.1)
-    
-
 # not used
 def RunCommand_Simple(command):
     subprocess.call(command, env=my_env, shell=True)
@@ -335,16 +311,6 @@ def Worker_RunMethod(Function, args_queue):
                 util.print_traceback(e)
                 q_print_first_traceback_1 = True
             return
-
-
-# def RunMethodParallel(Function, args_queue, nProcesses):
-#     runningProcesses = [
-#         mp.Process(target=Worker_RunMethod, args=(Function, args_queue))
-#         for i_ in range(nProcesses)
-#     ]
-#     for proc in runningProcesses:
-#         proc.start()
-#     ManageQueue(runningProcesses, args_queue)
 
 def RunMethodParallel(
         Function, 
