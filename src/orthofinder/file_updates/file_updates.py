@@ -87,7 +87,7 @@ def update_output_files(
     unique_ogs = sorted(unique_ogs)
     tree_file_index = index_files(resolved_trees_working_dir, ".txt")
     missing = sorted(set(unique_ogs) - set(tree_file_index))
-    if missing:
+    if missing and not options.qFastAdd:
         print(f"ERROR: {len(missing)} OG recon trees missing in {resolved_trees_working_dir}")
         print("First missing:", missing[:20])
         util.Fail()
@@ -120,7 +120,7 @@ def update_output_files(
 
     id_index = index_files(resolved_trees_id_dir, ".txt")
     missing_ids = sorted(set(unique_ogs) - set(id_index))
-    if missing_ids:
+    if missing_ids and not options.qFastAdd:
         print(f"ERROR: {len(missing_ids)} ID trees missing in {resolved_trees_id_dir}")
         print("Missing IDs:", missing_ids[:20])
         util.Fail()
