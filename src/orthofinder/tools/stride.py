@@ -583,15 +583,15 @@ def process_trees(
         qWriteDupTrees=qWriteDupTrees,
     )
 
-    # for batch in batched(tree_files, 1000): 
-    with mp.Pool(nProcessors, maxtasksperchild=1) as pool:
-        for result in pool.imap_unordered(worker_func, tree_files, chunksize=10):
-            if result is None:
-                continue
-            supported, genesPostDup = result
-            for k, v in supported.items():
-                agg_supported[k] += v
-            agg_genesPostDup |= genesPostDup
+    for batch in batched(tree_files, 1000): 
+        with mp.Pool(nProcessors, maxtasksperchild=1) as pool:
+            for result in pool.imap_unordered(worker_func, batch, chunksize=10):
+                if result is None:
+                    continue
+                supported, genesPostDup = result
+                for k, v in supported.items():
+                    agg_supported[k] += v
+                agg_genesPostDup |= genesPostDup
 
     return agg_supported, agg_genesPostDup
 
