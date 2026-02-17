@@ -213,35 +213,73 @@ class WaterfallMethod:
                 i = seqsInfo.speciesToUse[iSpecies]
                 print("ERROR: Error processing files Blast%d_*" % i)
                 raise
-
     @staticmethod
     def Worker_ProcessBlastHits_New(
         seqsInfo,
         blastDir_list,
         Lengths,
-        iSpecies,
+        cmd_queue,
         d_pickle,
         qDoubleBlast,
         v2_scores,
         q_allow_empty,
         result_queue,
-    ):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            try:
-                WaterfallMethod.ProcessBlastHits(
-                    seqsInfo,
-                    blastDir_list,
-                    Lengths, 
-                    iSpecies,
-                    d_pickle,
-                    qDoubleBlast,
-                    v2_scores,
-                    q_allow_empty,
-                )
-                result_queue.put((iSpecies, "success"))
-            except Exception as e:
-                result_queue.put((iSpecies, e))
+    ):  
+        try:
+            while True:
+                try:
+                    iSpecies = cmd_queue.get(True, 1)
+                    if iSpecies is None:
+                        break
+                    WaterfallMethod.ProcessBlastHits(
+                        seqsInfo,
+                        blastDir_list,
+                        Lengths,
+                        iSpecies,
+                        d_pickle=d_pickle,
+                        qDoubleBlast=qDoubleBlast,
+                        v2_scores=v2_scores,
+                        q_allow_empty=q_allow_empty,
+                    )
+                    result_queue.put((iSpecies, "success"))
+                except queue.Empty:
+                    continue
+                except Exception as e:
+                    i = seqsInfo.speciesToUse[iSpecies]
+                    print("ERROR: Error processing files Blast%d_*" % i)
+                    result_queue.put(False)
+                    break
+        finally:
+            result_queue.put(None) 
+
+    # @staticmethod
+    # def Worker_ProcessBlastHits_New(
+    #     seqsInfo,
+    #     blastDir_list,
+    #     Lengths,
+    #     iSpecies,
+    #     d_pickle,
+    #     qDoubleBlast,
+    #     v2_scores,
+    #     q_allow_empty,
+    #     result_queue,
+    # ):
+    #     with warnings.catch_warnings():
+    #         warnings.simplefilter("ignore")
+    #         try:
+    #             WaterfallMethod.ProcessBlastHits(
+    #                 seqsInfo,
+    #                 blastDir_list,
+    #                 Lengths, 
+    #                 iSpecies,
+    #                 d_pickle,
+    #                 qDoubleBlast,
+    #                 v2_scores,
+    #                 q_allow_empty,
+    #             )
+    #             result_queue.put((iSpecies, "success"))
+    #         except Exception as e:
+    #             result_queue.put((iSpecies, e))
 
     @staticmethod
     def GetBH_s(pairwiseScoresMatrices, seqsInfo, iSpecies, tol=1e-3):
@@ -320,17 +358,45 @@ class WaterfallMethod:
                 except queue.Empty:
                     return
 
+
     @staticmethod
-    def Worker_ConnectCognates_New(seqsInfo, iSpecies, d_pickle, result_queue, v2_scores=True):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            try:
-                WaterfallMethod.ConnectCognates(
-                    seqsInfo, iSpecies, d_pickle=d_pickle, v2_scores=v2_scores
-                )
-                result_queue.put((iSpecies, "success"))
-            except Exception as e:
-                result_queue.put((iSpecies, e))
+    def Worker_ConnectCognates_New(
+        cmd_queue, 
+        result_queue, 
+        d_pickle, 
+        v2_scores=True
+    ):
+        try:
+            while True:
+                try:
+                    args = cmd_queue.get(True, 1)
+                    if args is None:
+                        break
+                    WaterfallMethod.ConnectCognates(
+                        *args, d_pickle=d_pickle, v2_scores=v2_scores
+                    )
+
+                    iSpecies = args[1]
+                    result_queue.put((iSpecies, "success"))
+                except queue.Empty:
+                    continue
+                except Exception as e:
+                    result_queue.put(False)
+                    break
+        finally:
+            result_queue.put(None) 
+
+    # @staticmethod
+    # def Worker_ConnectCognates_New(seqsInfo, iSpecies, d_pickle, result_queue, v2_scores=True):
+    #     with warnings.catch_warnings():
+    #         warnings.simplefilter("ignore")
+    #         try:
+    #             WaterfallMethod.ConnectCognates(
+    #                 seqsInfo, iSpecies, d_pickle=d_pickle, v2_scores=v2_scores
+    #             )
+    #             result_queue.put((iSpecies, "success"))
+    #         except Exception as e:
+    #             result_queue.put((iSpecies, e))
         
 
     @staticmethod
@@ -435,7 +501,8 @@ class WaterfallMethod:
             ]
         )  # RBH if it exists else zero
         nsp_m1 = Z.shape[0]
-        Zr = 1.0 / Z
+        # Zr = 1.0 / Z
+        Z = np.asarray(Z, dtype=float)
         rs = []
         for isp in range(nsp_m1):
             rs.append([])
@@ -443,16 +510,28 @@ class WaterfallMethod:
                 if isp == jsp:
                     rs[-1].append(1.0)
                     continue
-                ratios = np.multiply(Z[isp, :], Zr[jsp, :])
-                i_nonzeros = np.where(
-                    np.logical_and(np.isfinite(ratios), ratios > 0)
-                )  # only those which a score is availabe for both
-                if i_nonzeros[0].size == 0:
-                    rs[-1].append(1.0)  # no conversion between this pair
+
+                num = Z[isp, :]
+                den = Z[jsp, :]
+                mask = (num > 0) & (den > 0) 
+                if not np.any(mask):
+                    rs[-1].append(1.0)
                 else:
-                    ratios = ratios[i_nonzeros]
-                    r = np.percentile(np.asarray(ratios), 100 - p)
+                    ratio = num[mask] / den[mask]
+                    r = np.percentile(ratio, 100 - p)
                     rs[-1].append(r)
+
+                # ratios = np.multiply(Z[isp, :], Zr[jsp, :])
+                # i_nonzeros = np.where(
+                #     np.logical_and(np.isfinite(ratios), ratios > 0)
+                # )  # only those which a score is availabe for both
+                # if i_nonzeros[0].size == 0:
+                #     rs[-1].append(1.0)  # no conversion between this pair
+                # else:
+                #     ratios = ratios[i_nonzeros]
+                #     r = np.percentile(np.asarray(ratios), 100 - p)
+                #     rs[-1].append(r)
+
                 # calculate the n vectors and take the min
         C = np.matrix(rs)  # Conversion matrix:
         # To convert from a hit in species j to one in species i multiply by Cij

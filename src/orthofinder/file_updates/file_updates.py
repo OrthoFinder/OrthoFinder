@@ -84,14 +84,22 @@ def update_output_files(
         for entry in hog_list
     }
 
-
+    unique_ogs = sorted(unique_ogs)
     tree_file_index = index_files(resolved_trees_working_dir, ".txt")
+    missing = sorted(set(unique_ogs) - set(tree_file_index))
+    if missing and not options.qFastAdd:
+        print(f"ERROR: {len(missing)} OG recon trees missing in {resolved_trees_working_dir}")
+        print("First missing:", missing[:20])
+        util.Fail()
+
     fasta_file_index = index_files(align_id_dir, ".fa") if align_id_dir is not None else {}
 
-    hog_index = {
-        unique_og: [row for row in hog_n0_over4genes if unique_og in row["OG"]]
-        for unique_og in unique_ogs
-    }
+    # hog_index = {
+    #     unique_og: [row for row in hog_n0_over4genes if unique_og in row["OG"]]
+    #     for unique_og in unique_ogs
+    # }
+
+    hog_index = build_hog_index(unique_ogs, hog_n0_over4genes)
 
     trees.post_ogs_processing(
         unique_ogs,
@@ -109,7 +117,13 @@ def update_output_files(
         exist_msa=exist_msa
     )
 
-    util.clear_dir(resolved_trees_working_dir)
+
+    id_index = index_files(resolved_trees_id_dir, ".txt")
+    missing_ids = sorted(set(unique_ogs) - set(id_index))
+    if missing_ids and not options.qFastAdd:
+        print(f"ERROR: {len(missing_ids)} ID trees missing in {resolved_trees_id_dir}")
+        print("Missing IDs:", missing_ids[:20])
+        util.Fail()
 
     ## ----------------------- Fix MSA Alignments --------------------------
 
@@ -117,39 +131,6 @@ def update_output_files(
         CopyTinyAlignments(align_id_dir, align_dir, name_dictionary, idDict)
 
     return ogSet
-
-
-# def hogs_converter(wd_hogs_n0_file, sequence_id_dict, species_id_dict, species_names, hogs_n0_file, rm_N0_ids=True):
-
-#     with open(wd_hogs_n0_file, newline='') as infile, \
-#         open(hogs_n0_file, mode='w', newline='') as outfile:
-#         reader = csv.DictReader(infile, delimiter='\t')
-
-#         fieldnames = ["HOG", "OG", "Gene Tree Parent Clade"] + species_names
-#         writer = csv.DictWriter(outfile, fieldnames=fieldnames, delimiter='\t', lineterminator="\n")
-
-#         writer.writeheader()
-#         for row in reader:
-#             new_row = {
-#                 key: (
-#                     ", ".join(
-#                         next(iter(
-#                             [s for s in sequence_id_dict.get(gene, set()) 
-#                              if s.split("_")[0] == species_id_dict[key]]
-#                         ), "")
-#                         for gene in str(val).split(", ")
-#                     )
-#                     if (val is not None and "," in str(val))
-#                     else next(
-#                         iter([s for s in sequence_id_dict.get(val, set()) 
-#                               if s.split("_")[0] == species_id_dict[key]]), ""
-#                     )
-#                 ) if key not in {'OG', 'Gene Tree Parent Clade', 'HOG'} else val
-#                 for key, val in row.items()
-#             }
-#             writer.writerow(new_row)
-
-#     os.replace(temp_file.name, hogs_n0_file)
 
 def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_names, rm_N0_ids=True):
 
@@ -279,3 +260,17 @@ def id_converter(sp_ids, id_sequence_dict):
     }
 
     return species_id_dict, sequence_id_dict
+
+def build_hog_index(unique_ogs, hog_rows):
+    unique_set = {str(og).strip() for og in unique_ogs}
+    hog_index = {og: [] for og in unique_set}
+    for row in hog_rows:
+        og = str(row.get("OG", "")).strip()
+        if og in hog_index:
+            row["OG"] = og
+            if "HOG" in row and row["HOG"] is not None:
+                row["HOG"] = str(row["HOG"]).strip()
+            if "Gene Tree Parent Clade" in row and row["Gene Tree Parent Clade"] is not None:
+                row["Gene Tree Parent Clade"] = str(row["Gene Tree Parent Clade"]).strip()
+            hog_index[og].append(row)
+    return hog_index

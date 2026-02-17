@@ -146,30 +146,6 @@ def ManageQueue(runningProcesses, cmd_queue):
     if qError:
         Fail()
 
-
-def ManageQueueNew(processes, result_queue, progress_bar, task, update_cycle):
-    while processes:
-        for i, proc in enumerate(processes[:]):
-            if not proc.is_alive():
-                proc.join()
-                processes.remove(proc)
-                
-                try:
-                    ijob, result = result_queue.get(True, 0.1)
-                    if result != "success":
-                        for p in processes:
-                            p.terminate()
-                        util.printer.print(f"ERROR: Error processing job {ijob}", style="error")
-                        util.Fail()
-                except queue.Empty:
-                    if not processes:
-                        break
-                if (i + 1) % update_cycle == 0:
-                    progress_bar.update(task, advance=update_cycle)
-
-        time.sleep(0.1)
-    
-
 # not used
 def RunCommand_Simple(command):
     subprocess.call(command, env=my_env, shell=True)
@@ -336,48 +312,87 @@ def Worker_RunMethod(Function, args_queue):
                 q_print_first_traceback_1 = True
             return
 
+def RunMethodParallel(
+        Function, 
+        args_queue, 
+        nProcesses, 
+    ):
 
-# def RunMethodParallel(Function, args_queue, nProcesses):
-#     runningProcesses = [
-#         mp.Process(target=Worker_RunMethod, args=(Function, args_queue))
-#         for i_ in range(nProcesses)
-#     ]
-#     for proc in runningProcesses:
-#         proc.start()
-#     ManageQueue(runningProcesses, args_queue)
+    runningProcesses = [
+        mp.Process(target=Worker_RunMethod, args=(Function, args_queue))
+        for i_ in range(nProcesses)
+    ]
+    for proc in runningProcesses:
+        proc.start()
+    ManageQueue(runningProcesses, args_queue)
 
-def RunMethodParallel(Function, args_queue,  nProcesses, task_size, old_version=False):
+def ManageQueueNew(
+        runningProcesses, 
+        total_tasks, 
+        nprocess, 
+        result_queue, 
+        GRACE_PERIOD = 10.,
+        STALL_TIMEOUT = 200.
+    ):
+    
+    progressbar, task = util.get_progressbar(total_tasks)
+    update_cycle = 1
+    progressbar.start()
+    for proc in runningProcesses:
+        proc.start()
+    completed_tasks = 0
+    active_workers = nprocess
+    last_progress_time = time.time()
+    fatal = False
+    try:
+        while completed_tasks < total_tasks or active_workers > 0:
+            try:
+                msg = result_queue.get(timeout=0.1)
+            except queue.Empty:
+                if time.time() - last_progress_time > STALL_TIMEOUT:
+                    print(f"ERROR: Stalled for {STALL_TIMEOUT}s (completed {completed_tasks}/{total_tasks}).")
+                    fatal = True
+                    break
+                continue
 
-    if old_version:
-        runningProcesses = [
-            mp.Process(target=Worker_RunMethod, args=(Function, args_queue))
-            for i_ in range(nProcesses)
-        ]
+            if msg is None:
+                active_workers -= 1
+                continue
+
+            if msg is False:
+                print("ERROR: worker reported fatal error.")
+                fatal = True
+                break
+
+            if isinstance(msg, tuple) and len(msg) == 2 and msg[1] == "success":
+                completed_tasks += 1
+                progressbar.update(task, advance=update_cycle)
+                last_progress_time = time.time()
+                continue
+
+            fatal = True
+            raise TypeError(f"Unexpected message from worker: {type(msg)} {msg!r}")
+
+    finally:
         for proc in runningProcesses:
-            proc.start()
-        ManageQueue(runningProcesses, args_queue)
-    else:
-        visible = True
-        if Function.__name__ == "Worker_SortFile":
-            visible = False
-        method_progress, task = util.get_progressbar(task_size, visible=visible)
-        update_cycle = 1
+            proc.join(timeout=GRACE_PERIOD)
+        for proc in runningProcesses:
+            if proc.is_alive():
+                proc.terminate()
+        for proc in runningProcesses:
+            proc.join()
 
-        method_progress.start()
-        result_queue = mp.Queue()
-        runningProcesses = []
+        progressbar.stop()
+        try:
+            result_queue.close()
+            result_queue.join_thread()
+        except Exception:
+            pass            
+    
+    if fatal:
+        util.Fail()
 
-        while not args_queue.empty():
-            args = args_queue.get()
-            proc = mp.Process(target=Function, args=(*args, result_queue))
-            runningProcesses.append(proc)
-            proc.start()
 
-            if len(runningProcesses) >= nProcesses:
-                ManageQueueNew(runningProcesses, result_queue, method_progress, task, update_cycle)
-
-        ManageQueueNew(runningProcesses, result_queue, method_progress, task, update_cycle)
-        method_progress.stop()
 
 def _I_Spawn_Processes(message_to_spawner, message_to_PTM):
     """

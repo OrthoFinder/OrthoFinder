@@ -409,7 +409,8 @@ def ReconciliationAndOrthologues(
             fix_files=fix_files
         )
     
-    if nLowParallel > 1 and "phyldog" != recon_method and "dlcpar" not in recon_method:
+    # if nLowParallel > 1 and "phyldog" != recon_method and "dlcpar" not in recon_method:
+    if nLowParallel > 1:
         trees2ologs_of.SortParallelFiles(
             nLowParallel, 
             ogSet.speciesToUse, 
@@ -417,7 +418,6 @@ def ReconciliationAndOrthologues(
             fewer_open_files,
             write_hog_tree,
             fix_files,
-            old_version,
         )
     #
     return nOrthologues_SpPair
@@ -660,7 +660,7 @@ def OrthologuesWorkflow(
             files.FileHandler.GetWorkingDirectory_Write() + "N0.ids.tsv",
             os.path.join(files.FileHandler.GetLegacyHOGDir(), "N0.ids.tsv")
         )
-        
+
         util.PrintTime("Converting MSA/Trees")
         ogSet = file_updates.update_output_files(
             ogSet.SpeciesDict(),
@@ -689,6 +689,7 @@ def OrthologuesWorkflow(
             util.Success()
             
         util.PrintTime("Done updating MSA/Trees")
+        util.clear_dir(files.FileHandler.GetOGsReconTreeDir(qResults=True))
         InferOrthologs(
             ogSet, 
             rooted_sp_tree, 
