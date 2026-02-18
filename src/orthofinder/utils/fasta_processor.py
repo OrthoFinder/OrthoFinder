@@ -188,8 +188,11 @@ def ProcessesNewFasta(
             baseFilename, extension = os.path.splitext(fastaFilename)
             mLinesToCheck = 100
             qHasAA = False
+            seen = {}
+
             with open(fastaDir + os.sep + fastaFilename, 'r') as fastaFile:
                 for iLine, line in enumerate(fastaFile):
+                    
                     if line.isspace(): continue
                     if len(line) > 0 and line[0] == ">":
                         newID = "%d_%d" % (iSpecies, iSeq)
@@ -197,6 +200,11 @@ def ProcessesNewFasta(
                         if len(acc) == 0:
                             print("ERROR: %s contains a blank accession line on line %d" % (fastaDir + os.sep + fastaFilename, iLine+1))
                             util.Fail()
+                        if acc in seen:
+                            seen[acc] += 1
+                        else:
+                            seen[acc] = 0
+                        acc = f"{acc}_{seen[acc]}"
                         idsFile.write("%s: %s\n" % (newID, acc))
                         outputFasta.write(">%s\n" % newID)    
                         iSeq += 1
