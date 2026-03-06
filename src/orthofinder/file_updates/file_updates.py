@@ -43,7 +43,7 @@ def update_output_files(
     seq_dir = files.FileHandler.GetResultsSeqsDir()
     util.clear_dir(seq_dir)
 
-    ogSet, idDict, name_dictionary = ogs.post_hogs_processing(
+    ogSet, idDict, name_dictionary, new_ogs = ogs.post_hogs_processing(
         all_seq_ids,
         speciesInfoObj,
         seqsInfo,
@@ -130,7 +130,7 @@ def update_output_files(
     if exist_msa:
         CopyTinyAlignments(align_id_dir, align_dir, name_dictionary, idDict)
 
-    return ogSet
+    return ogSet, new_ogs
 
 def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_names, rm_N0_ids=True):
 

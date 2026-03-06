@@ -56,7 +56,6 @@ def post_hogs_processing(
             resultsBaseFilename,
         )
 
-
     # Write Orthogroup FASTA files
     ogSet = OrthoGroupsSet(
         options.min_seq,
@@ -102,7 +101,7 @@ def post_hogs_processing(
         # util.PrintTime("Done orthogroups")
         # files.FileHandler.LogOGs()
 
-    return ogSet, idDict, name_dictionary
+    return ogSet, idDict, name_dictionary, new_ogs
 
 def update_ogs(input_path):
     sorted_matrix = read_hogs_to_matrix(input_path)   
