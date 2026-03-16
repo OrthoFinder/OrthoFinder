@@ -290,21 +290,16 @@ def build_hog_index(unique_ogs, hog_rows):
 
 
 def check_missing_ogs(ogs_list, index_dict, resolved_trees_dir):
-
-    index_list = [
-        os.path.basename(file).split(".")[0]
+    ogs_set = set(ogs_list)
+    index_set = {
+        file.rsplit("/", 1)[-1].partition(".")[0]
         for file in index_dict.values()
-    ]
-    
-    missing_ogs = [
-        og
-        for og in ogs_list
-        if og not in index_list
-    ]
-    
-    if len(missing_ogs) > 0:
-        print(f"ERROR: {len(missing_ogs)} ID trees missing in {resolved_trees_dir}")
-        for og in missing_ogs:
+    }
+
+    missing = ogs_set - index_set
+
+    if missing:
+        print(f"ERROR: {len(missing)} ID trees missing in {resolved_trees_dir}")
+        for og in missing:
             print("Missing IDs:", og)
-        
         util.Fail()
