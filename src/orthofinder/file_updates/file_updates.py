@@ -43,7 +43,7 @@ def update_output_files(
     seq_dir = files.FileHandler.GetResultsSeqsDir()
     util.clear_dir(seq_dir)
 
-    ogSet, idDict, name_dictionary = ogs.post_hogs_processing(
+    ogSet, idDict, name_dictionary, new_ogs = ogs.post_hogs_processing(
         all_seq_ids,
         speciesInfoObj,
         seqsInfo,
@@ -84,13 +84,16 @@ def update_output_files(
         for entry in hog_list
     }
 
-    unique_ogs = sorted(unique_ogs)
+    unique_ogs =  sorted(unique_ogs)
     tree_file_index = index_files(resolved_trees_working_dir, ".txt")
-    missing = sorted(set(unique_ogs) - set(tree_file_index))
-    if missing and not options.qFastAdd:
-        print(f"ERROR: {len(missing)} OG recon trees missing in {resolved_trees_working_dir}")
-        print("First missing:", missing[:20])
-        util.Fail()
+    # missing = sorted(set(unique_ogs) - set(tree_file_index))
+    if not options.qFastAdd:
+        check_missing_ogs(unique_ogs, tree_file_index, resolved_trees_working_dir)
+
+    # if missing and not options.qFastAdd:
+        # print(f"ERROR: {len(missing)} OG recon trees missing in {resolved_trees_working_dir}")
+        # print("Missing IDs:", missing[:20])
+        # util.Fail()
 
     fasta_file_index = index_files(align_id_dir, ".fa") if align_id_dir is not None else {}
 
@@ -119,18 +122,28 @@ def update_output_files(
 
 
     id_index = index_files(resolved_trees_id_dir, ".txt")
-    missing_ids = sorted(set(unique_ogs) - set(id_index))
-    if missing_ids and not options.qFastAdd:
-        print(f"ERROR: {len(missing_ids)} ID trees missing in {resolved_trees_id_dir}")
-        print("Missing IDs:", missing_ids[:20])
-        util.Fail()
+
+    expected_ogs = [
+        simplified_name_dict[i["HOG"]]
+        for i in hog_n0_over4genes
+    ]
+    if not options.qFastAdd:
+        check_missing_ogs(expected_ogs, id_index, resolved_trees_id_dir)
+    # missing_ids = sorted(set(expected_ogs) - set(id_index))
+    # if missing_ids and not options.qFastAdd:
+    #     print(f"ERROR: {len(missing_ids)} ID trees missing in {resolved_trees_id_dir}")
+    #     print("Missing IDs:", missing_ids[:20])
+    #     util.Fail()
+
+    
+
 
     ## ----------------------- Fix MSA Alignments --------------------------
 
     if exist_msa:
         CopyTinyAlignments(align_id_dir, align_dir, name_dictionary, idDict)
 
-    return ogSet
+    return ogSet, new_ogs
 
 def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_names, rm_N0_ids=True):
 
@@ -274,3 +287,19 @@ def build_hog_index(unique_ogs, hog_rows):
                 row["Gene Tree Parent Clade"] = str(row["Gene Tree Parent Clade"]).strip()
             hog_index[og].append(row)
     return hog_index
+
+
+def check_missing_ogs(ogs_list, index_dict, resolved_trees_dir):
+    ogs_set = set(ogs_list)
+    index_set = {
+        file.rsplit("/", 1)[-1].partition(".")[0]
+        for file in index_dict.values()
+    }
+
+    missing = ogs_set - index_set
+
+    if missing:
+        print(f"ERROR: {len(missing)} ID trees missing in {resolved_trees_dir}")
+        for og in missing:
+            print("Missing IDs:", og)
+        util.Fail()
