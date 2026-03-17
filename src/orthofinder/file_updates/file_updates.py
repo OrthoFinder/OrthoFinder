@@ -37,7 +37,7 @@ def update_output_files(
                 os.path.join(files.FileHandler.GetResultHOGDir(), file),  
                 files.FileHandler.GetLegacyHOGDir()
             )
-            
+
     hogs_converter(hog_n0_file, sequence_id_dict, species_id_dict, species_names)
 
     seq_dir = files.FileHandler.GetResultsSeqsDir()
@@ -87,13 +87,8 @@ def update_output_files(
     unique_ogs =  sorted(unique_ogs)
     tree_file_index = index_files(resolved_trees_working_dir, ".txt")
     # missing = sorted(set(unique_ogs) - set(tree_file_index))
-    if not options.qFastAdd:
-        check_missing_ogs(unique_ogs, tree_file_index, resolved_trees_working_dir)
-
-    # if missing and not options.qFastAdd:
-        # print(f"ERROR: {len(missing)} OG recon trees missing in {resolved_trees_working_dir}")
-        # print("Missing IDs:", missing[:20])
-        # util.Fail()
+    # if not options.qFastAdd:
+    check_missing_ogs(unique_ogs, tree_file_index, resolved_trees_working_dir)
 
     fasta_file_index = index_files(align_id_dir, ".fa") if align_id_dir is not None else {}
 
@@ -127,16 +122,8 @@ def update_output_files(
         simplified_name_dict[i["HOG"]]
         for i in hog_n0_over4genes
     ]
-    if not options.qFastAdd:
-        check_missing_ogs(expected_ogs, id_index, resolved_trees_id_dir)
-    # missing_ids = sorted(set(expected_ogs) - set(id_index))
-    # if missing_ids and not options.qFastAdd:
-    #     print(f"ERROR: {len(missing_ids)} ID trees missing in {resolved_trees_id_dir}")
-    #     print("Missing IDs:", missing_ids[:20])
-    #     util.Fail()
-
-    
-
+    # if not options.qFastAdd:
+    check_missing_ogs(expected_ogs, id_index, resolved_trees_id_dir)
 
     ## ----------------------- Fix MSA Alignments --------------------------
 

@@ -313,8 +313,17 @@ class OrthoFinderTestFuncs:
                 if k + 3 >= len(tokens):
                     break
                 ogname, partner_name, a, b = tokens[k:k+4]
+                if "," in a:
+                    a = ", ".join([g.rsplit("_", 1)[0] for g in a.split(", ")])
+                else:
+                    a = a.rsplit("_", 1)[0] 
+                if "," in b:
+                    b = ", ".join([g.rsplit("_", 1)[0] for g in b.split(", ")])
+                else:
+                    b = b.rsplit("_", 1)[0] 
                 aset = frozenset(re.split(r"[,\s;]+", a)) - {""}
                 bset = frozenset(re.split(r"[,\s;]+", b)) - {""}
+                
                 orthologues_dict[species_name][ogname].append((partner_name, aset, bset))
         return orthologues_dict
 
@@ -382,8 +391,9 @@ class OrthoFinderTestFuncs:
                 # gene_list0 = ", ".join([seqIDs[g] for g in genes0])   # line can read ">1234 genes" for example, but this has been added to dict
                 # gene_list1 = ", ".join([seqIDs[g] for g in genes1])
 
-                gene_set0 = frozenset([spec_seq_dict[g] for g in genes0])   # line can read ">1234 genes" for example, but this has been added to dict
-                gene_set1 = frozenset([spec_seq_dict[g] for g in genes1])
+                gene_set0 = frozenset([spec_seq_dict[g].rsplit("_", 1)[0] for g in genes0])   # line can read ">1234 genes" for example, but this has been added to dict
+                gene_set1 = frozenset([spec_seq_dict[g].rsplit("_", 1)[0] for g in genes1])
+
                 duplication_dict[og_id].append(
                         (isSTRIDE, gene_set0, gene_set1)
                 )
@@ -429,7 +439,7 @@ class OrthoFinderTestFuncs:
                 ogDict[speciesInfoObj.speciesToUse.index(iSpecies)].append(name)
             
             orthogroups_list = [
-                (species_id, frozenset(genes))
+                (species_id, frozenset([g.rsplit("_", 1)[0] for g in genes]))
                 for species_id, genes in ogDict.items()
             ]
             sorted_orthogroups_list = sorted(orthogroups_list)
@@ -503,9 +513,8 @@ class OrthoFinderTestFuncs:
             
             for h, row in cached_hogs:
                 if h not in ["N0.ids", "N0"]:
-                    
                     hogs = tuple(
-                        frozenset(re.split(r"[,\s;]+", item.strip()))
+                        frozenset(re.split(r"[,\s;]+", item.rsplit("_", 1)[0].strip()))
                         for item in row[2:]
                         if len(item) != 0
                     )
