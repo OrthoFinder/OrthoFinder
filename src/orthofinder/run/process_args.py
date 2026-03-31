@@ -1141,7 +1141,7 @@ def CheckOptions(options, speciesToUse):
         expSpecies = list(
             species_info.SpeciesNameDict(files.FileHandler.GetSpeciesIDsFN()).values()
         )
-        orthologues.CheckUserSpeciesTree(options.speciesTreeFN, expSpecies)
+        species_info.CheckUserSpeciesTree(options.speciesTreeFN, expSpecies)
 
     # check can open enough files
     n_extra = 50
