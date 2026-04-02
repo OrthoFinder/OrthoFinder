@@ -8,7 +8,7 @@ try:
 except ImportError:
     ...
 from . import util, files 
-
+from ..utils.util import printer
 
 # count = 0 
 
@@ -110,6 +110,7 @@ def ProcessesNewFasta(
     """
     Process fasta files and return a Directory object with all paths completed.
     """
+
     fastaExtensions = {"fa", "faa", "fasta", "fas", "pep", "fna"}
     # Check files present
     qOk = True
@@ -178,6 +179,9 @@ def ProcessesNewFasta(
         iSpecies = int(line.split(":")[0]) + 1
     speciesInfoObj.iFirstNewSpecies = iSpecies
     newSpeciesIDs = []
+    duplicated = False
+
+    species_seen_dict = {}
 
     with open(sequence_id_fn, 'a') as idsFile, open(species_id_fn, 'a') as speciesFile:
         for fastaFilename in originalFastaFilenames:
@@ -188,7 +192,8 @@ def ProcessesNewFasta(
             baseFilename, extension = os.path.splitext(fastaFilename)
             mLinesToCheck = 100
             qHasAA = False
-            seen = {}
+
+            species_seen_dict[fastaFilename] = {}
 
             with open(fastaDir + os.sep + fastaFilename, 'r') as fastaFile:
                 for iLine, line in enumerate(fastaFile):
@@ -200,11 +205,14 @@ def ProcessesNewFasta(
                         if len(acc) == 0:
                             print("ERROR: %s contains a blank accession line on line %d" % (fastaDir + os.sep + fastaFilename, iLine+1))
                             util.Fail()
-                        if acc in seen:
-                            seen[acc] += 1
+                        if acc in species_seen_dict[fastaFilename]:
+                            species_seen_dict[fastaFilename][acc] += 1
+                            # if species_seen_dict[fastaFilename][acc] < 10:
+                            #     printer.print(f"ERROR: Duplicated gene names found in '{fastaFilename}' - <{acc}>", style="error")
+                            duplicated = True
                         else:
-                            seen[acc] = 0
-                        acc = f"{acc}_{seen[acc]}"
+                            species_seen_dict[fastaFilename][acc] = 0
+                        # acc = f"{acc}_{seen[acc]}"
                         idsFile.write("%s: %s\n" % (newID, acc))
                         outputFasta.write(">%s\n" % newID)    
                         iSeq += 1
@@ -223,6 +231,17 @@ def ProcessesNewFasta(
             iSeq = 0
         if not qOk:
             util.Fail()
+
+    if duplicated:
+        print()
+        printer.print("ERROR: Duplicated gene names found.", style="error")
+        for filename in species_seen_dict:
+            for acc, acc_count in species_seen_dict[filename].items():
+                if acc_count > 0:
+                    printer.print(f"{acc_count+1}: {acc} - [orange3]{filename}[/orange3]")
+        printer.print("Please check the input file and make sure the gene names are unique.\n", style="error")
+        util.Fail()
+
     if len(originalFastaFilenames) > 0: outputFasta.close()
     speciesInfoObj.speciesToUse = speciesInfoObj.speciesToUse + newSpeciesIDs
     speciesInfoObj.nSpAll = max(speciesInfoObj.speciesToUse) + 1      # will be one of the new species

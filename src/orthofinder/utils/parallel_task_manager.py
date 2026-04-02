@@ -35,6 +35,7 @@ import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, wait
 from .. import __location__
 from . import util
+from ..utils.util import printer
 try:
     from rich import print
 except ImportError:
@@ -519,7 +520,7 @@ def Fail():
     sys.stderr.flush()
     ptm = ParallelTaskManager_singleton()
     ptm.Stop()
-    print(
-        "ERROR: An error occurred, ***please review the error messages*** they may contain useful information about the problem."
+    printer.print(
+        "ERROR: An error occurred, ***please review the error messages*** they may contain useful information about the problem.", style="error"
     )
     sys.exit(1)

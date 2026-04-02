@@ -1,12 +1,13 @@
 from ..utils import util, files
 import os
-import csv
+from collections import Counter
 
 try:
     from rich import print
 except ImportError:
     ...
 
+from ..tools import tree
 
 def IDsFileOK(filename):
     """
@@ -276,6 +277,53 @@ def ProcessPreviousFiles(workingDir_list, qDoubleBlast, check_blast=True):
         )
 
     return speciesInfo, speciesToUse_names
+
+
+def CheckUserSpeciesTree(speciesTreeFN, expSpecies):
+    # File exists
+    if not os.path.exists(speciesTreeFN):
+        print(("Species tree file does not exist: %s" % speciesTreeFN))
+        util.Fail()
+    # Species in tree are unique
+    try:
+        t = tree.Tree(speciesTreeFN, format=1)
+    except Exception as e:
+        print("\nERROR: Incorrectly formated user-supplied species tree")
+        print(str(e))
+        util.Fail()
+    actSpecies = (t.get_leaf_names())
+    c = Counter(actSpecies)
+    if 1 != c.most_common()[0][1]:
+        print("ERROR: Species names in species tree are not unique")
+        for sp, n in c.most_common():
+            if 1 != n:
+                print(("Species '%s' appears %d times" % (sp, n)))
+        util.Fail()
+    # All required species are present
+    actSpecies = set(actSpecies)
+    ok = True
+    for sp in expSpecies:
+        if sp not in actSpecies:
+            print(("ERROR: '%s' is missing from species tree" % sp))
+            ok = False
+    # expected species are unique
+    c = Counter(expSpecies)
+    if 1 != c.most_common()[0][1]:
+        print("ERROR: Species names are not unique")
+        for sp, n in c.most_common():
+            if 1 != n:
+                print(("Species '%s' appears %d times" % (sp, n)))
+        util.Fail()
+    expSpecies = set(expSpecies)
+    for sp in actSpecies:
+        if sp not in expSpecies:
+            print(("ERROR: Additional species '%s' in species tree" % sp))
+            ok = False
+    if not ok: util.Fail()
+    # Tree is rooted
+    if len(t.get_children()) != 2:
+        print("ERROR: Species tree is not rooted")
+        util.Fail()
 
 
 
