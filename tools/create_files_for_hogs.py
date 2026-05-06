@@ -29,12 +29,18 @@ import glob
 import argparse
 from collections import Counter
 
-if __name__ == "__main__" and __package__ is None:   
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    from orthofinder.utils import util, files
+    from orthofinder.tools import trees_msa
+    from orthofinder.orthogroups import orthogroups_set
+except ImportError:
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    src_dir = os.path.join(repo_root, "src")
+    sys.path.insert(0, src_dir)
 
-from src.orthofinder.utils import util, files
-from src.orthofinder.tools import trees_msa
-from src.orthofinder.orthogroups import orthogroups_set
+    from orthofinder.utils import util, files
+    from orthofinder.tools import trees_msa
+    from orthofinder.orthogroups import orthogroups_set
 
 
 def process_log(logFN):
