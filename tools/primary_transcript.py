@@ -239,7 +239,7 @@ def CreatePrimaryTranscriptsFile(fn, dout, gene_name_fn, q_use_original_accessio
         nAcc += 1
         iLineAcc = iLine
         gene = gene_name_fn(line)
-        if gene == None:
+        if gene is None:
             nGeneUnidentified += 1
             continue
         # get length
@@ -261,8 +261,8 @@ def CreatePrimaryTranscriptsFile(fn, dout, gene_name_fn, q_use_original_accessio
 
     # Get longest version for each gene
     # Parse file second time and only write out sequences that are longest variant
-    nGenesWriten = 0
-    outfn = dout + os.path.basename(fn)
+    nGenesWritten = 0
+    outfn = os.path.join(dout, os.path.basename(fn))
     with open(outfn, 'w') as outfile:
         iLine = -1
         while iLine < N:
@@ -276,7 +276,7 @@ def CreatePrimaryTranscriptsFile(fn, dout, gene_name_fn, q_use_original_accessio
                 acc_line_out = line + "\n"
             else:
                  acc_line_out = ">%s\n" % gene
-            nGenesWriten += 1
+            nGenesWritten += 1
             outfile.write(acc_line_out)
             while iLine < N:
                 iLine += 1
@@ -285,8 +285,8 @@ def CreatePrimaryTranscriptsFile(fn, dout, gene_name_fn, q_use_original_accessio
                     iLine -= 1
                     break
                 outfile.write(line + "\n")
-    print("Wrote %d genes" % nGenesWriten)
-    if nGenesWriten != len(max_gene_lens) + nGeneUnidentified:
+    print("Wrote %d genes" % nGenesWritten)
+    if nGenesWritten != len(max_gene_lens) + nGeneUnidentified:
         print("ERROR")
         raise Exception
     print(outfn)
