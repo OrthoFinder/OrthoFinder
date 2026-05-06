@@ -40,12 +40,12 @@
     "raxml": {
         "program_type": "tree",
         "cmd_line": "raxmlHPC -m PROTGAMMALG -p 12345 -s INPUT -n IDENTIFIER -w PATH > /dev/null",
-        "ouput_filename": "PATH/RAxML_bestTree.IDENTIFIER"
+        "output_filename": "PATH/RAxML_bestTree.IDENTIFIER"
     },
     "raxml-ng": {
         "program_type": "tree",
         "cmd_line": "raxml-ng --msa INPUT --model LG+G4 --seed 12345 --threads METHODTHREAD",
-        "ouput_filename": "INPUT.raxml.bestTree"
+        "output_filename": "INPUT.raxml.bestTree"
     },
     "__comment": "IQTREE can fail with the error ERROR: Numerical underflow (lh-branch). Run again with the safe",
     "__comment": "In the command below it is run without the safe option first and then with.",
@@ -54,7 +54,7 @@
     "iqtree3": {
         "program_type": "tree",
         "cmd_line": "iqtree3 -s INPUT --prefix PATH/IDENTIFIER -quiet",
-        "ouput_filename": "PATH/IDENTIFIER.treefile"
+        "output_filename": "PATH/IDENTIFIER.treefile"
     },
     "diamond": {
         "program_type": "search",

@@ -6,11 +6,17 @@ import sys
 import argparse
 import numpy as np
 
-if __name__ == "__main__" and __package__ is None:
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    from orthofinder.tools import tree
+    from orthofinder.utils import util
+except ImportError:
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    src_dir = os.path.join(repo_root, "src")
+    sys.path.insert(0, src_dir)
 
-from src.orthofinder.tools import tree
-from src.orthofinder.utils import util
+    from orthofinder.tools import tree
+    from orthofinder.utils import util
+
 
 def AveDist(node):
     return np.average([node.get_distance(l) for l in node.get_leaf_names()]) 

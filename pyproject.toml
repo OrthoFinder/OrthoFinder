@@ -78,8 +78,8 @@ upload_to_release = true
 build_command = "python -m build"
 
 [tool.setuptools.packages.find]
-where = ["src"]
-include = ["orthofinder*"]
+where = ["src", "."]
+include = ["orthofinder*", "tools*"]
 
 [tool.setuptools]
 include-package-data = true

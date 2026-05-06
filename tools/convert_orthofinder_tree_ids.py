@@ -6,11 +6,17 @@ import sys
 import glob
 import argparse
 
-if __name__ == "__main__" and __package__ is None:   
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    from orthofinder.tools import tree
+    from orthofinder.utils import util
+except ImportError:
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    src_dir = os.path.join(repo_root, "src")
+    sys.path.insert(0, src_dir)
 
-from src.orthofinder.tools import tree
-from src.orthofinder.utils import util
+    from orthofinder.tools import tree
+    from orthofinder.utils import util
+
         
 def ReplaceFileWithNewIDs(idsMap, treeFilename, newTreeFilename):     
     qHaveSupport = False
@@ -34,24 +40,34 @@ def ReplaceFileWithNewIDs(idsMap, treeFilename, newTreeFilename):
         t.write(outfile=newTreeFilename, format=5)
         
                              
-def GetSpeciesSequenceIDsDict(sequenceIDsFilename, speciesIDsFN = None):
+def GetSpeciesSequenceIDsDict(sequenceIDsFilename, speciesIDsFN=None):
     try:
         extract = util.FirstWordExtractor(sequenceIDsFilename)
     except RuntimeError as error:
-        print(error.message)
-        if error.message.startswith("ERROR"): 
+        msg = str(error)
+        print(msg)
+        if msg.startswith("ERROR"): 
             util.Fail()
         else:
             print("Tried to use only the first part of the accession in order to list the sequences in each orthogroup\nmore concisely but these were not unique. The full accession line will be used instead.\n")     
             extract = util.FullAccession(sequenceIDsFilename)
+
     idsDict = extract.GetIDToNameDict()    
-    if speciesIDsFN != None:
+
+    if speciesIDsFN is not None:
         speciesDict = util.FullAccession(speciesIDsFN).GetIDToNameDict()
-        speciesDict = {k:v.rsplit(".",1)[0].replace(".", "_").replace(" ", "_") for k,v in speciesDict.items()}
-        idsDict = {seqID:speciesDict[seqID.split("_")[0]] + "_" + name for seqID, name in idsDict.items()}
+        speciesDict = {
+            k: v.rsplit(".", 1)[0].replace(".", "_").replace(" ", "_")
+            for k, v in speciesDict.items()
+        }
+        idsDict = {
+            seqID: speciesDict[seqID.split("_")[0]] + "_" + name
+            for seqID, name in idsDict.items()
+        }
+
     return idsDict
 
-def main_convert():
+def main():
     with util.Finalise():
         parser = argparse.ArgumentParser(description="Takes a tree with OrthoFinder IDs and outputs a tree with gene accessions")
         parser.add_argument("TreeInput", help="Tree filename or directory")
@@ -77,4 +93,4 @@ def main_convert():
             print("")
 
 if __name__ == "__main__":
-    main_convert()
+    main()
