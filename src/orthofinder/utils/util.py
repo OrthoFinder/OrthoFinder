@@ -33,7 +33,7 @@ import datetime
 from collections import namedtuple
 from ..citation import citation
 from ..tools import tree
-from . import parallel_task_manager
+
 import shutil
 import traceback
 
@@ -77,6 +77,9 @@ class OrthoPrinter:
         self.console.print(message, style=style, end=end)
 
 printer = OrthoPrinter()
+
+from . import parallel_task_manager
+
 
 def print_traceback(e):
     if PY2:

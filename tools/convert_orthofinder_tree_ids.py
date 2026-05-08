@@ -34,19 +34,65 @@ import sys
 import glob
 import argparse
 
-try:
-    from orthofinder.tools import tree
-    from orthofinder.utils import util
-except ImportError:
-    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    src_dir = os.path.join(repo_root, "src")
+script_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root = os.path.dirname(script_dir)
+src_dir = os.path.join(repo_root, "src")
+
+if os.path.isdir(os.path.join(src_dir, "orthofinder")) and src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
-    from orthofinder.tools import tree
-    from orthofinder.utils import util
+from orthofinder.tools import tree
+from orthofinder.utils import util
 
+
+
+def invert_mapping(ids_map):
+    acc_to_ids = {}
+    duplicated = set()
+
+    for seq_id, accession in ids_map.items():
+        if accession in acc_to_ids:
+            duplicated.add(accession)
+        else:
+            acc_to_ids[accession] = seq_id
+
+    for accession in duplicated:
+        del acc_to_ids[accession]
+
+    return acc_to_ids
+
+
+def convert_resolved_gene_trees_file(idsMap, treeFilename, outputFilename):
+    with open(treeFilename, "r") as infile, open(outputFilename, "w") as outfile:
+        for line in infile:
+            line = line.strip()
+
+            if not line:
+                continue
+
+            if ":" not in line:
+                outfile.write(line + "\n")
+                continue
+
+            og_name, newick = line.split(":", 1)
+            newick = newick.strip()
+
+            tmp_tree = tree.Tree(newick, format=1)
+
+            for node in tmp_tree.get_leaves():
+                if node.name in idsMap:
+                    node.name = idsMap[node.name]
+
+            outfile.write("%s: %s\n" % (og_name, tmp_tree.write(format=5).strip()))
 
 def ReplaceFileWithNewIDs(idsMap, treeFilename, newTreeFilename):
+    with open(treeFilename, "r") as infile:
+        first_line = infile.readline().strip()
+
+    if first_line.startswith("OG") and ":" in first_line:
+        convert_resolved_gene_trees_file(idsMap, treeFilename, newTreeFilename)
+        return
+
     qHaveSupport = False
     qHaveInternalNames = False
 
@@ -61,7 +107,8 @@ def ReplaceFileWithNewIDs(idsMap, treeFilename, newTreeFilename):
             t = tree.Tree(treeFilename)
 
     for node in t.get_leaves():
-        node.name = idsMap[node.name]
+        if node.name in idsMap:
+            node.name = idsMap[node.name]
 
     if qHaveSupport:
         t.write(outfile=newTreeFilename)
@@ -119,13 +166,23 @@ def get_tree_files(tree_input):
     util.Fail()
 
 
-def convert_tree_ids(tree_input, sequence_ids, species_ids=None):
+def convert_tree_ids(tree_input, sequence_ids, species_ids=None, direction="id-to-accession"):
     idsDict = GetSpeciesSequenceIDsDict(sequence_ids, species_ids)
+
+    if direction == "accession-to-id":
+        idsDict = invert_mapping(idsDict)
+
     filesToDo = get_tree_files(tree_input)
 
     for treeFilename in filesToDo:
         pathfilename, ext = os.path.splitext(treeFilename)
-        newFilename = pathfilename + "_accessions" + ext
+
+        if direction == "id-to-accession":
+            suffix = "_accessions"
+        else:
+            suffix = "_ids"
+
+        newFilename = pathfilename + suffix + ext
 
         sys.stdout.write(newFilename)
 
@@ -161,12 +218,21 @@ def main(args=None):
             help="Optional SpeciesIDs.txt file from the OrthoFinder WorkingDirectory",
         )
 
+        parser.add_argument(
+            "-d",
+            "--direction",
+            choices=["id-to-accession", "accession-to-id"],
+            default="id-to-accession",
+            help="Conversion direction [default: id-to-accession]",
+        )
+
         parsed = parser.parse_args(args)
 
         convert_tree_ids(
             tree_input=parsed.tree_input,
             sequence_ids=parsed.sequence_ids,
             species_ids=parsed.species_ids,
+            direction=parsed.direction,
         )
 
 

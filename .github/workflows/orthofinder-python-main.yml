@@ -196,7 +196,7 @@ jobs:
           echo "Using result dir: $RESULT_DIR"
 
           OUT_MAIN_BEGIN=beginner-tutorial.md
-          python tools/generate_beginner_tutorial.py "$RESULT_DIR" > "$OUT_MAIN_BEGIN"
+          python assets/of_pages/generate_beginner_tutorial.py "$RESULT_DIR" > "$OUT_MAIN_BEGIN"
 
           OUT_SNIPPET=of-output-tree.md
           cat > "$OUT_SNIPPET" <<'EOF'
@@ -210,16 +210,16 @@ jobs:
             ">
           EOF
 
-          python tools/generate_output_structure.py "$RESULT_DIR" >> "$OUT_SNIPPET"
+          python assets/of_pages/generate_output_structure.py "$RESULT_DIR" >> "$OUT_SNIPPET"
 
           cat >> "$OUT_SNIPPET" <<'EOF'
             </pre>
           </div>
           EOF
 
-          python tools/generate_species_tree.py "$RESULT_DIR"
-          python tools/generate_gene_tree.py "$RESULT_DIR"
-          python tools/generate_duplication_tree.py "$RESULT_DIR"
+          python assets/of_pages/generate_species_tree.py "$RESULT_DIR"
+          python assets/of_pages/generate_gene_tree.py "$RESULT_DIR"
+          python assets/of_pages/generate_duplication_tree.py "$RESULT_DIR"
 
           cp "$OUT_MAIN_BEGIN" /tmp/beginner-tutorial.md
           cp "$OUT_SNIPPET"    /tmp/of-output-tree.md

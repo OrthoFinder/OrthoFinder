@@ -157,6 +157,32 @@ def find_zip_files(input_path):
     print("ERROR: input path does not exist: %s" % input_path)
     sys.exit(1)
 
+def process_extracted_directory(input_dir, output_dir):
+    print("\nProcessing directory: %s" % input_dir)
+
+    protein_fasta, gff_file = find_files(input_dir)
+
+    if not protein_fasta or not gff_file:
+        print("WARNING: could not find required files in %s" % input_dir)
+        return
+
+    protein_dict = parse_fasta(protein_fasta)
+    gene_map = parse_gff(gff_file)
+    longest_transcripts = get_longest_transcripts(protein_dict, gene_map)
+
+    if not longest_transcripts:
+        print("WARNING: no gene/protein mappings found in %s" % input_dir)
+        return
+
+    base = os.path.basename(os.path.abspath(input_dir))
+    output_fasta_path = os.path.join(output_dir, base + "_lt.fasta")
+
+    write_longest_fasta(output_fasta_path, longest_transcripts)
+
+    print("Found %d proteins" % len(protein_dict))
+    print("Found %d protein-to-gene mappings" % len(gene_map))
+    print("Wrote %d longest transcripts" % len(longest_transcripts))
+    print("Output: %s" % output_fasta_path)
 
 def main(args=None):
     parser = argparse.ArgumentParser(
@@ -193,14 +219,24 @@ def main(args=None):
 
     os.makedirs(output_dir, exist_ok=True)
 
-    zip_files = find_zip_files(input_path)
+    if os.path.isfile(input_path):
+        zip_files = find_zip_files(input_path)
 
-    if not zip_files:
-        print("ERROR: no .zip files found in %s" % input_path)
+        for zip_file in zip_files:
+            process_zip_file(zip_file, output_dir)
+
+    elif os.path.isdir(input_path):
+        zip_files = find_zip_files(input_path)
+
+        if zip_files:
+            for zip_file in zip_files:
+                process_zip_file(zip_file, output_dir)
+        else:
+            process_extracted_directory(input_path, output_dir)
+
+    else:
+        print("ERROR: input path does not exist: %s" % input_path)
         sys.exit(1)
-
-    for zip_file in zip_files:
-        process_zip_file(zip_file, output_dir)
 
 
 if __name__ == "__main__":
