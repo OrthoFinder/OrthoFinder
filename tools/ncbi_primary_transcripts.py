@@ -231,13 +231,13 @@ def main(args=None):
     os.makedirs(output_dir, exist_ok=True)
 
     if os.path.isfile(input_path):
-        zip_files = find_zip_files(input_path)
+        zip_files = find_zip_files(input_path, output_dir)
 
         for zip_file in zip_files:
             process_zip_file(zip_file, output_dir)
 
     elif os.path.isdir(input_path):
-        zip_files = find_zip_files(input_path)
+        zip_files = find_zip_files(input_path, output_dir)
 
         if zip_files:
             for zip_file in zip_files:
