@@ -302,13 +302,21 @@ def last_dot_before_first_space(text):
     return text[1:].rstrip().split(None, 1)[0].rstrip().rsplit(".", 1)[0]
 
 def process_input(path, dout, gene_name_function=None):
+    path = os.path.abspath(path)
+    dout = os.path.abspath(dout)
 
     if os.path.isdir(path):
 
-        for root, _, files in os.walk(path):
+        for root, dirs, files in os.walk(path):
+            root_abs = os.path.abspath(root)
+            dirs[:] = [
+                d for d in dirs
+                if os.path.abspath(os.path.join(root_abs, d)) != dout
+            ]
+
             for filename in sorted(files):
                 process_input(
-                    os.path.join(root, filename),
+                    os.path.join(root_abs, filename),
                     dout,
                     gene_name_function,
                 )
@@ -319,7 +327,12 @@ def process_input(path, dout, gene_name_function=None):
 
     elif is_fasta_file(path):
 
+        # Avoid re-processing files already inside the output directory.
+        if os.path.commonpath([path, dout]) == dout:
+            return
+
         print("\nProcessing FASTA: %s" % path)
+        process_fasta_file(path, dout, gene_name_function)
         process_fasta_file(path, dout, gene_name_function)
 
 def main(args=None):

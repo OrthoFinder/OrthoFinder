@@ -137,7 +137,10 @@ def process_zip_file(zip_file_path, output_dir):
         print("Output: %s" % output_fasta_path)
 
 
-def find_zip_files(input_path):
+def find_zip_files(input_path, output_dir=None):
+    input_path = os.path.abspath(input_path)
+    output_dir = os.path.abspath(output_dir) if output_dir is not None else None
+
     if os.path.isfile(input_path):
         if input_path.endswith(".zip"):
             return [input_path]
@@ -147,10 +150,18 @@ def find_zip_files(input_path):
     if os.path.isdir(input_path):
         zip_files = []
 
-        for root, _, files in os.walk(input_path):
+        for root, dirs, files in os.walk(input_path):
+            root_abs = os.path.abspath(root)
+
+            if output_dir is not None:
+                dirs[:] = [
+                    d for d in dirs
+                    if os.path.abspath(os.path.join(root_abs, d)) != output_dir
+                ]
+
             for filename in files:
                 if filename.endswith(".zip"):
-                    zip_files.append(os.path.join(root, filename))
+                    zip_files.append(os.path.join(root_abs, filename))
 
         return sorted(zip_files)
 
