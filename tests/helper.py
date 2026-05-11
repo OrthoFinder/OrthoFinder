@@ -5,7 +5,7 @@ import traceback
 import json
 from collections import defaultdict
 import pytest
-from orthofinder.run.__main__ import main
+from orthofinder.run.main import main
 from orthofinder.run.process_args import GetFileArgument
 
 
