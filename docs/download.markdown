@@ -14,10 +14,10 @@ Please pick the right `.tar.gz` file to download from the list.
 
 <div class="download-item">
   📦 
-    <a href="https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.4/orthofinder-linux-intel-3.1.4.tar.gz" class="btn">
-        orthofinder-linux-intel-3.1.4.tar.gz
+    <a href="https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.5/orthofinder-linux-intel-3.1.5.tar.gz" class="btn">
+        orthofinder-linux-intel-3.1.5.tar.gz
     </a>
-    <span class="download-count" data-asset="orthofinder-linux-intel-3.1.4.tar.gz">
+    <span class="download-count" data-asset="orthofinder-linux-intel-3.1.5.tar.gz">
     <i class="fa fa-download" aria-hidden="true"></i>
     </span>
 </div>
@@ -54,9 +54,9 @@ The following commands provide three ways to download the source code of OrthoFi
 ```bash
 # Download via git 
 git clone https://github.com/OrthoFinder/OrthoFinder.git
-# or download the orthofinder-linux-intel-3.1.4.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine
+# or download the orthofinder-linux-intel-3.1.5.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine
 mkdir OrthoFinder && \
-  wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.4/orthofinder-linux-intel-3.1.4.tar.gz | \
+  wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.5/orthofinder-linux-intel-3.1.5.tar.gz | \
   tar -xz --strip-components=1 -C OrthoFinder
 ```
 
