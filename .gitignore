@@ -210,3 +210,5 @@ tests/data/dna/Genomes_Core/OrthoFinder/
 .vscode/
 of_structure.sh
 testdata
+*.fa*
+primary_*

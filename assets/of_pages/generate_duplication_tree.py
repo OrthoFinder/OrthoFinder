@@ -2,7 +2,6 @@ import os
 import argparse
 
 from ete4 import Tree
-from ete4 import Tree
 from ete4.treeview import TreeStyle, TextFace
 
 def save_tree_image(tree, output_path):

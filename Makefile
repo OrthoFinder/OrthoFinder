@@ -14,7 +14,7 @@ PYTHON_VERSION ?= python3
 ORTHOFINDER_ENV_DEFAULT := of3_env
 ENV_NAME ?= $(ORTHOFINDER_ENV_DEFAULT)
 
-ORTHOFINDER_DEFAULT_VERSION := 3.1.0
+ORTHOFINDER_DEFAULT_VERSION := 3.1.5
 ORTHOFINDER_VERSION ?= $(ORTHOFINDER_DEFAULT_VERSION)
 
 DIAMOND_DEFAULT_VERSION := 2.1.11
@@ -47,7 +47,7 @@ RAXMLNG_VERSION ?= $(RAXMLNG_DEFAULT_VERSION)
 MUSCLE_DEFAULT_VERSION := 5.3
 MUSCLE_VERSION ?= $(MUSCLE_DEFAULT_VERSION)
 
-IQTREE_DEFAULT_VERSION := 3.0.1
+IQTREE_DEFAULT_VERSION := 3.1.2
 IQTREE_VERSION ?= $(IQTREE_DEFAULT_VERSION)
 
 BLAST_DEFAULT_VERSION := 2.16.0
@@ -157,15 +157,14 @@ MMSEQS_LINUX := https://mmseqs.com/latest/mmseqs-linux-avx2.tar.gz
 MMSEQS_MACOS := https://mmseqs.com/latest/mmseqs-osx-universal.tar.gz
 MMSEQS_BINARY := $(BINARY_INSTALL_DIR)/mmseqs
 
-
 # URLs for IQ-TREE
-IQTREE_LINUX_UNIVERSAL := https://github.com/iqtree/iqtree3/releases/download/v3.0.1/iqtree-3.0.1-Linux.tar.gz
-IQTREE_LINUX_INTEL := https://github.com/iqtree/iqtree3/releases/download/v3.0.1/iqtree-3.0.1-Linux-intel.tar.gz
-IQTREE_LINUX_ARM := https://github.com/iqtree/iqtree3/releases/download/v3.0.1/iqtree-3.0.1-Linux-arm.tar.gz
+IQTREE_LINUX_UNIVERSAL := https://github.com/iqtree/iqtree3/releases/download/v3.1.2/iqtree-3.1.2-Linux.tar.gz
+IQTREE_LINUX_INTEL := https://github.com/iqtree/iqtree3/releases/download/v3.1.2/iqtree-3.1.2-Linux-intel.tar.gz
+IQTREE_LINUX_ARM := https://github.com/iqtree/iqtree3/releases/download/v3.1.2/iqtree-3.1.2-Linux-arm.tar.gz
 
-IQTREE_MACOS_UNIVERSAL := https://github.com/iqtree/iqtree3/releases/download/v3.0.1/iqtree-3.0.1-macOS.zip
-IQTREE_MACOS_INTEL := https://github.com/iqtree/iqtree3/releases/download/v3.0.1/iqtree-3.0.1-macOS-intel.zip
-IQTREE_MACOS_ARM := https://github.com/iqtree/iqtree3/releases/download/v3.0.1/iqtree-3.0.1-macOS-arm.zip
+IQTREE_MACOS_UNIVERSAL := https://github.com/iqtree/iqtree3/releases/download/v3.1.2/iqtree-3.1.2-macOS.zip
+IQTREE_MACOS_INTEL := https://github.com/iqtree/iqtree3/releases/download/v3.1.2/iqtree-3.1.2-macOS-intel.zip
+IQTREE_MACOS_ARM := https://github.com/iqtree/iqtree3/releases/download/v3.1.2/iqtree-3.1.2-macOS-arm.zip
 
 IQTREE_BINARY := $(BINARY_INSTALL_DIR)/iqtree3
 
@@ -309,18 +308,18 @@ conda_install_mafft: create_conda_env
 	fi; \
 
 
-conda_install_iqtree2: create_conda_env
-	@echo "Checking global paths for IQ-TREE2..."; \
-	iqtree2_exists=$$(command -v iqtree2 > /dev/null && echo 1 || echo 0); \
+conda_install_iqtree3: create_conda_env
+	@echo "Checking global paths for IQ-TREE3..."; \
+	iqtree3_exists=$$(command -v iqtree3 > /dev/null && echo 1 || echo 0); \
 
-	if [ "$(FORCE)" = "true" ] || [ "$$iqtree2_exists" = "0" ]; then \
-		echo "Installing IQ-TREE2 version $(IQTREE_VERSION) in $(ENV_NAME)..."; \
+	if [ "$(FORCE)" = "true" ] || [ "$$iqtree3_exists" = "0" ]; then \
+		echo "Installing IQ-TREE3 version $(IQTREE_VERSION) in $(ENV_NAME)..."; \
 		. $(shell conda info --base)/etc/profile.d/conda.sh && \
 		conda activate $(ENV_NAME) && \
-		conda install bioconda::iqtree=$(IQTREE_VERSION) -y || { echo "Error: Failed to install IQ-TREE2. Exiting."; exit 1; }; \
-		echo "IQ-TREE2 version $(IQTREE_VERSION) installed successfully."
-	elif [ "$$iqtree2_exists" = "1" ]; then \
-		echo "IQ-TREE2 already exist globally: $$(command -v iqtree2). Skipping installation."; \
+		conda install bioconda::iqtree=$(IQTREE_VERSION) -y || { echo "Error: Failed to install IQ-TREE3. Exiting."; exit 1; }; \
+		echo "IQ-TREE3 version $(IQTREE_VERSION) installed successfully."
+	elif [ "$$iqtree3_exists" = "1" ]; then \
+		echo "IQ-TREE3 already exist globally: $$(command -v iqtree3). Skipping installation."; \
 	fi
 
 conda_install_raxml: create_conda_env

@@ -180,8 +180,8 @@ class Method(object):
             )
             print("'cmd_line' entry is missing")
             raise InvalidEntryException
-        if "ouput_filename" in config_dict:
-            self.non_default_outfn = config_dict["ouput_filename"]
+        if "output_filename" in config_dict:
+            self.non_default_outfn = config_dict["output_filename"]
         else:
             self.non_default_outfn = None
         # Non-advertised methods, switch to a faster method if number of sequences is greater than X
@@ -260,10 +260,10 @@ class ProgramCaller(object):
                         else:
                             self.search_db[name] = Method(name, {"cmd_line": v["db_cmd"]})
                             self.search_search[name] = Method(name, {"cmd_line": v["search_cmd"]})
-                            if "ouput_filename" in v:
+                            if "output_filename" in v:
                                 print(("WARNING: Incorrectly formatted configuration file entry: %s" % name))
                                 print(
-                                    "'ouput_filename' option is not supported for 'program_type' 'search'"
+                                    "'output_filename' option is not supported for 'program_type' 'search'"
                                 )
                     else:
                         print(("WARNING: Incorrectly formatted configuration file entry: %s" % name))

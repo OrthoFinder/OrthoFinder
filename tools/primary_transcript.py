@@ -1,9 +1,130 @@
+
+"""
+Create primary transcript FASTA files by retaining the longest isoform per gene.
+
+Supports:
+- Single FASTA files
+- Directories (searched recursively)
+- .zip archives
+- .tar.gz / .tgz / .tar archives
+
+Gene identification
+-------------------
+By default the script automatically detects:
+
+1. Ensembl-style FASTA headers
+   using:
+       gene:
+       gene=
+       locus:
+       locus=
+
+2. NCBI protein FASTA headers
+   using isoform annotations.
+
+Optional transcript parsing modes
+---------------------------------
+These modes define how transcript IDs are grouped into genes.
+
+last_dot
+    Remove the final dot suffix.
+
+    Example:
+        AT1G01010.1 -> AT1G01010
+        AT1G01010.2 -> AT1G01010
+
+space
+    Use only the first whitespace-separated token.
+
+    Example:
+        transcript1 extra_info -> transcript1
+
+last_dot_before_first_space
+    Apply both rules:
+    - take first token before whitespace
+    - remove final dot suffix
+
+    Example:
+        AT1G01010.1 description text
+        -> AT1G01010
+
+Examples
+--------
+Process a FASTA file:
+    primary_transcript proteins.fa
+
+Process a directory recursively:
+    primary_transcript proteomes/
+
+Process an archive:
+    primary_transcript proteomes.tar.gz
+
+Use custom transcript grouping:
+    primary_transcript proteins.fa last_dot
+"""
+
+FASTA_EXTENSIONS = {".fa", ".faa", ".fasta", ".fas", ".fsa", ".pep"}
+
+
 import os
 import re
 import sys
+import argparse
+import tarfile
+import zipfile
+import tempfile
 from collections import Counter, defaultdict
 
 # Use the 'all' version rather than ab initio
+
+def is_archive(fn):
+    return zipfile.is_zipfile(fn) or tarfile.is_tarfile(fn)
+
+
+def is_fasta_file(fn):
+    return os.path.splitext(fn)[1].lower() in FASTA_EXTENSIONS
+
+def process_fasta_file(fn, dout, gene_name_function_name=None):
+    if not CheckFile(fn):
+        return
+
+    if gene_name_function_name is not None:
+        q_use_original_accession_line = True
+        ScanTags_with_fn(fn, gene_name_function_name)
+    else:
+        if IsNCBI(fn):
+            print("Identified as NCBI file")
+            gene_name_function_name = GetGeneName_NCBI
+            q_use_original_accession_line = True
+        else:
+            gene_name_function_name = GetGeneName_Ensembl
+            q_use_original_accession_line = False
+            print('Looking for "gene=" or "gene:" to identify isoforms of same gene')
+
+    CreatePrimaryTranscriptsFile(
+        fn,
+        dout,
+        gene_name_function_name,
+        q_use_original_accession_line,
+    )
+
+def process_archive(fn, dout, gene_name_function=None):
+
+    print("\nExtracting archive: %s" % fn)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+
+        if zipfile.is_zipfile(fn):
+
+            with zipfile.ZipFile(fn, "r") as zf:
+                zf.extractall(tmpdir)
+
+        else:
+
+            with tarfile.open(fn, "r:*") as tf:
+                tf.extractall(tmpdir)
+
+        process_input(tmpdir, dout, gene_name_function)
 
 def CheckFile(fn):
     """
@@ -118,7 +239,7 @@ def CreatePrimaryTranscriptsFile(fn, dout, gene_name_fn, q_use_original_accessio
         nAcc += 1
         iLineAcc = iLine
         gene = gene_name_fn(line)
-        if gene == None:
+        if gene is None:
             nGeneUnidentified += 1
             continue
         # get length
@@ -140,8 +261,8 @@ def CreatePrimaryTranscriptsFile(fn, dout, gene_name_fn, q_use_original_accessio
 
     # Get longest version for each gene
     # Parse file second time and only write out sequences that are longest variant
-    nGenesWriten = 0
-    outfn = dout + os.path.basename(fn)
+    nGenesWritten = 0
+    outfn = os.path.join(dout, os.path.basename(fn))
     with open(outfn, 'w') as outfile:
         iLine = -1
         while iLine < N:
@@ -155,7 +276,7 @@ def CreatePrimaryTranscriptsFile(fn, dout, gene_name_fn, q_use_original_accessio
                 acc_line_out = line + "\n"
             else:
                  acc_line_out = ">%s\n" % gene
-            nGenesWriten += 1
+            nGenesWritten += 1
             outfile.write(acc_line_out)
             while iLine < N:
                 iLine += 1
@@ -164,8 +285,8 @@ def CreatePrimaryTranscriptsFile(fn, dout, gene_name_fn, q_use_original_accessio
                     iLine -= 1
                     break
                 outfile.write(line + "\n")
-    print("Wrote %d genes" % nGenesWriten)
-    if nGenesWriten != len(max_gene_lens) + nGeneUnidentified:
+    print("Wrote %d genes" % nGenesWritten)
+    if nGenesWritten != len(max_gene_lens) + nGeneUnidentified:
         print("ERROR")
         raise Exception
     print(outfn)
@@ -174,52 +295,87 @@ def CreatePrimaryTranscriptsFile(fn, dout, gene_name_fn, q_use_original_accessio
 def last_dot(text):
     return text[1:].rstrip().rsplit(".", 1)[0]
 
-
 def space(text):
     return text[1:].rstrip().split(None, 1)[0]
 
 def last_dot_before_first_space(text):
     return text[1:].rstrip().split(None, 1)[0].rstrip().rsplit(".", 1)[0]
-function_dict = {"last_dot":last_dot, "space":space, "last_dot_before_first_space":last_dot_before_first_space}
+
+def process_input(path, dout, gene_name_function=None):
+    path = os.path.abspath(path)
+    dout = os.path.abspath(dout)
+
+    if os.path.isdir(path):
+
+        for root, dirs, files in os.walk(path):
+            root_abs = os.path.abspath(root)
+            dirs[:] = [
+                d for d in dirs
+                if os.path.abspath(os.path.join(root_abs, d)) != dout
+            ]
+
+            for filename in sorted(files):
+                process_input(
+                    os.path.join(root_abs, filename),
+                    dout,
+                    gene_name_function,
+                )
+
+    elif is_archive(path):
+
+        process_archive(path, dout, gene_name_function)
+
+    elif is_fasta_file(path):
+
+        # Avoid re-processing files already inside the output directory.
+        if os.path.commonpath([path, dout]) == dout:
+            return
+
+        print("\nProcessing FASTA: %s" % path)
+        process_fasta_file(path, dout, gene_name_function)
+        process_fasta_file(path, dout, gene_name_function)
 
 def main(args=None):
-    print("")
-    if args is None:
-        args = sys.argv[1:]
-    try:
-        fn = args[0]
-    except IndexError:
-        print("Usage: python primary_transcripts.py filename [function to identify transcripts {last_dot, space, last_dot_before_first_space}]")
-        sys.exit()
 
-    if not CheckFile(fn):
-        return
+    function_dict = {"last_dot":last_dot, "space":space, "last_dot_before_first_space":last_dot_before_first_space}
 
-    dout = os.path.dirname(os.path.abspath(fn)) + "/primary_transcripts/"
-    if not os.path.exists(dout):
-        os.mkdir(dout)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
-    if len(sys.argv) == 3:
-        gene_name_function_name = function_dict[sys.argv[2]]
-        q_use_original_accession_line = True
-        ScanTags_with_fn(fn, gene_name_function_name)
-        CreatePrimaryTranscriptsFile(fn, dout, gene_name_function_name, q_use_original_accession_line)
+    parser.add_argument(
+        "input",
+        help="Input FASTA file, directory, or archive",
+    )
+
+    parser.add_argument(
+        "transcript_id_mode",
+        nargs="?",
+        metavar="mode",
+        choices=sorted(function_dict),
+        help="Transcript grouping mode",
+    )
+
+    parsed = parser.parse_args(args)
+
+    fn = parsed.input
+
+    gene_name_function = None
+    if parsed.transcript_id_mode:
+        gene_name_function = function_dict[parsed.transcript_id_mode]
+
+    if os.path.isdir(fn):
+        dout = os.path.join(os.path.abspath(fn), "primary_transcripts")
     else:
-        # ScanTags(fn)
-        # ScanTags_NCBI(fn)
-        # ScanTags_second_dot(fn)
-        if IsNCBI(fn):
-            print("Identified as NCBI file")
-            gene_name_function_name = GetGeneName_NCBI
-            q_use_original_accession_line = True
-        else:
-            # This is the default, unless we can determine that it is an NCBI
-            # file in which case it needs special processing
-            gene_name_function_name = GetGeneName_Ensembl
-            q_use_original_accession_line = False
-            print('Looking for "gene=" of "gene:" to identify isoforms of same gene')
-        CreatePrimaryTranscriptsFile(fn, dout, gene_name_function_name, q_use_original_accession_line)
+        dout = os.path.join(
+            os.path.dirname(os.path.abspath(fn)),
+            "primary_transcripts",
+        )
+
+    os.makedirs(dout, exist_ok=True)
+
+    process_input(fn, dout, gene_name_function)
 
 if __name__ == "__main__":
-    args = sys.argv[1:]
-    main(args)
+    main()

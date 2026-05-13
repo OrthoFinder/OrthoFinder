@@ -65,10 +65,14 @@ dev = [
 ]
 
 [project.scripts]
-orthofinder = "orthofinder.run.__main__:main"
+orthofinder = "orthofinder.run.main:main"
+orthofinder-utils = "tools.list_tools:main"
 primary_transcript = "tools.primary_transcript:main"
 make_ultrametric = "tools.make_ultrametric:main"
 convert_orthofinder_tree_ids = "tools.convert_orthofinder_tree_ids:main"
+create_hog_fastas = "tools.create_hog_fastas:main"
+ncbi_primary_transcript = "tools.ncbi_primary_transcript:main"
+orthogroup_gene_count = "tools.orthogroup_gene_count:main"
 
 [tool.semantic_release]
 branch = "main"
@@ -78,8 +82,8 @@ upload_to_release = true
 build_command = "python -m build"
 
 [tool.setuptools.packages.find]
-where = ["src"]
-include = ["orthofinder*"]
+where = ["src", "."]
+include = ["orthofinder*", "tools*"]
 
 [tool.setuptools]
 include-package-data = true
@@ -126,4 +130,4 @@ tag_regex = "^(?:v)?(?P<version>\\d+\\.\\d+\\.\\d+)$"
 write_to = "src/orthofinder/_version.py"
 version_scheme = "no-guess-dev"
 local_scheme = "no-local-version"
-fallback_version = "3.1.3"
+fallback_version = "3.1.4"

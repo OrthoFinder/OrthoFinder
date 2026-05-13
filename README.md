@@ -49,9 +49,9 @@ The following commands provide three ways to download the source code of OrthoFi
 # Download via git 
 git clone https://github.com/OrthoFinder/OrthoFinder.git
 
-# or download the orthofinder-linux-intel-3.1.4.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine
+# or download the orthofinder-linux-intel-3.1.5.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine
 mkdir OrthoFinder && \
-  wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.4/orthofinder-linux-intel-3.1.4.tar.gz | \
+  wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.5/orthofinder-linux-intel-3.1.5.tar.gz | \
   tar -xz --strip-components=1 -C OrthoFinder
 ```
 
@@ -76,7 +76,7 @@ To activate the virtual environment you have created, run:
 ```
 ### Test your installation
 
-Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.4/ExampleData.tar.gz).
+Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.5/ExampleData.tar.gz).
 
 ```bash
 orthofinder --help # Print out help informatioin
@@ -108,10 +108,29 @@ orthofinder [options] -f <dir>
 
 OrthoFinder requires one FASTA file for each species. Each file should contain the complete set of protein sequences from that species' genome,  with a single representative sequence for each gene.
 
-If your files have multiple transcript variants for each gene, then we provide a script `primary_transcripts.py` to extract the longest variant per gene. This script should be run on your files prior to running OrthoFinder;
 
+If your proteomes contain multiple transcript isoforms per gene, we provide the script `primary_transcript.py` to retain only the longest isoform for each gene. This script should be run before running OrthoFinder.
+
+If you are using OrthoFinder v3.1.5 or later, and installed OrthoFinder into your environment, the script is installed automatically and can be run directly as `primary_transcript`. It accepts:
+
+- a single FASTA file
+- a directory containing FASTA files
+- a single .tar, .tar.gz, .tgz, or .zip archive
+- a directory containing archive files (.tar, .tar.gz, .tgz, .zip)
+
+For example:
 ```bash
-for f in *fa ; do python primary_transcript.py $f ; done
+primary_transcript proteomes/
+```
+or 
+```bash
+primary_transcript proteins.fa
+```
+For older OrthoFinder versions, run the script manually for each FASTA file:
+```bash
+for f in *.fa; do
+    python primary_transcript.py "$f"
+done
 ```
 
 ## Advanced Usage - Scaling to Thousands of Species
@@ -200,7 +219,7 @@ Command-line options for OrthoFinder
 
 ## Output files
 
-> ***From OrthoFinder `v3.1.4`, `N0.tsv` is removed from `/Phylogenetic_Hierarchical_Orthogroups`. Instead, `Orthogroups/Orthogroups.tsv` contains the orthogroups from `N0.tsv`.***
+> ***From OrthoFinder `v3.1.5`, `N0.tsv` is removed from `/Phylogenetic_Hierarchical_Orthogroups`. Instead, `Orthogroups/Orthogroups.tsv` contains the orthogroups from `N0.tsv`.***
 
 A standard OrthoFinder run produces a set of files describing the orthogroups, orthologs, gene trees, resolve gene trees, the rooted species tree, gene duplication events, and comparative genomic statistics for the set of species being analysed. These files are located in an intuitive directory structure.
 

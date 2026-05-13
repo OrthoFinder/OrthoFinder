@@ -16,7 +16,6 @@ Move Alisim alignment into proteome file (remove gaps etc...)
 """
 
 
-
 def Generate_Random_Amino_Acids(Output_File_Name, Seq_to_generate, gene_length_range):
     # Output_File_Name = str : output file name
     # Seq_to_generate = int : number of sequences to generate

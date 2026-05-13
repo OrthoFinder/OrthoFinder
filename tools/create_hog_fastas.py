@@ -29,12 +29,16 @@ import glob
 import argparse
 from collections import Counter
 
-if __name__ == "__main__" and __package__ is None:   
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+script_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root = os.path.dirname(script_dir)
+src_dir = os.path.join(repo_root, "src")
 
-from src.orthofinder.utils import util, files
-from src.orthofinder.tools import trees_msa
-from src.orthofinder.orthogroups import orthogroups_set
+if os.path.isdir(os.path.join(src_dir, "orthofinder")) and src_dir not in sys.path:
+    sys.path.insert(0, src_dir)
+
+from orthofinder.utils import util, files
+from orthofinder.tools import trees_msa
+from orthofinder.orthogroups import orthogroups_set
 
 
 def process_log(logFN):
@@ -99,8 +103,8 @@ def create_files_for_node(dres, node_name, dout):
         print("ERROR: %s does not exist" % dres)
         util.Fail()
     # HOG files
-    d_hogs = dres + "Phylogenetic_Hierarchical_Orthogroups/"
-    fn_hogs = d_hogs + node_name + ".tsv"
+    d_hogs = os.path.join(dres, "Phylogenetic_Hierarchical_Orthogroups")
+    fn_hogs = os.path.join(d_hogs, node_name + ".tsv")
     if not os.path.exists(fn_hogs):
         print("ERROR: HOGs file '%s' does not exist" % fn_hogs)
         util.Fail()
@@ -108,7 +112,7 @@ def create_files_for_node(dres, node_name, dout):
     d_out_fasta = create_output_directories(dout, node_name)
     ogs = read_hierarchical_orthogroup(fn_hogs)
     # Log file - to get Working directory base
-    fn_log = dres + "Log.txt"
+    fn_log = os.path.join(dres, "Log.txt")
     if not os.path.exists(fn_log):
         print("ERROR: %s does not exist" % fn_log)
         util.Fail()
@@ -128,7 +132,7 @@ def create_files_for_node(dres, node_name, dout):
         try:
             og_ids = [ids_rev[g] for sp in og for g in sp]    # don't care what species they're from (may need to later if this helps identify sequences)
             og_ids = [orthogroups_set.Seq(g) for g in og_ids if g != "inf_inf"]
-            fn = d_out_fasta + node_name + (".HOG%07d.fa" % iog)
+            fn = os.path.join(d_out_fasta, node_name + (".HOG%07d.fa" % iog))
             fw.WriteSeqsToFasta_withNewAccessions(og_ids, fn, ids)
         except KeyError as e:
             q_warning = True
@@ -213,31 +217,71 @@ def GetIDs(wd_base_list, i_species):
 
 
 def create_files(orthofinder_results_dir, node, output_directory):
+    d_hogs = os.path.join(
+        orthofinder_results_dir,
+        "Phylogenetic_Hierarchical_Orthogroups",
+    )
+
     if node == "all":
-        d_hogs = orthofinder_results_dir + "Phylogenetic_Hierarchical_Orthogroups/"
-        nodes = glob.glob(d_hogs + "*.tsv")
+        nodes = glob.glob(os.path.join(d_hogs, "*.tsv"))
         nodes = [os.path.splitext(os.path.basename(fn))[0] for fn in nodes]
         print("Writing files for orthogroups at these levels:\n%s\n" % ", ".join(nodes))
     else:
-        nodes = [node, ]
+        nodes = [node]
+
     print("Processing node:")
     for node in nodes:
         print(node)
         create_files_for_node(orthofinder_results_dir, node, output_directory)
+
     print("Done")
 
 
-def main_create_files():
+def main(args=None):
     with util.Finalise():
-        parser = argparse.ArgumentParser(description="Create files for the orthogroups at a particular phylogenetic level")
-        parser.add_argument("orthofinder_results", help="Input directory containing OrthoFinder results")
-        parser.add_argument("output_directory", help="Output directory where new files will be written")
-        parser.add_argument("node_name", help="Node name, e.g. 'N0', or 'all' for HOGs at all nodes")
-        args = parser.parse_args()
-        orthofinder_results_dir = args.orthofinder_results
-        if not orthofinder_results_dir.endswith("/"):
-            orthofinder_results_dir += "/"
-        create_files(orthofinder_results_dir, args.node_name, args.output_directory)
+        parser = argparse.ArgumentParser(
+            description=__doc__,
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+
+        parser.add_argument(
+            "orthofinder_results",
+            help="Input directory containing OrthoFinder results",
+        )
+
+        parser.add_argument(
+            "node_name",
+            help="Node name (e.g. N0, N1) or 'all'",
+        )
+
+        parser.add_argument(
+            "-o",
+            "--output",
+            default=None,
+            help=(
+                "Output directory "
+                "[default: RESULTS_DIR/HOG_Sequence_Files]"
+            ),
+        )
+
+        parsed = parser.parse_args(args)
+
+        if parsed.output is None:
+            output_directory = os.path.join(
+                os.path.abspath(parsed.orthofinder_results),
+                "HOG_Sequence_Files",
+            )
+        else:
+            output_directory = os.path.abspath(parsed.output)
+
+        orthofinder_results_dir = os.path.abspath(parsed.orthofinder_results)
+
+        create_files(
+            orthofinder_results_dir,
+            parsed.node_name,
+            output_directory,
+        )
+
 
 if __name__ == "__main__":
-    main_create_files()
+    main()
