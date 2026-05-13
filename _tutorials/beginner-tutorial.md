@@ -1,8 +1,8 @@
 ---
 layout: post
 title:  "Beginner Tutorial"
-date:   2026-04-02 10:47:50 +0000
-updated: 2026-04-02
+date:   2026-05-13 13:31:36 +0000
+updated: 2026-05-13
 docs: /assets/docs/beginner-tutorial.pdf
 pdfs: https://github.com/OrthoFinder/OrthoFinder/blob/gh-pages/assets/docs/beginner-tutorial.pdf
 ---
@@ -88,7 +88,7 @@ or the [Advanced Tutorial]({{ site.baseurl }}/tutorials/advanced-tutorial/) page
 
 OrthoFinder creates a results directory named OrthoFinder inside the proteome
 directory, and puts the results here.
-My results directory `ExampleData/OrthoFinder/Results_Apr02` looks like this:
+My results directory `ExampleData/OrthoFinder/Results_May13` looks like this:
 
 {% include_relative of-output-tree.md %}
 
@@ -207,7 +207,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     events mapped to each node in the species tree. Gene-duplication events are
     considered `well-supported` if at least `50%` of the descendant species have retained
     both copies of the duplicated gene. For the node `N2`,
-    there were `11` of these well-supported gene duplication events. The numbers after the
+    there were `6` of these well-supported gene duplication events. The numbers after the
     species names are the number of `terminal` duplications that map to that species, rather
     than an internal node of the species tree.
 
