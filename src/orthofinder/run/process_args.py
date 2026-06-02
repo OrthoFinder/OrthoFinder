@@ -119,7 +119,7 @@ class Options(object):  #
         self.fewer_open_files = (
             True  # By default only open O(n) orthologs files at a time
         )
-        self.save_space = False  # On complete, have only one orthologs file per species
+        self.save_space = True  # On complete, have only one orthologs file per species
         self.v2_scores = False
         self.root_from_previous = False
         self.score_matrix = "BLOSUM62" # None

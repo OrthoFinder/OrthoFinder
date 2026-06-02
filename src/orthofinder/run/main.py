@@ -851,6 +851,14 @@ def main(args=None):
         d_results = (
             os.path.normpath(files.FileHandler.GetResultsDirectory1()) + os.path.sep
         )
+        
+        if options.fewer_open_files or options.save_space:
+            for i in range(len(speciesInfoObj.speciesToUse)):
+                sp0 = speciesInfoObj.speciesToUse[i]
+                sp0_name = speciesNamesDict[sp0]
+                sp_path = os.path.join(files.FileHandler.GetOrthologuesDirectory(), f"{sp0_name}.tsv")
+                if os.path.exists(sp_path):
+                    os.remove(sp_path)
 
         # printer.print("\nResults:\n    %s" % d_results, style="path")
         printer.print("\nResults directory:")

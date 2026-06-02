@@ -441,7 +441,7 @@ def OrthologuesFromTrees(
     if not write_hog_tree or not fix_files:
         # print("%fs for orthologs etc" % (stop-start))
         stats.WriteOrthologuesStats(ogSet, nOrthologues_SpPair)
-    
+
     util.PrintUnderline("Writing results files")
     util.PrintTime("Writing results files")
     files.FileHandler.CleanWorkingDir2()
@@ -675,6 +675,7 @@ def OrthologuesWorkflow(
         ogs = stats.add_unassigned_genes(new_ogs, ogSet.AllUsedSequenceIDs())
         species_dict = {int(k): v for k, v in ogSet.SpeciesDict().items()}
         ids_dict = ogSet.SequenceDict()
+
 
         if options.rm_legacy:
             os.remove(files.FileHandler.OGsAllIDFN())
