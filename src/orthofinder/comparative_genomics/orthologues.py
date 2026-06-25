@@ -202,7 +202,7 @@ def AllOrthologues(ogSet):
             d0[str(og[0].iSp)].append(str(og[0].iSeq))
             d1 = defaultdict(list)
             d1[str(og[1].iSp)].append(str(og[1].iSeq))
-            orthologues = [(d0, d1, d_empty, d_empty)]  
+            orthologues = [(d0, d1, d_empty, d_empty)]
         elif n == 3:
             sp = [g.iSp for g in og]
             c = Counter(sp) 
@@ -230,10 +230,11 @@ def AllOrthologues(ogSet):
             else: 
                 continue # no orthologues
             
-            all_orthologues.append((iog, orthologues))
-            
         elif n >= ogSet.min_seq:
             continue
+
+        all_orthologues.append((iog, orthologues))
+
     nspecies = len(ogSet.speciesToUse)
     sp_to_index = {str(sp):i for i, sp in enumerate(ogSet.speciesToUse)}
     olog_lines_tot = [["" for j in range(nspecies)] for i in range(nspecies)]
