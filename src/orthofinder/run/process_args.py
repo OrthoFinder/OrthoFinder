@@ -687,8 +687,8 @@ def ProcessArgs(args):
         # elif arg == "--c-homologs":
         #     options.gathering_version = (3, 2)
 
-        elif arg == "--save-space":
-            options.save_space = True
+        elif arg == "-pof" or arg == "--pairwise-ortholog-files":
+            options.save_space = False
 
         elif arg == "--no-fix-files":
             options.fix_files = False
