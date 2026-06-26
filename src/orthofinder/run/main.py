@@ -852,7 +852,7 @@ def main(args=None):
             os.path.normpath(files.FileHandler.GetResultsDirectory1()) + os.path.sep
         )
         
-        if options.fewer_open_files or options.save_space:
+        if options.fewer_open_files and options.save_space:
             for i in range(len(speciesInfoObj.speciesToUse)):
                 sp0 = speciesInfoObj.speciesToUse[i]
                 sp0_name = speciesNamesDict[sp0]
