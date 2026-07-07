@@ -282,7 +282,7 @@ class OrthoGroupsSet(object):
         if self.ogs_all is None:
             with open(self.ogs_all_fn) as infile:
                 ogs = [og.strip().split(", ") for og in infile]
-            if self.tree_program == "raxml":
+            if self.tree_program == "raxml" or self.tree_program == "raxml-ng":
                 self.ogs_all = [[Seq(g) for g in og]  for og in ogs if len(og) >= self.min_seq]
             else:
                 self.ogs_all = [[Seq(g) for g in og] for og in ogs]
@@ -293,7 +293,7 @@ class OrthoGroupsSet(object):
     def AllOGs(self):
         with open(self.ogs_all_fn) as infile:
                 ogs = [og.strip().split(", ") for og in infile]
-        if self.tree_program == "raxml":
+        if self.tree_program == "raxml" or self.tree_program == "raxml-ng":
             all_ogs = [[g for g in og]  for og in ogs if len(og) >= self.min_seq]
         else:
             all_ogs = [[g for g in og] for og in ogs]

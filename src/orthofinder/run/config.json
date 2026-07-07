@@ -44,7 +44,7 @@
     },
     "raxml-ng": {
         "program_type": "tree",
-        "cmd_line": "raxml-ng --msa INPUT --model LG+G4 --seed 12345 --threads METHODTHREAD",
+        "cmd_line": "raxml-ng --msa INPUT --model LG+G4 --seed 12345 --threads METHODTHREAD || (sed -e s/U/C/g -e s/O/L/g  INPUT > INPUT.ok && raxml-ng --msa INPUT.ok --model LG+G4 --seed 12345 --threads METHODTHREAD && mv INPUT.ok.raxml.bestTree INPUT.raxml.bestTree)",
         "output_filename": "INPUT.raxml.bestTree"
     },
     "__comment": "IQTREE can fail with the error ERROR: Numerical underflow (lh-branch). Run again with the safe",

@@ -141,7 +141,7 @@ class OrthoGroupsSet(object):
     def OGsAll(self):
         if self.ogs_all is None:
             ogs = MCL.GetPredictedOGs(files.FileHandler.GetClustersFN())
-            if self.tree_program == "raxml":
+            if self.tree_program == "raxml" or self.tree_program == "raxml-ng":
                 self.ogs_all = [[Seq(g) for g in og]  for og in ogs if len(og) >= self.min_seq]
             else:
                 self.ogs_all = [[Seq(g) for g in og] for og in ogs]
