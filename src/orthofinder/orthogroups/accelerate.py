@@ -240,7 +240,17 @@ def create_profiles_database(
             print("ERROR: Can't find %s" % wd + "clusters_OrthoFinder*id_pairs.txt")
         ogs = mcl.GetPredictedOGs(clusters_filename[0])
         fn_fasta = fn_fasta[:-7] + ".fa"
-    fw = fasta_processor.FastaWriter(wd + "Species*fa", qGlob=True)
+    best_SpeciesFa_dir = wd #wd_list[-1]
+    species_fa_fn_n = len(glob.glob(best_SpeciesFa_dir + "Species*fa"))
+    for wd_i in wd_list:
+        species_fa_fn = glob.glob(wd_i + "Species*fa")
+        if len(species_fa_fn) > species_fa_fn_n:
+            best_SpeciesFa_dir = wd_i
+            species_fa_fn_n = len(species_fa_fn)
+    print("Species*.fa directory:")
+    print(best_SpeciesFa_dir)
+
+    fw = fasta_processor.FastaWriter(best_SpeciesFa_dir + "Species*fa", qGlob=True)
     seq_write = []
     seq_convert = dict()
     # print("WARNING: Check all gene names, can't start with '__'")

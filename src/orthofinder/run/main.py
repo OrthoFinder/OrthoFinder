@@ -743,6 +743,9 @@ def main(args=None):
             # Check previous directory has been done with MSA trees
             if not acc.check_for_orthoxcelerate(continuationDir, speciesInfoObj):
                 util.Fail()
+            if options.search_program != "diamond":
+                print("ERROR: search_program (-S) must be diamond")
+                util.Fail()
             util.PrintUnderline("Creating orthogroup profiles")
             wd_list = files.FileHandler.GetWorkingDirectory1_Read()
             fn_diamond_db, q_hogs = acc.prepare_accelerate_database(

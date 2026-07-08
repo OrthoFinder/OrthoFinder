@@ -142,7 +142,7 @@ class __Files_new_dont_manually_create__(object):
         wd_current
         """
         if len(self.wd_base) != 0: raise Exception("Changing WorkingDirectory1")
-        self.wd_base = wd_base_list
+        #self.wd_base = wd_base_list
         if clustersFilename_pairs != None: self.clustersFilename = clustersFilename_pairs[:-len("_id_pairs.txt")]
         if user_name == None:
             self.rd1 = util.CreateNewWorkingDirectory(base + "Results_",
@@ -165,6 +165,15 @@ class __Files_new_dont_manually_create__(object):
                                                       extended_filename=extended_filename)
         self.wd_current = os.path.join(self.rd1, "WorkingDirectory")  + os.sep
         os.mkdir(self.wd_current)
+        self.wd_base = [self.wd_current]
+        if wd_base_list != None:
+            shutil.copy(wd_base_list[0] + "SpeciesIDs.txt", self.wd_current + "SpeciesIDs.txt")
+            shutil.copy(wd_base_list[0] + "SequenceIDs.txt", self.wd_current + "SequenceIDs.txt")
+            # Log the first wd in list, this can then be followed back to previous ones
+            # Log file - point to WD at start of chain which contains the new species
+            # wd_base_list - should contain current directory and then previous linked directories
+            with open(self.wd_current + "previous_wd.txt", 'w') as outfile: outfile.write(wd_base_list[0] + "\n")
+            self.wd_base.extend(wd_base_list)
         with open(os.path.join(self.rd1, "Log.txt"), 'w'):
             pass
         self.wd_trees = self.wd_current
