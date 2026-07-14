@@ -63,7 +63,7 @@ from ..orthogroups import gathering, orthogroups_set
 from ..orthogroups import accelerate as acc
 
 from ..tools import astral, mcl, tree
-from ..gene_tree_inference import trees2ologs_of, infer_trees
+from ..gene_tree_inference import trees2ologs_of, infer_trees, tree_processor
 from . import process_args, check_dependencies, run_commands, species_info
 from .. import orphan_genes_version, __version__, __location__
 from ..comparative_genomics import orthologues
@@ -262,7 +262,7 @@ def BetweenCoreOrthogroupsWorkflow(
             files.FileHandler.GetCoreSpeciesTreeIDsRootedFN(), format=1
         )
         species_to_speices_map = lambda x: x
-        rooted_species_tree_ids, qHaveSupport = trees2ologs_of.CheckAndRootTree(
+        rooted_species_tree_ids, qHaveSupport = tree_processor.CheckAndRootTree(
             species_tree_unrooted_fn, core_rooted_species_tree, species_to_speices_map
         )
 

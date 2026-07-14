@@ -34,7 +34,7 @@ except ImportError:
     ...
 from ..tools import stride, tree, trees_msa, dendroblast
 # from ..gene_tree_inference import trees2ologs_dlcpar
-from ..gene_tree_inference import trees2ologs_of, infer_trees
+from ..gene_tree_inference import trees2ologs_of, infer_trees, hog_processor, tree_processor, trees2ologs_processor
 from ..utils import util, files
 from ..orthogroups import orthogroups_set, accelerate
 from . import stats
@@ -129,11 +129,11 @@ def TwoAndThreeGeneHOGs(ogSet, st_rooted_labelled, hog_writer):
         if n < 2 or n > 3: continue
         og_name = "OG%07d" % iog
         sp_present = set([str(g.iSp) for g in og])
-        stNode = trees2ologs_of.MRCA_node(st_rooted_labelled, sp_present)
+        stNode = tree_processor.MRCA_node(st_rooted_labelled, sp_present)
         hogs_to_write = hog_writer.get_skipped_nodes(stNode, None)  
         if len(sp_present) > 1:
             # We don't create files for 'species specific HOGs'
-            st_node = trees2ologs_of.MRCA_node(st_rooted_labelled, sp_present)
+            st_node = tree_processor.MRCA_node(st_rooted_labelled, sp_present)
             hogs_to_write = hogs_to_write + [st_node.name]
         genes = [g.ToString() for g in og] # Inefficient as will convert back again, but trivial cost I think
         hog_writer.write_hog_genes(genes, hogs_to_write, og_name)
@@ -230,10 +230,10 @@ def AllOrthologues(ogSet):
             else: 
                 continue # no orthologues
             
-        elif n >= ogSet.min_seq:
+        else:
             continue
-
-        all_orthologues.append((iog, orthologues))
+        if orthologues:
+            all_orthologues.append((iog, orthologues))
 
     nspecies = len(ogSet.speciesToUse)
     sp_to_index = {str(sp):i for i, sp in enumerate(ogSet.speciesToUse)}
@@ -241,146 +241,288 @@ def AllOrthologues(ogSet):
     olog_sus_lines_tot = ["" for i in range(nspecies)]
     return all_orthologues, nspecies, sp_to_index, olog_lines_tot, olog_sus_lines_tot
 
+
+
+# def trees2ologs_of.ReconciliationAndOrthologues(
+#         recon_method,
+#         ogSet,
+#         nHighParallel,
+#         nLowParallel,
+#         iSpeciesTree=None,
+#         stride_dups=None,
+#         q_split_para_clades=False,
+#         fewer_open_files=False,
+#         save_space=False,
+#         old_version=False,
+#         print_info=True,
+#         exist_msa=True,
+#         write_hog_tree=True,
+#         fix_files=True,
+#         write_to_rd=True,
+#         fd_limit=None,
+#         sort_non_hog_output=True,
+#         validate_hog_ids=True,
+#     ):
+
+#     speciesTree_ids_fn = files.FileHandler.GetSpeciesTreeIDsRootedFN()
+#     labeled_tree_fn = files.FileHandler.GetSpeciesTreeResultsNodeLabelsFN()
+
+#     util.RenameTreeTaxa(
+#         speciesTree_ids_fn,
+#         labeled_tree_fn,
+#         ogSet.SpeciesDict(),
+#         qSupport=False,
+#         qFixNegatives=True,
+#         label="N"
+#     )
+
+#     workingDir = files.FileHandler.GetWorkingDirectory_Write()
+#     resultsDir_ologs = files.FileHandler.GetOrthologuesDirectory()
+#     reconTreesRenamedDir = files.FileHandler.GetOGsReconTreeDir(True)
+
+#     if print_info:
+#         util.PrintTime("Inferring orthologues from gene trees")
+
+#     qNoRecon = ("only_overlap" == recon_method)
+
+#     # Label species-tree internal nodes deterministically.
+#     species_tree_rooted_labelled = tree.Tree(speciesTree_ids_fn)
+#     species_tree_rooted_labelled.name = "N0"
+
+#     iNode = 1
+#     node_names = [species_tree_rooted_labelled.name]
+
+#     for n in species_tree_rooted_labelled.traverse():
+#         if (not n.is_leaf()) and (not n.is_root()):
+#             n.name = "N%d" % iNode
+#             node_names.append(n.name)
+#             iNode += 1
+
+#     speciesDict = ogSet.SpeciesDict()
+#     SequenceDict = ogSet.SequenceDict()
+
+#     if fd_limit is not None:
+#         trees2ologs_processor.set_file_descriptor_limit(fd_limit)
+
+#     hog_writer = hog_processor.HogWriter(
+#         species_tree_rooted_labelled,
+#         node_names,
+#         SequenceDict,
+#         speciesDict,
+#         ogSet.speciesToUse,
+#         write_to_rd=write_to_rd
+#     )
+
+#     try:
+#         nOrthologues_SpPair = trees2ologs_of.DoOrthologuesForOrthoFinder(
+#             ogSet,
+#             species_tree_rooted_labelled,
+#             tree_processor.GeneToSpecies_dash,
+#             stride_dups,
+#             qNoRecon,
+#             hog_writer,
+#             q_split_para_clades,
+#             nLowParallel,
+#             fewer_open_files,
+#             save_space,
+#             old_version=old_version,
+#             print_info=print_info,
+#             exist_msa=exist_msa,
+#             write_hog_tree=write_hog_tree,
+#             fix_files=fix_files,
+#             fd_limit=fd_limit,
+#         )
+
+#         if print_info:
+#             util.PrintTime("Done of orthologues")
+
+#         # Important:
+#         # These HOGs must be written before validation because they continue
+#         # the same HOG numbering.
+#         TwoAndThreeGeneHOGs(
+#             ogSet,
+#             species_tree_rooted_labelled,
+#             hog_writer
+#         )
+
+#         # Flush/close before validation reads files.
+#         hog_writer.close_files()
+
+#         if validate_hog_ids:
+#             trees2ologs_processor.ValidateHogWriterNoDuplicateIds(hog_writer)
+
+#         # Non-HOG 2/3-gene orthologues are appended here.
+#         # Therefore optional sorting must happen after this block, not before.
+#         if not write_hog_tree or not fix_files:
+#             nOrthologues_SpPair += TwoAndThreeGeneOrthogroups(
+#                 ogSet,
+#                 resultsDir_ologs,
+#                 save_space,
+#                 fewer_open_files,
+#                 write_hog_tree=write_hog_tree,
+#                 fix_files=fix_files
+#             )
+
+#             if sort_non_hog_output:
+#                 trees2ologs_processor.SortNonHogOutputFiles(
+#                     nLowParallel,
+#                     ogSet.speciesToUse,
+#                     speciesDict,
+#                     fewer_open_files,
+#                     save_space,
+#                     write_hog_tree,
+#                     fix_files,
+#                 )
+
+#     finally:
+#         # Safe even if already closed.
+#         hog_writer.close_files()
+
+#     return nOrthologues_SpPair
     
-def ReconciliationAndOrthologues(
-        recon_method,
-        ogSet,
-        nHighParallel,
-        nLowParallel,
-        iSpeciesTree=None,
-        stride_dups=None,
-        q_split_para_clades=False,
-        fewer_open_files=False,
-        save_space=False,
-        old_version=False,
-        print_info=True,
-        exist_msa=True,
-        write_hog_tree=True,
-        fix_files=True,
-        write_to_rd=True,
-        fd_limit=None,
-    ):
-    """
-    ogSet - info about the orthogroups, species etc.
-    resultsDir - where the Orthologues top level results directory will go (should exist already)
-    reconTreesRenamedDir - where to put the reconcilled trees that use the gene accessions
-    iSpeciesTree - which of the potential roots of the species tree is this
-    method - can be dlcpar, dlcpar_deep, of_recon
-    """
-    speciesTree_ids_fn = files.FileHandler.GetSpeciesTreeIDsRootedFN()
-    labeled_tree_fn = files.FileHandler.GetSpeciesTreeResultsNodeLabelsFN()
-    util.RenameTreeTaxa(speciesTree_ids_fn, labeled_tree_fn, ogSet.SpeciesDict(), qSupport=False, qFixNegatives=True, label='N')
-    workingDir = files.FileHandler.GetWorkingDirectory_Write()    # workingDir - Orthologues working dir
-    resultsDir_ologs = files.FileHandler.GetOrthologuesDirectory()
-    reconTreesRenamedDir = files.FileHandler.GetOGsReconTreeDir(True)
+# def trees2ologs_of.ReconciliationAndOrthologues(
+#         recon_method,
+#         ogSet,
+#         nHighParallel,
+#         nLowParallel,
+#         iSpeciesTree=None,
+#         stride_dups=None,
+#         q_split_para_clades=False,
+#         fewer_open_files=False,
+#         save_space=False,
+#         old_version=False,
+#         print_info=True,
+#         exist_msa=True,
+#         write_hog_tree=True,
+#         fix_files=True,
+#         write_to_rd=True,
+#         fd_limit=None,
+#     ):
+#     """
+#     ogSet - info about the orthogroups, species etc.
+#     resultsDir - where the Orthologues top level results directory will go (should exist already)
+#     reconTreesRenamedDir - where to put the reconcilled trees that use the gene accessions
+#     iSpeciesTree - which of the potential roots of the species tree is this
+#     method - can be dlcpar, dlcpar_deep, of_recon
+#     """
+#     speciesTree_ids_fn = files.FileHandler.GetSpeciesTreeIDsRootedFN()
+#     labeled_tree_fn = files.FileHandler.GetSpeciesTreeResultsNodeLabelsFN()
+#     util.RenameTreeTaxa(speciesTree_ids_fn, labeled_tree_fn, ogSet.SpeciesDict(), qSupport=False, qFixNegatives=True, label='N')
+#     workingDir = files.FileHandler.GetWorkingDirectory_Write()    # workingDir - Orthologues working dir
+#     resultsDir_ologs = files.FileHandler.GetOrthologuesDirectory()
+#     reconTreesRenamedDir = files.FileHandler.GetOGsReconTreeDir(True)
 
-    # if "dlcpar" in recon_method:
-    #     qDeepSearch = (recon_method == "dlcpar_convergedsearch")
-    #     util.PrintTime("Starting DLCpar")
-    #     dlcparResultsDir, dlcparLocusTreePat = trees2ologs_dlcpar.RunDlcpar(ogSet, speciesTree_ids_fn, workingDir, nHighParallel, qDeepSearch)
-    #     util.PrintTime("Done DLCpar")
-    #     spec_seq_dict = ogSet.Spec_SeqDict()
-    #     ogs_all = ogSet.OGsAll()
-    #     for iog, og in enumerate(ogs_all):
-    #         if len(og) < 4:
-    #             # For dlpar analysis can rely on ordered orthogroups
-    #             break
-    #         util.RenameTreeTaxa(dlcparResultsDir + dlcparLocusTreePat % iog, files.FileHandler.GetOGsReconTreeFN(iog),
-    #                             spec_seq_dict, qSupport=False, qFixNegatives=False, inFormat=8, label='n')
+#     # if "dlcpar" in recon_method:
+#     #     qDeepSearch = (recon_method == "dlcpar_convergedsearch")
+#     #     util.PrintTime("Starting DLCpar")
+#     #     dlcparResultsDir, dlcparLocusTreePat = trees2ologs_dlcpar.RunDlcpar(ogSet, speciesTree_ids_fn, workingDir, nHighParallel, qDeepSearch)
+#     #     util.PrintTime("Done DLCpar")
+#     #     spec_seq_dict = ogSet.Spec_SeqDict()
+#     #     ogs_all = ogSet.OGsAll()
+#     #     for iog, og in enumerate(ogs_all):
+#     #         if len(og) < 4:
+#     #             # For dlpar analysis can rely on ordered orthogroups
+#     #             break
+#     #         util.RenameTreeTaxa(dlcparResultsDir + dlcparLocusTreePat % iog, files.FileHandler.GetOGsReconTreeFN(iog),
+#     #                             spec_seq_dict, qSupport=False, qFixNegatives=False, inFormat=8, label='n')
     
-    #     # Orthologue lists
-    #     util.PrintUnderline("Inferring orthologues from gene trees" + (" (root %d)"%iSpeciesTree if iSpeciesTree != None else ""))
-    #     pickleDir = files.FileHandler.GetPickleDir()
-    #     nOrthologues_SpPair = trees2ologs_dlcpar.create_orthologue_lists(ogSet, resultsDir_ologs, dlcparResultsDir, pickleDir)  
+#     #     # Orthologue lists
+#     #     util.PrintUnderline("Inferring orthologues from gene trees" + (" (root %d)"%iSpeciesTree if iSpeciesTree != None else ""))
+#     #     pickleDir = files.FileHandler.GetPickleDir()
+#     #     nOrthologues_SpPair = trees2ologs_dlcpar.create_orthologue_lists(ogSet, resultsDir_ologs, dlcparResultsDir, pickleDir)  
 
-    # elif "phyldog" == recon_method: # Should not be used, the function is broken
-    #     util.PrintTime("Starting Orthologues from Phyldog")
-    #     nOrthologues_SpPair = \
-    #         trees2ologs_of.DoOrthologuesForOrthoFinder_Phyldog(
-    #             ogSet, 
-    #             workingDir, 
-    #             trees2ologs_of.GeneToSpecies_dash, 
-    #             resultsDir_ologs, 
-    #             reconTreesRenamedDir
-    #     )
-    #     util.PrintTime("Done orthologues from Phyldog")
-    # else:
+#     # elif "phyldog" == recon_method: # Should not be used, the function is broken
+#     #     util.PrintTime("Starting Orthologues from Phyldog")
+#     #     nOrthologues_SpPair = \
+#     #         trees2ologs_of.DoOrthologuesForOrthoFinder_Phyldog(
+#     #             ogSet, 
+#     #             workingDir, 
+#     #             trees2ologs_of.GeneToSpecies_dash, 
+#     #             resultsDir_ologs, 
+#     #             reconTreesRenamedDir
+#     #     )
+#     #     util.PrintTime("Done orthologues from Phyldog")
+#     # else:
 
-    if print_info:
-        util.PrintTime("Inferring orthologues from gene trees")
-    qNoRecon = ("only_overlap" == recon_method)
-    # The next function should not create the HOG writer and label the species tree. This should be done here and passed as arguments
-    species_tree_rooted_labelled = tree.Tree(speciesTree_ids_fn)
-    # Label nodes of species tree
-    species_tree_rooted_labelled.name = "N0"   
-    iNode = 1
-    node_names = [species_tree_rooted_labelled.name]
-    for n in species_tree_rooted_labelled.traverse():
-        if (not n.is_leaf()) and (not n.is_root()):
-            n.name = "N%d" % iNode
-            node_names.append(n.name)
-            iNode += 1
-    # HOG Writer
-    speciesDict = ogSet.SpeciesDict()
-    SequenceDict = ogSet.SequenceDict()
-    hog_writer = trees2ologs_of.HogWriter(
-        species_tree_rooted_labelled, 
-        node_names, 
-        SequenceDict, 
-        speciesDict, 
-        ogSet.speciesToUse,
-        write_to_rd=write_to_rd
-    )
-    nOrthologues_SpPair = \
-        trees2ologs_of.DoOrthologuesForOrthoFinder(
-            ogSet, 
-            species_tree_rooted_labelled, 
-            trees2ologs_of.GeneToSpecies_dash, 
-            stride_dups, 
-            qNoRecon, 
-            hog_writer, 
-            q_split_para_clades, 
-            nLowParallel,
-            fewer_open_files, 
-            save_space, 
-            old_version=old_version,
-            print_info=print_info,
-            exist_msa=exist_msa,
-            write_hog_tree=write_hog_tree,
-            fix_files=fix_files,
-            fd_limit=fd_limit
-    )
-    if print_info:
-        util.PrintTime("Done of orthologues")
-    TwoAndThreeGeneHOGs(ogSet, species_tree_rooted_labelled, hog_writer)
-    hog_writer.close_files()
+#     if print_info:
+#         util.PrintTime("Inferring orthologues from gene trees")
+#     qNoRecon = ("only_overlap" == recon_method)
+#     # The next function should not create the HOG writer and label the species tree. This should be done here and passed as arguments
+#     species_tree_rooted_labelled = tree.Tree(speciesTree_ids_fn)
+#     # Label nodes of species tree
+#     species_tree_rooted_labelled.name = "N0"   
+#     iNode = 1
+#     node_names = [species_tree_rooted_labelled.name]
+#     for n in species_tree_rooted_labelled.traverse():
+#         if (not n.is_leaf()) and (not n.is_root()):
+#             n.name = "N%d" % iNode
+#             node_names.append(n.name)
+#             iNode += 1
+#     # HOG Writer
+#     speciesDict = ogSet.SpeciesDict()
+#     SequenceDict = ogSet.SequenceDict()
 
-    if not write_hog_tree or not fix_files:
-        nOrthologues_SpPair += TwoAndThreeGeneOrthogroups(
-            ogSet, 
-            resultsDir_ologs, 
-            save_space, 
-            fewer_open_files,
-            write_hog_tree=write_hog_tree,
-            fix_files=fix_files
-        )
+#     if fd_limit is not None:
+#         trees2ologs_of.set_file_descriptor_limit(fd_limit)
+        
+#     hog_writer = trees2ologs_of.HogWriter(
+#         species_tree_rooted_labelled, 
+#         node_names, 
+#         SequenceDict, 
+#         speciesDict, 
+#         ogSet.speciesToUse,
+#         write_to_rd=write_to_rd
+#     )
+#     nOrthologues_SpPair = \
+#         trees2ologs_of.DoOrthologuesForOrthoFinder(
+#             ogSet, 
+#             species_tree_rooted_labelled, 
+#             trees2ologs_of.GeneToSpecies_dash, 
+#             stride_dups, 
+#             qNoRecon, 
+#             hog_writer, 
+#             q_split_para_clades, 
+#             nLowParallel,
+#             fewer_open_files, 
+#             save_space, 
+#             old_version=old_version,
+#             print_info=print_info,
+#             exist_msa=exist_msa,
+#             write_hog_tree=write_hog_tree,
+#             fix_files=fix_files,
+#             fd_limit=fd_limit
+#     )
+#     if print_info:
+#         util.PrintTime("Done of orthologues")
+#     TwoAndThreeGeneHOGs(ogSet, species_tree_rooted_labelled, hog_writer)
+#     hog_writer.close_files()
+
+#     if not write_hog_tree or not fix_files:
+#         nOrthologues_SpPair += TwoAndThreeGeneOrthogroups(
+#             ogSet, 
+#             resultsDir_ologs, 
+#             save_space, 
+#             fewer_open_files,
+#             write_hog_tree=write_hog_tree,
+#             fix_files=fix_files
+#         )
     
-    # if nLowParallel > 1 and "phyldog" != recon_method and "dlcpar" not in recon_method:
-    if nLowParallel > 1:
-        trees2ologs_of.SortParallelFiles(
-            nLowParallel, 
-            ogSet.speciesToUse, 
-            speciesDict, 
-            fewer_open_files,
-            write_hog_tree,
-            fix_files,
-        )
-    #
-    return nOrthologues_SpPair
-    # if not write_hog_tree or not fix_files:
-    #     # print("%fs for orthologs etc" % (stop-start))
-    #     WriteOrthologuesStats(ogSet, nOrthologues_SpPair)
-    # #    print("Identified %d orthologues" % nOrthologues)
+#     # if nLowParallel > 1 and "phyldog" != recon_method and "dlcpar" not in recon_method:
+#     # if nLowParallel > 1:
+#     #     trees2ologs_of.SortParallelFiles(
+#     #         nLowParallel, 
+#     #         ogSet.speciesToUse, 
+#     #         speciesDict, 
+#     #         fewer_open_files,
+#     #         write_hog_tree,
+#     #         fix_files,
+#     #     )
+#     #
+#     return nOrthologues_SpPair
+#     # if not write_hog_tree or not fix_files:
+#     #     # print("%fs for orthologs etc" % (stop-start))
+#     #     WriteOrthologuesStats(ogSet, nOrthologues_SpPair)
+#     # #    print("Identified %d orthologues" % nOrthologues)
         
                 
 def OrthologuesFromTrees(
@@ -425,7 +567,7 @@ def OrthologuesFromTrees(
         infer_trees.ConvertUserSpeciesTree(userSpeciesTree_fn, speciesDict, speciesTreeFN_ids)
     util.PrintUnderline("Running Orthologue Prediction", True)
     util.PrintUnderline("Reconciling gene and species trees") 
-    nOrthologues_SpPair = ReconciliationAndOrthologues(
+    nOrthologues_SpPair = trees2ologs_of.ReconciliationAndOrthologues(
         recon_method, 
         ogSet, 
         nHighParallel, 
@@ -851,7 +993,7 @@ def InferOrthologs(
     if print_info:
         util.PrintTime("Starting reconciliation and orthologues")
 
-    nOrthologues_SpPair = ReconciliationAndOrthologues(
+    nOrthologues_SpPair = trees2ologs_of.ReconciliationAndOrthologues(
         recon_method, 
         ogSet, 
         nHighParallel, 
@@ -1119,7 +1261,7 @@ def OrthologuesFromGeneSpeciesTrees(
 
     util.PrintUnderline("Running Orthologue Prediction", True)
     util.PrintUnderline("Reconciling gene and species trees") 
-    ReconciliationAndOrthologues(
+    trees2ologs_of.ReconciliationAndOrthologues(
         recon_method, 
         ogSet, 
         nHighParallel, 
@@ -1164,7 +1306,7 @@ def OrthologuesFromGeneSpeciesTrees(
 
         util.PrintUnderline("Running Orthologue Prediction", True)
         util.PrintUnderline("Reconciling gene and species trees") 
-        ReconciliationAndOrthologues(
+        trees2ologs_of.ReconciliationAndOrthologues(
             recon_method, 
             ogSet, 
             nHighParallel, 

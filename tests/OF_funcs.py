@@ -12,9 +12,19 @@ from orthofinder.file_updates.ogs import OrthoGroupsSet, update_ogs, IDFullDict
 from orthofinder.file_updates.trees import read_tree_file
 from orthofinder.file_updates.file_updates import id_converter, hogs_converter, read_hog_file, hog_file_over4genes, index_files
 from orthofinder.run.species_info import SpeciesNameDict, ProcessPreviousFiles
-from orthofinder.comparative_genomics.orthologues import AllOrthologues, ReconciliationAndOrthologues
-from orthofinder.gene_tree_inference.trees2ologs_of import HogWriter, GetLinesForOlogFiles, OrthologsFiles, GetSpeciesNeighbours, GeneToSpecies_dash, TreeAnalyser, CheckAndRootTree, GetOrthologues_from_tree, GetLinesForOlogFiles
+from orthofinder.gene_tree_inference.trees2ologs_of import (
+    GetSpeciesNeighbours, 
+    ReconciliationAndOrthologues, 
+    AllOrthologues
+)
 
+from orthofinder.gene_tree_inference.hog_processor import HogWriter
+from orthofinder.gene_tree_inference.tree_processor import (
+    GetLinesForOlogFiles, 
+    CheckAndRootTree, 
+    GeneToSpecies_dash, 
+    GetOrthologues_from_tree, 
+)
 
 
 class OrthoFinderTestFuncs:
@@ -47,12 +57,55 @@ class OrthoFinderTestFuncs:
             self.options.nProcessAlg = of_args_dict["analysis_threads"]
 
         core_results_dir = os.path.join(self.projects, "OrthoFinder")
-        
-        self.core_results = helper._find_output_dir(core_results_dir, test_filename="Results_" + baseline_options[0])
+
+        core_name = baseline_options[0]
+        assign_name = baseline_options[1] if len(baseline_options) > 1 else None
+
+        self.core_results = os.environ.get(
+            f"ORTHOFINDER_TEST_RESULTS_{core_name}",
+            ""
+        )
+
+        if not self.core_results:
+            self.core_results = helper._find_output_dir(
+                core_results_dir,
+                test_filename="Results_" + core_name,
+                find_core=True
+            )
+
+        if not self.core_results:
+            raise AssertionError(
+                f"Could not find valid core OrthoFinder results for '{core_name}' "
+                f"in {core_results_dir}. Run the core test first or check output naming."
+            )
+
         self.core_working_dir = os.path.join(self.core_results, "WorkingDirectory")
+
         if self.assign:
-            self.assign_results = helper._find_output_dir(core_results_dir, test_filename="Results_" + baseline_options[1], find_core=False)
+            self.assign_results = ""
+
+            if assign_name:
+                self.assign_results = os.environ.get(
+                    f"ORTHOFINDER_TEST_RESULTS_{assign_name}",
+                    ""
+                )
+
+            if not self.assign_results and assign_name:
+                self.assign_results = helper._find_output_dir(
+                    core_results_dir,
+                    test_filename="Results_" + assign_name,
+                    find_core=False
+                )
+
+            if not self.assign_results:
+                raise AssertionError(
+                    f"Could not find valid assign OrthoFinder results for '{assign_name}' "
+                    f"in {core_results_dir}. Run the assign test first or check output naming."
+                )
+
             self.assign_working_dir = os.path.join(self.assign_results, "WorkingDirectory")
+
+        if self.assign:
 
             self.current_results_dir = self.assign_results
             self.current_working_dir = self.assign_working_dir

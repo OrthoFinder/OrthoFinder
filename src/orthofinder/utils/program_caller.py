@@ -687,13 +687,13 @@ class ProgramCaller(object):
             printer.print(" - test has been manually over-ridden", style="warning")
             return True
         infn = self._WriteTestSequence(d_test)
-        propossed_outfn = infn + ".output.txt"
+        propossed_outfn = infn + f".{method_type}.{method_name}.output.txt"
         stdout, stderr, cmd = self._CallMethod(
             method_type,
             method_name,
             infn,
             propossed_outfn,
-            "test",
+            f"test",
             method_threads=method_threads,
         )
         success = (
@@ -724,7 +724,9 @@ class ProgramCaller(object):
         path_out, basename_out = os.path.split(outfilename)
         infilename = os.path.abspath(infilename)
         outfilename = os.path.abspath(outfilename)
-        path = os.path.abspath(path) + os.path.sep
+        
+        path = os.path.abspath(path)# + os.path.sep
+
         outstring = (
             instring.replace("INPUT", infilename)
             .replace("OUTPUT", outfilename)
@@ -840,7 +842,6 @@ class ProgramCaller(object):
                 gapextend=gapextend,
                 method_threads=method_threads,
             )
-
             target_fn = outfilename_proposed
             actual_target_fn = (actual_fn, target_fn)
         # print((cmd, actual_target_fn))

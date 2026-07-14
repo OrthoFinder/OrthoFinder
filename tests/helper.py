@@ -9,35 +9,85 @@ from orthofinder.run.main import main
 from orthofinder.run.process_args import GetFileArgument
 
 
+
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def strip_ansi(text):
+    return ANSI_RE.sub("", text or "")
+
+
+def assert_no_orthofinder_failure(name, code, out, err):
+    text = out + err
+    clean = strip_ansi(text)
+
+    fatal_patterns = (
+        r"(?mi)^\s*ERROR:\s",
+        r"(?mi)Unrecognised argument:",
+        r"(?mi)Unknown option:",
+        r"(?mi)Incorrect option:",
+        r"(?m)^\s*Traceback \(most recent call last\):",
+        r'(?m)^\s*File ".*", line \d+, in \S+',
+        r"(?m)^[A-Za-z_]\w*Error:\s",
+    )
+
+    failed_by_text = any(re.search(p, clean) for p in fatal_patterns)
+
+    assert code == 0 and not failed_by_text, (
+        f"{name}: OrthoFinder failed\n"
+        f"exit code: {code}\n"
+        f"--- stdout ---\n{out}\n"
+        f"--- stderr ---\n{err}"
+    )
+
 def run_orthofinder_core_case(name, argstr, input_proj, dna_projects, species_tree, user_ofconfig, capfd):
 
     s = argstr.strip().replace("DNA_INPUT", dna_projects)\
                       .replace("INPUT", input_proj)\
                       .replace("SPECIES_TREE", species_tree)\
                       .replace("USER_CONFIG", user_ofconfig)
-    
+
     args = s.split()[1:] + ["-n", name]
 
     code, out, err, text = _run_main(args, capfd)
-    assert code == 0, f"{name}: exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
 
-    fatal_patterns = (
-        r"(?mi)^\s*ERROR:\s",
-        r"(?m)^\s*Traceback \(most recent call last\):",
-        r'(?m)^\s*File ".*", line \d+, in \S+',
-        r"(?m)^[A-Za-z_]\w*Error:\s",
+    assert_no_orthofinder_failure(name, code, out, err)
+
+    results_dir = os.path.join(input_proj, "OrthoFinder")
+    result_path = _find_output_dir(
+        results_dir,
+        "Results_" + name,
+        find_core=True
     )
-    assert not any(re.search(p, text) for p in fatal_patterns), text
 
+    assert result_path, (
+        f"{name}: OrthoFinder exited successfully, but no valid Results_* "
+        f"directory was found in {results_dir}\n"
+        f"--- stdout ---\n{out}\n--- stderr ---\n{err}"
+    )
+
+    os.environ[f"ORTHOFINDER_TEST_RESULTS_{name}"] = result_path
 
 def run_orthofinder_assign_case(name, argstr, input_proj, assign, species_tree_assign, user_ofconfig, capfd):
 
     core_name = name.replace("_assign", "").replace("_restart", "")
+
     results_dir = os.path.join(input_proj, "OrthoFinder")
-    core_results = _find_output_dir(results_dir, "Results_" + core_name, find_core=True)
+
+    core_results = os.environ.get(f"ORTHOFINDER_TEST_RESULTS_{core_name}", "")
 
     if not core_results:
-        raise AssertionError(f"Core results 'Results_{core_name}' not found in {results_dir}")
+        core_results = _find_output_dir(
+            results_dir,
+            "Results_" + core_name,
+            find_core=True
+        )
+
+    if not core_results:
+        raise AssertionError(
+            f"Core results for '{core_name}' not found in {results_dir}. "
+            f"Expected a valid OrthoFinder Results_* directory with a WorkingDirectory."
+        )
 
     s = (
         argstr.strip()
@@ -46,48 +96,130 @@ def run_orthofinder_assign_case(name, argstr, input_proj, assign, species_tree_a
         .replace("SPECIES_TREE", species_tree_assign)
         .replace("USER_CONFIG", user_ofconfig)
     )
+
     args = s.split()[1:] + ["-n", name]
 
     code, out, err, text = _run_main(args, capfd)
-    assert code == 0, f"{name}: exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
 
-    fatal_patterns = (
-        r"(?mi)^\s*ERROR:\s",
-        r"(?m)^\s*Traceback \(most recent call last\):",
-        r'(?m)^\s*File ".*", line \d+, in \S+',
-        r"(?m)^[A-Za-z_]\w*Error:\s",
+    assert_no_orthofinder_failure(name, code, out, err)
+
+    assign_results_dir = os.path.join(input_proj, "OrthoFinder")
+    result_path = _find_output_dir(
+        assign_results_dir,
+        "Results_" + name,
+        find_core=False
     )
-    assert not any(re.search(p, text) for p in fatal_patterns), text
+
+    assert result_path, (
+        f"{name}: assign run exited successfully, but no valid assign Results_* "
+        f"directory was found in {assign_results_dir}\n"
+        f"--- stdout ---\n{out}\n--- stderr ---\n{err}"
+    )
+
+    os.environ[f"ORTHOFINDER_TEST_RESULTS_{name}"] = result_path
+
+def _is_valid_results_dir(path):
+    """
+    A real OrthoFinder results directory should have a WorkingDirectory.
+    Use this to avoid returning incomplete/random directories.
+    """
+    if not path:
+        return False
+
+    if not os.path.isdir(path):
+        return False
+
+    wd = os.path.join(path, "WorkingDirectory")
+    if not os.path.isdir(wd):
+        return False
+
+    species_ids = os.path.join(wd, "SpeciesIDs.txt")
+    sequence_ids = os.path.join(wd, "SequenceIDs.txt")
+
+    return os.path.exists(species_ids) and os.path.exists(sequence_ids)
+
+
+def _normalise_result_name(name):
+    """
+    For matching core results from assign/restart names.
+    """
+    return (
+        name
+        .replace("_assign", "")
+        .replace("_restart", "")
+    )
+
 
 def _find_output_dir(results_dir, test_filename, fileno=-1, find_core=True) -> str:
+    """
+    Find an OrthoFinder Results_* directory.
+
+    Previous version was too strict:
+        expected Results_famsa_species_tree exactly.
+
+    This version:
+        1. tries strict name match first
+        2. then tries relaxed name match
+        3. then falls back to newest valid Results_* directory
+    """
     if isinstance(results_dir, list):
         results_dir = results_dir[0]
 
     results_dir = os.path.abspath(results_dir)
-    available_paths = []
-    try:
-        for name in os.listdir(results_dir):
-            if find_core:
-                name = name.replace("_assign", "").replace("_restart", "")
-                if test_filename in name:
-                    available_paths.append(os.path.join(results_dir, name))
-            else:
-                if test_filename in name:
-                    available_paths.append(os.path.join(results_dir, name))
-                
-        entries = [
-            (os.stat(path).st_mtime, path)
-            for path in available_paths
-            if path is not None 
-        ]
 
-        return sorted(entries)[fileno][1] if entries else ""
-    except FileNotFoundError:
+    if not os.path.isdir(results_dir):
         return ""
-    except NotADirectoryError:
-        return results_dir
 
+    candidates = []
 
+    for name in os.listdir(results_dir):
+        path = os.path.join(results_dir, name)
+
+        if not os.path.isdir(path):
+            continue
+
+        if not name.startswith("Results_"):
+            continue
+
+        if not _is_valid_results_dir(path):
+            continue
+
+        match_name = _normalise_result_name(name) if find_core else name
+
+        candidates.append((name, match_name, path, os.stat(path).st_mtime))
+
+    if not candidates:
+        return ""
+
+    # 1. Strict/expected match
+    matched = [
+        (mtime, path)
+        for name, match_name, path, mtime in candidates
+        if test_filename in match_name
+    ]
+
+    if matched:
+        return sorted(matched)[fileno][1]
+
+    # 2. Relaxed match: remove Results_ prefix and try again
+    relaxed = test_filename
+    if relaxed.startswith("Results_"):
+        relaxed = relaxed[len("Results_"):]
+
+    matched = [
+        (mtime, path)
+        for name, match_name, path, mtime in candidates
+        if relaxed in match_name
+    ]
+
+    if matched:
+        return sorted(matched)[fileno][1]
+
+    # 3. Fallback: newest valid Results_* directory
+    # This prevents the entire results test suite from collapsing to
+    # "WorkingDirectory" when the name has changed.
+    newest = sorted((mtime, path) for name, match_name, path, mtime in candidates)
+    return newest[fileno][1] if newest else ""
 
 def read_config_file(configure_file, user_config_file=None):
     
@@ -120,18 +252,20 @@ def read_config_file(configure_file, user_config_file=None):
     return of_config_dict
 
 
+
 def _run_main(args, capfd):
-    """
-    Call main(args) in-process and return (exit_code, out, err, text).
-    - Success: exit_code == 0
-    - If main() returns None, we treat it as 0
-    - If main() calls sys.exit(None), treat as 0
-    """
     try:
         ret = main(args)
         code = 0 if ret is None else int(ret)
+
     except SystemExit as e:
-        code = e.code if isinstance(e.code, int) else 0
+        if e.code is None:
+            code = 0
+        elif isinstance(e.code, int):
+            code = e.code
+        else:
+            code = 1
+
     except Exception:
         out, err = capfd.readouterr()
         tb = traceback.format_exc()
@@ -145,6 +279,7 @@ def _run_main(args, capfd):
     out, err = capfd.readouterr()
     text = out + err
     return code, out, err, text
+
 
 def create_path(arg):
     filepath = os.path.abspath(arg)

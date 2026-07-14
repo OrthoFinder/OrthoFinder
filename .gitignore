@@ -212,3 +212,4 @@ of_structure.sh
 testdata
 *.fa*
 primary_*
+problematic_database/

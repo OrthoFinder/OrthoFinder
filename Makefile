@@ -47,7 +47,7 @@ RAXMLNG_VERSION ?= $(RAXMLNG_DEFAULT_VERSION)
 MUSCLE_DEFAULT_VERSION := 5.3
 MUSCLE_VERSION ?= $(MUSCLE_DEFAULT_VERSION)
 
-IQTREE_DEFAULT_VERSION := 3.1.2
+IQTREE_DEFAULT_VERSION := 3.1.3
 IQTREE_VERSION ?= $(IQTREE_DEFAULT_VERSION)
 
 BLAST_DEFAULT_VERSION := 2.16.0
@@ -157,14 +157,14 @@ MMSEQS_LINUX := https://mmseqs.com/latest/mmseqs-linux-avx2.tar.gz
 MMSEQS_MACOS := https://mmseqs.com/latest/mmseqs-osx-universal.tar.gz
 MMSEQS_BINARY := $(BINARY_INSTALL_DIR)/mmseqs
 
-# URLs for IQ-TREE
-IQTREE_LINUX_UNIVERSAL := https://github.com/iqtree/iqtree3/releases/download/v3.1.2/iqtree-3.1.2-Linux.tar.gz
-IQTREE_LINUX_INTEL := https://github.com/iqtree/iqtree3/releases/download/v3.1.2/iqtree-3.1.2-Linux-intel.tar.gz
-IQTREE_LINUX_ARM := https://github.com/iqtree/iqtree3/releases/download/v3.1.2/iqtree-3.1.2-Linux-arm.tar.gz
+# URLs for IQ-TREE 
+IQTREE_LINUX_UNIVERSAL := https://github.com/iqtree/iqtree3/releases/download/v3.1.3/iqtree-3.1.3-Linux.tar.gz
+IQTREE_LINUX_INTEL := https://github.com/iqtree/iqtree3/releases/download/v3.1.3/iqtree-3.1.3-Linux-intel.tar.gz
+IQTREE_LINUX_ARM := https://github.com/iqtree/iqtree3/releases/download/v3.1.3/iqtree-3.1.3-Linux-arm.tar.gz
 
-IQTREE_MACOS_UNIVERSAL := https://github.com/iqtree/iqtree3/releases/download/v3.1.2/iqtree-3.1.2-macOS.zip
-IQTREE_MACOS_INTEL := https://github.com/iqtree/iqtree3/releases/download/v3.1.2/iqtree-3.1.2-macOS-intel.zip
-IQTREE_MACOS_ARM := https://github.com/iqtree/iqtree3/releases/download/v3.1.2/iqtree-3.1.2-macOS-arm.zip
+IQTREE_MACOS_UNIVERSAL := https://github.com/iqtree/iqtree3/releases/download/v3.1.3/iqtree-3.1.3-macOS.zip
+IQTREE_MACOS_INTEL := https://github.com/iqtree/iqtree3/releases/download/v3.1.3/iqtree-3.1.3-macOS-intel.zip
+IQTREE_MACOS_ARM := https://github.com/iqtree/iqtree3/releases/download/v3.1.3/iqtree-3.1.3-macOS-arm.zip
 
 IQTREE_BINARY := $(BINARY_INSTALL_DIR)/iqtree3
 
