@@ -147,6 +147,7 @@ class Options(object):  #
         self.rm_legacy = True
         self.print_info = True
         self.fd_limit = None
+        self.use_base = False
 
     def what(self):
         for k, v in self.__dict__.items():
@@ -619,7 +620,10 @@ def ProcessArgs(args):
         #     console.print(f"Hey Yo! How's going Bro? It's {time_str} {period} {formatted_date}", style="orange3")
         #     console.print("You know what you are using right now??", style="orange3")
         #     console.print("The best software on this planet!!! :muscle::sunglasses:", style="orange3")
-           
+
+        elif arg == "-ub" or arg == "--use-base":
+            options.use_base = True
+
         elif arg == "-rmgt" or arg == "--rm-gene-trees":
             options.rm_gene_trees = False
 

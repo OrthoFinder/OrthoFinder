@@ -15,6 +15,7 @@ import numpy as np
 from . import sample_genes
 from ..tools import mcl, tree
 from ..utils import util, files, parallel_task_manager, fasta_processor
+from ..run import run_commands
 from . import orthogroups_set
 
 
@@ -34,7 +35,16 @@ def check_for_orthoxcelerate(input_dir, speciesInfoObj):
     return True
 
 
-def prepare_accelerate_database(min_seq, input_dir, wd_list, nSpAll, tree_program="fasttree"):
+def prepare_accelerate_database(
+        min_seq, 
+        input_dir, 
+        wd_list, 
+        nSpAll, 
+        speciesInfoObj, 
+        options, 
+        prog_caller,
+        tree_program="fasttree"
+    ):
     if xcelerate_config.n_for_profiles is None:
         # create_shoot_db.create_full_database(input_dir, q_ids=True, subtrees_dir="")
         fn_diamond_db, q_hogs = create_profiles_database(
@@ -42,6 +52,9 @@ def prepare_accelerate_database(min_seq, input_dir, wd_list, nSpAll, tree_progra
             input_dir, 
             wd_list, 
             nSpAll, 
+            speciesInfoObj, 
+            options, 
+            prog_caller,
             selection="all", 
             q_ids=True, 
             subtrees_dir="",
@@ -53,6 +66,9 @@ def prepare_accelerate_database(min_seq, input_dir, wd_list, nSpAll, tree_progra
             input_dir, 
             wd_list, 
             nSpAll, 
+            speciesInfoObj, 
+            options, 
+            prog_caller,
             selection="kmeans", 
             q_ids=True, 
             n_for_profile=xcelerate_config.n_for_profiles, 
@@ -77,13 +93,25 @@ def ogs_from_diamond_results(fn_og_results_out, q_ignore_sub=False):
     """
     ogs_sp_hits = defaultdict(list)
     scores_all_genes = defaultdict(list)
-    with gzip.open(fn_og_results_out, 'rt') as infile:
-        reader = csv.reader(infile, delimiter="\t")
-        for line in reader:
-            gene = line[0]
-            og, sp, _ = line[1].split("_")
-            ogs_sp_hits[gene].append((og.split(".", 1)[0] if q_ignore_sub else og, sp))
-            scores_all_genes[gene].append(float(line[-2]))
+    print("+++++++++++++++++++++++++++++++")
+    print(fn_og_results_out)
+    if fn_og_results_out.endswith(".gz"):
+        with gzip.open(fn_og_results_out, 'rt') as infile:
+            reader = csv.reader(infile, delimiter="\t")
+            for line in reader:
+                gene = line[0]
+                og, sp, _ = line[1].split("_")
+                ogs_sp_hits[gene].append((og.split(".", 1)[0] if q_ignore_sub else og, sp))
+                scores_all_genes[gene].append(float(line[-2]))
+    else:
+        with open(fn_og_results_out, 'rt') as infile:
+            reader = csv.reader(infile, delimiter="\t")
+            for line in reader:
+                gene = line[0]
+                og, sp, _ = line[1].split("_")
+                ogs_sp_hits[gene].append((og.split(".", 1)[0] if q_ignore_sub else og, sp))
+                scores_all_genes[gene].append(float(line[-2]))
+
     all_genes = list(ogs_sp_hits.keys())
     og_assignments = defaultdict()
     species_closest_hits = defaultdict(lambda: defaultdict(int))
@@ -167,12 +195,15 @@ def create_profiles_database(
         din, 
         wd_list, 
         nSpAll, 
+        speciesInfoObj, 
+        options, 
+        prog_caller,
         selection="kmeans", 
         n_for_profile=20, 
         q_ids=True,
         subtrees_dir="", 
         q_hogs=False,
-        tree_program="fasttree"
+        tree_program="fasttree",
     ):
     """
     Create a fasta file with profile genes from each orthogroup
@@ -209,11 +240,12 @@ def create_profiles_database(
             fn_fasta = wd + fn_base + ".%d_%s.fa" % (n_for_profile, selection)  
   
     fn_diamond_db = fn_fasta + ".dmnd"
-    if os.path.exists(fn_diamond_db):
+    if os.path.exists(fn_diamond_db) and (options.search_program.split("_", 1)[0] in ["diamond", "blastp", "blastn"]):
         # print("Profiles database already exists and will be reused: %s" % fn_diamond_db)
         print("Profiles database already exists and will be reused: ")
         print(f"[dark_cyan]{fn_diamond_db}[dark_cyan]")
         return fn_diamond_db, q_hogs
+    
     og_set = orthogroups_set.OrthoGroupsSet(
         min_seq, 
         wd_list, 
@@ -302,12 +334,13 @@ def create_profiles_database(
             seq_write.extend(s)
             for ss in s:
                 seq_convert[ss] = og_id_full + "_" + ss
-
         if (iog + 1) % update_cycle == 0:
             progressbar.update(task, advance=update_cycle)
     progressbar.stop()
     fw.WriteSeqsToFasta_withNewAccessions(seq_write, fn_fasta, seq_convert)
-    parallel_task_manager.RunCommand(" ".join(["diamond", "makedb", "--in", fn_fasta, "-d", fn_diamond_db]), qPrintOnError=True, qPrintStderr=False)
+    # parallel_task_manager.RunCommand(" ".join(["diamond", "makedb", "--in", fn_fasta, "-d", fn_diamond_db]), qPrintOnError=True, qPrintStderr=False)
+    run_commands.CreateSearchDatabases(speciesInfoObj, options, prog_caller, core_infile=fn_fasta, core_outfile=fn_diamond_db)
+
     return fn_diamond_db, q_hogs
 
 

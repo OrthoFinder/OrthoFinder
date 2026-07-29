@@ -124,17 +124,22 @@ class __Files_new_dont_manually_create__(object):
                       scorematrix=scorematrix, gapopen=gapopen, gapextend=gapextend)
         
     # RefactorDS - PreviousFilesLocator
-    def StartFromOrthogroupsOrSequenceSearch(self, wd_base_list, base, 
-                                             clustersFilename_pairs=None, 
-                                             user_name = None, 
-                                             userSpeciesTree=None,
-                                             search_program=None,
-                                             msa_program=None, 
-                                             tree_program=None,
-                                             scorematrix=None,
-                                             gapopen=None,
-                                             gapextend=None,
-                                             extended_filename=False):
+    def StartFromOrthogroupsOrSequenceSearch(
+            self, 
+            wd_base_list, 
+            base, 
+            clustersFilename_pairs=None, 
+            user_name = None, 
+            userSpeciesTree=None,
+            search_program=None,
+            msa_program=None, 
+            tree_program=None,
+            scorematrix=None,
+            gapopen=None,
+            gapextend=None,
+            extended_filename=False,
+            use_base = False,
+        ):
         """
         NEed to initialise:
         wd_base
@@ -143,28 +148,34 @@ class __Files_new_dont_manually_create__(object):
         """
         if len(self.wd_base) != 0: raise Exception("Changing WorkingDirectory1")
         self.wd_base = wd_base_list
-        if clustersFilename_pairs != None: self.clustersFilename = clustersFilename_pairs[:-len("_id_pairs.txt")]
-        if user_name == None:
-            self.rd1 = util.CreateNewWorkingDirectory(base + "Results_",
-                                                      search_program=search_program,
-                                                      msa_program=msa_program,
-                                                      tree_program=tree_program, 
-                                                      scorematrix=scorematrix,
-                                                      gapopen=gapopen,
-                                                      gapextend=gapextend,
-                                                      extended_filename=extended_filename)
-        else:
-            self.rd1 = util.CreateNewWorkingDirectory(base + "Results_" + user_name,
-                                                      search_program=search_program, 
-                                                      qDate=False,
-                                                      scorematrix=scorematrix,
-                                                      msa_program=msa_program,
-                                                      tree_program=tree_program, 
-                                                      gapopen=gapopen,
-                                                      gapextend=gapextend,
-                                                      extended_filename=extended_filename)
-        self.wd_current = os.path.join(self.rd1, "WorkingDirectory")  + os.sep
-        os.mkdir(self.wd_current)
+        if use_base:
+            
+            self.wd_current = wd_base_list[-1]
+            self.rd1 = os.path.dirname(self.wd_current[:-1]) + os.sep
+            os.makedirs(self.wd_current, exist_ok=True)
+        else:    
+            if clustersFilename_pairs != None: self.clustersFilename = clustersFilename_pairs[:-len("_id_pairs.txt")]
+            if user_name == None:
+                self.rd1 = util.CreateNewWorkingDirectory(base + "Results_",
+                                                        search_program=search_program,
+                                                        msa_program=msa_program,
+                                                        tree_program=tree_program, 
+                                                        scorematrix=scorematrix,
+                                                        gapopen=gapopen,
+                                                        gapextend=gapextend,
+                                                        extended_filename=extended_filename)
+            else:
+                self.rd1 = util.CreateNewWorkingDirectory(base + "Results_" + user_name,
+                                                        search_program=search_program, 
+                                                        qDate=False,
+                                                        scorematrix=scorematrix,
+                                                        msa_program=msa_program,
+                                                        tree_program=tree_program, 
+                                                        gapopen=gapopen,
+                                                        gapextend=gapextend,
+                                                        extended_filename=extended_filename)
+            self.wd_current = os.path.join(self.rd1, "WorkingDirectory")  + os.sep
+            os.mkdir(self.wd_current)
         with open(os.path.join(self.rd1, "Log.txt"), 'w'):
             pass
         self.wd_trees = self.wd_current
@@ -263,7 +274,8 @@ class __Files_new_dont_manually_create__(object):
                                                       scorematrix=options.score_matrix,
                                                       gapopen=options.gapopen,
                                                       gapextend=options.gapextend,
-                                                      extended_filename=options.extended_filename)  
+                                                      extended_filename=options.extended_filename,
+                                                      use_base=options.use_base)  
             
         elif options.qStartFromGroups:
             wd1, clustersFilename_pairs = previous_files_locator.GetStartFromOGs()
@@ -277,7 +289,8 @@ class __Files_new_dont_manually_create__(object):
                                                       scorematrix=options.score_matrix,
                                                       gapopen=options.gapopen,
                                                       gapextend=options.gapextend,
-                                                      extended_filename=options.extended_filename)
+                                                      extended_filename=options.extended_filename,
+                                                      use_base=options.use_base)
         elif options.qStartFromTrees or options.qStartFromSpeciesTrees:
             wd1, clustersFilename_pairs, wd_trees, speciesTreeFN, unrootedspeciesTreeFN = previous_files_locator.GetStartFromTrees()
             if options.speciesTreeFN != None:

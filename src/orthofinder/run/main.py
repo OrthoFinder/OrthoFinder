@@ -315,6 +315,7 @@ def BetweenCoreOrthogroupsWorkflow(
     run_commands.CreateSearchDatabases(
         speciesInfoObj, options, prog_caller, q_unassigned_genes=True
     )
+
     # provide list of clades, only run these searches (and only if the fasta files are non-empty)
     run_commands.RunSearch(
         options,
@@ -750,7 +751,10 @@ def main(args=None):
                 continuationDir, 
                 wd_list, 
                 speciesInfoObj.nSpAll,
-                tree_program=options.tree_program
+                speciesInfoObj, 
+                options, 
+                prog_caller,
+                tree_program=options.tree_program,
             )
             # print(
             #     "\nAdding new species in %s to existing analysis in %s"
@@ -763,6 +767,10 @@ def main(args=None):
                 fastaDir, options.dna, speciesInfoObj, speciesToUse_names
             )
 
+            if options.search_program in ["mmseqs"]:
+                print(f"Create {options.search_program} new species database")
+                run_commands.CreateSearchDatabases(speciesInfoObj, options, prog_caller, new_species=True)
+
             options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
             seqsInfo = util.GetSeqsInfo(
                 files.FileHandler.GetWorkingDirectory1_Read(),
@@ -773,7 +781,8 @@ def main(args=None):
             results_files = run_commands.RunSearch_accelerate(
                 options, speciesInfoObj, fn_diamond_db, prog_caller
             )
-
+            print("############")
+            print(results_files)
             # Clade-specific genes
             speciesNamesDict = species_info.SpeciesNameDict(
                 files.FileHandler.GetSpeciesIDsFN()

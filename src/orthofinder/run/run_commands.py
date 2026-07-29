@@ -40,9 +40,16 @@ def RunBlastDBCommand(command):
 
 
 # 7
-def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller, 
-              q_new_species_unassigned_genes=False, 
-              n_genes_per_species=None, species_clades=None):
+def RunSearch(
+        options, 
+        speciessInfoObj, 
+        seqsInfo, 
+        prog_caller, 
+        q_new_species_unassigned_genes=False, 
+        n_genes_per_species=None, 
+        species_clades=None
+    ):
+    
     """
     n_genes_per_species: List[int] - optional, for use with unassigned genes. If a species has zero unassigned genes, don't search with/agaisnt it.
     """
@@ -64,6 +71,7 @@ def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller,
             n_genes_per_species, 
             q_new_species_unassigned_genes=q_new_species_unassigned_genes
         )
+
     else:
         # print("running GetOrderedSearchCommands_clades")
         commands, tasksizes = run_info.GetOrderedSearchCommands_clades(
@@ -74,10 +82,8 @@ def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller,
             n_genes_per_species, 
             species_clades
         )
-    if options.qStopAfterPrepare:
-        for command in commands:
-            print(command)
 
+    if options.qStopAfterPrepare:
         if options.save_blast_commands:
             with open(files.FileHandler.GetBALSATCommandFN(), "w") as writer:
                 for command in commands:
@@ -117,15 +123,81 @@ def RunSearch(options, speciessInfoObj, seqsInfo, prog_caller,
                         shutil.rmtree(tmp_dir, True)  # shutil / NFS bug - ignore errors, it's less crucial that the files are deleted
 
 # 6
-def CreateSearchDatabases(speciesInfoObj, options, prog_caller, q_unassigned_genes=False):
-    iSpeciesToDo = range(max(speciesInfoObj.speciesToUse) + 1)
+def CreateSearchDatabases(
+        speciesInfoObj, 
+        options, 
+        prog_caller, 
+        q_unassigned_genes=False, 
+        core_infile=None, 
+        core_outfile=None,
+        new_species=False,
+    ):
+    if new_species:
+        iSpeciesToDo = list(range(speciesInfoObj.iFirstNewSpecies, speciesInfoObj.nSpAll))
+        qForCreation = True
+    else:
+        iSpeciesToDo = range(max(speciesInfoObj.speciesToUse) + 1)
+        qForCreation = False
+    if core_infile is not None and core_outfile is not None:
+        command = prog_caller.GetSearchMethodCommand_DB(
+                options.search_program, 
+                core_infile, 
+                core_outfile,
+                options.score_matrix,
+                options.gapopen,
+                options.gapextend,
+                options.method_threads
+            )
+        ret_code = parallel_task_manager.RunCommand(command, qPrintOnError=True, qPrintStderr=False)
+        if ret_code != 0:
+            files.FileHandler.LogFailAndExit(f"ERROR: {options.search_program} makedb failed")
+    else:
+        progressbar, task = util.get_progressbar(len(iSpeciesToDo))
+        progressbar.start()
+        update_cycle = 1 #10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000
 
-    progressbar, task = util.get_progressbar(len(iSpeciesToDo))
+        for i, iSp in enumerate(iSpeciesToDo):
+            fn_fasta = files.FileHandler.GetSpeciesUnassignedFastaFN(iSp) if q_unassigned_genes else files.FileHandler.GetSpeciesFastaFN(iSp, qForCreation=qForCreation)
+            if os.stat(fn_fasta).st_size == 0:
+                if (i + 1) % update_cycle == 0:
+                    progressbar.update(task, advance=update_cycle)
+                continue
+
+            if options.search_program == "blast":
+                command = " ".join(["makeblastdb", "-dbtype", "prot", "-in", fn_fasta, "-out", files.FileHandler.GetSpeciesDatabaseN(iSp)])
+                util.PrintTime("Creating Blast database %d of %d" % (iSp + 1, len(iSpeciesToDo)))
+                RunBlastDBCommand(command) 
+            else:
+                command = prog_caller.GetSearchMethodCommand_DB(
+                    options.search_program, 
+                    fn_fasta, 
+                    files.FileHandler.GetSpeciesDatabaseN(iSp, options.search_program),
+                    options.score_matrix,
+                    options.gapopen,
+                    options.gapextend,
+                    options.method_threads
+                )
+                # util.PrintTime("Creating %s database %d of %d" % (options.search_program, iSp + 1, len(iSpeciesToDo)))
+                ret_code = parallel_task_manager.RunCommand(command, qPrintOnError=True, qPrintStderr=False)
+                if ret_code != 0:
+                    files.FileHandler.LogFailAndExit("ERROR: diamond makedb failed")
+
+            if (i + 1) % update_cycle == 0:
+                progressbar.update(task, advance=update_cycle)
+
+        progressbar.stop()
+
+def CreateSearchDatabases_accelerate(speciesInfoObj, options, prog_caller):
+
+
+    iSpeciesNew = list(range(speciesInfoObj.iFirstNewSpecies, speciesInfoObj.nSpAll))
+
+    progressbar, task = util.get_progressbar(len(iSpeciesNew))
     progressbar.start()
     update_cycle = 1 #10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000
 
-    for i, iSp in enumerate(iSpeciesToDo):
-        fn_fasta = files.FileHandler.GetSpeciesUnassignedFastaFN(iSp) if q_unassigned_genes else files.FileHandler.GetSpeciesFastaFN(iSp)
+    for i, iSp in enumerate(iSpeciesNew):
+        fn_fasta = files.FileHandler.GetSpeciesFastaFN(iSp, qForCreation=True)
         if os.stat(fn_fasta).st_size == 0:
             if (i + 1) % update_cycle == 0:
                 progressbar.update(task, advance=update_cycle)
@@ -133,17 +205,18 @@ def CreateSearchDatabases(speciesInfoObj, options, prog_caller, q_unassigned_gen
 
         if options.search_program == "blast":
             command = " ".join(["makeblastdb", "-dbtype", "prot", "-in", fn_fasta, "-out", files.FileHandler.GetSpeciesDatabaseN(iSp)])
-            util.PrintTime("Creating Blast database %d of %d" % (iSp + 1, len(iSpeciesToDo)))
+            util.PrintTime("Creating Blast database %d of %d" % (iSp + 1, len(iSpeciesNew)))
             RunBlastDBCommand(command) 
         else:
-            command = prog_caller.GetSearchMethodCommand_DB(options.search_program, 
-                                                            fn_fasta, 
-                                                            files.FileHandler.GetSpeciesDatabaseN(iSp, options.search_program),
-                                                            options.score_matrix,
-                                                            options.gapopen,
-                                                            options.gapextend,
-                                                            options.method_threads)
-            
+            command = prog_caller.GetSearchMethodCommand_DB(
+                options.search_program, 
+                fn_fasta, 
+                files.FileHandler.GetSpeciesDatabaseN(iSp, options.search_program),
+                options.score_matrix,
+                options.gapopen,
+                options.gapextend,
+                options.method_threads
+            )
             # util.PrintTime("Creating %s database %d of %d" % (options.search_program, iSp + 1, len(iSpeciesToDo)))
             ret_code = parallel_task_manager.RunCommand(command, qPrintOnError=True, qPrintStderr=False)
             if ret_code != 0:
@@ -152,22 +225,25 @@ def CreateSearchDatabases(speciesInfoObj, options, prog_caller, q_unassigned_gen
         if (i + 1) % update_cycle == 0:
             progressbar.update(task, advance=update_cycle)
 
-    progressbar.stop()
+        progressbar.stop()
 
-def RunSearch_accelerate(options, 
-                         speciessInfoObj, 
-                         fn_diamond_db, 
-                         prog_caller, 
-                         q_one_query=False):
+def RunSearch_accelerate(
+        options, 
+        speciessInfoObj, 
+        fn_diamond_db, 
+        prog_caller, 
+        q_one_query=False
+    ):
     name_to_print = "BLAST" if options.search_program == "blast" else options.search_program
     util.PrintUnderline("Running %s profiles search" % name_to_print)
-    commands, tasksizes, results_files = run_info.GetOrderedSearchCommands_accelerate(speciessInfoObj, 
-                                                       fn_diamond_db, 
-                                                       options,
-                                                       prog_caller, 
-                                                       q_one_query=q_one_query, 
-                                                       threads=options.nBlast)
-
+    commands, tasksizes, results_files = run_info.GetOrderedSearchCommands_accelerate(
+        speciessInfoObj, 
+        fn_diamond_db, 
+        options,
+        prog_caller, 
+        q_one_query=q_one_query, 
+        threads=options.nBlast
+    )
     if q_one_query:
         return_code = parallel_task_manager.RunCommand(commands[0], qPrintOnError=True)
         if return_code != 0:
@@ -175,20 +251,21 @@ def RunSearch_accelerate(options,
             util.Fail()
         util.PrintTime("Done profiles search\n")
         return results_files
-    program_caller.RunParallelCommands(options.nBlast, 
-                                        commands,     
-                                        method_threads=options.method_threads, 
-                                       method_threads_large=options.method_threads_large,
-                                       method_threads_small=options.method_threads_small,
-                                       threshold=options.threshold,
-                                       cmd_order=options.cmd_order,
-                                       tasksize=tasksizes, 
-                                       qListOfList=False,
-                                       q_print_on_error=True, 
-                                       q_always_print_stderr=False,
-                                       old_version=options.old_version,
-                                       dynamic_threads=options.dynamic_threads
-                                       )
+    program_caller.RunParallelCommands(
+        options.nBlast, 
+        commands,     
+        method_threads=options.method_threads, 
+        method_threads_large=options.method_threads_large,
+        method_threads_small=options.method_threads_small,
+        threshold=options.threshold,
+        cmd_order=options.cmd_order,
+        tasksize=tasksizes, 
+        qListOfList=False,
+        q_print_on_error=True, 
+        q_always_print_stderr=False,
+        old_version=options.old_version,
+        dynamic_threads=options.dynamic_threads
+    )
 
     util.PrintTime("Done profiles search")
     return results_files
