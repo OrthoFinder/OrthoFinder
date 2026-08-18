@@ -23,9 +23,7 @@
     },
     "Core": {
         "famsa": "orthofinder -f INPUT -pof --no-print-info",
-        "famsa_species_tree": "orthofinder -f INPUT -s SPECIES_TREE -rmgt -rmrgt -rmlg -pof --no-print-info",
-        "diamond_first": "orthofinder -f INPUT -pof --no-print-info",
-        "mmseqs_first": "orthofinder -f INPUT -pof --no-print-info -S mmseqs"
+        "famsa_species_tree": "orthofinder -f INPUT -s SPECIES_TREE -rmgt -rmrgt -rmlg -pof --no-print-info"
     },
     "StopAfter": {
         "stop_after_orthogroups": "orthofinder -f INPUT -og -pof",
@@ -35,9 +33,7 @@
     },
     "Assign": {
         "famsa_assign": "orthofinder --core CORE_RESULTS --assign INPUT -nk 2 -pof --no-print-info",
-        "famsa_species_tree_assign": "orthofinder --core CORE_RESULTS --assign INPUT -s SPECIES_TREE -rmgt -rmrgt -rmlg -pof --no-print-info",
-        "diamond_first_assign": "orthofinder --core CORE_RESULTS --assign INPUT -S mmseqs",
-        "mmseqs_first_assing": "orthofinder --core CORE_RESULTS --assign INPUT -pof"
+        "famsa_species_tree_assign": "orthofinder --core CORE_RESULTS --assign INPUT -s SPECIES_TREE -rmgt -rmrgt -rmlg -pof --no-print-info"
     },
     "Restart": {
         "stop_after_genetrees_restart": "orthofinder -fgt CORE_RESULTS -pof",

@@ -160,24 +160,20 @@ def write_accession_list(infn, seqs):
 
 def msa_biopython_matrix(fn):
     """
-    Create a np.chararray matrix of the MSA
+    Create a byte-string matrix from the MSA.
     Args:
         fn - input fasta fn for the MSA
     Returns:
-        z - (n_seqs x msa_length) np.chararray
+        z - (n_seqs x msa_length) numpy array with dtype ``S1``
         accs - orders list of gene names
     """
-    msa = AlignIO.read(open(fn), 'fasta')
+    msa = AlignIO.read(fn, 'fasta')
     n = msa.get_alignment_length()
     m = len(msa)
     accs = [msa[i].name for i in range(m)]
-    # keep all columns
-    I = list(range(n))
-    # print((m, len(I)))
-    z = np.chararray((m, len(I)))
-    # print("ok")
-    for ii, i in enumerate(I):
-        z[:, ii] = list(msa[:,i])
+    z = np.empty((m, n), dtype="S1")
+    for i in range(n):
+        z[:, i] = list(msa[:, i])
     return z, accs
 
 def run_from_aligned(infn, n_sample):

@@ -68,6 +68,7 @@ from . import process_args, check_dependencies, run_commands, species_info
 from .. import orphan_genes_version, __version__, __location__
 from ..comparative_genomics import orthologues
 from ..utils.util import printer
+
 try:
     from rich import print
 except ImportError:
@@ -119,16 +120,19 @@ Main
 
 # 9
 def GetOrthologues(
-        seqsInfo, speciesNamesDict, 
-        speciesInfoObj, options, 
-        prog_caller, 
-        i_og_restart=0,
-        speciesXML=None,
-    ):
+    seqsInfo,
+    speciesNamesDict,
+    speciesInfoObj,
+    options,
+    prog_caller,
+    i_og_restart=0,
+    speciesXML=None,
+):
     util.PrintUnderline("Analysing Orthogroups", True)
     orthologues.OrthologuesWorkflow(
-        seqsInfo, speciesNamesDict, 
-        speciesInfoObj, 
+        seqsInfo,
+        speciesNamesDict,
+        speciesInfoObj,
         options,
         speciesInfoObj.speciesToUse,
         speciesInfoObj.nSpAll,
@@ -166,15 +170,15 @@ def GetOrthologues(
 
 
 def BetweenCoreOrthogroupsWorkflow(
-        continuationDir,
-        speciesInfoObj,
-        seqsInfo,
-        options,
-        prog_caller,
-        speciesNamesDict,
-        results_files,
-        q_hogs,
-    ):
+    continuationDir,
+    speciesInfoObj,
+    seqsInfo,
+    options,
+    prog_caller,
+    speciesNamesDict,
+    results_files,
+    q_hogs,
+):
     """
     Infer clade-specific orthogroups for the new species clades
     n_unassigned: List[int] - number of unassigned genes per species
@@ -234,7 +238,7 @@ def BetweenCoreOrthogroupsWorkflow(
             cmd_order=options.cmd_order,
             method_threads=options.method_threads,
             method_threads_large=options.method_threads_large,
-            method_threads_small=options.method_threads_small, 
+            method_threads_small=options.method_threads_small,
             threshold=options.threshold,
             old_version=options.old_version,
             userSpeciesTree=None,
@@ -244,12 +248,14 @@ def BetweenCoreOrthogroupsWorkflow(
             qPhyldog=False,
             results_name=options.name,
             root_from_previous=True,
-            n_skip=options.n_skip
+            n_skip=options.n_skip,
         )
 
         # Infer species tree
         astral_fn = files.FileHandler.GetAstralFilename()
-        astral.create_input_file(files.FileHandler.GetOGsTreeDir(), astral_fn, n_skip=options.n_skip)
+        astral.create_input_file(
+            files.FileHandler.GetOGsTreeDir(), astral_fn, n_skip=options.n_skip
+        )
         species_tree_unrooted_fn = files.FileHandler.GetSpeciesTreeUnrootedFN()
         parallel_task_manager.RunCommand(
             astral.get_astral_command(
@@ -267,7 +273,10 @@ def BetweenCoreOrthogroupsWorkflow(
         )
 
         if rooted_species_tree_ids is None:
-            print("ERROR: Species tree inference failed. Please check for errors and check the species tree files: \n%s \n%s" % (species_tree_unrooted_fn, core_rooted_species_tree))
+            print(
+                "ERROR: Species tree inference failed. Please check for errors and check the species tree files: \n%s \n%s"
+                % (species_tree_unrooted_fn, core_rooted_species_tree)
+            )
             util.Fail()
 
         rooted_species_tree_fn = files.FileHandler.GetSpeciesTreeIDsRootedFN()
@@ -377,15 +386,14 @@ def main(args=None):
     files.FileHandler.reset()
     start = time.perf_counter()
     try:
-
         if args is None:
             args = sys.argv[1:]
         input_args = args.copy()
         # Create PTM right at start
         ptm = parallel_task_manager.ParallelTaskManager_singleton()
         # prog_caller = GetProgramCaller()
-        (   
-            prog_caller, 
+        (
+            prog_caller,
             options,
             fastaDir,
             continuationDir,
@@ -394,8 +402,13 @@ def main(args=None):
             user_specified_M,
         ) = process_args.ProcessArgs(args)
 
-        printer.print(f"[bold dark_goldenrod]OrthoFinder[/bold dark_goldenrod] version [deep_sky_blue2]{__version__}[/deep_sky_blue2]", end="")
-        printer.print(" Copyright (C) 2014 [bold dark_goldenrod]David Emms[/bold dark_goldenrod]\n")
+        printer.print(
+            f"[bold dark_goldenrod]OrthoFinder[/bold dark_goldenrod] version [deep_sky_blue2]{__version__}[/deep_sky_blue2]",
+            end="",
+        )
+        printer.print(
+            " Copyright (C) 2014 [bold dark_goldenrod]David Emms[/bold dark_goldenrod]\n"
+        )
 
         files.InitialiseFileHandler(
             options,
@@ -459,18 +472,15 @@ def main(args=None):
                 files.FileHandler.GetSpeciesIDsFN()
             )
             gathering.DoOrthogroups(
-                options, 
-                speciesInfoObj, 
-                seqsInfo, 
-                speciesNamesDict, 
-                speciesXML,
+                options, speciesInfoObj, seqsInfo, speciesNamesDict, speciesXML
             )
             # 9.
             if options.fix_files or not options.qStopAfterGroups:
                 GetOrthologues(
-                    seqsInfo, speciesNamesDict, 
-                    speciesInfoObj, 
-                    options, 
+                    seqsInfo,
+                    speciesNamesDict,
+                    speciesInfoObj,
+                    options,
                     prog_caller,
                     speciesXML=speciesXML,
                 )
@@ -504,25 +514,20 @@ def main(args=None):
                 files.FileHandler.GetSpeciesIDsFN()
             )
             gathering.DoOrthogroups(
-                options, 
-                speciesInfoObj, 
-                seqsInfo, 
-                speciesNamesDict, 
-                speciesXML,
+                options, speciesInfoObj, seqsInfo, speciesNamesDict, speciesXML
             )
             # 9.4
             if options.fix_files or not options.qStopAfterGroups:
                 GetOrthologues(
-                    seqsInfo, 
-                    speciesNamesDict, 
-                    speciesInfoObj, 
-                    options, 
+                    seqsInfo,
+                    speciesNamesDict,
+                    speciesInfoObj,
+                    options,
                     prog_caller,
                     speciesXML=speciesXML,
                 )
 
         elif options.qStartFromBlast:
-
             # ## ---------------------
             commands_fn = os.path.join(
                 files.FileHandler.GetWorkingDirectory1_Read()[0], "blast_commands.txt"
@@ -536,18 +541,19 @@ def main(args=None):
                 print("Using %d thread(s)" % options.nBlast)
                 util.PrintTime("This may take some time...")
                 program_caller.RunParallelCommands(
-                    options.nBlast, commands,
-                    method_threads=options.method_threads, 
+                    options.nBlast,
+                    commands,
+                    method_threads=options.method_threads,
                     method_threads_large=options.method_threads_large,
                     method_threads_small=options.method_threads_small,
                     threshold=options.threshold,
-                    cmd_order=options.cmd_order, 
+                    cmd_order=options.cmd_order,
                     tasksize=None,
                     qListOfList=False,
-                    q_print_on_error=True, 
+                    q_print_on_error=True,
                     q_always_print_stderr=False,
                     old_version=options.old_version,
-                    dynamic_threads=options.dynamic_threads
+                    dynamic_threads=options.dynamic_threads,
                 )
             # ## ------------------------------------
 
@@ -580,18 +586,15 @@ def main(args=None):
                 files.FileHandler.GetSpeciesIDsFN()
             )
             gathering.DoOrthogroups(
-                options, 
-                speciesInfoObj, 
-                seqsInfo, 
-                speciesNamesDict, 
-                speciesXML,
+                options, speciesInfoObj, seqsInfo, speciesNamesDict, speciesXML
             )
             # 9
             if options.fix_files or not options.qStopAfterGroups:
                 GetOrthologues(
-                    seqsInfo, speciesNamesDict, 
-                    speciesInfoObj, 
-                    options, 
+                    seqsInfo,
+                    speciesNamesDict,
+                    speciesInfoObj,
+                    options,
                     prog_caller,
                     speciesXML=speciesXML,
                 )
@@ -600,9 +603,9 @@ def main(args=None):
             # 0.
             check_blast = not options.qMSATrees
             speciesInfoObj, _ = species_info.ProcessPreviousFiles(
-                files.FileHandler.GetWorkingDirectory1_Read(), 
-                options.qDoubleBlast, 
-                check_blast=check_blast
+                files.FileHandler.GetWorkingDirectory1_Read(),
+                options.qDoubleBlast,
+                check_blast=check_blast,
             )
             files.FileHandler.LogSpecies()
             options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
@@ -623,19 +626,16 @@ def main(args=None):
                 speciesInfoObj.speciesToUse,
                 speciesInfoObj.nSpAll,
             )
-            
+
             gathering.DoOrthogroups(
-                options, 
-                speciesInfoObj, 
-                seqsInfo, 
-                speciesNamesDict, 
-                speciesXML,
+                options, speciesInfoObj, seqsInfo, speciesNamesDict, speciesXML
             )
-            
+
             GetOrthologues(
-                seqsInfo, speciesNamesDict, 
-                speciesInfoObj, 
-                options, 
+                seqsInfo,
+                speciesNamesDict,
+                speciesInfoObj,
+                options,
                 prog_caller,
                 speciesXML=speciesXML,
             )
@@ -649,7 +649,7 @@ def main(args=None):
             files.FileHandler.LogSpecies()
             options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
             # GetOrthologues_FromTrees(options)
-            
+
             # orthologues.OrthologuesFromTrees(
             #     options.min_seq,
             #     options.recon_method,
@@ -663,7 +663,7 @@ def main(args=None):
             #     exist_msa=options.qMSATrees,
             #     fix_files=options.fix_files
             # )
-            
+
             speciesNamesDict = species_info.SpeciesNameDict(
                 files.FileHandler.GetSpeciesIDsFN()
             )
@@ -672,12 +672,11 @@ def main(args=None):
                 speciesInfoObj.speciesToUse,
                 speciesInfoObj.nSpAll,
             )
-            
-            
+
             orthologues.OrthologuesFromGeneTrees(
-                seqsInfo, 
-                speciesNamesDict, 
-                speciesInfoObj, 
+                seqsInfo,
+                speciesNamesDict,
+                speciesInfoObj,
                 options,
                 speciesInfoObj.speciesToUse,
                 speciesInfoObj.nSpAll,
@@ -714,11 +713,11 @@ def main(args=None):
                 speciesInfoObj.speciesToUse,
                 speciesInfoObj.nSpAll,
             )
-            
+
             orthologues.OrthologuesFromGeneSpeciesTrees(
-                seqsInfo, 
-                speciesNamesDict, 
-                speciesInfoObj, 
+                seqsInfo,
+                speciesNamesDict,
+                speciesInfoObj,
                 options,
                 speciesInfoObj.speciesToUse,
                 speciesInfoObj.nSpAll,
@@ -747,12 +746,12 @@ def main(args=None):
             util.PrintUnderline("Creating orthogroup profiles")
             wd_list = files.FileHandler.GetWorkingDirectory1_Read()
             fn_diamond_db, q_hogs = acc.prepare_accelerate_database(
-                options.min_seq, 
-                continuationDir, 
-                wd_list, 
+                options.min_seq,
+                continuationDir,
+                wd_list,
                 speciesInfoObj.nSpAll,
-                speciesInfoObj, 
-                options, 
+                speciesInfoObj,
+                options,
                 prog_caller,
                 tree_program=options.tree_program,
             )
@@ -769,7 +768,9 @@ def main(args=None):
 
             if options.search_program in ["mmseqs"]:
                 print(f"Create {options.search_program} new species database")
-                run_commands.CreateSearchDatabases(speciesInfoObj, options, prog_caller, new_species=True)
+                run_commands.CreateSearchDatabases(
+                    speciesInfoObj, options, prog_caller, new_species=True
+                )
 
             options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
             seqsInfo = util.GetSeqsInfo(
@@ -781,8 +782,6 @@ def main(args=None):
             results_files = run_commands.RunSearch_accelerate(
                 options, speciesInfoObj, fn_diamond_db, prog_caller
             )
-            print("############")
-            print(results_files)
             # Clade-specific genes
             speciesNamesDict = species_info.SpeciesNameDict(
                 files.FileHandler.GetSpeciesIDsFN()
@@ -823,10 +822,11 @@ def main(args=None):
                     )
             if options.fix_files or not options.qStopAfterGroups:
                 GetOrthologues(
-                    seqsInfo, speciesNamesDict, 
-                    speciesInfoObj, 
-                    options, 
-                    prog_caller, 
+                    seqsInfo,
+                    speciesNamesDict,
+                    speciesInfoObj,
+                    options,
+                    prog_caller,
                     i_og_restart,
                     speciesXML=None,
                 )
@@ -836,9 +836,7 @@ def main(args=None):
             ptm.Stop()
         if not options.save_space and not options.qFastAdd:
             # split up the orthologs into one file per species-pair
-            util.split_ortholog_files(
-                files.FileHandler.GetOrthologuesDirectory()
-            )
+            util.split_ortholog_files(files.FileHandler.GetOrthologuesDirectory())
 
         ### ------------- Compress the Gene_Trees --------------
         gene_tree_dir = files.FileHandler.GetOGsTreeDir(qResults=True)
@@ -860,12 +858,14 @@ def main(args=None):
         d_results = (
             os.path.normpath(files.FileHandler.GetResultsDirectory1()) + os.path.sep
         )
-        
+
         if options.fewer_open_files and options.save_space:
             for i in range(len(speciesInfoObj.speciesToUse)):
                 sp0 = speciesInfoObj.speciesToUse[i]
                 sp0_name = speciesNamesDict[sp0]
-                sp_path = os.path.join(files.FileHandler.GetOrthologuesDirectory(), f"{sp0_name}.tsv")
+                sp_path = os.path.join(
+                    files.FileHandler.GetOrthologuesDirectory(), f"{sp0_name}.tsv"
+                )
                 if os.path.exists(sp_path):
                     os.remove(sp_path)
 
@@ -893,11 +893,20 @@ def main(args=None):
         time_elapsed = end - start
         print()
 
-        if len(input_args) == 0 or input_args[0] in ["--help", "-h", "-v", "--version", "-sm", "--scoring-matrix"]:
+        if len(input_args) == 0 or input_args[0] in [
+            "--help",
+            "-h",
+            "-v",
+            "--version",
+            "-sm",
+            "--scoring-matrix",
+        ]:
             sys.exit()
 
         # printer.print(f"OrthoFinder finished in {time_elapsed:5f}s", end="\n" * 2, style="info")
-        printer.print(f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] finished in ", end="")
+        printer.print(
+            f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] finished in ", end=""
+        )
         printer.print(f"[green]{time_elapsed:5f}[/green]s", end="\n" * 2)
         files.FileHandler.reset()
         sys.exit()

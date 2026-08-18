@@ -23,14 +23,6 @@ except ImportError:
     ...
 from ..tools import tree as tree_lib
 from . import resolve
-from .polytomy import (
-    PolytomyHandler,
-    POLYTOMY_CLEAN,
-    POLYTOMY_NON_COLLAPSIBLE,
-    POLYTOMY_MINOR_COLLAPSIBLE,
-    POLYTOMY_MODERATE_COLLAPSIBLE,
-    POLYTOMY_HEAVY_COLLAPSIBLE,
-)
 from ..utils import util, files
 
 
@@ -378,62 +370,6 @@ def OutgroupIngroupSeparationScore(sp_up, sp_down, sett1, sett2, N_recip, n1, n2
 
 
 
-def PrecomputeBlockedPolytomyClades(
-        tree,
-        polytomy_handler,
-        nondup_max_level,
-    ):
-    """
-    Return leaf sets for ambiguous polytomy clades that should be blocked
-    from ancestor orthologue calls when polytomy_ancestor_mode='block'.
-
-    This must be called after Resolve(), because Resolve() can change topology.
-    """
-    blocked_clades = []
-
-    for n in tree.traverse("postorder"):
-        if n.is_leaf():
-            continue
-
-        ch = n.get_children()
-
-        if len(ch) <= 2:
-            continue
-
-        level, profile = polytomy_handler.classify(ch)
-
-        if level > nondup_max_level:
-            blocked_clades.append(frozenset(n.get_leaf_names()))
-
-    return blocked_clades
-
-def GetBlockedGenesForBinaryNode(children, blocked_clades):
-    """
-    For a binary node, return blocked genes only if a blocked polytomy clade
-    is contained inside one of the two child clades.
-
-    This blocks ancestor calls through ambiguous polytomies, but does not
-    globally remove those genes everywhere in the tree.
-    """
-    if not blocked_clades:
-        return set()
-
-    child_leaf_sets = [
-        set(child.get_leaf_names())
-        for child in children
-    ]
-
-    blocked = set()
-
-    for blocked_clade in blocked_clades:
-        for child_leaves in child_leaf_sets:
-            if blocked_clade.issubset(child_leaves):
-                blocked.update(blocked_clade)
-                break
-
-    return blocked
-
-
 def GetOrthologues_from_tree(
         iog,
         tree,
@@ -442,31 +378,8 @@ def GetOrthologues_from_tree(
         neighbours,
         q_get_dups=False,
         qNoRecon=False,
-        polytomy_emit_max_level=POLYTOMY_MODERATE_COLLAPSIBLE,
-        polytomy_nondup_max_level=POLYTOMY_CLEAN,
-        polytomy_ancestor_mode="collapse",
-        polytomy_emit_local=False,
-        polytomy_max_children=None,
-        polytomy_max_repeated_species=None,
-        polytomy_max_total_extra_species_copies=None,
-        polytomy_max_copies_per_species=None,
-        polytomy_max_overlap_pair_ratio=None,
     ):
-    """
-    polytomy_emit_max_level:
-        how ambiguous a polytomy can be and still emit local orthologue rows
-
-    polytomy_nondup_max_level:
-        how ambiguous a polytomy can be and still be marked as clean/non-boundary
-
-    polytomy_ancestor_mode:
-        "collapse" = allow ancestor calls through this clade as grouped output
-        "block"    = block genes below ambiguous polytomies from ancestor calls
-
-    polytomy_emit_local:
-        True  = emit local polytomy orthologue rows
-        False = suppress local polytomy rows
-    """
+    """Infer orthologues and duplications from a reconciled gene tree."""
     og_name = "OG%07d" % iog
     qPrune = False
 
@@ -474,30 +387,6 @@ def GetOrthologues_from_tree(
 
     orthologues = []
     duplications = []
-
-    n_species_run = len(species_tree_rooted)
-
-    polytomy_handler = PolytomyHandler(
-        GeneToSpecies,
-        SpeciesAndGene,
-        max_keep_level=polytomy_emit_max_level,
-
-        n_species_run=n_species_run,
-
-        max_children=polytomy_max_children,
-        max_repeated_species=polytomy_max_repeated_species,
-        max_total_extra_species_copies=(
-            polytomy_max_total_extra_species_copies
-        ),
-        max_copies_per_species=polytomy_max_copies_per_species,
-        max_overlap_pair_ratio=polytomy_max_overlap_pair_ratio,
-    )
-
-    if polytomy_ancestor_mode not in ("collapse", "block"):
-        raise ValueError(
-            "polytomy_ancestor_mode must be 'collapse' or 'block', got %r"
-            % polytomy_ancestor_mode
-        )
 
     if not qNoRecon:
         tree = Resolve(tree, GeneToSpecies)
@@ -507,15 +396,6 @@ def GetOrthologues_from_tree(
 
     if len(tree) == 1:
         return set(orthologues), tree, set(), duplications
-
-    blocked_polytomy_clades = []
-
-    if polytomy_ancestor_mode == "block":
-        blocked_polytomy_clades = PrecomputeBlockedPolytomyClades(
-            tree,
-            polytomy_handler,
-            polytomy_nondup_max_level,
-        )
 
     iNode = 1
     tree.name = "n0"
@@ -566,7 +446,6 @@ def GetOrthologues_from_tree(
             dup = oSize != 0 and not qResolved
 
             n.add_feature("dup", dup)
-            n.add_feature("polytomy_boundary", False)
 
             if dup:
                 n.add_feature("dup_type", "species_overlap_duplication")
@@ -586,21 +465,11 @@ def GetOrthologues_from_tree(
             else:
                 n.add_feature("dup_type", "speciation")
 
-                excluded_genes = set(misplaced_genes)
-
-                if polytomy_ancestor_mode == "block":
-                    excluded_genes.update(
-                        GetBlockedGenesForBinaryNode(
-                            ch,
-                            blocked_polytomy_clades
-                        )
-                    )
-
                 orthologues.append(
                     Orthologs_and_Suspect(
                         ch,
                         suspect_genes,
-                        excluded_genes,
+                        misplaced_genes,
                         SpeciesAndGene
                     )
                 )
@@ -612,100 +481,36 @@ def GetOrthologues_from_tree(
                 {GeneToSpecies(l) for l in child.get_leaf_names()}
                 for child in ch
             ]
-
             all_species = set.union(*species)
             stNode = MRCA_node(species_tree_rooted, all_species)
-
             n.add_feature("sp_node", stNode.name)
-            n.add_feature("unresolved_polytomy", True)
-            n.add_feature("polytomy_ancestor_mode", polytomy_ancestor_mode)
 
             if len(all_species) == 1:
                 genes = n.get_leaf_names()
-
-                if q_get_dups:
-                    duplications.append((
-                        stNode.name,
-                        n.name,
-                        1.0,
-                        genes,
-                        []
-                    ))
-
+                duplications.append((stNode.name, n.name, 1.0, genes, []))
                 n.add_feature("dup", True)
-                n.add_feature("polytomy_level", POLYTOMY_NON_COLLAPSIBLE)
-                n.add_feature("polytomy_reason", "single_species")
-                n.add_feature("polytomy_repeated_species_n", 0)
-                n.add_feature("polytomy_total_extra_species_copies", 0)
-                n.add_feature("polytomy_max_copies_per_species", len(genes))
-                n.add_feature("polytomy_overlap_pair_ratio", 1.0)
-                n.add_feature("polytomy_collapsible", False)
-                n.add_feature("polytomy_emitted", False)
+            else:
+                dups = []
+                for (n0, s0), (n1, s1) in itertools.combinations(
+                        zip(ch, species), 2):
+                    if len(s0.intersection(s1)) == 0:
+                        orthologues.append(
+                            Orthologs_and_Suspect(
+                                (n0, n1),
+                                suspect_genes,
+                                empty_set,
+                                SpeciesAndGene
+                            )
+                        )
+                        dups.append(False)
+                    else:
+                        dups.append(True)
 
-                continue
+                if all(dups):
+                    genes = n.get_leaf_names()
+                    duplications.append((stNode.name, n.name, 1.0, genes, []))
 
-            polytomy_orthologues, level, profile = polytomy_handler.get_orthologues(
-                ch,
-                suspect_genes,
-            )
-
-            q_emit_local = bool(polytomy_emit_local and polytomy_orthologues)
-
-            n.add_feature("polytomy_level", level)
-            n.add_feature("polytomy_reason", profile.get("reason", "unknown"))
-
-            n.add_feature(
-                "polytomy_repeated_species_n",
-                profile.get("repeated_species_n", 0)
-            )
-
-            n.add_feature(
-                "polytomy_total_extra_species_copies",
-                profile.get("total_extra_species_copies", 0)
-            )
-
-            n.add_feature(
-                "polytomy_max_copies_per_species",
-                profile.get("max_copies_per_species", 0)
-            )
-
-            n.add_feature(
-                "polytomy_overlap_pair_ratio",
-                profile.get("overlap_pair_ratio", 0.0)
-            )
-
-            n.add_feature(
-                "polytomy_collapsible",
-                profile.get("collapsible", False)
-            )
-
-            n.add_feature("polytomy_emitted", q_emit_local)
-
-            if q_emit_local:
-                orthologues.extend(polytomy_orthologues)
-
-            dups = []
-
-            for s0, s1 in itertools.combinations(species, 2):
-                dups.append(len(s0.intersection(s1)) != 0)
-
-            q_original_dup = all(dups) if dups else False
-
-            n.add_feature("dup", q_original_dup)
-
-            if q_original_dup:
-                genes = n.get_leaf_names()
-
-                if q_get_dups:
-                    duplications.append((
-                        stNode.name,
-                        n.name,
-                        1.0,
-                        genes,
-                        []
-                    ))
-
-            continue
+                n.add_feature("dup", all(dups))
 
     return orthologues, tree, suspect_genes, duplications
 
@@ -1052,5 +857,3 @@ def GetHOGs_from_tree(
             "from WorkingDirectory/" % og_name
         )
         raise
-
-
