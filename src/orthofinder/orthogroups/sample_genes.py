@@ -174,7 +174,10 @@ def msa_biopython_matrix(fn):
     # keep all columns
     I = list(range(n))
     # print((m, len(I)))
-    z = np.chararray((m, len(I)))
+    # NumPy 2.x no longer exposes np.chararray at the top level.
+    # A fixed-width byte array preserves the behavior expected below:
+    # elements compare to byte literals (e.g. b"-") and index as bytes.
+    z = np.empty((m, len(I)), dtype="S1")
     # print("ok")
     for ii, i in enumerate(I):
         z[:, ii] = list(msa[:,i])
