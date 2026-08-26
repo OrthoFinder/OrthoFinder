@@ -529,6 +529,7 @@ def main(args=None):
 
         elif options.qStartFromBlast:
             working_dirs = files.FileHandler.GetWorkingDirectory1_Read()
+
             speciesInfoObj, _ = species_info.ProcessPreviousFiles(
                 working_dirs,
                 options.qDoubleBlast,
@@ -545,8 +546,8 @@ def main(args=None):
                         commands = [line.strip() for line in reader if line.strip()]
 
                     print(
-                        "Required BLAST results are missing; running commands from %s"
-                        % commands_fn
+                        "\nRequired BLAST results are missing; running commands from %s"
+                        % commands_fn, end="\n"
                     )
                     print("Using %d thread(s)" % options.nBlast)
                     util.PrintTime("This may take some time...")
@@ -574,8 +575,8 @@ def main(args=None):
             files.FileHandler.LogSpecies()
 
             print(
-                "Using previously calculated BLAST results in %s"
-                % (files.FileHandler.GetWorkingDirectory1_Read()[0])
+                "\nUsing previously calculated BLAST results in %s"
+                % (files.FileHandler.GetWorkingDirectory1_Read()[0]), end="\n"
             )
             options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
             # 4.

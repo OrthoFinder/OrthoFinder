@@ -223,6 +223,11 @@ def projects(request):
 
 
 @pytest.fixture(scope="session")
+def example_data():
+    return EXAMPLEDATA
+
+
+@pytest.fixture(scope="session")
 def user_ofconfig(pytestconfig):
     return pytestconfig.getoption("--user-ofconfig")
 

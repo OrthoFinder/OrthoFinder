@@ -1,4 +1,5 @@
 from ..utils import util, program_caller, files, parallel_task_manager
+from ..utils.util import printer
 import subprocess
 import glob
 import shutil
@@ -90,9 +91,14 @@ def RunSearch(
 
     if options.qStopAfterPrepare:
         # if options.save_blast_commands:
-        with open(files.FileHandler.GetBALSATCommandFN(), "w") as writer:
+        commands_fn = files.FileHandler.GetBALSATCommandFN()
+        with open(commands_fn, "w") as writer:
             for command in commands:
                 writer.write(command + "\n")
+        printer.print(
+            "\nSearch commands have been saved to:"
+        )
+        printer.print("    [dark_cyan]%s[/dark_cyan]" % os.path.abspath(commands_fn))
         util.Success()
     print("Using %d thread(s)" % options.nBlast)
     util.PrintTime("This may take some time...")

@@ -149,7 +149,6 @@ class __Files_new_dont_manually_create__(object):
         if len(self.wd_base) != 0: raise Exception("Changing WorkingDirectory1")
         self.wd_base = wd_base_list
         if use_base:
-            
             self.wd_current = wd_base_list[-1]
             self.rd1 = os.path.dirname(self.wd_current[:-1]) + os.sep
             os.makedirs(self.wd_current, exist_ok=True)
@@ -1196,6 +1195,7 @@ def InitialiseFileHandler(
             pfl = PreviousFilesLocator_new(options, continuationDir)
             # don't create any new directory, it already exists
             base_dir = pfl.GetHomeForResults()
+
         except Unprocessable:
             pfl = PreviousFilesLocator_old(options, continuationDir)
             if not pfl.wd_base_prev:

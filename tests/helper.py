@@ -40,9 +40,22 @@ def assert_no_orthofinder_failure(name, code, out, err):
         f"--- stderr ---\n{err}"
     )
 
-def run_orthofinder_core_case(name, argstr, input_proj, dna_projects, species_tree, user_ofconfig, capfd):
+def run_orthofinder_core_case(
+    name,
+    argstr,
+    input_proj,
+    example_data,
+    dna_projects,
+    species_tree,
+    user_ofconfig,
+    capfd,
+):
 
-    s = argstr.strip().replace("DNA_INPUT", dna_projects)\
+    uses_example_data = "EXAMPLE_DATA" in argstr
+    run_project = example_data if uses_example_data else os.path.abspath(input_proj)
+
+    s = argstr.strip().replace("EXAMPLE_DATA", example_data)\
+                      .replace("DNA_INPUT", dna_projects)\
                       .replace("INPUT", input_proj)\
                       .replace("SPECIES_TREE", species_tree)\
                       .replace("USER_CONFIG", user_ofconfig)
@@ -53,7 +66,7 @@ def run_orthofinder_core_case(name, argstr, input_proj, dna_projects, species_tr
 
     assert_no_orthofinder_failure(name, code, out, err)
 
-    results_dir = os.path.join(input_proj, "OrthoFinder")
+    results_dir = os.path.join(run_project, "OrthoFinder")
     result_path = _find_output_dir(
         results_dir,
         "Results_" + name,
@@ -68,7 +81,16 @@ def run_orthofinder_core_case(name, argstr, input_proj, dna_projects, species_tr
 
     os.environ[f"ORTHOFINDER_TEST_RESULTS_{name}"] = result_path
 
-def run_orthofinder_assign_case(name, argstr, input_proj, assign, species_tree_assign, user_ofconfig, capfd):
+def run_orthofinder_assign_case(
+    name,
+    argstr,
+    input_proj,
+    example_data,
+    assign,
+    species_tree_assign,
+    user_ofconfig,
+    capfd,
+):
 
     core_name = name.replace("_assign", "").replace("_restart", "")
 
@@ -84,6 +106,13 @@ def run_orthofinder_assign_case(name, argstr, input_proj, assign, species_tree_a
         )
 
     if not core_results:
+        core_results = _find_output_dir(
+            os.path.join(example_data, "OrthoFinder"),
+            "Results_" + core_name,
+            find_core=True,
+        )
+
+    if not core_results:
         raise AssertionError(
             f"Core results for '{core_name}' not found in {results_dir}. "
             f"Expected a valid OrthoFinder Results_* directory with a WorkingDirectory."
@@ -91,6 +120,7 @@ def run_orthofinder_assign_case(name, argstr, input_proj, assign, species_tree_a
 
     s = (
         argstr.strip()
+        .replace("EXAMPLE_DATA", example_data)
         .replace("INPUT", assign)
         .replace("CORE_RESULTS", core_results)
         .replace("SPECIES_TREE", species_tree_assign)
@@ -103,7 +133,7 @@ def run_orthofinder_assign_case(name, argstr, input_proj, assign, species_tree_a
 
     assert_no_orthofinder_failure(name, code, out, err)
 
-    assign_results_dir = os.path.join(input_proj, "OrthoFinder")
+    assign_results_dir = os.path.dirname(core_results)
     result_path = _find_output_dir(
         assign_results_dir,
         "Results_" + name,

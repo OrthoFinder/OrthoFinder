@@ -412,6 +412,7 @@ def ProcessArgs(args):
                 print("Repeated argument: -b/--blast\n")
                 util.Fail()
             options.qStartFromBlast = True
+            options.use_base = True
             continuationDir = GetDirectoryArgument(arg, args)
 
         elif arg == "--assign":
@@ -427,6 +428,7 @@ def ProcessArgs(args):
                 print("Repeated argument: -fg/--from-groups\n")
                 util.Fail()
             options.qStartFromGroups = True
+            options.use_base = True
             continuationDir = GetDirectoryArgument(arg, args)
 
         elif arg == "-fgt" or arg == "--from-trees":
@@ -628,8 +630,8 @@ def ProcessArgs(args):
         #     console.print("You know what you are using right now??", style="orange3")
         #     console.print("The best software on this planet!!! :muscle::sunglasses:", style="orange3")
 
-        elif arg == "-ub" or arg == "--use-base":
-            options.use_base = True
+        # elif arg == "-ub" or arg == "--use-base":
+        #     options.use_base = True
 
         elif arg == "-rmgt" or arg == "--rm-gene-trees":
             options.rm_gene_trees = False
