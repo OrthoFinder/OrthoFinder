@@ -26,7 +26,7 @@
 import gzip
 import os
 import sys
-import csv 
+import csv
 import glob
 import numpy as np
 import datetime
@@ -58,23 +58,26 @@ csv_read_mode = "rb" if PY2 else "rt"
 class OrthoPrinter:
     def __init__(self):
         self.console = Console(
-            theme=Theme({
-                "info": "deep_sky_blue2",
-                "path": "green4",
-                "orthofinder": "dark_goldenrod",
-                "other_methods": "dark_orange3", 
-                "version": "dark_cyan",
-                "success": "bold green",
-                "error": "bold red",
-                "warning": "bold yellow",
-                "default": "default on default" # bright_white
-            }), 
-            force_terminal=True
+            theme=Theme(
+                {
+                    "info": "deep_sky_blue2",
+                    "path": "green4",
+                    "orthofinder": "dark_goldenrod",
+                    "other_methods": "dark_orange3",
+                    "version": "dark_cyan",
+                    "success": "bold green",
+                    "error": "bold red",
+                    "warning": "bold yellow",
+                    "default": "default on default",  # bright_white
+                }
+            ),
+            force_terminal=True,
         )
 
     def print(self, *messages, style: str = "default", sep: str = " ", end: str = "\n"):
         message = sep.join(map(str, messages))
         self.console.print(message, style=style, end=end)
+
 
 printer = OrthoPrinter()
 
@@ -173,13 +176,12 @@ def GetSeqsInfo(inputDirectory_list, speciesToUse, nSpAll):
         nSeqsPerSpecies=nSeqsPerSpecies,
     )
 
-
     # seqStartingIndices = [0]
     # nSeqs = 0
     # nSeqsPerSpecies = dict()
     # for iFasta in range(nSpAll):
     #     for d in inputDirectory_list:
-    #         fastaFilename = os.path.join(d, "Species%d.fa" % iFasta) 
+    #         fastaFilename = os.path.join(d, "Species%d.fa" % iFasta)
     #         if os.path.exists(fastaFilename):
     #             break
     #     n = 0
@@ -233,9 +235,7 @@ def SeqsInfoRecompute(seqs_info_orig, new_species_to_use):
 
 class SpeciesInfo(object):
     def __init__(self):
-        self.speciesToUse = (
-            []
-        )  #       seqsInfo.iSpeciesToUse   - which to include for this analysis
+        self.speciesToUse = []  #       seqsInfo.iSpeciesToUse   - which to include for this analysis
         self.nSpAll = None  #       seqsInfo.nSpAll => 0, 1, ..., nSpAll - 1 are valid species indices
         self.iFirstNewSpecies = None  #       iFirstNew   => (0, 1, ..., iFirstNew-1) are from previous and (iFirstNew, iFirstNew+1, ..., nSpecies-1) are the new species indices
 
@@ -324,7 +324,7 @@ def CreateNewWorkingDirectory(
     gapopen=None,
     gapextend=None,
     extended_filename=False,
-    makedir=True
+    makedir=True,
 ):
     dateStr = datetime.date.today().strftime("%b%d") if qDate else ""
     iAppend = 0
@@ -563,15 +563,15 @@ def HaveSupportValues(speciesTreeFN_ids):
 
 
 def RenameTreeTaxa(
-        treeFN_or_tree,
-        newTreeFilename,
-        idsMap,
-        qSupport,
-        qFixNegatives=False,
-        inFormat=None,
-        label=None,
-        qViaCopy=False,
-    ):
+    treeFN_or_tree,
+    newTreeFilename,
+    idsMap,
+    qSupport,
+    qFixNegatives=False,
+    inFormat=None,
+    label=None,
+    qViaCopy=False,
+):
     """
     qViaCopy - create a copy of the tree and edit this copy. I.e. don't make changes to the original
     """
@@ -648,15 +648,29 @@ def PrintCitation(d=None):
     print()
     # printer.print(print_citation)
     printer.print("\nCITATION:")
-    printer.print(" When publishing work that uses [dark_goldenrod]OrthoFinder[/dark_goldenrod] please cite:")
-    printer.print(" Emms D.M., Liu Y., Belcher L., Holmes J. & Kelly S. (2025), bioRxiv ", end="")
-    printer.print("[dark_cyan][link=https://doi.org/10.1101/2025.07.15.664860]https://doi.org/10.1101/2025.07.15.664860[/link]")
+    printer.print(
+        " When publishing work that uses [dark_goldenrod]OrthoFinder[/dark_goldenrod] please cite:"
+    )
+    printer.print(
+        " Emms D.M., Liu Y., Belcher L., Holmes J. & Kelly S. (2026), "
+        "Nature Methods 23:1327–1333, ",
+        end="",
+    )
+    printer.print(
+        "[dark_cyan]"
+        "[link=https://doi.org/10.1038/s41592-026-03126-6]"
+        "https://doi.org/10.1038/s41592-026-03126-6"
+        "[/link]"
+    )
     printer.print(" Emms D.M. & Kelly S. (2019), Genome Biology 20:238\n")
 
     printer.print(" If you use the species tree in your work then please also cite:")
     printer.print(" Emms D.M. & Kelly S. (2017), MBE 34(12): 3267-3278")
     printer.print(" Emms D.M. & Kelly S. (2018), bioRxiv ", end="")
-    printer.print("[dark_cyan][link=https://doi.org/10.1101/267914]https://doi.org/10.1101/267914[/link]")
+    printer.print(
+        "[dark_cyan][link=https://doi.org/10.1101/267914]https://doi.org/10.1101/267914[/link]"
+    )
+
 
 def PrintUnderline(text, qHeavy=False):
     print(("\n" + text))
@@ -855,7 +869,6 @@ def cleanup_path(path):
         print("Error: %s - %s." % (e.filename, e.strerror))
 
 
-
 def get_progressbar(len_task, visible=True):
     progressbar = progress.Progress(
         progress.TextColumn("[progress.description]{task.description}"),
@@ -871,13 +884,14 @@ def get_progressbar(len_task, visible=True):
         progressbar.reset(task)
         progressbar.remove_task(task)
         task = progressbar.add_task(
-            "[yellow]Processing...", total=len_task, visible=visible,
+            "[yellow]Processing...", total=len_task, visible=visible
         )
     else:
         task = progressbar.add_task(
-            "[yellow]Processing...", total=len_task, visible=visible,
+            "[yellow]Processing...", total=len_task, visible=visible
         )
     return progressbar, task
+
 
 def clear_dir(of3_dir):
     if os.path.exists(of3_dir):
@@ -885,12 +899,14 @@ def clear_dir(of3_dir):
             for entry in entries:
                 try:
                     if entry.is_file() or entry.is_symlink():
-                        os.unlink(entry.path) 
+                        os.unlink(entry.path)
                     elif entry.is_dir():
-                        shutil.rmtree(entry.path) 
-                        
+                        shutil.rmtree(entry.path)
+
                 except Exception as e:
-                    printer.print(f'Failed to delete {entry.path}. Reason: {e}', style="error")
+                    printer.print(
+                        f"Failed to delete {entry.path}. Reason: {e}", style="error"
+                    )
 
 
 def split_ortholog_files(d_ologs, q_compress=False):
@@ -898,8 +914,11 @@ def split_ortholog_files(d_ologs, q_compress=False):
         d_ologs += "/"
     filenames = list(glob.glob(d_ologs + "*.tsv") + glob.glob(d_ologs + "*.tsv.gz"))
     species = [
-        os.path.splitext(os.path.splitext(os.path.basename(fn))[0])[0] if fn.endswith(".gz") else os.path.splitext(os.path.basename(fn))[0]
-        for fn in filenames]
+        os.path.splitext(os.path.splitext(os.path.basename(fn))[0])[0]
+        if fn.endswith(".gz")
+        else os.path.splitext(os.path.basename(fn))[0]
+        for fn in filenames
+    ]
     for fn, sp0 in zip(filenames, species):
         d_out = d_ologs + "Orthologues_" + sp0 + "/"
         if not os.path.exists(d_out):
@@ -910,14 +929,22 @@ def split_ortholog_files(d_ologs, q_compress=False):
             if sp0 == sp1:
                 continue
             if q_compress:
-                file_handles.append(gzip.open(d_out + '%s__v__%s.tsv.gz' % (sp0, sp1), csv_write_mode))
+                file_handles.append(
+                    gzip.open(d_out + "%s__v__%s.tsv.gz" % (sp0, sp1), csv_write_mode)
+                )
             else:
-                file_handles.append(open(d_out + '%s__v__%s.tsv' % (sp0, sp1), csv_write_mode))
+                file_handles.append(
+                    open(d_out + "%s__v__%s.tsv" % (sp0, sp1), csv_write_mode)
+                )
             csv_writers[sp1] = csv.writer(file_handles[-1], delimiter="\t")
             csv_writers[sp1].writerow(("Orthogroup", sp0, sp1))
-        with gzip.open(fn, csv_read_mode) if fn.endswith(".gz") else open(fn, csv_read_mode) as infile:
+        with (
+            gzip.open(fn, csv_read_mode)
+            if fn.endswith(".gz")
+            else open(fn, csv_read_mode) as infile
+        ):
             reader = csv.reader(infile, delimiter="\t")
             next(reader)  # skip header
             for row in reader:
-                if len(row) == 4: # OG,species,genes1,genes2
+                if len(row) == 4:  # OG,species,genes1,genes2
                     csv_writers[row[1]].writerow(row[:1] + row[2:])

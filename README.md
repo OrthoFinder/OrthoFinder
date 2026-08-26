@@ -49,9 +49,9 @@ The following commands provide three ways to download the source code of OrthoFi
 # Download via git 
 git clone https://github.com/OrthoFinder/OrthoFinder.git
 
-# or download the orthofinder-linux-intel-3.1.5.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine
+# or download the orthofinder-linux-intel-3.1.6.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine
 mkdir OrthoFinder && \
-  wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.5/orthofinder-linux-intel-3.1.5.tar.gz | \
+  wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.6/orthofinder-linux-intel-3.1.6.tar.gz | \
   tar -xz --strip-components=1 -C OrthoFinder
 ```
 
@@ -76,7 +76,7 @@ To activate the virtual environment you have created, run:
 ```
 ### Test your installation
 
-Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.5/ExampleData.tar.gz).
+Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.6/ExampleData.tar.gz).
 
 ```bash
 orthofinder --help # Print out help informatioin
@@ -111,7 +111,7 @@ OrthoFinder requires one FASTA file for each species. Each file should contain t
 
 If your proteomes contain multiple transcript isoforms per gene, we provide the script `primary_transcript.py` to retain only the longest isoform for each gene. This script should be run before running OrthoFinder.
 
-If you are using OrthoFinder v3.1.5 or later, and installed OrthoFinder into your environment, the script is installed automatically and can be run directly as `primary_transcript`. It accepts:
+If you are using OrthoFinder v3.1.6 or later, and installed OrthoFinder into your environment, the script is installed automatically and can be run directly as `primary_transcript`. It accepts:
 
 - a single FASTA file
 - a directory containing FASTA files
@@ -191,6 +191,7 @@ Command-line options for OrthoFinder
   | `-X`      | Don’t add species names to sequence IDs.                                    |
   | `-n <txt>`      | Name to append to the results directory.                                    |
   | `-o <txt>`      | Specify a non-default results directory.                                    |
+  | `-pof`    | Save the pairwise ortholog files.                                           |
 
 - **Parallel processing options**<br>
   | Parameter | Description                                 | Default |
@@ -219,7 +220,7 @@ Command-line options for OrthoFinder
 
 ## Output files
 
-> ***From OrthoFinder `v3.1.5`, `N0.tsv` is removed from `/Phylogenetic_Hierarchical_Orthogroups`. Instead, `Orthogroups/Orthogroups.tsv` contains the orthogroups from `N0.tsv`.***
+> ***From OrthoFinder `v3.1.6`, `N0.tsv` is removed from `/Phylogenetic_Hierarchical_Orthogroups`. Instead, `Orthogroups/Orthogroups.tsv` contains the orthogroups from `N0.tsv`.***
 
 A standard OrthoFinder run produces a set of files describing the orthogroups, orthologs, gene trees, resolve gene trees, the rooted species tree, gene duplication events, and comparative genomic statistics for the set of species being analysed. These files are located in an intuitive directory structure.
 
@@ -277,7 +278,7 @@ OrthoFinder has now extended its phylogenetic approach to orthogroups, allowing 
 ## Citation
 
 - Latest<br>
-  [1] *David M Emms, Yi Liu, Laurence Belcher, Jonathan Holmes, Steven Kelly, 2025.* **OrthoFinder: scalable phylogenetic orthology inference for comparative genomics**. bioRxiv. [![DOI:10.1101/2025.07.15.664860](https://img.shields.io/badge/DOI-10.1101%2F2025--07--15--664860-blue)](https://doi.org/10.1101/2025.07.15.664860)
+  [1] *David M. Emms, Yi Liu, Laurence Belcher, Jonathan Holmes, Steven Kelly, 2026.* **OrthoFinder: improved phylogenetic orthology inference with enhanced accuracy and scalability.** *Nature Methods* **23**, 1327–1333. [![DOI:10.1038/s41592-026-03126-6](https://img.shields.io/badge/DOI-10.1038%2Fs41592--026--03126--6-blue)](https://doi.org/10.1038/s41592-026-03126-6)
 
 - Introduced the SHOOT method to perform phylogenetic gene search<br>
   [2] *Emms, D.M., Kelly, S*. **SHOOT: phylogenetic gene search and ortholog inference**. Genome Biol 23, 85 (2022). [![DOI:10.1186/s13059-022-02652-8](https://img.shields.io/badge/DOI-10.1186%2Fs13059--022--02652--8-blue)](https://doi.org/10.1186/s13059-022-02652-8)

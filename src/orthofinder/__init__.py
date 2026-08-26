@@ -2,13 +2,9 @@ import multiprocessing as mp
 import os
 import sys
 
-try:
-    from importlib.metadata import PackageNotFoundError, version
-    __version__ = version(__name__)
-except PackageNotFoundError:
-    from ._version import __version__ as __version__
+from ._version import __version__
 
-    
+
 # Find the total number of threads on the host machine
 nThreadsDefault = mp.cpu_count()
 
@@ -24,7 +20,9 @@ orphan_genes_version = 2
 picProtocol = 5
 
 # Get directory containing script/bundle
-if getattr(sys, 'frozen', False):
+if getattr(sys, "frozen", False):
     __location__ = os.path.split(sys.executable)[0]
 else:
-    __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+    __location__ = os.path.realpath(
+        os.path.join(os.getcwd(), os.path.dirname(__file__))
+    )

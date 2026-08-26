@@ -29,7 +29,7 @@
         "stop_after_orthogroups": "orthofinder -f INPUT -og -pof",
         "stop_after_genetrees": "orthofinder -f INPUT -ogt -pof",
         "stop_after_speciestrees": "orthofinder -f INPUT -ost -pof",
-        "stop_after_prepare_blast": "orthofinder -f INPUT -op --save-blast-commands -pof --no-print-info"
+        "stop_after_prepare_blast": "orthofinder -f INPUT -op -pof --no-print-info"
     },
     "Assign": {
         "famsa_assign": "orthofinder --core CORE_RESULTS --assign INPUT -nk 2 -pof --no-print-info",
