@@ -161,7 +161,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
 
 - ***Orthologues***<br>
     We will start by finding orthologues of a gene that we are interested in.
-    In the Orthologues directory there is a sub-directory for each species.
+    Run OrthoFinder with the `-pof` option to save pairwise ortholog files. The resulting Orthologs directory will contain a separate subdirectory for each species.
 
     Open `Orthologues/Orthologues_Mycoplasma_hyopneumoniae/Mycoplasma_hyopneumoniae__v__Mycoplasma_agalactiae.tsv`, in a spreadsheet program (specifying that it’s tab-delimited
     if necessary). The file has three columns, `Orthogroup`, `Mycoplasma_hyopneumoniae`, and
