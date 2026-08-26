@@ -39,6 +39,6 @@
         "stop_after_genetrees_restart": "orthofinder -fgt CORE_RESULTS -pof",
         "stop_after_speciestrees_restart": "orthofinder -fst CORE_RESULTS -pof",
         "stop_after_orthogroups_restart": "orthofinder -fg CORE_RESULTS -pof",
-        "stop_after_prepare_blast_restart": "orthofinder -b CORE_RESULTS --restart-of-blast -pof --no-print-info"
+        "stop_after_prepare_blast_restart": "orthofinder -b CORE_RESULTS -pof --no-print-info"
     }
 }

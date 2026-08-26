@@ -144,7 +144,6 @@ class Options(object):  #
         self.dynamic_threads = False
         self.n_skip = 50
         # self.save_blast_commands = False
-        self.restart_of_blast = False
         self.rm_legacy = True
         self.print_info = True
         self.fd_limit = None
@@ -654,9 +653,6 @@ def ProcessArgs(args):
 
         # elif arg == "--save-blast-commands":
         #     options.save_blast_commands = True
-
-        elif arg == "--restart-of-blast":
-            options.restart_of_blast = True
 
         elif arg == "-1":
             options.qDoubleBlast = False

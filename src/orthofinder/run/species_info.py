@@ -150,6 +150,19 @@ def IDsFileOK(filename):
 #         )
 #     return speciesInfo, speciesToUse_names
 
+def GetMissingBlastResults(species_to_use, qDoubleBlast):
+    required = [
+        files.FileHandler.GetBlastResultsFN(
+            iSpecies, jSpecies, raise_exception=False
+        )
+        for iSpecies in species_to_use
+        for jSpecies in species_to_use
+        if qDoubleBlast or jSpecies >= iSpecies
+    ]
+    return [
+        fn for fn in required
+        if not (os.path.exists(fn) or os.path.exists(fn + ".gz"))
+    ]
 
 
 def ProcessPreviousFiles(workingDir_list, qDoubleBlast, check_blast=True):
