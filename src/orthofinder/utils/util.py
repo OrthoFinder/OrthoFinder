@@ -660,9 +660,9 @@ def PrintCitation(d=None):
         "[dark_cyan]"
         "[link=https://doi.org/10.1038/s41592-026-03126-6]"
         "https://doi.org/10.1038/s41592-026-03126-6"
-        "[/link]"
+        "[/link]\n"
     )
-    printer.print(" Emms D.M. & Kelly S. (2019), Genome Biology 20:238\n")
+    # printer.print(" Emms D.M. & Kelly S. (2019), Genome Biology 20:238\n")
 
     printer.print(" If you use the species tree in your work then please also cite:")
     printer.print(" Emms D.M. & Kelly S. (2017), MBE 34(12): 3267-3278")

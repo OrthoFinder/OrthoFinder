@@ -51,12 +51,13 @@ def run_orthofinder_core_case(
     capfd,
 ):
 
-    uses_example_data = "EXAMPLE_DATA" in argstr
-    run_project = example_data if uses_example_data else os.path.abspath(input_proj)
+    output_dir = os.path.join(os.path.abspath(input_proj), "OrthoFinder")
+    run_project = os.path.abspath(input_proj)
 
     s = argstr.strip().replace("EXAMPLE_DATA", example_data)\
                       .replace("DNA_INPUT", dna_projects)\
                       .replace("INPUT", input_proj)\
+                      .replace("OUTPUT", output_dir)\
                       .replace("SPECIES_TREE", species_tree)\
                       .replace("USER_CONFIG", user_ofconfig)
 

@@ -5,6 +5,7 @@
     "__comment_SPECIES_TREE": "Path to the species tree file",
     "__comment_USER_CONFIG": "Path to the user configuration file",
     "__comment_EXAMPLE_DATA": "Absolute path to the repository ExampleData directory",
+    "__comment_OUTPUT": "Output base directory used when input data and test results live in different locations",
     "Direct": {
         "user_config": "orthofinder -f INPUT --config USER_CONFIG -pof",
         "methodthreads_minseq": "orthofinder -f INPUT -mt 2 -ms 5 -pof",
@@ -25,14 +26,14 @@
     "Core": {
         "famsa": "orthofinder -f INPUT -pof --no-print-info",
         "famsa_species_tree": "orthofinder -f INPUT -s SPECIES_TREE -rmgt -rmrgt -rmlg -pof --no-print-info",
-        "diamond_first": "orthofinder -f EXAMPLE_DATA -pof --no-print-info",
-        "mmseqs_first": "orthofinder -f EXAMPLE_DATA -pof --no-print-info -S mmseqs"
+        "diamond_first": "orthofinder -f EXAMPLE_DATA -o OUTPUT -pof --no-print-info",
+        "mmseqs_first": "orthofinder -f EXAMPLE_DATA -o OUTPUT -pof --no-print-info -S mmseqs"
     },
     "StopAfter": {
         "stop_after_orthogroups": "orthofinder -f INPUT -og -pof",
         "stop_after_genetrees": "orthofinder -f INPUT -ogt -pof",
         "stop_after_speciestrees": "orthofinder -f INPUT -ost -pof",
-        "stop_after_prepare_blast": "orthofinder -f EXAMPLE_DATA -op -pof --no-print-info"
+        "stop_after_prepare_blast": "orthofinder -f EXAMPLE_DATA -o OUTPUT -op -pof --no-print-info"
     },
 
     "Restart": {

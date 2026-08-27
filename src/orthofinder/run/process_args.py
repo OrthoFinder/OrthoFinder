@@ -741,7 +741,11 @@ def ProcessArgs(args):
                 resultsDir_nonDefault = resultsDir_nonDefault[:-1]
 
             resultsDir_nonDefault += "/"
-            if os.path.exists(resultsDir_nonDefault):
+            # Tests put multiple named Results_* directories under one shared
+            # output base, including runs whose FASTA input is ExampleData.
+            # Keep the normal CLI safeguard, but allow that shared base in the
+            # suite's explicitly isolated test mode.
+            if os.path.exists(resultsDir_nonDefault) and os.getenv("ORTHOFINDER_TEST_ISOLATE") != "1":
                 print(
                     "ERROR: non-default output directory already exists: %s\n"
                     % resultsDir_nonDefault

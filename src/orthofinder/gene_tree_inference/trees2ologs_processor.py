@@ -340,7 +340,7 @@ class ParentOutputWriter(object):
         """
         Serial/safe ordered writer path.
 
-        This keeps the old parent-writer behaviour for n_parallel == 1 or for
+        This keeps the serial parent-writer behaviour for n_parallel == 1 or for
         fallback parent-ordered mode.
         """
         if result is None:
@@ -436,43 +436,6 @@ class OrderedHogCommitter(object):
                 "OrderedHogCommitter stopped early: committed %d/%d OGs."
                 % (self.next_index, len(self.iogs_ordered))
             )
-
-
-class PipelineOutputWriter(object):
-
-    def __init__(self, output_writer, iogs_ordered):
-        self.output_writer = output_writer
-        self.hog_committer = OrderedHogCommitter(
-            output_writer.hog_writer,
-            iogs_ordered
-        )
-
-    def write_result(self, result):
-        if result is None:
-            return
-
-        iog = result["iog"]
-
-        # Stream non-HOG output immediately.
-        self.output_writer.write_non_hog_result(result, do_flush=False)
-
-        # Commit HOGs only when OG order allows.
-        self.hog_committer.add_result(
-            iog,
-            result.get("cached_hogs", [])
-        )
-
-        self.output_writer.maybe_flush()
-
-    def write_skip(self, iog):
-        self.hog_committer.add_skip(iog)
-
-    def finish(self):
-        self.hog_committer.assert_finished()
-        self.output_writer.flush()
-
-    def close(self):
-        self.output_writer.close()
 
 
 class NonHogAppendWriter(object):
@@ -584,7 +547,7 @@ def DuplicationRows(og_name, duplications, spIDs, seqIDs, stride_dups):
     """
     Convert duplication records into rows.
 
-    This is the parent-writer version of WriteDuplications().
+    This converts duplication records for the parent writer.
     """
     rows = []
 
@@ -634,21 +597,173 @@ def WriteDuplications(dups_file_handle, og_name, duplications, spIDs, seqIDs, st
 
 
 
-def OrthologPipelineWriterProcess(
+
+def get_n_writer_processes(
+        nspecies,
+        n_processes,
+        fewer_open_files=False,
+        max_writers=12,
+    ):
+    """Choose the number of non-HOG output writer processes."""
+    nspecies = max(1, int(nspecies))
+    n_processes = max(1, int(n_processes))
+
+    species_per_writer = 96 if fewer_open_files else 48
+    n_writers = (nspecies + species_per_writer - 1) // species_per_writer
+    writer_cpu_cap = max(1, n_processes // 2)
+
+    return max(
+        1,
+        min(
+            int(n_writers),
+            int(max_writers),
+            writer_cpu_cap,
+        )
+    )
+
+
+def _empty_non_hog_payload(iog):
+    return {
+        "iog": iog,
+        "olog_chunks": [],
+        "xenolog_chunks": [],
+        "suspect_chunks": [],
+        "duplications": [],
+    }
+
+
+def PartitionNonHogResult(
+        result,
+        n_writers,
+        tree_analyser,
+        fewer_open_files,
+        need_olog_output,
+    ):
+    """
+    Split one analysed OG into file-owner payloads for non-HOG output.
+
+    Orthologue, xenologue, and suspect-gene files are owned by source species.
+    Duplications.tsv is owned by writer 0. Empty writer payloads are omitted.
+    """
+    if not need_olog_output:
+        return {}
+
+    iog = result["iog"]
+    payloads = {}
+
+    def payload_for(owner):
+        payload = payloads.get(owner)
+        if payload is None:
+            payload = _empty_non_hog_payload(iog)
+            payloads[owner] = payload
+        return payload
+
+    olog_lines = result.get("olog_lines", [])
+
+    if fewer_open_files:
+        for i, row in enumerate(olog_lines):
+            if not row:
+                continue
+            text = row[0]
+            if not text:
+                continue
+            owner = i % n_writers
+            payload_for(owner)["olog_chunks"].append((i, None, text))
+    else:
+        for i, row in enumerate(olog_lines):
+            owner = i % n_writers
+            for j, text in enumerate(row):
+                if i == j or not text:
+                    continue
+                payload_for(owner)["olog_chunks"].append((i, j, text))
+
+    for i, text in enumerate(result.get("olog_sus_lines", [])):
+        if not text:
+            continue
+        owner = i % n_writers
+        payload_for(owner)["xenolog_chunks"].append((i, text))
+
+    suspect_genes = result.get("suspect_genes", set())
+    if suspect_genes:
+        sp_id_to_index = {
+            str(sp): i
+            for i, sp in enumerate(tree_analyser.speciesToUse)
+        }
+        by_species = {}
+
+        for g in suspect_genes:
+            sp_id = g.split("_", 1)[0]
+            i = sp_id_to_index.get(sp_id)
+            if i is None:
+                continue
+            by_species.setdefault(i, []).append(g)
+
+        for i, genes in by_species.items():
+            genes.sort()
+            text = "\n".join(
+                tree_analyser.SequenceDict[g]
+                for g in genes
+            ) + "\n"
+            owner = i % n_writers
+            payload_for(owner)["suspect_chunks"].append((i, text))
+
+    duplications = result.get("duplications", [])
+    if duplications:
+        payload_for(0)["duplications"] = duplications
+
+    return payloads
+
+
+def _write_non_hog_payload(output_writer, payload):
+    for i, j, text in payload.get("olog_chunks", []):
+        output_writer.cache.write(
+            output_writer.ortholog_path(i, j),
+            text,
+            mode=util.csv_append_mode,
+            gz=output_writer.save_space if output_writer.fewer_open_files else False,
+        )
+
+    for i, text in payload.get("xenolog_chunks", []):
+        output_writer.cache.write(
+            output_writer.xenolog_path(i),
+            text,
+            mode=util.csv_append_mode,
+            gz=False,
+        )
+
+    for i, text in payload.get("suspect_chunks", []):
+        sp_id = str(output_writer.speciesToUse[i])
+        path = os.path.join(
+            output_writer.suspect_genes_dir,
+            output_writer.speciesDict[sp_id] + ".txt"
+        )
+        output_writer.cache.write(
+            path,
+            text,
+            mode=util.csv_append_mode,
+            gz=False,
+        )
+
+    duplications = payload.get("duplications", [])
+    if duplications:
+        output_writer.write_duplications(
+            payload["iog"],
+            duplications,
+        )
+
+    output_writer.maybe_flush()
+
+
+def NonHogWriterProcess(
         writer_queue,
         writer_status_queue,
         output_writer,
-        iogs_ordered,
         n_workers,
+        writer_id,
     ):
-
-    pipeline_writer = PipelineOutputWriter(
-        output_writer,
-        iogs_ordered
-    )
-
+    """Write only files exclusively owned by this non-HOG writer."""
     active_workers = n_workers
-    fatal = False
+    error_text = None
 
     try:
         while active_workers > 0:
@@ -658,89 +773,124 @@ def OrthologPipelineWriterProcess(
                 active_workers -= 1
                 continue
 
-            if not isinstance(msg, tuple):
+            if not isinstance(msg, tuple) or len(msg) < 2:
                 raise TypeError(
-                    "Unexpected writer message: %s %r" %
+                    "Unexpected non-HOG writer message: %s %r" %
                     (type(msg), msg)
                 )
 
             kind = msg[0]
 
             if kind == "result":
-                _, iog, result = msg
-
-                pipeline_writer.write_result(result)
-
-                writer_status_queue.put((
-                    "written",
-                    iog,
-                    result["n_orthologues"]
-                ))
-
-            elif kind == "skip":
-                _, iog = msg
-
-                pipeline_writer.write_skip(iog)
-
-                writer_status_queue.put((
-                    "written_skip",
-                    iog
-                ))
-
+                _write_non_hog_payload(output_writer, msg[1])
             elif kind == "error":
-                writer_status_queue.put(msg)
-                fatal = True
-                break
-
+                raise RuntimeError(msg[-1])
             else:
                 raise TypeError(
-                    "Unexpected writer message kind: %r" % kind
+                    "Unexpected non-HOG writer message kind: %r" % kind
                 )
 
-        if not fatal:
-            pipeline_writer.finish()
-
-            writer_status_queue.put((
-                "writer_done",
-                dict(output_writer.hog_writer.iHOG)
-            ))
+        output_writer.cache.flush_all()
 
     except Exception:
+        error_text = traceback.format_exc()
+
+    try:
+        output_writer.cache.close_all()
+    except Exception:
+        close_error = traceback.format_exc()
+        error_text = close_error if error_text is None else error_text + "\n" + close_error
+
+    if error_text is None:
+        writer_status_queue.put(("non_hog_done", writer_id))
+    else:
         writer_status_queue.put((
-            "writer_error",
-            traceback.format_exc()
+            "non_hog_error",
+            writer_id,
+            error_text,
         ))
 
-    finally:
-        try:
-            pipeline_writer.close()
-        except Exception:
-            writer_status_queue.put((
-                "writer_close_error",
-                traceback.format_exc()
-            ))
+
+def OrderedHogWriterProcess(
+        hog_queue,
+        writer_status_queue,
+        hog_writer,
+        iogs_ordered,
+        n_workers,
+    ):
+    """Commit HOG rows in deterministic OG order."""
+    committer = OrderedHogCommitter(hog_writer, iogs_ordered)
+    active_workers = n_workers
+    error_text = None
+    hog_counts = None
+
+    try:
+        while active_workers > 0:
+            msg = hog_queue.get()
+
+            if msg is None:
+                active_workers -= 1
+                continue
+
+            if not isinstance(msg, tuple) or len(msg) < 2:
+                raise TypeError(
+                    "Unexpected HOG writer message: %s %r" %
+                    (type(msg), msg)
+                )
+
+            kind = msg[0]
+
+            if kind == "result":
+                _, iog, cached_hogs = msg
+                committer.add_result(iog, cached_hogs)
+            elif kind == "skip":
+                _, iog = msg
+                committer.add_skip(iog)
+            elif kind == "error":
+                raise RuntimeError(msg[-1])
+            else:
+                raise TypeError(
+                    "Unexpected HOG writer message kind: %r" % kind
+                )
+
+        committer.assert_finished()
+        hog_writer.file_cache.flush_all()
+        hog_counts = dict(hog_writer.iHOG)
+
+    except Exception:
+        error_text = traceback.format_exc()
+
+    try:
+        hog_writer.close_files()
+    except Exception:
+        close_error = traceback.format_exc()
+        error_text = close_error if error_text is None else error_text + "\n" + close_error
+
+    if error_text is None:
+        writer_status_queue.put(("hog_done", hog_counts))
+    else:
+        writer_status_queue.put((
+            "hog_error",
+            error_text,
+        ))
 
 
 def Worker_RunOrthologsMethod_Pipeline(
         tree_analyser,
         nspecies,
         args_queue,
-        writer_queue,
+        hog_queue,
+        non_hog_queues,
         progress_queue,
         fewer_open_files,
+        need_olog_output,
         n_ologs_cache=100,
         write_hog_tree=False,
-        fix_files=False
+        fix_files=False,
     ):
-    """
-    Analysis worker.
+    """Analyse OGs and route HOG and non-HOG output independently."""
+    n_writers = len(non_hog_queues)
 
-    Heavy work happens here:
-        result = tree_analyser.AnalyseTree(iog)
-
-    It sends full results to writer_queue.
-    It sends only worker errors/sentinels to progress_queue.
-    """
     while True:
         try:
             iog = args_queue.get(True, 0.1)
@@ -751,20 +901,53 @@ def Worker_RunOrthologsMethod_Pipeline(
             result = tree_analyser.AnalyseTree(iog)
 
             if result is None:
-                writer_queue.put(("skip", iog))
-            else:
-                writer_queue.put(("result", iog, result))
+                hog_queue.put(("skip", iog))
+                progress_queue.put(("skip", iog))
+                continue
+
+            hog_queue.put((
+                "result",
+                iog,
+                result.get("cached_hogs", []),
+            ))
+
+            payloads = PartitionNonHogResult(
+                result,
+                n_writers,
+                tree_analyser,
+                fewer_open_files,
+                need_olog_output,
+            )
+
+            for owner, payload in payloads.items():
+                non_hog_queues[owner].put(("result", payload))
+
+            progress_queue.put((
+                "result",
+                iog,
+                result["n_orthologues"],
+            ))
 
         except queue.Empty:
             continue
 
         except Exception:
             tb = traceback.format_exc()
-            writer_queue.put(("error", None, tb))
+            try:
+                hog_queue.put(("error", tb))
+            except Exception:
+                pass
+            for writer_queue in non_hog_queues:
+                try:
+                    writer_queue.put(("error", tb))
+                except Exception:
+                    pass
             progress_queue.put(("error", None, tb))
             break
 
-    writer_queue.put(None)
+    hog_queue.put(None)
+    for writer_queue in non_hog_queues:
+        writer_queue.put(None)
     progress_queue.put(None)
 
 
@@ -778,38 +961,61 @@ def RunOrthologsParallel_Pipeline(
         output_writer,
         iogs_ordered,
         n_ologs_cache=100,
-        old_version=False,
+        compatibility_mode=False,
         write_hog_tree=False,
         fix_files=False,
         fd_limit=None,
         GRACE_PERIOD=10.0,
         STALL_TIMEOUT=120.0,
         writer_queue_size=None,
+        n_writer_processes=None,
     ):
     """
-    Pipeline architecture:
+    Parallel tree analysis with two output paths.
 
-        analysis workers -> bounded writer_queue -> dedicated writer process
-
-    HOG rows are ordered inside the writer process.
-    Non-HOG rows are written immediately.
+    HOG rows are committed in deterministic OG order. Other output files are
+    written immediately by exclusive file owners and can be sorted afterward.
     """
-    if old_version:
-        print("WARNING: old_version parallel writer disabled; using pipeline writer mode.")
-
     if fd_limit is not None:
         if sys.platform.startswith("linux") or sys.platform == "darwin":
             set_file_descriptor_limit(fd_limit)
         else:
             warnings.warn(
-                "File descriptor limit adjustment is not supported on %s."
-                % sys.platform
+                "File descriptor limit adjustment is not supported on %s." %
+                sys.platform
             )
 
-    if writer_queue_size is None:
-        writer_queue_size = max(4 * nProcesses, 32)
+    if n_writer_processes is None:
+        n_writer_processes = get_n_writer_processes(
+            nspecies,
+            nProcesses,
+            fewer_open_files=fewer_open_files,
+        )
+    else:
+        n_writer_processes = max(
+            1,
+            min(int(n_writer_processes), max(1, nProcesses))
+        )
 
-    writer_queue = mp.Queue(maxsize=writer_queue_size)
+    # print(
+    #     "Output pipeline: %d analysis workers, 1 ordered HOG writer, "
+    #     "%d non-HOG writer process%s (%d species, %s mode)." % (
+    #         nProcesses,
+    #         n_writer_processes,
+    #         "" if n_writer_processes == 1 else "es",
+    #         nspecies,
+    #         "compact" if fewer_open_files else "pairwise",
+    #     )
+    # )
+
+    if writer_queue_size is None:
+        writer_queue_size = max(2 * nProcesses, 16)
+
+    hog_queue = mp.Queue(maxsize=max(4 * nProcesses, 32))
+    non_hog_queues = [
+        mp.Queue(maxsize=writer_queue_size)
+        for _ in range(n_writer_processes)
+    ]
     progress_queue = mp.Queue(maxsize=max(4 * nProcesses, 32))
     writer_status_queue = mp.Queue()
 
@@ -819,16 +1025,30 @@ def RunOrthologsParallel_Pipeline(
     for _ in range(nProcesses):
         args_queue.put(None)
 
-    writer_proc = mp.Process(
-        target=OrthologPipelineWriterProcess,
+    hog_proc = mp.Process(
+        target=OrderedHogWriterProcess,
         args=(
-            writer_queue,
+            hog_queue,
             writer_status_queue,
-            output_writer,
+            output_writer.hog_writer,
             iogs_ordered,
             nProcesses,
         )
     )
+
+    non_hog_procs = [
+        mp.Process(
+            target=NonHogWriterProcess,
+            args=(
+                non_hog_queues[writer_id],
+                writer_status_queue,
+                output_writer,
+                nProcesses,
+                writer_id,
+            )
+        )
+        for writer_id in range(n_writer_processes)
+    ]
 
     runningProcesses = [
         mp.Process(
@@ -837,46 +1057,56 @@ def RunOrthologsParallel_Pipeline(
                 tree_analyser,
                 nspecies,
                 args_queue,
-                writer_queue,
+                hog_queue,
+                non_hog_queues,
                 progress_queue,
                 fewer_open_files,
+                output_writer.need_olog_output,
                 n_ologs_cache,
                 write_hog_tree,
-                fix_files
+                fix_files,
             )
         )
         for _ in range(nProcesses)
     ]
 
-    writer_proc.start()
-
+    hog_proc.start()
+    for proc in non_hog_procs:
+        proc.start()
     for proc in runningProcesses:
         proc.start()
 
     nOrthologues_SpPair = util.nOrtho_sp(nspecies)
-
     completed_tasks = 0
     skipped_tasks = 0
     active_workers = nProcesses
     fatal = False
-    writer_done = False
-    writer_hog_counts = None
+    hog_done = False
+    non_hog_done_ids = set()
+    hog_counts = None
     last_progress_time = time.time()
+    last_writer_activity_time = time.time()
 
     try:
-        while completed_tasks < total_tasks or active_workers > 0 or not writer_done:
-            # Worker progress messages.
+        while (
+            completed_tasks < total_tasks
+            or active_workers > 0
+            or not hog_done
+            or len(non_hog_done_ids) < n_writer_processes
+        ):
             try:
                 msg = progress_queue.get(timeout=0.1)
             except queue.Empty:
                 msg = "__EMPTY__"
 
             if msg == "__EMPTY__":
-                if completed_tasks < total_tasks and time.time() - last_progress_time > STALL_TIMEOUT:
+                if (
+                    completed_tasks < total_tasks
+                    and time.time() - last_progress_time > STALL_TIMEOUT
+                ):
                     print(
                         "ERROR: Stalled for %ss "
-                        "(completed %d/%d, active_workers=%d)." %
-                        (
+                        "(completed %d/%d, active_workers=%d)." % (
                             STALL_TIMEOUT,
                             completed_tasks,
                             total_tasks,
@@ -896,7 +1126,6 @@ def RunOrthologsParallel_Pipeline(
                 break
 
             elif isinstance(msg, tuple) and msg[0] == "skip":
-                _, iog = msg
                 skipped_tasks += 1
                 completed_tasks += 1
                 progressbar.update(task, advance=1)
@@ -916,35 +1145,27 @@ def RunOrthologsParallel_Pipeline(
                     (type(msg), msg)
                 )
 
-            # Writer status messages.
             while True:
                 try:
                     wmsg = writer_status_queue.get_nowait()
                 except queue.Empty:
                     break
 
-                if isinstance(wmsg, tuple) and wmsg[0] == "written":
-                    _, iog, nOrtho = wmsg
-                    nOrthologues_SpPair += nOrtho
-                    completed_tasks += 1
-                    progressbar.update(task, advance=1)
-                    last_progress_time = time.time()
+                last_writer_activity_time = time.time()
 
-                elif isinstance(wmsg, tuple) and wmsg[0] == "written_skip":
-                    _, iog = wmsg
-                    skipped_tasks += 1
-                    completed_tasks += 1
-                    progressbar.update(task, advance=1)
-                    last_progress_time = time.time()
+                if isinstance(wmsg, tuple) and wmsg[0] == "hog_done":
+                    _, hog_counts = wmsg
+                    hog_done = True
 
-                elif isinstance(wmsg, tuple) and wmsg[0] == "writer_done":
-                    _, writer_hog_counts = wmsg
-                    writer_done = True
+                elif isinstance(wmsg, tuple) and wmsg[0] == "non_hog_done":
+                    _, writer_id = wmsg
+                    non_hog_done_ids.add(writer_id)
 
                 elif isinstance(wmsg, tuple) and wmsg[0] in {
-                    "writer_error",
-                    "writer_close_error",
-                    "error",
+                    "hog_error",
+                    "hog_close_error",
+                    "non_hog_error",
+                    "non_hog_close_error",
                 }:
                     print("ERROR: writer error:")
                     print(wmsg[-1])
@@ -961,45 +1182,55 @@ def RunOrthologsParallel_Pipeline(
             if fatal:
                 break
 
-            if active_workers == 0 and not writer_proc.is_alive() and not writer_done:
-                print("ERROR: writer process exited without writer_done.")
+            if (
+                completed_tasks >= total_tasks
+                and active_workers == 0
+                and (
+                    not hog_done
+                    or len(non_hog_done_ids) < n_writer_processes
+                )
+                and time.time() - last_writer_activity_time > STALL_TIMEOUT
+            ):
+                print("ERROR: output writers stalled after analysis completed.")
                 fatal = True
                 break
 
     finally:
         for proc in runningProcesses:
             proc.join(timeout=GRACE_PERIOD)
-
         for proc in runningProcesses:
             if proc.is_alive():
                 proc.terminate()
-
         for proc in runningProcesses:
             proc.join()
 
-        writer_proc.join(timeout=GRACE_PERIOD)
+        hog_proc.join(timeout=GRACE_PERIOD)
+        if hog_proc.is_alive():
+            hog_proc.terminate()
+        hog_proc.join()
 
-        if writer_proc.is_alive():
-            writer_proc.terminate()
-
-        writer_proc.join()
+        for proc in non_hog_procs:
+            proc.join(timeout=GRACE_PERIOD)
+        for proc in non_hog_procs:
+            if proc.is_alive():
+                proc.terminate()
+        for proc in non_hog_procs:
+            proc.join()
 
         progressbar.stop()
 
-        for q in (writer_queue, progress_queue, writer_status_queue):
+        for q in [hog_queue] + non_hog_queues + [progress_queue, writer_status_queue]:
             try:
                 q.close()
                 q.join_thread()
             except Exception:
                 pass
 
-    if writer_hog_counts is not None:
-        # Update parent copy before TwoAndThreeGeneHOGs() runs.
+    if hog_counts is not None:
         output_writer.hog_writer.iHOG.clear()
-        output_writer.hog_writer.iHOG.update(writer_hog_counts)
+        output_writer.hog_writer.iHOG.update(hog_counts)
 
     skip_rate = skipped_tasks / max(1, total_tasks)
-
     if skip_rate > 0.02:
         print(
             "WARNING: skipped %d/%d tasks (%.1f%%)." %
@@ -1009,18 +1240,24 @@ def RunOrthologsParallel_Pipeline(
     if fatal:
         util.Fail()
 
-    if not writer_done:
-        print("ERROR: writer process did not finish cleanly.")
+    if not hog_done:
+        print("ERROR: ordered HOG writer did not finish cleanly.")
+        util.Fail()
+
+    if len(non_hog_done_ids) != n_writer_processes:
+        print(
+            "ERROR: only %d/%d non-HOG writers finished cleanly." %
+            (len(non_hog_done_ids), n_writer_processes)
+        )
         util.Fail()
 
     return nOrthologues_SpPair
-
 
 def set_file_descriptor_limit(fd_limit) -> None:
     """
     Try to raise the soft open-file limit.
 
-    This is only a convenience. The new lazy writer should not depend on this.
+    This is only a convenience. The lazy writer should not depend on this.
     """
     try:
         if isinstance(fd_limit, (tuple, list)):
@@ -1135,6 +1372,19 @@ def SortNonHogOutputFiles(
         n_parallel
     )
 
+    suspect_queue = mp.Queue()
+    dSuspectGenes = files.FileHandler.GetSuspectGenesDir()
+    for sp in species:
+        fn = os.path.join(dSuspectGenes, "%s.txt" % sp)
+        if os.path.exists(fn):
+            suspect_queue.put(fn)
+
+    parallel_task_manager.RunMethodParallel(
+        SortPlainTextFile,
+        suspect_queue,
+        n_parallel
+    )
+
 
 def SortFileByFirstColumnNoRepair(fn, gz=False):
     """
@@ -1158,6 +1408,20 @@ def SortFileByFirstColumnNoRepair(fn, gz=False):
     with util.file_open(fn, util.csv_write_mode, gz=gz) as outfile:
         outfile.write(header)
         outfile.write("".join(lines))
+
+
+def SortPlainTextFile(fn):
+    """Sort a plain-text output file deterministically."""
+    with open(fn, util.csv_read_mode) as infile:
+        lines = infile.readlines()
+
+    if not lines:
+        return
+
+    lines.sort()
+
+    with open(fn, util.csv_write_mode) as outfile:
+        outfile.writelines(lines)
 
 
 

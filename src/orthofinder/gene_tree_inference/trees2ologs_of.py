@@ -426,7 +426,7 @@ def DoOrthologuesForOrthoFinder(
                 output_writer,
                 iogs_ordered=iogs4,
                 n_ologs_cache=100,
-                old_version=old_version,
+                compatibility_mode=old_version,
                 write_hog_tree=write_hog_tree,
                 fix_files=fix_files,
                 fd_limit=fd_limit,
@@ -463,6 +463,5 @@ def GetSpeciesNeighbours(t):
                 levels[ll].append(n)
     neighbours = {sp:{other:n for n,others in enumerate(lev) for other in others} for sp, lev in levels.items()}
     return neighbours
-
 
 
