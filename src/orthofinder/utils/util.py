@@ -880,16 +880,9 @@ def get_progressbar(len_task, visible=True):
         # progress.TextColumn("{task.completed}/{task.total}")
     )
 
-    if "task" in locals():
-        progressbar.reset(task)
-        progressbar.remove_task(task)
-        task = progressbar.add_task(
+    task = progressbar.add_task(
             "[yellow]Processing...", total=len_task, visible=visible
-        )
-    else:
-        task = progressbar.add_task(
-            "[yellow]Processing...", total=len_task, visible=visible
-        )
+    )
     return progressbar, task
 
 
