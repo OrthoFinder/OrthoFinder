@@ -338,7 +338,7 @@ def _read_node_data(subnw, current_node, node_type, format):
     if flexible2:
         SECOND_MATCH += "?"
 
-    MATCH = '%s\s*%s\s*(%s)?' % (FIRST_MATCH, SECOND_MATCH, _NHX_RE)
+    MATCH = r'%s\s*%s\s*(%s)?' % (FIRST_MATCH, SECOND_MATCH, _NHX_RE)
     data = re.match(MATCH, subnw)
     if data:
         data = data.groups()

@@ -61,6 +61,7 @@ __VERSION__="ete2-2.2rev1026"
 #
 # #END_LICENSE#############################################################
 import os
+import sys
 try:
     import cPickle as pickle
 except ImportError:
@@ -368,7 +369,7 @@ class TreeNode(object):
     #         return self.up.remove_child(sister)
 
     def delete(self, prevent_nondicotomic=True, preserve_branch_length=False):
-        """
+        r"""
         Deletes node from the tree structure. Notice that this method
         makes 'disappear' the node from the tree structure. This means
         that children from the deleted node are transferred to the
@@ -880,7 +881,7 @@ class TreeNode(object):
         if type(target_nodes) != list:
             target_nodes = [target_nodes, self]
         elif len(target_nodes)==1:
-            target_nodes = tree_nodes.append(self)
+            target_nodes.append(self)
 
         n2path = {}
         reference = []
