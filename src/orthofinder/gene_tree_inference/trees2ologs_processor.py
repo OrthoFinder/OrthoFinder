@@ -1377,7 +1377,7 @@ def SortNonHogOutputFiles(
     for sp in species:
         fn = os.path.join(dSuspectGenes, "%s.txt" % sp)
         if os.path.exists(fn):
-            suspect_queue.put(fn)
+            suspect_queue.put((fn,))
 
     parallel_task_manager.RunMethodParallel(
         SortPlainTextFile,

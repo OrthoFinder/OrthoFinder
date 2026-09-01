@@ -220,7 +220,9 @@ Command-line options for OrthoFinder
 
 ## Output files
 
-> ***From OrthoFinder `v3.1.6`, `N0.tsv` is removed from `/Phylogenetic_Hierarchical_Orthogroups`. Instead, `Orthogroups/Orthogroups.tsv` contains the orthogroups from `N0.tsv`.***
+> - ***From OrthoFinder `v3.1.6`, pairwise ortholog files are no longer produced by default. To generate these files, include the `-pof` option when running OrthoFinder.*** 
+> - ***When using `-op`, the BLAST commands are no longer printed directly to the terminal. Instead, all commands are written to WorkingDirectory/blast_commands.txt. You can then use `-b` to resume the analysis from the point reached with `-op`. If the required BLAST result files are already present, OrthoFinder will reuse them and will not repeat the all-vs-all sequence search. If any required search results are missing, the sequence search will be triggered automatically using the default search method. Please note that running with `-b` does not create a new results directory. All subsequent output will be written to the existing results directory created by the earlier `-op` run.***
+> - ***From OrthoFinder `v3.1.5`, `N0.tsv` is removed from `/Phylogenetic_Hierarchical_Orthogroups`. Instead, `Orthogroups/Orthogroups.tsv` contains the orthogroups from `N0.tsv`.***
 
 A standard OrthoFinder run produces a set of files describing the orthogroups, orthologs, gene trees, resolve gene trees, the rooted species tree, gene duplication events, and comparative genomic statistics for the set of species being analysed. These files are located in an intuitive directory structure.
 

@@ -73,6 +73,7 @@ convert_orthofinder_tree_ids = "tools.convert_orthofinder_tree_ids:main"
 create_hog_fastas = "tools.create_hog_fastas:main"
 ncbi_primary_transcript = "tools.ncbi_primary_transcript:main"
 orthogroup_gene_count = "tools.orthogroup_gene_count:main"
+split_ortholog_files = "tools.split_ortholog_files:main"
 
 [tool.semantic_release]
 branch = "main"

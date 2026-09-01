@@ -26,12 +26,16 @@ create_hog_fastas
 orthogroup_gene_count
     Convert orthogroup tables into gene-count tables.
 
+split_ortholog_files
+    Convert compact orthologue results into pairwise species files.
+
 Run any command with --help for detailed usage.
 
 Examples
 --------
 primary_transcript --help
 make_ultrametric --help
+split_ortholog_files --help
 """
     )
 

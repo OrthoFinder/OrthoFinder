@@ -7,6 +7,7 @@
     "__comment_EXAMPLE_DATA": "Absolute path to the repository ExampleData directory",
     "__comment_OUTPUT": "Output base directory used when input data and test results live in different locations",
     "Direct": {
+        "default": "orthofinder -f INPUT",
         "user_config": "orthofinder -f INPUT --config USER_CONFIG -pof",
         "methodthreads_minseq": "orthofinder -f INPUT -mt 2 -ms 5 -pof",
         "v2_scores_output_extension": "orthofinder -f INPUT --scores-v2 -efn -pof",
