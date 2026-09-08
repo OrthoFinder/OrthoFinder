@@ -202,6 +202,7 @@ def BetweenCoreOrthogroupsWorkflow(
         options.qAddSpeciesToIDs,
         options.tree_program,
         idExtractor=util.FirstWordExtractor,
+        mclInflation=options.mclInflation,
     )
 
     if options.qStopAfterGroups and options.speciesTreeFN is None:
@@ -378,7 +379,8 @@ def BetweenCoreOrthogroupsWorkflow(
 #         options.fewer_open_files,
 #         old_version=options.old_version,
 #         exist_msa=options.qMSATrees,
-#         fix_files=options.fix_files
+#         fix_files=options.fix_files,
+#         mclInflation=options.mclInflation
 #     )
 
 
@@ -475,7 +477,7 @@ def main(args=None):
                 options, speciesInfoObj, seqsInfo, speciesNamesDict, speciesXML
             )
             # 9.
-            if options.fix_files or not options.qStopAfterGroups:
+            if options.fix_files and not options.qStopAfterMCLGroups:
                 GetOrthologues(
                     seqsInfo,
                     speciesNamesDict,
@@ -517,7 +519,7 @@ def main(args=None):
                 options, speciesInfoObj, seqsInfo, speciesNamesDict, speciesXML
             )
             # 9.4
-            if options.fix_files or not options.qStopAfterGroups:
+            if options.fix_files and not options.qStopAfterMCLGroups:
                 GetOrthologues(
                     seqsInfo,
                     speciesNamesDict,
@@ -600,7 +602,7 @@ def main(args=None):
                 options, speciesInfoObj, seqsInfo, speciesNamesDict, speciesXML
             )
             # 9
-            if options.fix_files or not options.qStopAfterGroups:
+            if options.fix_files and not options.qStopAfterMCLGroups:
                 GetOrthologues(
                     seqsInfo,
                     speciesNamesDict,
@@ -637,10 +639,10 @@ def main(args=None):
                 speciesInfoObj.speciesToUse,
                 speciesInfoObj.nSpAll,
             )
-
-            gathering.DoOrthogroups(
-                options, speciesInfoObj, seqsInfo, speciesNamesDict, speciesXML
-            )
+            
+            # gathering.DoOrthogroups(
+            #     options, speciesInfoObj, seqsInfo, speciesNamesDict, speciesXML
+            # )
 
             GetOrthologues(
                 seqsInfo,
@@ -650,6 +652,7 @@ def main(args=None):
                 prog_caller,
                 speciesXML=speciesXML,
             )
+
 
         elif options.qStartFromTrees:
             speciesInfoObj, _ = species_info.ProcessPreviousFiles(
@@ -672,7 +675,8 @@ def main(args=None):
             #     options.fewer_open_files,
             #     old_version=options.old_version,
             #     exist_msa=options.qMSATrees,
-            #     fix_files=options.fix_files
+            #     fix_files=options.fix_files,
+            #     mclInflation=options.mclInflation
             # )
 
             speciesNamesDict = species_info.SpeciesNameDict(
@@ -831,7 +835,7 @@ def main(args=None):
                     options.speciesTreeFN = files.FileHandler.GetSpeciesTreeResultsFN(
                         None, True
                     )
-            if options.fix_files or not options.qStopAfterGroups:
+            if options.fix_files and not options.qStopAfterMCLGroups:
                 GetOrthologues(
                     seqsInfo,
                     speciesNamesDict,

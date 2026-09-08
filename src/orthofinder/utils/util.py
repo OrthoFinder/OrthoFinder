@@ -422,12 +422,13 @@ def CreateNewPairedDirectories(
     return newDirectoryName1, newDirectoryName2
 
 
-def GetUnusedFilename(baseFilename, ext):
+def GetUnusedFilename(baseFilename, ext, i_unassigned=None):
     iAppend = 0
     newFilename = baseFilename + ext
-    while os.path.exists(newFilename):
-        iAppend += 1
-        newFilename = baseFilename + ("_%d" % iAppend) + ext
+    if i_unassigned is not None:
+        while os.path.exists(newFilename):
+            iAppend += 1
+            newFilename = baseFilename + ("_%d" % iAppend) + ext
     return newFilename, iAppend
 
 

@@ -150,6 +150,7 @@ class __Files_new_dont_manually_create__(object):
         self.wd_base = wd_base_list
         if use_base:
             self.wd_current = wd_base_list[-1]
+            if clustersFilename_pairs != None: self.clustersFilename = clustersFilename_pairs[:-len("_id_pairs.txt")]
             self.rd1 = os.path.dirname(self.wd_current[:-1]) + os.sep
             os.makedirs(self.wd_current, exist_ok=True)
         else:    
@@ -502,7 +503,8 @@ class __Files_new_dont_manually_create__(object):
         identifier = self.fileIdentifierString + ("" if i_unassigned is None else "_unassigned_clade_%d" % i_unassigned)
         return self.wd_current + "%s_graph.txt" % identifier
         
-    def CreateUnusedClustersFN(self, mcl_inflation_str="", i_unassigned=None):
+    def CreateUnusedClustersFN(self, mcl_inflation=1.2, i_unassigned=None):
+        mcl_inflation_str = "_I%0.1f" % mcl_inflation
         if self.wd_current == None: raise Exception("No wd_current")
         identifier = self.fileIdentifierString + ("" if i_unassigned is None else "_unassigned_clade_%d" % i_unassigned)
         filename_suggestion = self.wd_current + "clusters_%s%s" % (identifier, mcl_inflation_str)
@@ -514,8 +516,17 @@ class __Files_new_dont_manually_create__(object):
     #     log = "Orthogroups used: %s\n\n" % self.clustersFilename
     #     self.WriteToLog(log)
         
-    def GetClustersFN(self):
-        return self.clustersFilename + "_id_pairs.txt"
+    def GetClustersFN(self, mcl_inflation=1.2, i_unassigned=None):
+        mcl_inflation_str = "_I%0.1f" % mcl_inflation
+        if self.clustersFilename is not None:
+            return self.clustersFilename + "_id_pairs.txt"
+        else:
+            if self.wd_current == None: raise Exception("No wd_current")
+            identifier = self.fileIdentifierString + ("" if i_unassigned is None else "_unassigned_clade_%d" % i_unassigned)
+            filename_suggestion = self.wd_current + "clusters_%s%s" % (identifier, mcl_inflation_str)
+            self.clustersFilename, self.iResultsVersion = util.GetUnusedFilename(filename_suggestion, ".txt", i_unassigned)
+
+            return self.clustersFilename + "_id_pairs.txt"
         
     """ Orthologues files
         ========================================================================================== """

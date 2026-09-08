@@ -540,6 +540,7 @@ def OrthologuesFromTrees(
         write_hog_tree=True,
         fix_files=True,
         fd_limit=None,
+        mclInflation=1.2
     ):
     """
     userSpeciesTree_fn - None if not supplied otherwise rooted tree using user species names (not orthofinder IDs)
@@ -556,7 +557,8 @@ def OrthologuesFromTrees(
         nSpAll, 
         qAddSpeciesToIDs,
         tree_program=tree_program,
-        idExtractor = util.FirstWordExtractor
+        idExtractor = util.FirstWordExtractor,
+        mclInflation=mclInflation
     )
     
     if userSpeciesTree_fn != None:
@@ -634,7 +636,8 @@ def OrthologuesWorkflow(
         nSpAll,
         qAddSpeciesToIDs, 
         tree_program=options.tree_program,
-        idExtractor = util.FirstWordExtractor
+        idExtractor = util.FirstWordExtractor,
+        mclInflation=options.mclInflation
     )
 
     return_obj = infer_trees.InferGeneAndSpeciesTrees(
@@ -1059,7 +1062,8 @@ def OrthologuesFromGeneTrees(
         nSpAll,
         qAddSpeciesToIDs, 
         tree_program=options.tree_program,
-        idExtractor = util.FirstWordExtractor
+        idExtractor = util.FirstWordExtractor,
+        mclInflation=options.mclInflation
     )
 
     # if userSpeciesTree != None:
@@ -1237,7 +1241,8 @@ def OrthologuesFromGeneSpeciesTrees(
         nSpAll,
         qAddSpeciesToIDs, 
         tree_program=options.tree_program,
-        idExtractor = util.FirstWordExtractor
+        idExtractor = util.FirstWordExtractor,
+        mclInflation=options.mclInflation
     )
     
     spTreeFN_ids = files.FileHandler.GetSpeciesTreeUnrootedFN()

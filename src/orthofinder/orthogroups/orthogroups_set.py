@@ -79,6 +79,7 @@ class OrthoGroupsSet(object):
         qAddSpeciesToIDs,
         tree_program="fasttree",
         idExtractor=util.FirstWordExtractor,
+        mclInflation=1.2,
     ):
 
         self.speciesIDsEx = util.FullAccession(files.FileHandler.GetSpeciesIDsFN())
@@ -97,6 +98,7 @@ class OrthoGroupsSet(object):
         self.cached_seq_ids_dict = None
         self.min_seq = min_seq
         self.tree_program = tree_program
+        self.mclInflation = mclInflation
 
     def SequenceDict(self):
         """returns Dict[str, str]"""
@@ -152,9 +154,9 @@ class OrthoGroupsSet(object):
             self.iOgs4 = [i for i, og in enumerate(ogs) if len(og) >= self.min_seq]
         return self.iOgs4
 
-    def OGsAll(self):
+    def OGsAll(self, i_unassigned=None):
         if self.ogs_all is None:
-            ogs = MCL.GetPredictedOGs(files.FileHandler.GetClustersFN())
+            ogs = MCL.GetPredictedOGs(files.FileHandler.GetClustersFN(self.mclInflation, i_unassigned))
             if self.tree_program in ["raxml", "raxml-ng"]:
                 self.ogs_all = [
                     [Seq(g) for g in og] for og in ogs if len(og) >= self.min_seq

@@ -97,6 +97,7 @@ class Options(object):  #
         self.qStartFromSpeciesTrees = False
         self.qStopAfterPrepare = False
         self.qStopAfterGroups = False
+        self.qStopAfterMCLGroups = False
         self.qStopAfterSeqs = False
         self.qStopAfterAlignments = False
         self.qStopAfterTrees = False
@@ -872,6 +873,10 @@ def ProcessArgs(args):
             options.qStopAfterPrepare = True
 
         elif arg == "-og" or arg == "--only-groups":
+            options.qStopAfterMCLGroups = True
+
+
+        elif arg == "-ogh" or arg == "--only-hierarchical-groups":
             options.qStopAfterGroups = True
 
         # elif arg == "-os" or arg == "--only-seqs":
@@ -1172,6 +1177,7 @@ def CheckOptions(options, speciesToUse):
         (
             options.qStopAfterPrepare,
             options.qStopAfterGroups,
+            options.qStopAfterMCLGroups,
             options.qStopAfterSeqs,
             options.qStopAfterAlignments,
             options.qStopAfterTrees,

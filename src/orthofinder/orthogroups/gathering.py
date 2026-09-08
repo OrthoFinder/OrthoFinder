@@ -105,12 +105,15 @@ def DoOrthogroups(
         STALL_TIMEOUT = 200.
     ):
 
-    # Run Algorithm, cluster and output cluster files with original accessions
+
     q_unassigned = i_unassigned is not None
+
+    # Run Algorithm, cluster and output cluster files with original accessions
     util.PrintUnderline(
         "Running OrthoFinder algorithm"
         + (" for clade-specific genes" if q_unassigned else "")
     )
+
     # it's important to free up the memory from python used for processing the genomes
     # before launching MCL because both use sizeable amounts of memory. The only
     # way I can find to do this is to launch the memory intensive python code
@@ -248,7 +251,8 @@ def DoOrthogroups(
                 GRACE_PERIOD = GRACE_PERIOD,
                 STALL_TIMEOUT = STALL_TIMEOUT
             )
- 
+
+    
         graphFilename = waterfall.WaterfallMethod.WriteGraphParallel(
             WriteGraph_perSpecies, seqsInfo, options.nProcessAlg, i_unassigned
         )
@@ -256,7 +260,7 @@ def DoOrthogroups(
         # 5b. MCL
         clustersFilename, clustersFilename_pairs = (
             files.FileHandler.CreateUnusedClustersFN(
-                "_I%0.1f" % options.mclInflation, i_unassigned
+                options.mclInflation, i_unassigned
             )
         )
         mcl.MCL.RunMCL(
@@ -268,12 +272,13 @@ def DoOrthogroups(
         )
 
     elif options.gathering_version == (3, 2):
+
         graphFilename = waterfall.WaterfallMethod.WriteGraphParallel(
             WriteGraph_perSpecies_homology, seqsInfo, options.nProcessAlg, i_unassigned
         )
         clustersFilename, clustersFilename_pairs = (
             files.FileHandler.CreateUnusedClustersFN(
-                "_I%0.1f" % options.mclInflation, i_unassigned
+                options.mclInflation, i_unassigned
             )
         )
         mcl.MCL.RunMCL(
@@ -282,6 +287,7 @@ def DoOrthogroups(
         mcl.ConvertSingleIDsToIDPair(
             seqsInfo, clustersFilename, clustersFilename_pairs, q_unassigned
         )
+
     if not q_unassigned:
         post_clustering_orthogroups(
             clustersFilename_pairs,
@@ -333,7 +339,7 @@ def post_clustering_orthogroups(
             )
     
     ## --------- this doesn't need to run at this point with the new process --------
-    if not options.fix_files:
+    if not options.fix_files or options.qStopAfterMCLGroups:
         if not q_incremental:
             mcl.MCL.CreateOrthogroupTable(
                 ogs,
@@ -371,7 +377,7 @@ def post_clustering_orthogroups(
         os.mkdir(d_seqs_id)
 
     qResults=False
-    if not options.fix_files:
+    if not options.fix_files or options.qStopAfterMCLGroups:
         d_seqs = files.FileHandler.GetResultsSeqsDir()
         if not os.path.exists(d_seqs):
             os.mkdir(d_seqs)
