@@ -258,6 +258,9 @@ def PrintHelp(prog_caller):
 
     # print(" -op                     Stop after preparing input files for BLAST")
     table_stoping.add_row("-op", "Stop after preparing input files for BLAST")
+    table_stoping.add_row("-og", "Stop after MCL Orthogroups")
+    table_stoping.add_row("-ogt", "Stop after gene trees")
+    table_stoping.add_row("-ost", "Stop after species trees")
     # print(" -og                     Stop after inferring orthogroups")                              ### I think we only go as far as doing blast??
     # table_stoping.add_row(
     #     "-og",
@@ -279,9 +282,20 @@ def PrintHelp(prog_caller):
 
     table_restarting.add_row(
         "-b <[bright_magenta]dir[/bright_magenta]>",
-        "Start [dark_goldenrod]OrthoFinder[/dark_goldenrod] from pre-computed BLAST results in <[bright_magenta]dir[/bright_magenta]>",
+        "Restart [dark_goldenrod]OrthoFinder[/dark_goldenrod] from pre-computed sequence search results in <[bright_magenta]dir[/bright_magenta]>",
     )
-
+    table_restarting.add_row(
+        "-fg <[bright_magenta]dir[/bright_magenta]>",
+        "Restart [dark_goldenrod]OrthoFinder[/dark_goldenrod] from MCL Orthogroups results in <[bright_magenta]dir[/bright_magenta]>",
+    )
+    table_restarting.add_row(
+        "-fgt <[bright_magenta]dir[/bright_magenta]>",
+        "Restart [dark_goldenrod]OrthoFinder[/dark_goldenrod] from gene trees results in <[bright_magenta]dir[/bright_magenta]>",
+    )
+    table_restarting.add_row(
+        "-fst <[bright_magenta]dir[/bright_magenta]>",
+        "Restart [dark_goldenrod]OrthoFinder[/dark_goldenrod] from species tree results in <[bright_magenta]dir[/bright_magenta]>",
+    )
     # print(
     # " -fg <dir>               Start OrthoFinder from pre-computed orthogroups in <dir>"
     # )

@@ -89,17 +89,17 @@ def RunSearch(
             species_clades,
         )
 
-    if options.qStopAfterPrepare:
-        # if options.save_blast_commands:
-        commands_fn = files.FileHandler.GetBALSATCommandFN()
-        with open(commands_fn, "w") as writer:
-            for command in commands:
-                writer.write(command + "\n")
-        printer.print(
-            "\nSearch commands have been saved to:"
-        )
-        printer.print("    [dark_cyan]%s[/dark_cyan]" % os.path.abspath(commands_fn))
-        util.Success()
+    # if options.qStopAfterPrepare:
+    # if options.save_blast_commands:
+    commands_fn = files.FileHandler.GetBALSATCommandFN()
+    with open(commands_fn, "w") as writer:
+        for command in commands:
+            writer.write(command + "\n")
+    # printer.print(
+    #     "\nSearch commands have been saved to:"
+    # )
+    # printer.print("    [dark_cyan]%s[/dark_cyan]" % os.path.abspath(commands_fn), end="\n"*2)
+    # util.Success()
     print("Using %d thread(s)" % options.nBlast)
     util.PrintTime("This may take some time...")
     program_caller.RunParallelCommands(

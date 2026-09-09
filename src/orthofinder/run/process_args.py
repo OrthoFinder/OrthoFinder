@@ -437,6 +437,7 @@ def ProcessArgs(args):
                 print("Repeated argument: -ft/--from-trees\n")
                 util.Fail()
             options.qStartFromTrees = True
+            options.use_base = True
             continuationDir = GetDirectoryArgument(arg, args)
 
         elif arg == "-fst" or arg == "--from-species-trees":
@@ -444,6 +445,7 @@ def ProcessArgs(args):
                 print("Repeated argument: -fst/--from-species-trees\n")
                 util.Fail()
             options.qStartFromSpeciesTrees = True
+            options.use_base = True
             continuationDir = GetDirectoryArgument(arg, args)
 
         elif arg == "-t" or arg == "--threads":
@@ -1003,7 +1005,7 @@ def ProcessArgs(args):
 
     if options.qStartFromFasta and (
         options.qStartFromTrees
-        or options.qStartFromGroups
+        # or options.qStartFromGroups
         or options.qStartFromSpeciesTrees
     ):
         err_msg = "ERROR: Incompatible arguments, -f (start from fasta files) and"

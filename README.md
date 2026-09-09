@@ -174,7 +174,7 @@ Command-line options for OrthoFinder
   | Parameter | Description                               | Default   | Options                                                                                     |
   |-----------|-------------------------------------------|-----------|---------------------------------------------------------------------------------------------|
   | `-M`      | Method for gene tree inference.           | `msa`     | `dendroblast`, `msa`                                                                        |
-  | `-S`      | Sequence search program                   | `diamond` | `blast`, `diamond`, `diamond_ultra_sens`, `blastp`, `mmseqs`, `blastn` |
+  | `-S`      | Sequence search program                   | `diamond` | `diamond`, `diamond_ultra_sens`, `blastp`, `mmseqs`, `blastn` |
   | `-A`      | MSA program, requires `-M msa`            | `famsa`   | `famsa`, `mafft`, `muscle`,                                                          |
   | `-T`      | Tree inference method, requires `-M msa`  | `fasttree`| `fasttree`, `fasttree_fastest`, `raxml`, `iqtree`                               |
   | `-I`      | MCL inflation parameter                   | `1.2`     | `1-10`                                                                                         |
@@ -203,11 +203,19 @@ Command-line options for OrthoFinder
   | Parameter | Description                                                                 |
   |-----------|-----------------------------------------------------------------------------|
   | `-op`     | Stop after preparing input files for BLAST.                                 |
+  | `-og`     | Stop after MCL Orthogroups.                                                 |
+  | `-ogt`    | Stop after gene trees.                                                      |
+  | `-ost`    | Stop after species trees.                                                   |
 
 - **Workflow restart options**<br>
-  | Parameter  | Description                                                  |
-  |------------|--------------------------------------------------------------|
-  | `-b <dir>` | Start OrthoFinder from pre-computed BLAST results in `<dir>`. |
+  | Parameter    | Description                                                   |
+  |--------------|---------------------------------------------------------------|
+  | `-b <dir>`   | Restart OrthoFinder from pre-computed sequence search results in `<dir>`. |
+  | `-fg <dir>`  | Restart OrthoFinder from MCL Orthogroups results in `<dir>`.            |
+  | `-fgt <dir>` | Restart OrthoFinder from gene trees results in `<dir>`.                 |
+  | `-fst <dir>` | Restart OrthoFinder from species trees results in `<dir>`.              |
+
+  > *`<dir>` refers to the OrthoFinder results directory*
 
 - **Other options**<br>
   | Parameter        | Description                                                               |
