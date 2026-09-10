@@ -1362,27 +1362,35 @@ def SortNonHogOutputFiles(
 
     args_queue = mp.Queue()
 
+    n_sort_tasks = 0
     for fn, gz in fns:
         if os.path.exists(fn):
             args_queue.put((fn, gz))
+            n_sort_tasks += 1
 
     parallel_task_manager.RunMethodParallel(
         SortFileByFirstColumnNoRepair,
         args_queue,
-        n_parallel
+        n_parallel,
+        total_tasks=n_sort_tasks,
+        show_progress=False,
     )
 
     suspect_queue = mp.Queue()
     dSuspectGenes = files.FileHandler.GetSuspectGenesDir()
+    n_suspect_tasks = 0
     for sp in species:
         fn = os.path.join(dSuspectGenes, "%s.txt" % sp)
         if os.path.exists(fn):
             suspect_queue.put((fn,))
+            n_suspect_tasks += 1
 
     parallel_task_manager.RunMethodParallel(
         SortPlainTextFile,
         suspect_queue,
-        n_parallel
+        n_parallel,
+        total_tasks=n_suspect_tasks,
+        show_progress=False,
     )
 
 

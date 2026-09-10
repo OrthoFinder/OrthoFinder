@@ -530,6 +530,7 @@ class TreesForOrthogroups(object):
                 for iog in iOgsForSpeciesTree: outfile.write("OG%07d\n" % iog)
             # Add species tree to list of commands to run
             if not astral:
+                util.PrintTime("Scheduling species tree inference from concatenated alignment")
                 commands_and_filenames = [
                     self.program_caller.GetTreeCommands(
                             self.tree_program, 
@@ -614,6 +615,7 @@ class TreesForOrthogroups(object):
             qHaveSupport = util.HaveSupportValues(speciesTreeFN_ids)
             if os.path.exists(speciesTreeFN_ids):
                 util.RenameTreeTaxa(speciesTreeFN_ids, files.FileHandler.GetSpeciesTreeUnrootedFN(True), idDict, qSupport=qHaveSupport, qFixNegatives=True)
+                util.PrintTime("Done species tree inference")
             else:
                 text = "ERROR: Species tree inference failed"
                 files.FileHandler.LogFailAndExit(text)

@@ -727,6 +727,11 @@ class __Files_new_dont_manually_create__(object):
     #     if not os.path.exists(hog_msa_dir): 
     #         os.mkdir(hog_msa_dir)
     #     return hog_msa_dir
+    
+    def GetCheckPointFN(self):
+        check_point_fn = os.path.join(self.wd_current, "of_checkpoint.txt")
+        return check_point_fn
+
 
     def GetBALSATCommandFN(self):
         commands_fn = os.path.join(self.wd_current, "blast_commands.txt")
@@ -792,6 +797,8 @@ class __Files_new_dont_manually_create__(object):
 # RefactorDS - FileHandler 
     """ Standard Methods ========================================================================================== """  
     def LogFailAndExit(self, text=""):
+        if text:
+            util.LogMessage(text, level="ERROR")
         if text != "": print(text)
         self.WriteToLog("\nERROR: An error occurred\n" + text)
         util.Fail()

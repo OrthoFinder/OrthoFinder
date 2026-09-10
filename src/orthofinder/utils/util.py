@@ -76,10 +76,33 @@ class OrthoPrinter:
 
     def print(self, *messages, style: str = "default", sep: str = " ", end: str = "\n"):
         message = sep.join(map(str, messages))
+        if style in ("error", "warning"):
+            LogMessage(message, level=style.upper())
         self.console.print(message, style=style, end=end)
 
 
 printer = OrthoPrinter()
+
+_run_logger = None
+_run_logger_pid = None
+
+
+def SetRunLogger(logger):
+    """Attach the current run's logger; pass None when the run finishes."""
+    global _run_logger, _run_logger_pid
+    _run_logger = logger
+    _run_logger_pid = os.getpid() if logger is not None else None
+
+
+def LogMessage(message, level="INFO"):
+    """Record a plain-text milestone in the owning process only.
+
+    Worker failures must travel through the result queue to the parent;
+    forked workers must not write through an inherited file handler.
+    """
+    if _run_logger is not None and _run_logger_pid == os.getpid():
+        from rich.text import Text
+        _run_logger.log(Text.from_markup(str(message)).plain.strip(), level=level)
 
 from . import parallel_task_manager
 
@@ -648,7 +671,7 @@ def PrintCitation(d=None):
         WriteCitation(d)
     print()
     # printer.print(print_citation)
-    printer.print("\nCITATION:")
+    printer.print("\n[bold]CITATION:[/bold]")
     printer.print(
         " When publishing work that uses [dark_goldenrod]OrthoFinder[/dark_goldenrod] please cite:"
     )
@@ -674,10 +697,11 @@ def PrintCitation(d=None):
 
 
 def PrintUnderline(text, qHeavy=False):
-    print(("\n" + text))
+    LogMessage(text)
     n = len(text)
     if text.startswith("\n"):
         n -= 1
+    print(("\n[bold]" + text + "[/bold]") if qHeavy else ("\n" + text))
     print((("=" if qHeavy else "-") * n))
 
 

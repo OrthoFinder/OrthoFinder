@@ -1,4 +1,5 @@
 import os
+import traceback
 import numpy as np
 import subprocess
 from scipy import sparse
@@ -244,10 +245,8 @@ class WaterfallMethod:
                     result_queue.put((iSpecies, "success"))
                 except queue.Empty:
                     continue
-                except Exception as e:
-                    i = seqsInfo.speciesToUse[iSpecies]
-                    print("ERROR: Error processing files Blast%d_*" % i)
-                    result_queue.put(False)
+                except Exception:
+                    result_queue.put(("error", traceback.format_exc()))
                     break
         finally:
             result_queue.put(None) 
@@ -380,8 +379,8 @@ class WaterfallMethod:
                     result_queue.put((iSpecies, "success"))
                 except queue.Empty:
                     continue
-                except Exception as e:
-                    result_queue.put(False)
+                except Exception:
+                    result_queue.put(("error", traceback.format_exc()))
                     break
         finally:
             result_queue.put(None) 

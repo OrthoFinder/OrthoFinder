@@ -61,6 +61,8 @@ from ..utils import (
 )
 from ..orthogroups import gathering, orthogroups_set
 from ..orthogroups import accelerate as acc
+from orthofinder.utils.logging import Logger
+
 
 from ..tools import astral, mcl, tree
 from ..gene_tree_inference import trees2ologs_of, infer_trees, tree_processor
@@ -92,6 +94,7 @@ sys.setrecursionlimit(10**6)
 # if sys.platform.startswith("linux"):
 #     with open(os.devnull, "w") as f:
 #         subprocess.call("taskset -p 0xffffffffffff %d" % os.getpid(), shell=True, stdout=f)
+
 
 
 """
@@ -387,6 +390,9 @@ def BetweenCoreOrthogroupsWorkflow(
 def main(args=None):
     files.FileHandler.reset()
     start = time.perf_counter()
+    log = None
+    current_step = "Initialisation"
+    exit_code = 0
     try:
         if args is None:
             args = sys.argv[1:]
@@ -419,11 +425,32 @@ def main(args=None):
             resultsDir_nonDefault,
             pickleDir_nonDefault,
         )
+
+
+        log = Logger(
+            files.FileHandler.GetCheckPointFN(),
+            fmt="%(asctime)s : %(message)s",
+        )
+        util.SetRunLogger(log)
+        log.info(
+            "Starting OrthoFinder v%s\n"
+            "%d thread(s) for highly parallel tasks (BLAST searches etc.)\n"
+            "%d thread(s) for OrthoFinder algorithm\n\n"
+            "OrthoFinder version %s Copyright (C) 2014 David Emms\n\n"
+            "Results directory:\n    %s\n",
+            __version__,
+            options.nBlast,
+            options.nProcessAlg,
+            __version__,
+            files.FileHandler.GetResultsDirectory1(),
+        )
+
+
         # print("Results directory: %s" % files.FileHandler.GetResultsDirectory1())
         # printer.print("Results directory:", style="path")
         # printer.print(f"    [dark_cyan]{files.FileHandler.GetResultsDirectory1()}")
 
-        printer.print("Results directory:")
+        printer.print("[bold]Results directory:[/bold]")
         printer.print(f"    [dark_cyan]{files.FileHandler.GetResultsDirectory1()}")
 
         check_dependencies.CheckDependencies(
@@ -432,6 +459,7 @@ def main(args=None):
             prog_caller,
             files.FileHandler.GetWorkingDirectory1_Read()[0],
         )
+
 
         # if using previous Trees etc., check these are all present - Job for orthologues
         if options.qStartFromBlast and options.qStartFromFasta:
@@ -468,16 +496,26 @@ def main(args=None):
             util.PrintUnderline("Dividing up work for BLAST for parallel processing")
             run_commands.CreateSearchDatabases(speciesInfoObj, options, prog_caller)
             # 7.
+            current_step = "Sequence search"
+            log.step(current_step, "Started")
             run_commands.RunSearch(options, speciesInfoObj, seqsInfo, prog_caller)
+            log.step(current_step, "Completed")
+            current_step = "Workflow"
             # 8.
             speciesNamesDict = species_info.SpeciesNameDict(
                 files.FileHandler.GetSpeciesIDsFN()
             )
+            current_step = "Infer orthogroups"
+            log.step(current_step, "Started")
             gathering.DoOrthogroups(
                 options, speciesInfoObj, seqsInfo, speciesNamesDict, speciesXML
             )
+            log.step(current_step, "Completed")
+            current_step = "Workflow"
             # 9.
             if options.fix_files and not options.qStopAfterMCLGroups:
+                current_step = "Infer orthologues"
+                log.step(current_step, "Started")
                 GetOrthologues(
                     seqsInfo,
                     speciesNamesDict,
@@ -486,6 +524,8 @@ def main(args=None):
                     prog_caller,
                     speciesXML=speciesXML,
                 )
+                log.step(current_step, "Completed")
+                current_step = "Workflow"
 
         elif options.qStartFromFasta:
             # 3.
@@ -510,16 +550,26 @@ def main(args=None):
             util.PrintUnderline("Dividing up work for BLAST for parallel processing")
             run_commands.CreateSearchDatabases(speciesInfoObj, options, prog_caller)
             # 7.
+            current_step = "Sequence search"
+            log.step(current_step, "Started")
             run_commands.RunSearch(options, speciesInfoObj, seqsInfo, prog_caller)
+            log.step(current_step, "Completed")
+            current_step = "Workflow"
             # 8.
             speciesNamesDict = species_info.SpeciesNameDict(
                 files.FileHandler.GetSpeciesIDsFN()
             )
+            current_step = "Infer orthogroups"
+            log.step(current_step, "Started")
             gathering.DoOrthogroups(
                 options, speciesInfoObj, seqsInfo, speciesNamesDict, speciesXML
             )
+            log.step(current_step, "Completed")
+            current_step = "Workflow"
             # 9.4
             if options.fix_files and not options.qStopAfterMCLGroups:
+                current_step = "Infer orthologues"
+                log.step(current_step, "Started")
                 GetOrthologues(
                     seqsInfo,
                     speciesNamesDict,
@@ -528,6 +578,8 @@ def main(args=None):
                     prog_caller,
                     speciesXML=speciesXML,
                 )
+                log.step(current_step, "Completed")
+                current_step = "Workflow"
 
         elif options.qStartFromBlast:
             working_dirs = files.FileHandler.GetWorkingDirectory1_Read()
@@ -553,6 +605,8 @@ def main(args=None):
                     )
                     print("Using %d thread(s)" % options.nBlast)
                     util.PrintTime("This may take some time...")
+                    current_step = "Sequence search"
+                    log.step(current_step, "Started")
                     program_caller.RunParallelCommands(
                         options.nBlast,
                         commands,
@@ -568,6 +622,8 @@ def main(args=None):
                         old_version=options.old_version,
                         dynamic_threads=options.dynamic_threads,
                     )
+                    log.step(current_step, "Completed")
+                    current_step = "Workflow"
 
                 # Recheck after running saved commands, or report the files that
                 # are missing when no saved command file was available.
@@ -598,11 +654,17 @@ def main(args=None):
             speciesNamesDict = species_info.SpeciesNameDict(
                 files.FileHandler.GetSpeciesIDsFN()
             )
+            current_step = "Infer orthogroups"
+            log.step(current_step, "Started")
             gathering.DoOrthogroups(
                 options, speciesInfoObj, seqsInfo, speciesNamesDict, speciesXML
             )
+            log.step(current_step, "Completed")
+            current_step = "Workflow"
             # 9
             if options.fix_files and not options.qStopAfterMCLGroups:
+                current_step = "Infer orthologues"
+                log.step(current_step, "Started")
                 GetOrthologues(
                     seqsInfo,
                     speciesNamesDict,
@@ -611,6 +673,8 @@ def main(args=None):
                     prog_caller,
                     speciesXML=speciesXML,
                 )
+                log.step(current_step, "Completed")
+                current_step = "Workflow"
 
         elif options.qStartFromGroups:
             # 0.
@@ -644,6 +708,8 @@ def main(args=None):
             #     options, speciesInfoObj, seqsInfo, speciesNamesDict, speciesXML
             # )
 
+            current_step = "Infer orthologues"
+            log.step(current_step, "Started")
             GetOrthologues(
                 seqsInfo,
                 speciesNamesDict,
@@ -652,6 +718,8 @@ def main(args=None):
                 prog_caller,
                 speciesXML=speciesXML,
             )
+            log.step(current_step, "Completed")
+            current_step = "Workflow"
 
 
         elif options.qStartFromTrees:
@@ -688,6 +756,8 @@ def main(args=None):
                 speciesInfoObj.nSpAll,
             )
 
+            current_step = "Infer orthologues from gene trees"
+            log.step(current_step, "Started")
             orthologues.OrthologuesFromGeneTrees(
                 seqsInfo,
                 speciesNamesDict,
@@ -712,6 +782,8 @@ def main(args=None):
                 save_space=options.save_space,
                 root_from_previous=False,
             )
+            log.step(current_step, "Completed")
+            current_step = "Workflow"
         elif options.qStartFromSpeciesTrees:
             speciesInfoObj, _ = species_info.ProcessPreviousFiles(
                 files.FileHandler.GetWorkingDirectory1_Read(),
@@ -729,6 +801,8 @@ def main(args=None):
                 speciesInfoObj.nSpAll,
             )
 
+            current_step = "Infer orthologues from gene and species trees"
+            log.step(current_step, "Started")
             orthologues.OrthologuesFromGeneSpeciesTrees(
                 seqsInfo,
                 speciesNamesDict,
@@ -747,6 +821,8 @@ def main(args=None):
                 i_og_restart=0,
                 speciesXML=None,
             )
+            log.step(current_step, "Completed")
+            current_step = "Workflow"
 
         elif options.qFastAdd:
             # Prepare previous directory as database
@@ -760,6 +836,8 @@ def main(args=None):
                 util.Fail()
             util.PrintUnderline("Creating orthogroup profiles")
             wd_list = files.FileHandler.GetWorkingDirectory1_Read()
+            current_step = "Create orthogroup profiles"
+            log.step(current_step, "Started")
             fn_diamond_db, q_hogs = acc.prepare_accelerate_database(
                 options.min_seq,
                 continuationDir,
@@ -770,6 +848,8 @@ def main(args=None):
                 prog_caller,
                 tree_program=options.tree_program,
             )
+            log.step(current_step, "Completed")
+            current_step = "Workflow"
             # print(
             #     "\nAdding new species in %s to existing analysis in %s"
             #     % (fastaDir, continuationDir)
@@ -794,9 +874,13 @@ def main(args=None):
                 speciesInfoObj.nSpAll,
             )
             # Add genes to orthogroups
+            current_step = "Search orthogroup profiles"
+            log.step(current_step, "Started")
             results_files = run_commands.RunSearch_accelerate(
                 options, speciesInfoObj, fn_diamond_db, prog_caller
             )
+            log.step(current_step, "Completed")
+            current_step = "Workflow"
             # Clade-specific genes
             speciesNamesDict = species_info.SpeciesNameDict(
                 files.FileHandler.GetSpeciesIDsFN()
@@ -810,6 +894,8 @@ def main(args=None):
             #     gathering.post_clustering_orthogroups(clustersFilename_pairs, speciesInfoObj, seqsInfo, speciesNamesDict, options, speciesXML=None)
             if orphan_genes_version == 2:
                 # v2 - Infer rooted species tree from new rooted gene trees, identify new species-clades & search within these
+                current_step = "Infer clade-specific orthogroups"
+                log.step(current_step, "Started")
                 clustersFilename_pairs, i_og_restart = BetweenCoreOrthogroupsWorkflow(
                     continuationDir,
                     speciesInfoObj,
@@ -820,6 +906,8 @@ def main(args=None):
                     results_files,
                     q_hogs,
                 )
+                log.step(current_step, "Completed")
+                current_step = "Workflow"
 
                 # Infer clade-specific orthogroup gene trees
                 gathering.post_clustering_orthogroups(
@@ -836,6 +924,8 @@ def main(args=None):
                         None, True
                     )
             if options.fix_files and not options.qStopAfterMCLGroups:
+                current_step = "Infer orthologues"
+                log.step(current_step, "Started")
                 GetOrthologues(
                     seqsInfo,
                     speciesNamesDict,
@@ -845,10 +935,14 @@ def main(args=None):
                     i_og_restart,
                     speciesXML=None,
                 )
+                log.step(current_step, "Completed")
+                current_step = "Workflow"
         else:
             raise NotImplementedError
             # ptm = parallel_task_manager.ParallelTaskManager_singleton()
             ptm.Stop()
+        current_step = "Process output files"
+        log.step(current_step, "Started")
         if not options.save_space and not options.qFastAdd:
             # split up the orthologs into one file per species-pair
             util.split_ortholog_files(files.FileHandler.GetOrthologuesDirectory())
@@ -885,23 +979,54 @@ def main(args=None):
                     os.remove(sp_path)
 
         # printer.print("\nResults:\n    %s" % d_results, style="path")
-        printer.print("\nResults directory:")
+        printer.print("\n[bold]Results directory:[/bold]")
         printer.print(f"    [dark_cyan]{d_results}")
         util.PrintCitation(d_results)
         files.FileHandler.WriteToLog("OrthoFinder run completed\n", True)
+        log.step(current_step, "Completed")
+        current_step = "Workflow"
+        log.info("OrthoFinder run completed in %.2f seconds", time.perf_counter() - start)
 
     except Exception as e:
-        print(str(e))
-        util.print_traceback(e)
+        exit_code = 1
+        if log is not None:
+            log.log("ERROR: Step failed",
+                    step=current_step, level="ERROR", exc_info=True)
+            for stream in ("stdout", "stderr"):
+                output = getattr(e, stream, None)
+                if output:
+                    if isinstance(output, bytes):
+                        output = output.decode("utf-8", errors="replace")
+                    log.log("%s:\n%s", stream, output,
+                            step=current_step, level="ERROR")
+                    printer.console.print(f"{stream}:\n{output}", markup=False, highlight=False)
+        import traceback
+        traceback.print_exception(type(e), e, e.__traceback__)
         # ptm = parallel_task_manager.ParallelTaskManager_singleton()
         ptm.Stop()
         sys.exit(1)
 
     except KeyboardInterrupt:
+        exit_code = 1
+        if log is not None:
+            log.step(current_step, "Interrupted by user", level="WARNING")
         printer.print("\nProgram terminated by user.", style="error")
         sys.exit(1)
 
+    except SystemExit as e:
+        exit_code = e.code
+        if log is not None:
+            if e.code is None or e.code == 0:
+                log.step(current_step, "Workflow stopped normally before the full analysis finished")
+            else:
+                log.log("ERROR: Workflow exited with status %s", e.code,
+                        step=current_step, level="ERROR", exc_info=True)
+        raise
+
     finally:
+        util.SetRunLogger(None)
+        if log is not None:
+            log.close()
         # ptm = parallel_task_manager.ParallelTaskManager_singleton()
         ptm.Stop()
         end = time.perf_counter()
@@ -924,7 +1049,7 @@ def main(args=None):
         )
         printer.print(f"[green]{time_elapsed:5f}[/green]s", end="\n" * 2)
         files.FileHandler.reset()
-        sys.exit()
+        sys.exit(exit_code)
 
 
 if __name__ == "__main__":

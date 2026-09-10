@@ -108,6 +108,7 @@ except RuntimeError as e:
 
 
 def PrintTime(message):
+    util.LogMessage(message)
     util.printer.print((str(datetime.datetime.now()).rsplit(".", 1)[0] + " : " + message), style="default")
     sys.stdout.flush()
 
@@ -152,13 +153,17 @@ def RunCommand_Simple(command):
     subprocess.call(command, env=my_env, shell=True)
 
 
-def RunCommand(command, qPrintOnError=False, qPrintStderr=True):
+def RunCommand(command, qPrintOnError=False, qPrintStderr=True, raise_on_error=False):
     """Run a single command"""
     popen = subprocess.Popen(
         command, env=my_env, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
-    if qPrintOnError:
+    if qPrintOnError or raise_on_error:
         stdout, stderr = popen.communicate()
+        if raise_on_error and popen.returncode != 0:
+            raise subprocess.CalledProcessError(
+                popen.returncode, command, output=stdout, stderr=stderr
+            )
         if popen.returncode != 0:
             print(
                 (
@@ -269,13 +274,13 @@ def Worker_RunCommands_And_Move(
                     fn(*fns)
                 else:
                     if not isinstance(command, str):
-                        print("ERROR: Cannot run command: " + str(command))
-                        print("Please report this issue.")
+                        raise TypeError(f"Cannot run command: {command!r}")
                     else:
                         RunCommand(
                             command,
                             qPrintOnError=q_print_on_error,
                             qPrintStderr=q_always_print_stderr,
+                            raise_on_error=True,
                         )
                         if fns != None:
                             actual, target = fns
@@ -283,77 +288,92 @@ def Worker_RunCommands_And_Move(
                                 os.rename(actual, target)
         except queue.Empty:
             return
-        except Exception as e:
-            print("WARNING: ")
-            print(str(e))
-            global q_print_first_traceback_0
-            if not q_print_first_traceback_0:
-                util.print_traceback(e)
-                q_print_first_traceback_0 = True
-        except:
-            print("WARNING: Unknown caught unknown exception")
+        except BaseException:
+            raise
 
 
 q_print_first_traceback_1 = False
 
 
-def Worker_RunMethod(Function, args_queue):
+def Worker_RunMethod(result_queue, Function, args_queue):
     while True:
         try:
             args = args_queue.get(True, 0.1)
-            Function(*args)
         except queue.Empty:
             return
-        except Exception as e:
-            print("Error in function: " + str(Function))
-            print(traceback.format_exc(), flush=True)
-            global q_print_first_traceback_1
-            if not q_print_first_traceback_1:
-                util.print_traceback(e)
-                q_print_first_traceback_1 = True
-            return
+        Function(*args)
+        result_queue.put((None, "success"))
+
+
+def ReportWorkerFailure(result_queue, function, *args):
+    """Forward a worker's traceback to its parent without task-specific labels."""
+    try:
+        function(*args)
+    except BaseException:
+        result_queue.put(("error", traceback.format_exc()))
+    finally:
+        result_queue.put(None)
 
 def RunMethodParallel(
-        Function, 
-        args_queue, 
-        nProcesses, 
+        Function,
+        args_queue,
+        nProcesses,
+        total_tasks=0,
+        show_progress=True,
     ):
 
+    result_queue = mp.Queue()
     runningProcesses = [
-        mp.Process(target=Worker_RunMethod, args=(Function, args_queue))
+        mp.Process(target=ReportWorkerFailure,
+                   args=(result_queue, Worker_RunMethod, result_queue, Function, args_queue))
         for i_ in range(nProcesses)
     ]
-    for proc in runningProcesses:
-        proc.start()
-    ManageQueue(runningProcesses, args_queue)
+    ManageQueueNew(runningProcesses, total_tasks, nProcesses, result_queue, show_progress=show_progress)
+
+class WorkerError(RuntimeError):
+    """A worker failure, including its original traceback when available."""
+
 
 def ManageQueueNew(
-        runningProcesses, 
-        total_tasks, 
-        nprocess, 
-        result_queue, 
+        runningProcesses,
+        total_tasks,
+        nprocess,
+        result_queue,
         GRACE_PERIOD = 10.,
-        STALL_TIMEOUT = 200.
+        STALL_TIMEOUT = 200.,
+        show_progress = True,
     ):
-    
-    progressbar, task = util.get_progressbar(total_tasks)
+
+    progressbar, task = util.get_progressbar(total_tasks, visible=show_progress)
     update_cycle = 1
-    progressbar.start()
+    if show_progress:
+        progressbar.start()
     for proc in runningProcesses:
         proc.start()
     completed_tasks = 0
     active_workers = nprocess
     last_progress_time = time.time()
-    fatal = False
     try:
         while completed_tasks < total_tasks or active_workers > 0:
             try:
                 msg = result_queue.get(timeout=0.1)
             except queue.Empty:
+                failed = [proc for proc in runningProcesses if proc.exitcode not in (None, 0)]
+                if failed:
+                    details = "; ".join(
+                        f"{proc.name} (PID {proc.pid}) exited with status {proc.exitcode}"
+                        for proc in failed
+                    )
+                    raise WorkerError(f"Worker exited without reporting a traceback: {details}")
+                if all(proc.exitcode is not None for proc in runningProcesses):
+                    raise WorkerError(
+                        f"Workers exited before reporting completion "
+                        f"({completed_tasks}/{total_tasks} tasks completed)."
+                    )
                 if time.time() - last_progress_time > STALL_TIMEOUT:
-                    print(f"ERROR: Stalled for {STALL_TIMEOUT}s (completed {completed_tasks}/{total_tasks}).")
-                    fatal = True
-                    break
+                    raise WorkerError(
+                        f"Stalled for {STALL_TIMEOUT}s (completed {completed_tasks}/{total_tasks})."
+                    )
                 continue
 
             if msg is None:
@@ -361,17 +381,19 @@ def ManageQueueNew(
                 continue
 
             if msg is False:
-                print("ERROR: worker reported fatal error.")
-                fatal = True
-                break
+                raise WorkerError("Worker reported a fatal error without a traceback.")
+
+            # Any worker can report its traceback without task-specific metadata.
+            if isinstance(msg, tuple) and len(msg) == 2 and msg[0] == "error":
+                raise WorkerError(f"Worker failed:\n{msg[1]}")
 
             if isinstance(msg, tuple) and len(msg) == 2 and msg[1] == "success":
                 completed_tasks += 1
-                progressbar.update(task, advance=update_cycle)
+                if show_progress:
+                    progressbar.update(task, advance=update_cycle)
                 last_progress_time = time.time()
                 continue
 
-            fatal = True
             raise TypeError(f"Unexpected message from worker: {type(msg)} {msg!r}")
 
     finally:
@@ -383,15 +405,14 @@ def ManageQueueNew(
         for proc in runningProcesses:
             proc.join()
 
-        progressbar.stop()
+        if show_progress:
+            progressbar.stop()
         try:
             result_queue.close()
             result_queue.join_thread()
         except Exception:
             pass            
     
-    if fatal:
-        util.Fail()
 
 
 

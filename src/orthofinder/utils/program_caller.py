@@ -1006,6 +1006,8 @@ def RunParallelCommandsAndMoveResultsFile(
                 for _ in range(nProcesses)
             ]
         concurrent.futures.wait(futures)
+        for future in futures:
+            future.result()
 
     else:
         total_commands = len(commands_and_filenames)
@@ -1035,17 +1037,21 @@ def RunParallelCommandsAndMoveResultsFile(
                 )
                 futures[fut] = cmd_unit
 
+            first_error = None
             for i, future in enumerate(concurrent.futures.as_completed(futures)):
                 try:
                     result = future.result()
                     if result != 0 and q_print_on_error:
                         print(f"ERROR occurred with command: {futures[future]}")
                 except Exception as e:
-                    print(f"Exception with command {futures[future]}: {e}")
+                    if first_error is None:
+                        first_error = e
                 finally:
                     if (i + 1) % update_cycle == 0:
                         progressbar.update(task, advance=update_cycle)
         progressbar.stop()
+        if first_error is not None:
+            raise first_error
 
 
 q_print_first_traceback_0 = False
@@ -1094,14 +1100,14 @@ def Worker_RunCommands_And_Move(
                 return_code = 0
             else:
                 if not isinstance(command, str):
-                    print("ERROR: Cannot run command: " + str(command))
-                    print("Please report this issue.")
+                    raise TypeError(f"Cannot run command: {command!r}")
                 else:
                     return_code = RunCommand(
                         command,
                         method_threads,
                         qPrintOnError=q_print_on_error,
                         qPrintStderr=q_always_print_stderr,
+                        raise_on_error=True,
                     )
                     if fns != None:
                         actual, target = fns
@@ -1110,18 +1116,11 @@ def Worker_RunCommands_And_Move(
         return return_code
     # except queue.Empty:
     #     return
-    except Exception as e:
-        print("WARNING: ")
-        print(str(e))
-        global q_print_first_traceback_0
-        if not q_print_first_traceback_0:
-            util.print_traceback(e)
-            q_print_first_traceback_0 = True
-    except:
-        print("WARNING: Unknown caught unknown exception")
+    except BaseException:
+        raise
 
 
-def RunCommand(command, method_threads, dynamic_threads=False, qPrintOnError=False, qPrintStderr=True):
+def RunCommand(command, method_threads, dynamic_threads=False, qPrintOnError=False, qPrintStderr=True, raise_on_error=False):
     """Run a single command with token gating."""
     
     # threads_needed = threads_from_cmd(command, method_threads)
@@ -1170,16 +1169,18 @@ def RunCommand(command, method_threads, dynamic_threads=False, qPrintOnError=Fal
         env.setdefault("MKL_NUM_THREADS", "1")
         env.setdefault("OMP_NESTED", "0")
 
-        out = subprocess.DEVNULL if not qPrintOnError else subprocess.PIPE
-        err = subprocess.DEVNULL if not (qPrintOnError and qPrintStderr) else subprocess.PIPE
+        out = subprocess.PIPE if qPrintOnError or raise_on_error else subprocess.DEVNULL
+        err = subprocess.PIPE if (qPrintOnError and qPrintStderr) or raise_on_error else subprocess.DEVNULL
 
         popen = subprocess.Popen(
             command, env=env, shell=True,
             stdout=out, stderr=err
         )
 
-        if qPrintOnError:
+        if qPrintOnError or raise_on_error:
             stdout, stderr = popen.communicate()
+            if raise_on_error and popen.returncode != 0:
+                raise subprocess.CalledProcessError(popen.returncode, command, output=stdout, stderr=stderr)
             if popen.returncode != 0:
                 print(f"\nERROR: external program returned code {popen.returncode}")
                 print(f"\nCommand: {command}")
@@ -1197,7 +1198,5 @@ def RunCommand(command, method_threads, dynamic_threads=False, qPrintOnError=Fal
     finally:
         for _ in range(acquired):
             TOKENS.release()
-
-
 
 
