@@ -24,6 +24,7 @@
 #
 # For any enquiries send an email to David Emms
 # david_emms@hotmail.comhor: david
+from ..utils import logging as run_logging
 import os
 import shutil
 from collections import Counter, defaultdict
@@ -558,6 +559,7 @@ def OrthologuesWorkflow(
         stats.Stats(ogs, species_dict, speciesToUse, files.FileHandler.iResultsVersion, fastaWriter, ids_dict)
 
 
+@run_logging.RunLogger.stage("Infer species tree", require_result=True)
 def RootSpeciesTree(
         ogSet, 
         spTreeFN_ids, 

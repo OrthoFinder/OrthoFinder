@@ -36,6 +36,7 @@ Users:
 The code also contains the help class: PreviousFilesLocator (and child classes of it)
 """
 
+from . import logging as run_logging
 import os
 import sys
 import glob
@@ -729,7 +730,7 @@ class __Files_new_dont_manually_create__(object):
     #     return hog_msa_dir
     
     def GetCheckPointFN(self):
-        check_point_fn = os.path.join(self.wd_current, "of_checkpoint.txt")
+        check_point_fn = os.path.join(self.wd_current, "checkpoint.txt")
         return check_point_fn
 
 
@@ -798,7 +799,7 @@ class __Files_new_dont_manually_create__(object):
     """ Standard Methods ========================================================================================== """  
     def LogFailAndExit(self, text=""):
         if text:
-            util.LogMessage(text, level="ERROR")
+            run_logging.RunLogger.message(text, level="ERROR")
         if text != "": print(text)
         self.WriteToLog("\nERROR: An error occurred\n" + text)
         util.Fail()

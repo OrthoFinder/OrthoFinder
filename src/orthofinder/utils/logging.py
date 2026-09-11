@@ -7,9 +7,17 @@ Example::
         log.step("Sequence search", "Search completed")
 
 Each instance owns its handlers and leaves the root logger unchanged.
+
+For a workflow spanning modules, call ``RunLogger.set_logger(log)`` at startup and
+``RunLogger.set_logger(None)`` before closing it. ``RunLogger.message`` and ``RunLogger.stage`` use
+that registered logger only in its owning process. Without a registered logger,
+decorated functions execute normally without writing stage messages. Worker
+errors must be forwarded to the parent process, which logs the traceback once.
 """
 
 import logging
+import os
+from functools import wraps
 from os import PathLike
 from pathlib import Path
 
@@ -109,3 +117,67 @@ class Logger:
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.close()
+
+
+class RunLogger:
+    """Share one run's Logger across modules in its owning process.
+
+    Register at startup and detach before closing the Logger. Class methods
+    allow decorators to be declared before a run starts; the active logger is
+    looked up when the decorated function executes. Worker errors must still
+    be forwarded to the parent for logging.
+    """
+
+    _logger: Logger | None = None
+    _pid: int | None = None
+    _failed_stage: str | None = None
+
+    @classmethod
+    def set_logger(cls, logger: Logger | None) -> None:
+        """Register a logger, or detach with None; reset the failed stage."""
+        cls._logger = logger
+        cls._pid = os.getpid() if logger is not None else None
+        cls._failed_stage = None
+
+    @classmethod
+    def _current(cls) -> Logger | None:
+        return cls._logger if cls._pid == os.getpid() else None
+
+    @classmethod
+    def failed_stage(cls, default: str) -> str:
+        """Return the innermost failed stage in this process, or a fallback."""
+        return (cls._failed_stage or default) if cls._current() is not None else default
+
+    @classmethod
+    def stage(cls, name: str, require_result: bool = False):
+        """Record stage boundaries without swallowing exceptions.
+
+        With require_result=True, a None return indicates an early stop.
+        The main error handler logs the traceback once.
+        """
+        def decorate(function):
+            @wraps(function)
+            def run(*args, **kwargs):
+                logger = cls._current()
+                if logger is not None:
+                    logger.step(name, "Started")
+                try:
+                    result = function(*args, **kwargs)
+                except BaseException:
+                    if logger is not None and cls._failed_stage is None:
+                        cls._failed_stage = name
+                    raise
+                if logger is not None:
+                    status = "Stopped before completion" if require_result and result is None else "Completed"
+                    logger.step(name, status)
+                return result
+            return run
+        return decorate
+
+    @classmethod
+    def message(cls, message: str, level: int | str = "INFO") -> None:
+        """Write a milestone without Rich markup in the owning process."""
+        logger = cls._current()
+        if logger is not None:
+            from rich.text import Text
+            logger.log(Text.from_markup(str(message)).plain.strip(), level=level)

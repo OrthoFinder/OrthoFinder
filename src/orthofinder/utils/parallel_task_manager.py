@@ -23,6 +23,7 @@
 #
 # For any enquiries send an email to David Emms
 # david_emms@hotmail.com
+from . import logging as run_logging
 import os
 import sys
 import platform
@@ -108,7 +109,7 @@ except RuntimeError as e:
 
 
 def PrintTime(message):
-    util.LogMessage(message)
+    run_logging.RunLogger.message(message)
     util.printer.print((str(datetime.datetime.now()).rsplit(".", 1)[0] + " : " + message), style="default")
     sys.stdout.flush()
 

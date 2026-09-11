@@ -61,7 +61,7 @@ from ..utils import (
 )
 from ..orthogroups import gathering, orthogroups_set
 from ..orthogroups import accelerate as acc
-from orthofinder.utils.logging import Logger
+from orthofinder.utils import logging as run_logging
 
 
 from ..tools import astral, mcl, tree
@@ -427,11 +427,11 @@ def main(args=None):
         )
 
 
-        log = Logger(
+        log = run_logging.Logger(
             files.FileHandler.GetCheckPointFN(),
             fmt="%(asctime)s : %(message)s",
         )
-        util.SetRunLogger(log)
+        run_logging.RunLogger.set_logger(log)
         log.info(
             "Starting OrthoFinder v%s\n"
             "%d thread(s) for highly parallel tasks (BLAST searches etc.)\n"
@@ -514,8 +514,6 @@ def main(args=None):
             current_step = "Workflow"
             # 9.
             if options.fix_files and not options.qStopAfterMCLGroups:
-                current_step = "Infer orthologues"
-                log.step(current_step, "Started")
                 GetOrthologues(
                     seqsInfo,
                     speciesNamesDict,
@@ -524,8 +522,6 @@ def main(args=None):
                     prog_caller,
                     speciesXML=speciesXML,
                 )
-                log.step(current_step, "Completed")
-                current_step = "Workflow"
 
         elif options.qStartFromFasta:
             # 3.
@@ -568,8 +564,6 @@ def main(args=None):
             current_step = "Workflow"
             # 9.4
             if options.fix_files and not options.qStopAfterMCLGroups:
-                current_step = "Infer orthologues"
-                log.step(current_step, "Started")
                 GetOrthologues(
                     seqsInfo,
                     speciesNamesDict,
@@ -578,8 +572,6 @@ def main(args=None):
                     prog_caller,
                     speciesXML=speciesXML,
                 )
-                log.step(current_step, "Completed")
-                current_step = "Workflow"
 
         elif options.qStartFromBlast:
             working_dirs = files.FileHandler.GetWorkingDirectory1_Read()
@@ -663,8 +655,6 @@ def main(args=None):
             current_step = "Workflow"
             # 9
             if options.fix_files and not options.qStopAfterMCLGroups:
-                current_step = "Infer orthologues"
-                log.step(current_step, "Started")
                 GetOrthologues(
                     seqsInfo,
                     speciesNamesDict,
@@ -673,8 +663,6 @@ def main(args=None):
                     prog_caller,
                     speciesXML=speciesXML,
                 )
-                log.step(current_step, "Completed")
-                current_step = "Workflow"
 
         elif options.qStartFromGroups:
             # 0.
@@ -708,8 +696,6 @@ def main(args=None):
             #     options, speciesInfoObj, seqsInfo, speciesNamesDict, speciesXML
             # )
 
-            current_step = "Infer orthologues"
-            log.step(current_step, "Started")
             GetOrthologues(
                 seqsInfo,
                 speciesNamesDict,
@@ -718,8 +704,6 @@ def main(args=None):
                 prog_caller,
                 speciesXML=speciesXML,
             )
-            log.step(current_step, "Completed")
-            current_step = "Workflow"
 
 
         elif options.qStartFromTrees:
@@ -756,8 +740,6 @@ def main(args=None):
                 speciesInfoObj.nSpAll,
             )
 
-            current_step = "Infer orthologues from gene trees"
-            log.step(current_step, "Started")
             orthologues.OrthologuesFromGeneTrees(
                 seqsInfo,
                 speciesNamesDict,
@@ -782,8 +764,6 @@ def main(args=None):
                 save_space=options.save_space,
                 root_from_previous=False,
             )
-            log.step(current_step, "Completed")
-            current_step = "Workflow"
         elif options.qStartFromSpeciesTrees:
             speciesInfoObj, _ = species_info.ProcessPreviousFiles(
                 files.FileHandler.GetWorkingDirectory1_Read(),
@@ -801,8 +781,6 @@ def main(args=None):
                 speciesInfoObj.nSpAll,
             )
 
-            current_step = "Infer orthologues from gene and species trees"
-            log.step(current_step, "Started")
             orthologues.OrthologuesFromGeneSpeciesTrees(
                 seqsInfo,
                 speciesNamesDict,
@@ -821,8 +799,6 @@ def main(args=None):
                 i_og_restart=0,
                 speciesXML=None,
             )
-            log.step(current_step, "Completed")
-            current_step = "Workflow"
 
         elif options.qFastAdd:
             # Prepare previous directory as database
@@ -924,8 +900,6 @@ def main(args=None):
                         None, True
                     )
             if options.fix_files and not options.qStopAfterMCLGroups:
-                current_step = "Infer orthologues"
-                log.step(current_step, "Started")
                 GetOrthologues(
                     seqsInfo,
                     speciesNamesDict,
@@ -935,8 +909,6 @@ def main(args=None):
                     i_og_restart,
                     speciesXML=None,
                 )
-                log.step(current_step, "Completed")
-                current_step = "Workflow"
         else:
             raise NotImplementedError
             # ptm = parallel_task_manager.ParallelTaskManager_singleton()
@@ -988,6 +960,7 @@ def main(args=None):
         log.info("OrthoFinder run completed in %.2f seconds", time.perf_counter() - start)
 
     except Exception as e:
+        current_step = run_logging.RunLogger.failed_stage(current_step)
         exit_code = 1
         if log is not None:
             log.log("ERROR: Step failed",
@@ -1007,6 +980,7 @@ def main(args=None):
         sys.exit(1)
 
     except KeyboardInterrupt:
+        current_step = run_logging.RunLogger.failed_stage(current_step)
         exit_code = 1
         if log is not None:
             log.step(current_step, "Interrupted by user", level="WARNING")
@@ -1014,6 +988,7 @@ def main(args=None):
         sys.exit(1)
 
     except SystemExit as e:
+        current_step = run_logging.RunLogger.failed_stage(current_step)
         exit_code = e.code
         if log is not None:
             if e.code is None or e.code == 0:
@@ -1024,7 +999,7 @@ def main(args=None):
         raise
 
     finally:
-        util.SetRunLogger(None)
+        run_logging.RunLogger.set_logger(None)
         if log is not None:
             log.close()
         # ptm = parallel_task_manager.ParallelTaskManager_singleton()

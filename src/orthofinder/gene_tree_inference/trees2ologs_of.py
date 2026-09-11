@@ -9,6 +9,7 @@ Perform directed 'reconciliation' first and then apply EggNOG method
 1 - root gene trees on outgroup: unique one this time
 2 - infer orthologues
 """
+from ..utils import logging as run_logging
 import os
 import sys
 import csv
@@ -43,6 +44,7 @@ from ..tools import tree
 from ..utils import util, files
 
 
+@run_logging.RunLogger.stage("Infer orthologues")
 def ReconciliationAndOrthologues(
         recon_method,
         ogSet,
@@ -463,5 +465,4 @@ def GetSpeciesNeighbours(t):
                 levels[ll].append(n)
     neighbours = {sp:{other:n for n,others in enumerate(lev) for other in others} for sp, lev in levels.items()}
     return neighbours
-
 

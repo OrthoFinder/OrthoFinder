@@ -3,6 +3,7 @@ try:
 except ImportError:
     ...
 
+from ..utils import logging as run_logging
 from ..utils import util, files
 from ..tools import tree, trees_msa, dendroblast
 
@@ -14,6 +15,7 @@ def ConvertUserSpeciesTree(speciesTreeFN_in, speciesDict, speciesTreeFN_out):
         sp.name = revDict[sp.name]       
     t.write(outfile=speciesTreeFN_out)
 
+@run_logging.RunLogger.stage("Build alignments and gene trees", require_result=True)
 def InferGeneAndSpeciesTrees(
         ogSet,
         program_caller,
