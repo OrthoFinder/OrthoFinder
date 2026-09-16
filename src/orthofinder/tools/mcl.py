@@ -269,7 +269,7 @@ class MCL:
                     fullDict = IDFullDict(idsFilenames, func=util.FullAccession)
                     MCL.CreateOGs(ogs, outputFN, orthogroups_id_fn, fullDict)
                 except:
-                    err_text = "ERROR: %s contains a duplicate ID. The IDs for the orthogroups in %s will not be replaced with the sequence accessions. This is probably because the same accession was used more than once in your input FASTA files. However, if %s was prepared manually then you may need to check that file instead." % (idsFilename, clustersFilename_pairs, idsFilename)
+                    err_text = "ERROR: %s contains a duplicate ID. The IDs for the orthogroups in %s will not be replaced with the sequence accessions. This is probably because the same accession was used more than once in your input FASTA files. However, if %s was prepared manually then you may need to check that file instead." % (idsFilenames, clustersFilename_pairs, idsFilenames)
                     files.FileHandler.LogFailAndExit(err_text)
         return fullDict
 

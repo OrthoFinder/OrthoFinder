@@ -783,6 +783,7 @@ def NonHogWriterProcess(
 
             if kind == "result":
                 _write_non_hog_payload(output_writer, msg[1])
+                writer_status_queue.put(("non_hog_progress", writer_id))
             elif kind == "error":
                 raise RuntimeError(msg[-1])
             else:
@@ -853,6 +854,8 @@ def OrderedHogWriterProcess(
                     "Unexpected HOG writer message kind: %r" % kind
                 )
 
+            writer_status_queue.put(("hog_progress",))
+
         committer.assert_finished()
         hog_writer.file_cache.flush_all()
         hog_counts = dict(hog_writer.iHOG)
@@ -890,6 +893,7 @@ def Worker_RunOrthologsMethod_Pipeline(
     ):
     """Analyse OGs and route HOG and non-HOG output independently."""
     n_writers = len(non_hog_queues)
+    worker_pid = os.getpid()
 
     while True:
         try:
@@ -898,6 +902,7 @@ def Worker_RunOrthologsMethod_Pipeline(
             if iog is None:
                 break
 
+            progress_queue.put(("start", worker_pid, iog))
             result = tree_analyser.AnalyseTree(iog)
 
             if result is None:
@@ -933,22 +938,15 @@ def Worker_RunOrthologsMethod_Pipeline(
 
         except Exception:
             tb = traceback.format_exc()
-            try:
-                hog_queue.put(("error", tb))
-            except Exception:
-                pass
-            for writer_queue in non_hog_queues:
-                try:
-                    writer_queue.put(("error", tb))
-                except Exception:
-                    pass
+            # Report directly to the parent. A failed writer may have left a
+            # full output queue, so even sending it an error could block here.
             progress_queue.put(("error", None, tb))
-            break
+            return
 
     hog_queue.put(None)
     for writer_queue in non_hog_queues:
         writer_queue.put(None)
-    progress_queue.put(None)
+    progress_queue.put(("worker_done", worker_pid))
 
 
 def RunOrthologsParallel_Pipeline(
@@ -975,6 +973,10 @@ def RunOrthologsParallel_Pipeline(
 
     HOG rows are committed in deterministic OG order. Other output files are
     written immediately by exclusive file owners and can be sorted afterward.
+
+    STALL_TIMEOUT is the interval between long-wait warnings, not a deadline
+    for a tree or an output batch. Silence alone cannot distinguish slow work
+    from a hang. Child process failures are checked independently.
     """
     if fd_limit is not None:
         if sys.platform.startswith("linux") or sys.platform == "darwin":
@@ -1080,12 +1082,16 @@ def RunOrthologsParallel_Pipeline(
     completed_tasks = 0
     skipped_tasks = 0
     active_workers = nProcesses
+    finished_worker_pids = set()
+    in_flight = {}
+    exited_without_status = {}
     fatal = False
     hog_done = False
     non_hog_done_ids = set()
     hog_counts = None
-    last_progress_time = time.time()
-    last_writer_activity_time = time.time()
+    last_progress_time = time.monotonic()
+    last_writer_activity_time = None
+    child_processes = runningProcesses + [hog_proc] + non_hog_procs
 
     try:
         while (
@@ -1100,24 +1106,15 @@ def RunOrthologsParallel_Pipeline(
                 msg = "__EMPTY__"
 
             if msg == "__EMPTY__":
-                if (
-                    completed_tasks < total_tasks
-                    and time.time() - last_progress_time > STALL_TIMEOUT
-                ):
-                    print(
-                        "ERROR: Stalled for %ss "
-                        "(completed %d/%d, active_workers=%d)." % (
-                            STALL_TIMEOUT,
-                            completed_tasks,
-                            total_tasks,
-                            active_workers,
-                        )
-                    )
-                    fatal = True
-                    break
+                pass
 
-            elif msg is None:
-                active_workers -= 1
+            elif isinstance(msg, tuple) and msg[0] == "worker_done":
+                finished_worker_pids.add(msg[1])
+                active_workers = nProcesses - len(finished_worker_pids)
+
+            elif isinstance(msg, tuple) and msg[0] == "start":
+                _, worker_pid, iog = msg
+                in_flight[iog] = (worker_pid, time.monotonic())
 
             elif isinstance(msg, tuple) and msg[0] == "error":
                 print("ERROR: worker error:")
@@ -1126,17 +1123,19 @@ def RunOrthologsParallel_Pipeline(
                 break
 
             elif isinstance(msg, tuple) and msg[0] == "skip":
+                in_flight.pop(msg[1], None)
                 skipped_tasks += 1
                 completed_tasks += 1
                 progressbar.update(task, advance=1)
-                last_progress_time = time.time()
+                last_progress_time = time.monotonic()
 
             elif isinstance(msg, tuple) and msg[0] == "result":
                 _, iog, nOrtho = msg
+                in_flight.pop(iog, None)
                 nOrthologues_SpPair += nOrtho
                 completed_tasks += 1
                 progressbar.update(task, advance=1)
-                last_progress_time = time.time()
+                last_progress_time = time.monotonic()
 
             else:
                 fatal = True
@@ -1151,7 +1150,8 @@ def RunOrthologsParallel_Pipeline(
                 except queue.Empty:
                     break
 
-                last_writer_activity_time = time.time()
+                if last_writer_activity_time is not None:
+                    last_writer_activity_time = time.monotonic()
 
                 if isinstance(wmsg, tuple) and wmsg[0] == "hog_done":
                     _, hog_counts = wmsg
@@ -1160,6 +1160,11 @@ def RunOrthologsParallel_Pipeline(
                 elif isinstance(wmsg, tuple) and wmsg[0] == "non_hog_done":
                     _, writer_id = wmsg
                     non_hog_done_ids.add(writer_id)
+
+                elif isinstance(wmsg, tuple) and wmsg[0] in {
+                    "hog_progress", "non_hog_progress",
+                }:
+                    pass
 
                 elif isinstance(wmsg, tuple) and wmsg[0] in {
                     "hog_error",
@@ -1182,6 +1187,64 @@ def RunOrthologsParallel_Pipeline(
             if fatal:
                 break
 
+            now = time.monotonic()
+            process_statuses = [
+                ("analysis worker", proc, proc.pid in finished_worker_pids)
+                for proc in runningProcesses
+            ] + [("HOG writer", hog_proc, hog_done)] + [
+                ("non-HOG writer %d" % writer_id, proc,
+                 writer_id in non_hog_done_ids)
+                for writer_id, proc in enumerate(non_hog_procs)
+            ]
+
+            for role, proc, reported_done in process_statuses:
+                exitcode = proc.exitcode
+                if exitcode is None:
+                    continue
+                if exitcode != 0:
+                    print("ERROR: %s (pid=%d) exited with code %d." %
+                          (role, proc.pid, exitcode))
+                    fatal = True
+                    break
+                if not reported_done:
+                    # Queue messages can still be waiting in the parent when
+                    # a child exits normally. Drain them before starting the
+                    # grace period for a missing completion message.
+                    if role == "analysis worker" and msg != "__EMPTY__":
+                        continue
+                    first_seen = exited_without_status.setdefault(proc.pid, now)
+                    if now - first_seen > GRACE_PERIOD:
+                        print("ERROR: %s (pid=%d) exited without reporting completion." %
+                              (role, proc.pid))
+                        fatal = True
+                        break
+
+            if fatal:
+                break
+
+            if active_workers == 0 and completed_tasks < total_tasks:
+                print("ERROR: all analysis workers finished, but only %d/%d "
+                      "orthogroups were reported." % (completed_tasks, total_tasks))
+                fatal = True
+                break
+
+            if (
+                (completed_tasks < total_tasks or active_workers > 0)
+                and now - last_progress_time > STALL_TIMEOUT
+            ):
+                pending = ", ".join(
+                    "OG%07d (pid=%d, %.0fs)" % (iog, pid, now - started)
+                    for iog, (pid, started) in sorted(
+                        in_flight.items(), key=lambda item: item[1][1]
+                    )[:5]
+                )
+                print("WARNING: Still waiting for analysis workers "
+                      "(completed %d/%d, active_workers=%d).%s" % (
+                          completed_tasks, total_tasks, active_workers,
+                          " Pending: " + pending if pending else "",
+                      ))
+                last_progress_time = now
+
             if (
                 completed_tasks >= total_tasks
                 and active_workers == 0
@@ -1189,33 +1252,38 @@ def RunOrthologsParallel_Pipeline(
                     not hog_done
                     or len(non_hog_done_ids) < n_writer_processes
                 )
-                and time.time() - last_writer_activity_time > STALL_TIMEOUT
             ):
-                print("ERROR: output writers stalled after analysis completed.")
-                fatal = True
-                break
+                if last_writer_activity_time is None:
+                    # Start the drain timer here, not at pipeline startup.
+                    last_writer_activity_time = now
+                elif now - last_writer_activity_time > STALL_TIMEOUT:
+                    print("WARNING: Still waiting for output writers to finish; "
+                          "analysis is complete.")
+                    last_writer_activity_time = now
 
     finally:
-        for proc in runningProcesses:
-            proc.join(timeout=GRACE_PERIOD)
-        for proc in runningProcesses:
-            if proc.is_alive():
-                proc.terminate()
-        for proc in runningProcesses:
-            proc.join()
+        if fatal or sys.exc_info()[0] is not None:
+            # A failed consumer can leave producers blocked on full queues.
+            # Stop all children before joining any of them in the error path.
+            for proc in child_processes:
+                if proc.is_alive():
+                    proc.terminate()
+            args_queue.cancel_join_thread()
 
-        hog_proc.join(timeout=GRACE_PERIOD)
-        if hog_proc.is_alive():
-            hog_proc.terminate()
-        hog_proc.join()
-
-        for proc in non_hog_procs:
+        for proc in child_processes:
             proc.join(timeout=GRACE_PERIOD)
-        for proc in non_hog_procs:
+        for proc in child_processes:
             if proc.is_alive():
+                print("ERROR: child process (pid=%d) did not exit after completion." % proc.pid)
+                fatal = True
                 proc.terminate()
-        for proc in non_hog_procs:
+        for proc in child_processes:
             proc.join()
+            if proc.exitcode != 0:
+                if not fatal:
+                    print("ERROR: child process (pid=%d) exited with code %d." %
+                          (proc.pid, proc.exitcode))
+                fatal = True
 
         progressbar.stop()
 
