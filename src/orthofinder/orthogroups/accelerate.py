@@ -190,11 +190,18 @@ def assign_genes(results_files):
 
 # def write_all_orthogroups(ogs: List[Set[str]], ogs_new_species: Dict[int, Set[str]], ogs_clade_specific: List[List[Set[str]]]):
 def write_all_orthogroups(ogs, ogs_new_species, ogs_clade_specific_lists):
+
     for iog, genes in ogs_new_species.items():
         ogs[iog].update(genes)
     for ogs_clade_specific in ogs_clade_specific_lists:
         for og in ogs_clade_specific:
             ogs.append(og)
+
+    assigned_genes = {gene for og in ogs if len(og) > 1 for gene in og}
+    ogs[:] = [
+        og for og in ogs
+        if len(og) != 1 or og.isdisjoint(assigned_genes)
+    ]
     clustersFilename, clustersFilename_pairs = (
         files.FileHandler.CreateUnusedClustersFN()
     )
