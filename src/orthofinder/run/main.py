@@ -915,7 +915,7 @@ def main(args=None):
             ptm.Stop()
         current_step = "Process output files"
         log.step(current_step, "Started")
-        if not options.save_space and not options.qFastAdd:
+        if not options.save_space:
             # split up the orthologs into one file per species-pair
             util.split_ortholog_files(files.FileHandler.GetOrthologuesDirectory())
 
