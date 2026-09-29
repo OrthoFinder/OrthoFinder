@@ -82,17 +82,19 @@ class DendroBLASTTrees(object):
                             rota[iWorker] = "empty"
                 except queue.Empty:
                     pass
-                # if worker is dead but didn't finish task, issue warning
-                for al, r in zip(alive, rota):
+                # A worker that died without finishing its task: stop the
+                # others and raise, so main() records the error in checkpoint.txt.
+                for proc, al, r in zip(runningProcesses, alive, rota):
                     if (not al) and (r != "empty"):
-                        text = GetRAMErrorText()
-                        files.FileHandler.LogFailAndExit(text)
-                        unfinished.append(r)
+                        parallel_task_manager.TerminateProcesses(runningProcesses)
+                        cmd_queue.cancel_join_thread()
+                        raise parallel_task_manager.WorkerError(
+                            "DendroBLAST worker (PID %s) exited with status %s "
+                            "before finishing species %s.\n%s"
+                            % (proc.pid, proc.exitcode, r, GetRAMErrorText())
+                        )
                 if not any(alive):
                     break
-                
-            if len(unfinished) != 0:
-                files.FileHandler.LogFailAndExit()
 #                print("WARNING: Computer ran out of RAM and killed OrthoFinder processes")
 #                print("OrthoFinder will attempt to run these processes once more. If it is")
 #                print("unsuccessful again then it will have to exit. Consider using")
@@ -261,7 +263,7 @@ class DendroBLASTTrees(object):
             D, spPairs = self.SpeciesTreeDistances(ogs, ogMatrices)
             del ogMatrices
             cmd_spTree, spTreeFN_ids = self.PrepareSpeciesTreeCommand(D, spPairs, True)
-            parallel_task_manager.RunCommand(cmd_spTree, True, False)
+            parallel_task_manager.RunCommand(cmd_spTree, True, False, raise_on_error=True)
         spTreeUnrootedFN = files.FileHandler.GetSpeciesTreeUnrootedFN(True) 
         util.RenameTreeTaxa(spTreeFN_ids, spTreeUnrootedFN, self.ogSet.SpeciesDict(), qSupport=False, qFixNegatives=True)  
         return spTreeFN_ids

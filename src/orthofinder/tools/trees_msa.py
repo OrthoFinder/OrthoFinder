@@ -609,7 +609,8 @@ class TreesForOrthogroups(object):
                 parallel_task_manager.RunCommand(
                     astral_pro.get_astral_command(
                         astral_fn, speciesTreeFN_ids, nProcesses
-                    )
+                    ),
+                    raise_on_error=True,
                 )
 
             qHaveSupport = util.HaveSupportValues(speciesTreeFN_ids)

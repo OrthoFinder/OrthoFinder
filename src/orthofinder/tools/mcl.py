@@ -229,7 +229,7 @@ class MCL:
     @staticmethod
     def RunMCL(graphFilename, clustersFilename, nProcesses, inflation):
         command = " ".join(["mcl", graphFilename, "-I", str(inflation), "-o", clustersFilename, "-te", str(nProcesses), "-V", "all"])
-        parallel_task_manager.RunCommand(command, qPrintOnError=True)
+        parallel_task_manager.RunCommand(command, qPrintOnError=True, raise_on_error=True)
         util.PrintTime("Ran MCL")
 
     @staticmethod

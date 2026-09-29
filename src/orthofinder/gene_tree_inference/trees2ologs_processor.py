@@ -2,6 +2,10 @@
 
 import os
 import time
+import gzip
+import heapq
+import pickle
+import tempfile
 import sys
 import csv
 import resource
@@ -18,6 +22,7 @@ except ImportError:
     ...
 
 from ..utils import util, files, parallel_task_manager
+from .tree_processor import IterOlogRow
 
 
 class LazyFileCache(object):
@@ -224,17 +229,15 @@ class ParentOutputWriter(object):
                     )
         else:
             for i in range(self.nspecies):
-                for j in range(self.nspecies):
+                for j, text in IterOlogRow(olog_lines[i]):
                     if i == j:
                         continue
-                    text = olog_lines[i][j]
-                    if text:
-                        self.cache.write(
-                            self.ortholog_path(i, j),
-                            text,
-                            mode=util.csv_append_mode,
-                            gz=False
-                        )
+                    self.cache.write(
+                        self.ortholog_path(i, j),
+                        text,
+                        mode=util.csv_append_mode,
+                        gz=False
+                    )
 
     def write_xenolog_lines(self, olog_sus_lines):
         for i in range(self.nspecies):
@@ -389,26 +392,83 @@ class ParentOutputWriter(object):
             self.cache.close_all()
             self.hog_writer.close_files()
 
+# Out-of-order HOG batches held in memory (pickled) before spilling to disk.
+HOG_PENDING_MEMORY_BYTES = 1024 * 1024 * 1024
+
+
 class OrderedHogCommitter(object):
     """
     Commit HOG rows in deterministic OG order.
 
     Only cached_hogs are buffered. Full result payloads are not buffered here.
+    Out-of-order batches are kept pickled in memory up to max_pending_bytes
+    and spilled to a temporary file beyond that.
     """
 
-    def __init__(self, hog_writer, iogs_ordered):
+    def __init__(
+            self,
+            hog_writer,
+            iogs_ordered,
+            max_pending_bytes=None,
+            spill_dir=None,
+        ):
         self.hog_writer = hog_writer
         self.iogs_ordered = list(sorted(iogs_ordered))
+        # iog -> ("mem", pickled bytes) or ("disk", offset, length)
         self.pending_hogs = {}
         self.next_index = 0
+        if max_pending_bytes is None:
+            max_pending_bytes = HOG_PENDING_MEMORY_BYTES
+        self.max_pending_bytes = max_pending_bytes
+        self.pending_bytes = 0
+        self.spill_dir = spill_dir
+        self.spill_file = None
 
     def add_result(self, iog, cached_hogs):
-        self.pending_hogs[iog] = cached_hogs or []
+        cached_hogs = cached_hogs or []
+        if (
+            self.next_index < len(self.iogs_ordered)
+            and iog == self.iogs_ordered[self.next_index]
+        ):
+            # The common case: nothing to buffer.
+            self._commit(cached_hogs)
+            self.next_index += 1
+        else:
+            self._buffer(iog, cached_hogs)
         self._drain_ready()
 
     def add_skip(self, iog):
-        self.pending_hogs[iog] = []
-        self._drain_ready()
+        self.add_result(iog, [])
+
+    def _buffer(self, iog, cached_hogs):
+        # Pickled bytes are far smaller than the live row objects. Past the
+        # memory budget they go to a temporary file, so a slow early OG cannot
+        # make the buffer grow without bound.
+        data = pickle.dumps(cached_hogs, pickle.HIGHEST_PROTOCOL)
+        if self.pending_bytes + len(data) <= self.max_pending_bytes:
+            self.pending_hogs[iog] = ("mem", data)
+            self.pending_bytes += len(data)
+            return
+        if self.spill_file is None:
+            self.spill_file = tempfile.TemporaryFile(
+                prefix="orthofinder_hog_spill_", dir=self.spill_dir
+            )
+        self.spill_file.seek(0, os.SEEK_END)
+        offset = self.spill_file.tell()
+        self.spill_file.write(data)
+        self.pending_hogs[iog] = ("disk", offset, len(data))
+
+    def _load(self, entry):
+        if entry[0] == "mem":
+            self.pending_bytes -= len(entry[1])
+            return pickle.loads(entry[1])
+        _, offset, length = entry
+        self.spill_file.seek(offset)
+        return pickle.loads(self.spill_file.read(length))
+
+    def _commit(self, cached_hogs):
+        if cached_hogs:
+            self.hog_writer.WriteCachedHOGs(cached_hogs, lock_hogs=None)
 
     def _drain_ready(self):
         while self.next_index < len(self.iogs_ordered):
@@ -417,12 +477,13 @@ class OrderedHogCommitter(object):
             if next_iog not in self.pending_hogs:
                 break
 
-            cached_hogs = self.pending_hogs.pop(next_iog)
-
-            if cached_hogs:
-                self.hog_writer.WriteCachedHOGs(cached_hogs, lock_hogs=None)
-
+            self._commit(self._load(self.pending_hogs.pop(next_iog)))
             self.next_index += 1
+
+    def close(self):
+        if self.spill_file is not None:
+            self.spill_file.close()
+            self.spill_file = None
 
     def assert_finished(self):
         if self.pending_hogs:
@@ -502,18 +563,15 @@ class NonHogAppendWriter(object):
                     )
         else:
             for i in range(self.nspecies):
-                for j in range(self.nspecies):
+                for j, text in IterOlogRow(olog_lines[i]):
                     if i == j:
                         continue
-
-                    text = olog_lines[i][j]
-                    if text:
-                        self.cache.write(
-                            self.ortholog_path(i, j),
-                            text,
-                            mode=util.csv_append_mode,
-                            gz=False
-                        )
+                    self.cache.write(
+                        self.ortholog_path(i, j),
+                        text,
+                        mode=util.csv_append_mode,
+                        gz=False
+                    )
 
     def flush(self):
         self.cache.flush_all()
@@ -672,8 +730,8 @@ def PartitionNonHogResult(
     else:
         for i, row in enumerate(olog_lines):
             owner = i % n_writers
-            for j, text in enumerate(row):
-                if i == j or not text:
+            for j, text in IterOlogRow(row):
+                if i == j:
                     continue
                 payload_for(owner)["olog_chunks"].append((i, j, text))
 
@@ -818,9 +876,10 @@ def OrderedHogWriterProcess(
         hog_writer,
         iogs_ordered,
         n_workers,
+        spill_dir=None,
     ):
     """Commit HOG rows in deterministic OG order."""
-    committer = OrderedHogCommitter(hog_writer, iogs_ordered)
+    committer = OrderedHogCommitter(hog_writer, iogs_ordered, spill_dir=spill_dir)
     active_workers = n_workers
     error_text = None
     hog_counts = None
@@ -864,6 +923,7 @@ def OrderedHogWriterProcess(
         error_text = traceback.format_exc()
 
     try:
+        committer.close()
         hog_writer.close_files()
     except Exception:
         close_error = traceback.format_exc()
@@ -891,9 +951,16 @@ def Worker_RunOrthologsMethod_Pipeline(
         write_hog_tree=False,
         fix_files=False,
     ):
-    """Analyse OGs and route HOG and non-HOG output independently."""
+    """
+    Analyse OGs and route HOG and non-HOG output independently.
+
+    Orthologue counts are accumulated locally and sent once with
+    "worker_done". Sending a dense nspecies x nspecies count object per OG
+    is ~40 MB of pickled data per OG at 1,000 species.
+    """
     n_writers = len(non_hog_queues)
     worker_pid = os.getpid()
+    nOrtho_acc = util.nOrtho_sp(nspecies)
 
     while True:
         try:
@@ -903,12 +970,15 @@ def Worker_RunOrthologsMethod_Pipeline(
                 break
 
             progress_queue.put(("start", worker_pid, iog))
-            result = tree_analyser.AnalyseTree(iog)
+            result = tree_analyser.AnalyseTree(iog, nOrtho_acc=nOrtho_acc)
 
             if result is None:
                 hog_queue.put(("skip", iog))
                 progress_queue.put(("skip", iog))
                 continue
+
+            # Analysis is finished. Any further wait is on the output queues.
+            progress_queue.put(("output", iog))
 
             hog_queue.put((
                 "result",
@@ -927,11 +997,7 @@ def Worker_RunOrthologsMethod_Pipeline(
             for owner, payload in payloads.items():
                 non_hog_queues[owner].put(("result", payload))
 
-            progress_queue.put((
-                "result",
-                iog,
-                result["n_orthologues"],
-            ))
+            progress_queue.put(("result", iog))
 
         except queue.Empty:
             continue
@@ -946,7 +1012,7 @@ def Worker_RunOrthologsMethod_Pipeline(
     hog_queue.put(None)
     for writer_queue in non_hog_queues:
         writer_queue.put(None)
-    progress_queue.put(("worker_done", worker_pid))
+    progress_queue.put(("worker_done", worker_pid, nOrtho_acc))
 
 
 def RunOrthologsParallel_Pipeline(
@@ -967,6 +1033,7 @@ def RunOrthologsParallel_Pipeline(
         STALL_TIMEOUT=120.0,
         writer_queue_size=None,
         n_writer_processes=None,
+        spill_dir=None,
     ):
     """
     Parallel tree analysis with two output paths.
@@ -1035,6 +1102,7 @@ def RunOrthologsParallel_Pipeline(
             output_writer.hog_writer,
             iogs_ordered,
             nProcesses,
+            spill_dir,
         )
     )
 
@@ -1079,6 +1147,12 @@ def RunOrthologsParallel_Pipeline(
         proc.start()
 
     nOrthologues_SpPair = util.nOrtho_sp(nspecies)
+    errors = []   # error text for the WorkerError raised at the end
+
+    def report_error(text):
+        print(text)
+        errors.append(text)
+
     completed_tasks = 0
     skipped_tasks = 0
     active_workers = nProcesses
@@ -1109,16 +1183,23 @@ def RunOrthologsParallel_Pipeline(
                 pass
 
             elif isinstance(msg, tuple) and msg[0] == "worker_done":
-                finished_worker_pids.add(msg[1])
+                _, worker_pid, worker_counts = msg
+                finished_worker_pids.add(worker_pid)
                 active_workers = nProcesses - len(finished_worker_pids)
+                nOrthologues_SpPair += worker_counts
 
             elif isinstance(msg, tuple) and msg[0] == "start":
                 _, worker_pid, iog = msg
-                in_flight[iog] = (worker_pid, time.monotonic())
+                in_flight[iog] = (worker_pid, time.monotonic(), "analysing")
+
+            elif isinstance(msg, tuple) and msg[0] == "output":
+                iog = msg[1]
+                if iog in in_flight:
+                    worker_pid, started, _ = in_flight[iog]
+                    in_flight[iog] = (worker_pid, started, "waiting for output queue")
 
             elif isinstance(msg, tuple) and msg[0] == "error":
-                print("ERROR: worker error:")
-                print(msg[2])
+                report_error("ERROR: worker error:\n%s" % msg[2])
                 fatal = True
                 break
 
@@ -1130,9 +1211,8 @@ def RunOrthologsParallel_Pipeline(
                 last_progress_time = time.monotonic()
 
             elif isinstance(msg, tuple) and msg[0] == "result":
-                _, iog, nOrtho = msg
+                iog = msg[1]
                 in_flight.pop(iog, None)
-                nOrthologues_SpPair += nOrtho
                 completed_tasks += 1
                 progressbar.update(task, advance=1)
                 last_progress_time = time.monotonic()
@@ -1172,8 +1252,7 @@ def RunOrthologsParallel_Pipeline(
                     "non_hog_error",
                     "non_hog_close_error",
                 }:
-                    print("ERROR: writer error:")
-                    print(wmsg[-1])
+                    report_error("ERROR: writer error:\n%s" % wmsg[-1])
                     fatal = True
                     break
 
@@ -1202,7 +1281,7 @@ def RunOrthologsParallel_Pipeline(
                 if exitcode is None:
                     continue
                 if exitcode != 0:
-                    print("ERROR: %s (pid=%d) exited with code %d." %
+                    report_error("ERROR: %s (pid=%d) exited with code %d." %
                           (role, proc.pid, exitcode))
                     fatal = True
                     break
@@ -1214,7 +1293,7 @@ def RunOrthologsParallel_Pipeline(
                         continue
                     first_seen = exited_without_status.setdefault(proc.pid, now)
                     if now - first_seen > GRACE_PERIOD:
-                        print("ERROR: %s (pid=%d) exited without reporting completion." %
+                        report_error("ERROR: %s (pid=%d) exited without reporting completion." %
                               (role, proc.pid))
                         fatal = True
                         break
@@ -1223,7 +1302,7 @@ def RunOrthologsParallel_Pipeline(
                 break
 
             if active_workers == 0 and completed_tasks < total_tasks:
-                print("ERROR: all analysis workers finished, but only %d/%d "
+                report_error("ERROR: all analysis workers finished, but only %d/%d "
                       "orthogroups were reported." % (completed_tasks, total_tasks))
                 fatal = True
                 break
@@ -1233,11 +1312,19 @@ def RunOrthologsParallel_Pipeline(
                 and now - last_progress_time > STALL_TIMEOUT
             ):
                 pending = ", ".join(
-                    "OG%07d (pid=%d, %.0fs)" % (iog, pid, now - started)
-                    for iog, (pid, started) in sorted(
+                    "OG%07d (pid=%d, %.0fs, %s)" % (iog, pid, now - started, stage)
+                    for iog, (pid, started, stage) in sorted(
                         in_flight.items(), key=lambda item: item[1][1]
                     )[:5]
                 )
+                if any(
+                    stage != "analysing"
+                    for _, _, stage in in_flight.values()
+                ):
+                    pending += (
+                        " Workers waiting for the output queue means the "
+                        "output writers (disk) are the bottleneck."
+                    )
                 print("WARNING: Still waiting for analysis workers "
                       "(completed %d/%d, active_workers=%d).%s" % (
                           completed_tasks, total_tasks, active_workers,
@@ -1274,14 +1361,14 @@ def RunOrthologsParallel_Pipeline(
             proc.join(timeout=GRACE_PERIOD)
         for proc in child_processes:
             if proc.is_alive():
-                print("ERROR: child process (pid=%d) did not exit after completion." % proc.pid)
+                report_error("ERROR: child process (pid=%d) did not exit after completion." % proc.pid)
                 fatal = True
                 proc.terminate()
         for proc in child_processes:
             proc.join()
             if proc.exitcode != 0:
                 if not fatal:
-                    print("ERROR: child process (pid=%d) exited with code %d." %
+                    report_error("ERROR: child process (pid=%d) exited with code %d." %
                           (proc.pid, proc.exitcode))
                 fatal = True
 
@@ -1305,19 +1392,22 @@ def RunOrthologsParallel_Pipeline(
             (skipped_tasks, total_tasks, 100.0 * skip_rate)
         )
 
-    if fatal:
-        util.Fail()
+    if not fatal and not hog_done:
+        report_error("ERROR: ordered HOG writer did not finish cleanly.")
+        fatal = True
 
-    if not hog_done:
-        print("ERROR: ordered HOG writer did not finish cleanly.")
-        util.Fail()
-
-    if len(non_hog_done_ids) != n_writer_processes:
-        print(
+    if not fatal and len(non_hog_done_ids) != n_writer_processes:
+        report_error(
             "ERROR: only %d/%d non-HOG writers finished cleanly." %
             (len(non_hog_done_ids), n_writer_processes)
         )
-        util.Fail()
+        fatal = True
+
+    if fatal:
+        # Raised (not Fail()) so main() records the child's error in checkpoint.txt.
+        raise parallel_task_manager.WorkerError(
+            "\n".join(errors) or "Orthologue inference failed."
+        )
 
     return nOrthologues_SpPair
 
@@ -1428,13 +1518,21 @@ def SortNonHogOutputFiles(
         False
     ))
 
+    # Compressed outputs are written as fn + ".gz" (see util.file_open).
+    # Sort the largest files first so one big file does not run alone at the end.
+    existing = []
+    for fn, gz in fns:
+        path = fn + ".gz" if gz else fn
+        if os.path.exists(path):
+            existing.append((os.path.getsize(path), fn, gz))
+    existing.sort(key=lambda x: -x[0])
+
     args_queue = mp.Queue()
 
     n_sort_tasks = 0
-    for fn, gz in fns:
-        if os.path.exists(fn):
-            args_queue.put((fn, gz))
-            n_sort_tasks += 1
+    for _, fn, gz in existing:
+        args_queue.put((fn, gz))
+        n_sort_tasks += 1
 
     parallel_task_manager.RunMethodParallel(
         SortFileByFirstColumnNoRepair,
@@ -1446,12 +1544,17 @@ def SortNonHogOutputFiles(
 
     suspect_queue = mp.Queue()
     dSuspectGenes = files.FileHandler.GetSuspectGenesDir()
+    suspect_fns = [
+        os.path.join(dSuspectGenes, "%s.txt" % sp) for sp in species
+    ]
+    suspect_fns = sorted(
+        (fn for fn in suspect_fns if os.path.exists(fn)),
+        key=lambda fn: -os.path.getsize(fn),
+    )
     n_suspect_tasks = 0
-    for sp in species:
-        fn = os.path.join(dSuspectGenes, "%s.txt" % sp)
-        if os.path.exists(fn):
-            suspect_queue.put((fn,))
-            n_suspect_tasks += 1
+    for fn in suspect_fns:
+        suspect_queue.put((fn,))
+        n_suspect_tasks += 1
 
     parallel_task_manager.RunMethodParallel(
         SortPlainTextFile,
@@ -1462,42 +1565,111 @@ def SortNonHogOutputFiles(
     )
 
 
+# Above this many characters a file is sorted in chunks that are spilled to
+# disk and merged, so memory use per sorting process stays bounded.
+SORT_CHUNK_CHARS = 128 * 1024 * 1024
+
+
+def _open_text(path, mode, gz):
+    return gzip.open(path, mode) if gz else open(path, mode)
+
+
+def _write_sorted_run(lines, run_path, gz):
+    # Runs from a compressed file are compressed too (fast level), so the
+    # temporary space stays close to the compressed size, not the full text.
+    lines.sort()
+    if gz:
+        outfile = gzip.open(run_path, util.csv_write_mode, compresslevel=1)
+    else:
+        outfile = open(run_path, util.csv_write_mode)
+    with outfile:
+        outfile.writelines(lines)
+
+
+def SortLinesInFile(fn, gz=False, has_header=False, chunk_chars=SORT_CHUNK_CHARS):
+    """
+    Sort the lines of fn (fn + ".gz" if gz), keeping an optional header first.
+
+    Small files are sorted in memory. Larger files are split into sorted runs
+    next to the file and merged. The result is written to a temporary file
+    and then renamed over the original, so an interrupted sort never leaves a
+    truncated file.
+    """
+    path = fn + ".gz" if gz else fn
+    tmp_path = path + ".sorting.tmp"
+    run_paths = []
+    run_files = []
+    lines = []
+    n_chars = 0
+    header = None
+
+    try:
+        with _open_text(path, util.csv_read_mode, gz) as infile:
+            if has_header:
+                header = next(infile, None)
+                if header is None:
+                    return
+
+            for line in infile:
+                if not line.endswith("\n"):
+                    line += "\n"
+                lines.append(line)
+                n_chars += len(line)
+                if n_chars >= chunk_chars:
+                    run_path = "%s.run%d.tmp" % (path, len(run_paths))
+                    run_paths.append(run_path)
+                    _write_sorted_run(lines, run_path, gz)
+                    lines = []
+                    n_chars = 0
+
+        if not lines and not run_paths:
+            return
+
+        if run_paths:
+            if lines:
+                run_path = "%s.run%d.tmp" % (path, len(run_paths))
+                run_paths.append(run_path)
+                _write_sorted_run(lines, run_path, gz)
+                lines = []
+            for run_path in run_paths:
+                run_files.append(_open_text(run_path, util.csv_read_mode, gz))
+            sorted_lines = heapq.merge(*run_files)
+        else:
+            lines.sort()
+            sorted_lines = lines
+
+        with _open_text(tmp_path, util.csv_write_mode, gz) as outfile:
+            if header is not None:
+                outfile.write(header)
+            outfile.writelines(sorted_lines)
+
+        os.replace(tmp_path, path)
+
+    finally:
+        for f in run_files:
+            f.close()
+        for p in run_paths + [tmp_path]:
+            if os.path.exists(p):
+                os.remove(p)
+
+
 def SortFileByFirstColumnNoRepair(fn, gz=False):
     """
     Sort a TSV file by first column.
 
     This is for orthologues, xenologues, and duplications only.
     It must never be used for HOG files.
+
+    Plain line order is the same as ordering by (first column, line): the
+    first column is followed by a tab, which sorts before any character that
+    can appear in an OG ID. Sorting whole lines avoids building a key per line.
     """
-    with util.file_open(fn, util.csv_read_mode, gz=gz) as infile:
-        header = next(infile, None)
-        if header is None:
-            return
-
-        lines = list(infile)
-
-    if not lines:
-        return
-
-    lines.sort(key=lambda s: (s.split("\t", 1)[0], s))
-
-    with util.file_open(fn, util.csv_write_mode, gz=gz) as outfile:
-        outfile.write(header)
-        outfile.write("".join(lines))
+    SortLinesInFile(fn, gz=gz, has_header=True)
 
 
 def SortPlainTextFile(fn):
     """Sort a plain-text output file deterministically."""
-    with open(fn, util.csv_read_mode) as infile:
-        lines = infile.readlines()
-
-    if not lines:
-        return
-
-    lines.sort()
-
-    with open(fn, util.csv_write_mode) as outfile:
-        outfile.writelines(lines)
+    SortLinesInFile(fn, gz=False, has_header=False)
 
 
 

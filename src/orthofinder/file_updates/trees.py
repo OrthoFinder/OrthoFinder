@@ -8,7 +8,7 @@ import ete4
 import tempfile
 import traceback
 import time
-from ..utils import util
+from ..utils import util, parallel_task_manager
 
 
 def write_tree(hog_name, newick_string, resolved_trees_id_dir):
@@ -49,19 +49,19 @@ def read_fasta(file_path):
     genes_dict = {}
     qFirst = True
     accession = ""
-    sequence = ""
+    sequence = []
     try:
         with open(file_path, 'r') as fastaFile:
             for line in fastaFile:
                 if line[0] == ">":
                     if not qFirst:
-                        genes_dict[accession] = sequence
-                        sequence = ""
+                        genes_dict[accession] = "".join(sequence)
+                        sequence = []
                     qFirst = False
                     accession = line[1:].rstrip()
                 else:
-                    sequence += line
-            genes_dict[accession] = sequence
+                    sequence.append(line)
+            genes_dict[accession] = "".join(sequence)
     except Exception as e:
         print(f"ERROR reading FASTA file {file_path}: {e}")
         raise
@@ -84,6 +84,7 @@ def write_fasta(align_dir, hog_name, sequences, idDict):
             outFile.write(buffer.getvalue())
     except Exception as e:
         print(f"ERROR writing FASTA for {hog_name}: {e}")
+        raise
 
 
 def read_files(unique_og, spec_seq_id_dict, tree_file_index, fasta_file_index, exist_msa=True):
@@ -144,6 +145,25 @@ def read_fasta_file(unique_og, fasta_file_index, exist_msa=True):
             print(f"WARNING: FASTA file not found for {unique_og}")
     return gene_dict
 
+def _put(q, item, stop_event, timeout=1.0):
+    """Put with back-pressure, giving up (False) once stop_event is set."""
+    while not stop_event.is_set():
+        try:
+            q.put(item, timeout=timeout)
+            return True
+        except queue.Full:
+            continue
+    return False
+
+
+def _report_error(report_queue, stop_event, where):
+    stop_event.set()
+    try:
+        report_queue.put(("error", "%s:\n%s" % (where, traceback.format_exc())))
+    except Exception:
+        pass
+
+
 def process_task(
         read_queue, 
         process_queue, 
@@ -151,6 +171,7 @@ def process_task(
         name_dict, 
         species_names, 
         stop_event,
+        report_queue,
         strict_prune_fail=False
     ):
     try:
@@ -168,14 +189,21 @@ def process_task(
             results = []
 
             if gene_tree is None:
-                process_queue.put(("skip", unique_og, "no_gene_tree"))
+                _put(process_queue, ("skip", unique_og, "no_gene_tree"), stop_event)
                 continue
 
             if not hog_entries:
-                process_queue.put(("skip", unique_og, "no_hog_entries"))
+                _put(process_queue, ("skip", unique_og, "no_hog_entries"), stop_event)
                 continue
 
             hog_entries = sorted(hog_entries, key=lambda r: str(r.get("HOG", "")))
+
+            # One pass over the tree instead of a search per HOG row. setdefault
+            # keeps the first node in traversal order, as search_nodes did.
+            nodes_by_name = {}
+            for node in gene_tree.traverse():
+                if node.name:
+                    nodes_by_name.setdefault(node.name, node)
 
             for row in hog_entries:
                 hog_name = name_dict.get(row.get("HOG"), row.get("HOG"))
@@ -187,14 +215,14 @@ def process_task(
                 if parent_node == "n0":
                     subtree = gene_tree.copy()
                 else:
-                    subtree_nodes = list(gene_tree.search_nodes(name=parent_node))
-                    if not subtree_nodes:
+                    node = nodes_by_name.get(parent_node)
+                    if node is None:
                         continue
-                    subtree = subtree_nodes[0].copy()
+                    subtree = node.copy()
 
-                current_leaves = [leaf.name for leaf in subtree.leaves() if leaf.name]
+                current_leaves = {leaf.name for leaf in subtree.leaves() if leaf.name}
 
-                expected_leaves = []
+                expected_leaves = set()
                 for col in species_names:
                     v = row.get(col)
                     if not v:
@@ -202,25 +230,20 @@ def process_task(
                     for x in str(v).split(","):
                         x = x.strip()
                         if x:
-                            expected_leaves.append(x)
+                            expected_leaves.add(x)
 
-                expected_leaves = sorted(set(expected_leaves))
                 if not expected_leaves:
                     continue
-                
-                valid_leaves = [leaf for leaf in expected_leaves if leaf in current_leaves]
+
+                valid_leaves = sorted(expected_leaves & current_leaves)
                 if len(valid_leaves) < 2:
                     continue
-                valid_leaves = sorted(set(valid_leaves))
                 try:
                     subtree.prune(valid_leaves)
                 except Exception:
                     if strict_prune_fail:
-                        process_queue.put(("error", unique_og, f"prune_failed:{hog_name}", traceback.format_exc()))
-                        stop_event.set()
-                        break
-                    else:
-                        continue
+                        raise
+                    continue
                
                 pruned_alignments = None
                 if gene_dict:
@@ -229,25 +252,24 @@ def process_task(
                     newick = subtree.write(outfile=None, parser=5)
                 except Exception:
                     if strict_prune_fail:
-                        process_queue.put(("error", unique_og, f"prune_failed:{hog_name}"))
-                        stop_event.set()
-                        break
-                    else:
-                        continue
+                        raise
+                    continue
                 results.append((hog_name, newick, pruned_alignments))
 
             if not results:
-                process_queue.put(("skip", unique_og, "no_outputs_from_hog_entries"))
+                msg = ("skip", unique_og, "no_outputs_from_hog_entries")
             else:
-                process_queue.put(("og", unique_og, results))
-
-            if stop_event.is_set():
+                msg = ("og", unique_og, results)
+            if not _put(process_queue, msg, stop_event):
                 break
           
     except Exception:
-        process_queue.put(("error", None, "process_task_crash"))
-        stop_event.set()
+        _report_error(report_queue, stop_event, "tree processing")
         raise
+    finally:
+        if stop_event.is_set():
+            # Do not block at exit on data nobody will read.
+            process_queue.cancel_join_thread()
 
 
 def writer_task(
@@ -257,9 +279,10 @@ def writer_task(
         resolved_trees_id_dir, 
         align_dir, 
         stop_event, 
+        report_queue,
         exist_msa=True
     ):
-
+    n_handled = 0
     try:
         while not stop_event.is_set():
             try:
@@ -268,51 +291,57 @@ def writer_task(
                 continue
 
             if msg is None:
-                break
+                report_queue.put(("done", n_handled))
+                return
 
             kind = msg[0]
+            if kind == "og":
+                _, unique_og, results = msg
+                for out_name, newick_string, pruned_alignments in results:
+                    if not write_tree(out_name, newick_string, resolved_trees_id_dir):
+                        raise RuntimeError("Failed to write tree %s" % out_name)
 
-            if kind == "skip":
-                continue
-            elif kind == "error":
-                stop_event.set()
-                continue
-            elif kind != "og":
-                continue
+                    if exist_msa and pruned_alignments is not None and len(pruned_alignments) >= min_seq:
+                        if align_dir is not None:
+                            write_fasta(align_dir, out_name, pruned_alignments, idDict)
+            elif kind != "skip":
+                raise TypeError("Unexpected message: %r" % (msg,))
+            n_handled += 1
 
-            _, unique_og, results = msg
-
-            for out_name, newick_string, pruned_alignments in results:
-                try:
-                    ok = write_tree(out_name, newick_string, resolved_trees_id_dir)
-                    if not ok:
-                        raise RuntimeError("write_tree returned False")
-                except Exception:
-                    stop_event.set()
-                    break
-
-                if exist_msa and pruned_alignments is not None and len(pruned_alignments) >= min_seq:
-                    if align_dir is not None:
-                        write_fasta(align_dir, out_name, pruned_alignments, idDict)
-
-    except Exception as e:
-        stop_event.set()
+    except Exception:
+        _report_error(report_queue, stop_event, "writing trees/alignments")
         raise
 
 
-def threaded_reader(read_queue, unique_ogs, spec_seq_id_dict, tree_file_index, fasta_file_index, n_threads=4, stop_event=None, exist_msa=True):
+def threaded_reader(read_queue, unique_ogs, spec_seq_id_dict, tree_file_index, fasta_file_index, n_threads, stop_event, report_queue, exist_msa=True):
     try:
         def worker(unique_og):
-            if stop_event is not None and stop_event.is_set():
+            if stop_event.is_set():
                 return
             task = read_files(unique_og, spec_seq_id_dict, tree_file_index, fasta_file_index, exist_msa=exist_msa)
-            read_queue.put(task)
+            _put(read_queue, task, stop_event)
         with ThreadPoolExecutor(max_workers=n_threads) as executor:
-            executor.map(worker, unique_ogs)
+            # Consume the results so an exception in any read is raised here.
+            for _ in executor.map(worker, unique_ogs):
+                pass
     except Exception:
-        if stop_event is not None:
-            stop_event.set()
+        _report_error(report_queue, stop_event, "reading trees/alignments")
         raise
+    finally:
+        if stop_event.is_set():
+            read_queue.cancel_join_thread()
+
+
+def _put_sentinels(q, n_left):
+    """Put up to n_left None sentinels without blocking; return how many remain."""
+    while n_left:
+        try:
+            q.put_nowait(None)
+        except queue.Full:
+            break
+        n_left -= 1
+    return n_left
+
 
 def post_ogs_processing(
     unique_ogs,
@@ -339,70 +368,104 @@ def post_ogs_processing(
         n_processor_processes = max(nprocess // 2, 1)
         n_writer_processes = max(1, min(int(np.ceil(np.abs(nprocess // 2 - 1))), max(4, nprocess // 4)))
 
-    process_queue = mp.Queue()
-    read_queue = mp.Queue()
-    stop_event = mp.Event()
+    # Bounded queues: the reader cannot run ahead and hold every tree and
+    # alignment in memory at once.
+    read_queue = mp.Queue(maxsize=max(4 * n_processor_processes, 16))
+    process_queue = mp.Queue(maxsize=max(4 * n_writer_processes, 16))
     report_queue = mp.Queue()
+    stop_event = mp.Event()
 
-    # Start reader
     file_reader = mp.Process(
         target=threaded_reader,
         args=(read_queue, unique_ogs, spec_seq_id_dict, tree_file_index, fasta_file_index,
-              n_reader_threads, stop_event, exist_msa)
+              n_reader_threads, stop_event, report_queue, exist_msa)
     )
-    file_reader.start()
-
-    # Start processors
-    file_processors = []
-    for _ in range(n_processor_processes):
-        p = mp.Process(
+    file_processors = [
+        mp.Process(
             target=process_task,
             args=(read_queue, process_queue, hog_index, name_dict, species_names,
-                  stop_event)
+                  stop_event, report_queue)
         )
-        p.start()
-        file_processors.append(p)
-
-    # Start writers
-    writer_processes = []
-    for _ in range(n_writer_processes):
-        w = mp.Process(
+        for _ in range(n_processor_processes)
+    ]
+    writer_processes = [
+        mp.Process(
             target=writer_task,
             args=(process_queue, min_seq, idDict, resolved_trees_id_dir,
-                  align_dir, stop_event, exist_msa)
+                  align_dir, stop_event, report_queue, exist_msa)
         )
-        w.start()
-        writer_processes.append(w)
-
+        for _ in range(n_writer_processes)
+    ]
     all_processes = [file_reader] + file_processors + writer_processes
-
-    # Join reader
-    try:
-        file_reader.join()
-    except KeyboardInterrupt:
-        print("KeyboardInterrupt detected during file reading. Initiating shutdown.", flush=True)
-        stop_event.set()
-        file_reader.terminate()
-        file_reader.join()
-
-    if file_reader.exitcode not in (0, None):
-        print(f"Reader process failed with exit code {file_reader.exitcode}. Initiating shutdown.", flush=True)
-        stop_event.set()
-
-    # Stop processors
-    for _ in range(n_processor_processes):
-        read_queue.put(None)
-    for p in file_processors:
-        p.join()
-
-    # Stop writers
-    for _ in range(n_writer_processes):
-        process_queue.put(None)
-    for w in writer_processes:
-        w.join()
-
     for proc in all_processes:
-        if proc.exitcode not in (0, None):
-            print(f"ERROR: process {proc.pid} terminated with exit code {proc.exitcode}.", flush=True)
-            util.Fail()
+        proc.start()
 
+    n_expected = len(unique_ogs)
+    n_handled = 0
+    writers_done = 0
+    processor_sentinels = None   # None: reader not finished yet
+    writer_sentinels = None      # None: processors not finished yet
+    failure = None
+
+    try:
+        while failure is None:
+            try:
+                while True:
+                    msg = report_queue.get(timeout=0.2)
+                    if msg[0] == "error":
+                        failure = msg[1]
+                        break
+                    if msg[0] == "done":
+                        n_handled += msg[1]
+                        writers_done += 1
+            except queue.Empty:
+                pass
+            if failure is not None:
+                break
+
+            for proc in all_processes:
+                if proc.exitcode not in (None, 0):
+                    failure = "process %d terminated with exit code %d" % (proc.pid, proc.exitcode)
+                    break
+            if failure is not None:
+                break
+
+            # Each stage is told to stop only after the previous one finished cleanly.
+            if processor_sentinels is None and file_reader.exitcode == 0:
+                processor_sentinels = n_processor_processes
+            if processor_sentinels:
+                processor_sentinels = _put_sentinels(read_queue, processor_sentinels)
+
+            if (
+                writer_sentinels is None
+                and processor_sentinels == 0
+                and all(p.exitcode == 0 for p in file_processors)
+            ):
+                writer_sentinels = n_writer_processes
+            if writer_sentinels:
+                writer_sentinels = _put_sentinels(process_queue, writer_sentinels)
+
+            if writers_done == n_writer_processes:
+                break
+
+        if failure is None and n_handled != n_expected:
+            failure = "only %d of %d orthogroups were processed" % (n_handled, n_expected)
+
+    except BaseException:
+        failure = failure or "interrupted"
+        raise
+
+    finally:
+        if failure is not None:
+            stop_event.set()
+            parallel_task_manager.TerminateProcesses(all_processes)
+            for q in (read_queue, process_queue, report_queue):
+                q.cancel_join_thread()
+        for proc in all_processes:
+            proc.join()
+
+    if failure is not None:
+        # Raised (not Fail()) so main() records the error in checkpoint.txt.
+        raise parallel_task_manager.WorkerError(
+            "Updating gene trees and alignments failed: %s" % failure
+        )

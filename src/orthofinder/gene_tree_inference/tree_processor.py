@@ -110,15 +110,19 @@ class TreeAnalyser(object):
         self.fix_files = fix_files
 
 
-    def AnalyseTree(self, iog):
+    def AnalyseTree(self, iog, nOrtho_acc=None):
         """
         Analyse one gene tree.
 
         It returns a payload to the parent process.
+
+        If nOrtho_acc (a util.nOrtho_sp) is given, this tree's orthologue
+        counts are added to it once the whole tree has been analysed, and the
+        payload's "n_orthologues" is None. Otherwise it holds a dense
+        nOrtho_sp for this tree.
         """
         og_name = "OG%07d" % iog
         n_species = len(self.speciesToUse)
-        dim2 = 1 if self.fewer_open_files else self.nspecies
 
         try:
             if self.write_hog_tree or not self.fix_files:
@@ -148,12 +152,10 @@ class TreeAnalyser(object):
                 qNoRecon=self.qNoRecon
             )
 
-            olog_lines = [
-                ["" for _ in range(dim2)]
-                for _ in range(self.nspecies)
-            ]
+            olog_lines = EmptyOlogLines(self.nspecies, self.fewer_open_files)
             olog_sus_lines = ["" for _ in range(self.nspecies)]
 
+            pair_counts = [] if nOrtho_acc is not None else None
             nOrthologues_SpPair = GetLinesForOlogFiles(
                 [(iog, ologs)],
                 self.speciesDict,
@@ -162,7 +164,8 @@ class TreeAnalyser(object):
                 len(suspect_genes) > 0,
                 olog_lines,
                 olog_sus_lines,
-                fewer_open_files=self.fewer_open_files
+                fewer_open_files=self.fewer_open_files,
+                pair_counts=pair_counts,
             )
 
             cached_hogs = GetHOGs_from_tree(
@@ -180,6 +183,11 @@ class TreeAnalyser(object):
                 qFixNegatives=True
             )
 
+            if nOrtho_acc is not None:
+                # Only count trees that were analysed completely.
+                for counts in pair_counts:
+                    nOrtho_acc.add_pair(*counts)
+
             return {
                 "iog": iog,
                 "n_orthologues": nOrthologues_SpPair,
@@ -196,16 +204,34 @@ class TreeAnalyser(object):
 
             return {
                 "iog": iog,
-                "n_orthologues": util.nOrtho_sp(n_species),
-                "olog_lines": [
-                    ["" for _ in range(dim2)]
-                    for _ in range(self.nspecies)
-                ],
+                "n_orthologues": (
+                    util.nOrtho_sp(n_species) if nOrtho_acc is None else None
+                ),
+                "olog_lines": EmptyOlogLines(self.nspecies, self.fewer_open_files),
                 "olog_sus_lines": ["" for _ in range(self.nspecies)],
                 "duplications": [],
                 "suspect_genes": set(),
                 "cached_hogs": [],
             }
+
+def EmptyOlogLines(nspecies, fewer_open_files):
+    """
+    Per-species containers for one tree's orthologue rows.
+
+    In pairwise mode each row is a dict {j: text} holding only the partner
+    species that have orthologues, instead of an nspecies x nspecies grid
+    (1,000,000 cells per tree at 1,000 species). Use IterOlogRow to read it.
+    """
+    if fewer_open_files:
+        return [[""] for _ in range(nspecies)]
+    return [{} for _ in range(nspecies)]
+
+
+def IterOlogRow(row):
+    """(j, text) for the non-empty cells of an olog_lines row (list or dict)."""
+    items = row.items() if isinstance(row, dict) else enumerate(row)
+    return ((j, text) for j, text in items if text)
+
 
 def CheckAndRootTree(treeFN, species_tree_rooted, GeneToSpecies):
     """
@@ -370,6 +396,60 @@ def OutgroupIngroupSeparationScore(sp_up, sp_down, sett1, sett2, N_recip, n1, n2
 
 
 
+class SpeciesSets(object):
+    """
+    Species below every node of a gene tree, computed once in one postorder pass.
+
+    Each set is stored as an int bitmask (one bit per species), so memory is
+    about nspecies/8 bytes per node rather than a Python set per node, and a
+    union is a single OR. Valid while the tree topology does not change.
+    """
+
+    def __init__(self, tree, GeneToSpecies):
+        self.species_names = []
+        self.species_bit = {}
+        self.masks = {}
+        self.leaves = {}
+        self._set_cache = {}
+        for n in tree.traverse("postorder"):
+            if n.is_leaf():
+                sp = GeneToSpecies(n.name)
+                bit = self.species_bit.get(sp)
+                if bit is None:
+                    bit = 1 << len(self.species_names)
+                    self.species_bit[sp] = bit
+                    self.species_names.append(sp)
+                self.masks[id(n)] = bit
+                self.leaves.setdefault(n.name, n)
+            else:
+                mask = 0
+                for c in n.get_children():
+                    mask |= self.masks[id(c)]
+                self.masks[id(n)] = mask
+
+    def mask(self, node):
+        return self.masks[id(node)]
+
+    def species(self, node):
+        """A new set of the species below node (callers may modify it)."""
+        mask = self.masks[id(node)]
+        cached = self._set_cache.get(mask)
+        if cached is None:
+            names = self.species_names
+            out = []
+            m = mask
+            while m:
+                low = m & -m
+                out.append(names[low.bit_length() - 1])
+                m ^= low
+            cached = frozenset(out)
+            self._set_cache[mask] = cached
+        return set(cached)
+
+    def leaf(self, name):
+        return self.leaves[name]
+
+
 def GetOrthologues_from_tree(
         iog,
         tree,
@@ -403,6 +483,18 @@ def GetOrthologues_from_tree(
     suspect_genes = set()
     empty_set = set()
 
+    # The topology is fixed from here on, so species sets and leaf lookups can
+    # be computed once instead of re-walking subtrees at every node.
+    sp_sets = SpeciesSets(tree, GeneToSpecies)
+    mrca_cache = {}
+
+    def species_tree_mrca(mask, species):
+        node = mrca_cache.get(mask)
+        if node is None:
+            node = MRCA_node(species_tree_rooted, species)
+            mrca_cache[mask] = node
+        return node
+
     for n in tree.traverse("preorder"):
         if n.is_leaf():
             continue
@@ -417,11 +509,16 @@ def GetOrthologues_from_tree(
             oSize, overlap, sp0, sp1 = OverlapSize(
                 n,
                 GeneToSpecies,
-                suspect_genes
+                suspect_genes,
+                sp_sets=sp_sets,
             )
 
             sp_present = sp0.union(sp1)
-            stNode = MRCA_node(species_tree_rooted, sp_present)
+            if len(sp_present) == len(sp_sets.species(n)):
+                # No species removed as suspect: the set is exactly the species below n.
+                stNode = species_tree_mrca(sp_sets.mask(n), sp_present)
+            else:
+                stNode = MRCA_node(species_tree_rooted, sp_present)
 
             n.add_feature("sp_node", stNode.name)
 
@@ -433,11 +530,12 @@ def GetOrthologues_from_tree(
                     ch,
                     tree,
                     neighbours,
-                    GeneToSpecies
+                    GeneToSpecies,
+                    sp_sets=sp_sets,
                 )
 
                 for g in misplaced_genes:
-                    nn = tree & g
+                    nn = sp_sets.leaf(g)
                     nn.add_feature("X", True)
 
             else:
@@ -477,12 +575,9 @@ def GetOrthologues_from_tree(
                 suspect_genes.update(misplaced_genes)
 
         elif len(ch) > 2:
-            species = [
-                {GeneToSpecies(l) for l in child.get_leaf_names()}
-                for child in ch
-            ]
+            species = [sp_sets.species(child) for child in ch]
             all_species = set.union(*species)
-            stNode = MRCA_node(species_tree_rooted, all_species)
+            stNode = species_tree_mrca(sp_sets.mask(n), all_species)
             n.add_feature("sp_node", stNode.name)
 
             if len(all_species) == 1:
@@ -530,12 +625,15 @@ def MRCA_node(t_rooted, taxa):
     return (t_rooted & next(taxon for taxon in taxa)) if len(taxa) == 1 else t_rooted.get_common_ancestor(taxa)
 
 
-def OverlapSize(node, GeneToSpecies, suspect_genes):  
-    descendents = [{GeneToSpecies(l) for l in n.get_leaf_names()}.difference(suspect_genes) for n in node.get_children()]
+def OverlapSize(node, GeneToSpecies, suspect_genes, sp_sets=None):
+    if sp_sets is None:
+        descendents = [{GeneToSpecies(l) for l in n.get_leaf_names()}.difference(suspect_genes) for n in node.get_children()]
+    else:
+        descendents = [sp_sets.species(n).difference(suspect_genes) for n in node.get_children()]
     intersection = descendents[0].intersection(descendents[1])
     return len(intersection), intersection, descendents[0], descendents[1]
 
-def ResolveOverlap(overlap, sp0, sp1, ch, tree, neighbours, GeneToSpecies, relOverlapCutoff=4):
+def ResolveOverlap(overlap, sp0, sp1, ch, tree, neighbours, GeneToSpecies, relOverlapCutoff=4, sp_sets=None):
     """
     Is an overlap suspicious and if so can it be resolved by identifying genes that are out of place?
     Args:
@@ -572,13 +670,18 @@ def ResolveOverlap(overlap, sp0, sp1, ch, tree, neighbours, GeneToSpecies, relOv
         B_levels = []
         for X, level in zip((A,B),(A_levels, B_levels)):
             for g in X:
-                gene_node = tree & g
+                if sp_sets is None:
+                    gene_node = tree & g
+                    species_below = lambda node: set([GeneToSpecies(gg) for gg in node.get_leaf_names()])
+                else:
+                    gene_node = sp_sets.leaf(g)
+                    species_below = sp_sets.species
                 r = gene_node.up
-                nextSpecies = set([GeneToSpecies(gg) for gg in r.get_leaf_names()])
+                nextSpecies = species_below(r)
                 # having a gene from the same species isn't enough?? No, but we add to the count I think.
                 while len(nextSpecies) == 1:
                     r = r.up
-                    nextSpecies = set([GeneToSpecies(gg) for gg in r.get_leaf_names()])
+                    nextSpecies = species_below(r)
                 nextSpecies.remove(sp)
                 # get the level
                 # the sum of the closest and furthest expected distance topological distance for the closest genes in the gene tree (based on species tree topology)
@@ -630,11 +733,25 @@ def GetLinesForOlogFiles(
         qContainsSuspectOlogs,
         olog_lines,
         olog_sus_lines,
-        fewer_open_files
+        fewer_open_files,
+        pair_counts=None,
     ):
+    """
+    Add orthologue rows to olog_lines/olog_sus_lines.
 
+    Returns a dense nOrtho_sp for these trees. If pair_counts is a list, the
+    (iL, iR, nL, nR) records are appended to it instead and None is returned,
+    which avoids allocating five nspecies x nspecies matrices per tree.
+    """
     nsp = len(iSpeciesToUse)
-    nOrtho = util.nOrtho_sp(nsp)
+    nOrtho = util.nOrtho_sp(nsp) if pair_counts is None else None
+
+    # Rows are collected in lists and joined once at the end. Appending with
+    # olog_lines[i][j] += row copies the whole accumulated string every time
+    # (Python can't append in place to a string held in a list), which is
+    # quadratic for large trees.
+    olog_parts = defaultdict(list)   # (i, j) -> rows
+    sus_parts = defaultdict(list)    # i -> rows
 
     sp_to_i = {str(sp): i for i, sp in enumerate(iSpeciesToUse)}
     sp_label = [speciesDict[str(sp)] for sp in iSpeciesToUse]
@@ -659,24 +776,10 @@ def GetLinesForOlogFiles(
         )
 
     def add_stats(iL, iR, nL, nR):
-        nOrtho.n[iL, iR] += nL
-        nOrtho.n[iR, iL] += nR
-
-        if nL == 1 and nR == 1:
-            nOrtho.n_121[iL, iR] += 1
-            nOrtho.n_121[iR, iL] += 1
-
-        elif nL == 1:
-            nOrtho.n_12m[iL, iR] += 1
-            nOrtho.n_m21[iR, iL] += nR
-
-        elif nR == 1:
-            nOrtho.n_m21[iL, iR] += nL
-            nOrtho.n_12m[iR, iL] += 1
-
+        if pair_counts is None:
+            nOrtho.add_pair(iL, iR, nL, nR)
         else:
-            nOrtho.n_m2m[iL, iR] += nL
-            nOrtho.n_m2m[iR, iL] += nR
+            pair_counts.append((iL, iR, nL, nR))
 
     def add_olog_row(og, spL, genesL, spR, genesR):
         """
@@ -701,32 +804,32 @@ def GetLinesForOlogFiles(
         textR = join_gene_names(spR, genesR)
 
         if fewer_open_files:
-            olog_lines[iL][0] += getrow((
+            olog_parts[(iL, 0)].append(getrow((
                 og,
                 sp_label[iR],
                 textL,
                 textR
-            ))
+            )))
 
-            olog_lines[iR][0] += getrow((
+            olog_parts[(iR, 0)].append(getrow((
                 og,
                 sp_label[iL],
                 textR,
                 textL
-            ))
+            )))
 
         else:
-            olog_lines[iL][iR] += getrow((
+            olog_parts[(iL, iR)].append(getrow((
                 og,
                 textL,
                 textR
-            ))
+            )))
 
-            olog_lines[iR][iL] += getrow((
+            olog_parts[(iR, iL)].append(getrow((
                 og,
                 textR,
                 textL
-            ))
+            )))
 
         add_stats(iL, iR, nL, nR)
 
@@ -746,8 +849,8 @@ def GetLinesForOlogFiles(
         textL = join_gene_names(spL, genesL)
         textR = join_gene_names(spR, genesR)
 
-        olog_sus_lines[iL] += getrow((og, textL, textR))
-        olog_sus_lines[iR] += getrow((og, textR, textL))
+        sus_parts[iL].append(getrow((og, textL, textR)))
+        sus_parts[iR].append(getrow((og, textR, textL)))
 
     for iog, orthologues_onetree in orthologues_alltrees:
         og = "OG%07d" % iog
@@ -813,6 +916,16 @@ def GetLinesForOlogFiles(
                             sp1,
                             genes1
                         )
+
+    for (i, j), parts in olog_parts.items():
+        row = olog_lines[i]
+        if isinstance(row, dict):
+            # Sparse row: only species pairs with orthologues are stored.
+            row[j] = row.get(j, "") + "".join(parts)
+        else:
+            row[j] += "".join(parts)
+    for i, parts in sus_parts.items():
+        olog_sus_lines[i] += "".join(parts)
 
     return nOrtho
 

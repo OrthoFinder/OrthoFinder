@@ -264,7 +264,8 @@ def BetweenCoreOrthogroupsWorkflow(
         parallel_task_manager.RunCommand(
             astral.get_astral_command(
                 astral_fn, species_tree_unrooted_fn, options.nBlast
-            )
+            ),
+            raise_on_error=True,
         )
 
         # Root it

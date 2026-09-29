@@ -48,9 +48,51 @@ except ImportError:
 
 import multiprocessing as mp
 import threading
+import collections
 
 TOTAL_CORES = os.cpu_count() or 8
-TOKENS = threading.BoundedSemaphore(TOTAL_CORES)
+
+
+class CoreTokens(object):
+    """
+    Share TOTAL_CORES between concurrently running external commands.
+
+    A command takes all the cores it needs at once, and requests are served
+    in arrival order. Taking cores one at a time can deadlock: e.g. with 8
+    cores and three commands needing 4 each, they can end up holding 3, 3 and
+    2 and all wait forever.
+    """
+
+    def __init__(self, total):
+        self.total = total
+        self.available = total
+        self.waiting = collections.deque()
+        self.cond = threading.Condition()
+
+    def acquire(self, n):
+        n = max(1, min(int(n), self.total))
+        ticket = object()
+        with self.cond:
+            self.waiting.append(ticket)
+            try:
+                while self.waiting[0] is not ticket or self.available < n:
+                    self.cond.wait()
+            except BaseException:
+                self.waiting.remove(ticket)
+                self.cond.notify_all()
+                raise
+            self.waiting.popleft()
+            self.available -= n
+            self.cond.notify_all()
+        return n
+
+    def release(self, n):
+        with self.cond:
+            self.available += n
+            self.cond.notify_all()
+
+
+TOKENS = CoreTokens(TOTAL_CORES)
 
 _METHODTHREAD_RE = re.compile(r"(?<![A-Za-z0-9_])(METHODTHREADS?|METHODTHREAD)(?![A-Za-z0-9_])")
 
@@ -639,22 +681,22 @@ class ProgramCaller(object):
             gapextend=gapextend,
             method_threads=method_threads,
         )
-        capture = subprocess.Popen(
+        # Read stdout and stderr together: reading one to the end first can
+        # deadlock if the program fills the other pipe's buffer.
+        _, out, err = parallel_task_manager.RunMonitoredCommand(
             cmd,
-            shell=True,
+            parallel_task_manager.my_env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            env=parallel_task_manager.my_env,
         )
-        stdout = [x for x in capture.stdout]
-        stderr = [x for x in capture.stderr]
+        stdout = out.splitlines(True)
+        stderr = err.splitlines(True)
         try:
             stdout = [x.decode() for x in stdout]
             stderr = [x.decode() for x in stderr]
         except (UnicodeDecodeError, AttributeError):
             stdout = [x.encode() for x in stdout]
             stderr = [x.encode() for x in stderr]
-        capture.communicate()
         if actual_target_fns != None:
             actual, target = actual_target_fns
             if os.path.exists(actual):
@@ -954,7 +996,7 @@ def RunParallelCommands(
 #     concurrent.futures.wait(futures)
 
 
-def RunParallelCommandsAndMoveResultsFile(
+def _RunParallelCommandsAndMoveResultsFile(
     nProcesses,
     commands_and_filenames,
     qListOfList,
@@ -1005,9 +1047,18 @@ def RunParallelCommandsAndMoveResultsFile(
                 )
                 for _ in range(nProcesses)
             ]
-        concurrent.futures.wait(futures)
-        for future in futures:
-            future.result()
+            try:
+                for future in concurrent.futures.as_completed(futures):
+                    future.result()
+            except BaseException:
+                # First failure: no more commands, stop the running ones.
+                while True:
+                    try:
+                        cmd_queue.get_nowait()
+                    except queue.Empty:
+                        break
+                parallel_task_manager.KillRunningCommands()
+                raise
 
     else:
         total_commands = len(commands_and_filenames)
@@ -1037,21 +1088,40 @@ def RunParallelCommandsAndMoveResultsFile(
                 )
                 futures[fut] = cmd_unit
 
-            first_error = None
-            for i, future in enumerate(concurrent.futures.as_completed(futures)):
-                try:
+            try:
+                for i, future in enumerate(concurrent.futures.as_completed(futures)):
+                    # The first failed command is raised straight away (with
+                    # its stdout/stderr, which main() writes to checkpoint.txt).
                     result = future.result()
                     if result != 0 and q_print_on_error:
                         print(f"ERROR occurred with command: {futures[future]}")
-                except Exception as e:
-                    if first_error is None:
-                        first_error = e
-                finally:
                     if (i + 1) % update_cycle == 0:
                         progressbar.update(task, advance=update_cycle)
+            except BaseException:
+                # A command failed or we were interrupted: don't start queued
+                # commands and stop running ones, otherwise leaving the pool
+                # would wait for all of them to finish.
+                for fut in futures:
+                    fut.cancel()
+                parallel_task_manager.KillRunningCommands()
+                progressbar.stop()
+                raise
         progressbar.stop()
-        if first_error is not None:
-            raise first_error
+
+
+
+def RunParallelCommandsAndMoveResultsFile(*args, **kwargs):
+    """
+    See _RunParallelCommandsAndMoveResultsFile. If a command fails, the other
+    commands of the batch are stopped and the failure is raised. The abort
+    flag that stops them is cleared once the whole batch has finished, so it
+    never affects later commands.
+    """
+    parallel_task_manager.ResetCommandAbort()
+    try:
+        return _RunParallelCommandsAndMoveResultsFile(*args, **kwargs)
+    finally:
+        parallel_task_manager.ResetCommandAbort()
 
 
 q_print_first_traceback_0 = False
@@ -1158,9 +1228,7 @@ def RunCommand(command, method_threads, dynamic_threads=False, qPrintOnError=Fal
 
     acquired = 0
     try:
-        for _ in range(threads_needed):
-            TOKENS.acquire()
-            acquired += 1
+        acquired = TOKENS.acquire(threads_needed)
 
         env = dict(parallel_task_manager.my_env) if hasattr(parallel_task_manager, "my_env") else os.environ.copy()
         if threads_needed > 1:
@@ -1172,17 +1240,15 @@ def RunCommand(command, method_threads, dynamic_threads=False, qPrintOnError=Fal
         out = subprocess.PIPE if qPrintOnError or raise_on_error else subprocess.DEVNULL
         err = subprocess.PIPE if (qPrintOnError and qPrintStderr) or raise_on_error else subprocess.DEVNULL
 
-        popen = subprocess.Popen(
-            command, env=env, shell=True,
-            stdout=out, stderr=err
+        returncode, stdout, stderr = parallel_task_manager.RunMonitoredCommand(
+            command, env, stdout=out, stderr=err
         )
 
         if qPrintOnError or raise_on_error:
-            stdout, stderr = popen.communicate()
-            if raise_on_error and popen.returncode != 0:
-                raise subprocess.CalledProcessError(popen.returncode, command, output=stdout, stderr=stderr)
-            if popen.returncode != 0:
-                print(f"\nERROR: external program returned code {popen.returncode}")
+            if raise_on_error and returncode != 0:
+                raise subprocess.CalledProcessError(returncode, command, output=stdout, stderr=stderr)
+            if returncode != 0:
+                print(f"\nERROR: external program returned code {returncode}")
                 print(f"\nCommand: {command}")
                 print(f"\nstdout:\n{stdout}")
                 print(f"stderr:\n{stderr}")
@@ -1191,12 +1257,9 @@ def RunCommand(command, method_threads, dynamic_threads=False, qPrintOnError=Fal
                 print(f"\nCommand: {command}")
                 print(f"\nstdout:\n{stdout}")
                 print(f"stderr:\n{stderr}")
-            return popen.returncode
-        else:
-            popen.communicate()
-            return popen.returncode
+        return returncode
     finally:
-        for _ in range(acquired):
-            TOKENS.release()
+        if acquired:
+            TOKENS.release(acquired)
 
 

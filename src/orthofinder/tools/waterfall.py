@@ -1,13 +1,13 @@
 import os
+import shutil
 import traceback
 import numpy as np
-import subprocess
 from scipy import sparse
 import warnings
 import numpy.core.numeric as numeric
 from scipy.optimize import curve_fit
 import multiprocessing as mp
-from ..utils import util, files, blast_file_processor, matrices
+from ..utils import util, files, blast_file_processor, matrices, parallel_task_manager
 
 try:
     import queue
@@ -32,8 +32,13 @@ class scnorm:
 
     @staticmethod
     def GetLengthArraysForMatrix(m, len_i, len_j):
-        I, J = m.nonzero()
-        scores = [v for row in m.data for v in row]  # use fact that it's lil
+        # Row-major order, as the previous lil-based version produced.
+        m = m.tocsr()
+        m.eliminate_zeros()
+        m.sort_indices()
+        I = np.repeat(np.arange(m.shape[0]), np.diff(m.indptr))
+        J = m.indices
+        scores = m.data
         Li = np.array(len_i[I])
         Lj = np.array(len_j[J])
         return Li, Lj, scores
@@ -41,38 +46,24 @@ class scnorm:
     @staticmethod
     def GetTopPercentileOfScores(L, S, percentileToKeep):
         # Get the top x% of hits at each length
+        L = np.asarray(L)
+        S = np.asarray(S, dtype=float)
         nScores = len(S)
-        t_sort = sorted(zip(L, range(nScores)))
-        indices = [j for i, j in t_sort]
-        s_sorted = [S[i] for i in indices]
-        l_sorted = [L[i] for i in indices]
+        # Sort by length, ties by original position (as sorted(zip(L, range(n))) did).
+        indices = np.argsort(L, kind="stable")
+        s_sorted = S[indices]
+        l_sorted = L[indices]
         if nScores < 100:
             # then we can't split them into bins, return all for fitting
             return l_sorted, s_sorted
         nInBins = 1000 if nScores > 5000 else (200 if nScores > 1000 else 20)
         nBins, remainder = divmod(nScores, nInBins)
-        topScores = []
-        topLengths = []
-        for i in range(nBins):
-            first = i * nInBins
-            last = min((i + 1) * nInBins - 1, nScores - 1)
-            theseLengths = l_sorted[first : last + 1]
-            theseScores = s_sorted[first : last + 1]
-            cutOff = np.percentile(theseScores, percentileToKeep)
-            lengthsToKeep = [
-                thisL
-                for thisL, thisScore in zip(theseLengths, theseScores)
-                if thisScore >= cutOff
-            ]
-            topLengths.extend(lengthsToKeep)
-            topScores.extend(
-                [
-                    thisScore
-                    for thisL, thisScore in zip(theseLengths, theseScores)
-                    if thisScore >= cutOff
-                ]
-            )
-        return topLengths, topScores
+        # Full bins only (the remainder is not used), one percentile per bin.
+        n = nBins * nInBins
+        binned_scores = s_sorted[:n].reshape(nBins, nInBins)
+        cutOffs = np.percentile(binned_scores, percentileToKeep, axis=1)
+        keep = (binned_scores >= cutOffs[:, None]).ravel()
+        return l_sorted[:n][keep], s_sorted[:n][keep]
 
     @staticmethod
     def CalculateFittingParameters(Lf, S):
@@ -87,7 +78,7 @@ class scnorm:
         lj_vals = Lh ** (-params[0])
         li_matrix = sparse.csr_matrix((li_vals, (rangeq, rangeq)))
         lj_matrix = sparse.csr_matrix((lj_vals, (rangeh, rangeh)))
-        return sparse.lil_matrix(10 ** (-params[1]) * li_matrix * b * lj_matrix)
+        return sparse.csr_matrix(10 ** (-params[1]) * li_matrix * b * lj_matrix)
 
 
 """
@@ -114,24 +105,24 @@ class WaterfallMethod:
                 "WARNING: THIS IS UNCOMMON, there are zero hits when searching the genes in species %d against itself. Check the input proteome contains all the genes from that species and check the search program is working (default is diamond)."
                 % iSpecies
             )
-            return sparse.lil_matrix(B.get_shape())
+            return sparse.csr_matrix(B.get_shape())
         else:
             print(
                 "WARNING: Too few hits between species %d and species %d to normalise the scores, these hits will be ignored"
                 % (iSpecies, jSpecies)
             )
-            return sparse.lil_matrix(B.get_shape())
+            return sparse.csr_matrix(B.get_shape())
 
     @staticmethod
     def NormalisedBitScore(B, Lengths, iSpecies, jSpecies):
         """
         Args:
-            B - LIL matrix
+            B - sparse matrix
         Returns
-            B' - LIL matrix
+            B' - CSR matrix
         """
         if B.nnz == 0:
-            return B
+            return sparse.csr_matrix(B)
         Lq = Lengths[iSpecies]
         Lh = Lengths[jSpecies]
         rangeq = list(range(len(Lq)))
@@ -140,7 +131,7 @@ class WaterfallMethod:
         lj_vals = Lh ** (-0.5)
         li_matrix = sparse.csr_matrix((li_vals, (rangeq, rangeq)))
         lj_matrix = sparse.csr_matrix((lj_vals, (rangeh, rangeh)))
-        return sparse.lil_matrix(li_matrix * B * lj_matrix)
+        return sparse.csr_matrix(li_matrix * B * lj_matrix)
 
     @staticmethod
     def ProcessBlastHits(
@@ -168,6 +159,7 @@ class WaterfallMethod:
                     seqsInfo.speciesToUse[jSpecies],
                     qDoubleBlast=qDoubleBlast,
                     q_allow_empty=q_allow_empty,
+                    fmt="csr",
                 )
                 if v2_scores:
                     Bij = WaterfallMethod.NormalisedBitScore(
@@ -281,52 +273,48 @@ class WaterfallMethod:
     #             result_queue.put((iSpecies, e))
 
     @staticmethod
+    def _RowMax(W):
+        """Row maxima of a CSR matrix, and which rows have any entry."""
+        has = np.diff(W.indptr) > 0
+        m = np.full(W.shape[0], -np.inf)
+        if W.nnz:
+            m[has] = np.maximum.reduceat(W.data, W.indptr[:-1][has])
+        return m, has
+
+    @staticmethod
+    def _EntriesAbove(W, threshold_per_row):
+        """0/1 CSR matrix of the entries of W greater than their row's threshold."""
+        rows = np.repeat(np.arange(W.shape[0]), np.diff(W.indptr))
+        keep = W.data > threshold_per_row[rows]
+        return sparse.csr_matrix(
+            (np.ones(int(keep.sum())), (rows[keep], W.indices[keep])), shape=W.shape
+        )
+
+    @staticmethod
     def GetBH_s(pairwiseScoresMatrices, seqsInfo, iSpecies, tol=1e-3):
+        """
+        Best hits of each gene of iSpecies in every species (within tol of the
+        row's best score); within its own species, the hits within tol of its
+        best hit in any other species.
+
+        Works on CSR arrays: a Python loop over every row of every species
+        pair costs species^2 x genes calls.
+        """
         nSeqs_i = seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[iSpecies]]
         bestHitForSequence = -1 * np.ones(nSeqs_i)
-        H = [
-            None for i_ in range(seqsInfo.nSpecies)
-        ]  # create array of Nones to be replace by matrices
+        H = [None for j in range(seqsInfo.nSpecies)]
         for j in range(seqsInfo.nSpecies):
             if iSpecies == j:
                 # identify orthologs then come back to paralogs
                 continue
-            W = pairwiseScoresMatrices[j]
-            I = []
-            J = []
-            for kRow in range(nSeqs_i):
-                values = W.getrowview(kRow)
-                if values.nnz == 0:
-                    continue
-                m = max(values.data[0])
-                bestHitForSequence[kRow] = (
-                    m if m > bestHitForSequence[kRow] else bestHitForSequence[kRow]
-                )
-                # get all above this value with tolerance
-                temp = [
-                    index
-                    for index, value in zip(values.rows[0], values.data[0])
-                    if value > m - tol
-                ]
-                J.extend(temp)
-                I.extend(kRow * np.ones(len(temp), dtype=np.dtype(int)))
-            H[j] = sparse.csr_matrix((np.ones(len(I)), (I, J)), shape=W.get_shape())
+            W = pairwiseScoresMatrices[j].tocsr()
+            m, has = WaterfallMethod._RowMax(W)
+            update = has & (m > bestHitForSequence)
+            bestHitForSequence[update] = m[update]
+            H[j] = WaterfallMethod._EntriesAbove(W, m - tol)
         # now look for paralogs
-        I = []
-        J = []
-        W = pairwiseScoresMatrices[iSpecies]
-        for kRow in range(nSeqs_i):
-            values = W.getrowview(kRow)
-            if values.nnz == 0:
-                continue
-            temp = [
-                index
-                for index, value in zip(values.rows[0], values.data[0])
-                if value > bestHitForSequence[kRow] - tol
-            ]
-            J.extend(temp)
-            I.extend(kRow * np.ones(len(temp), dtype=np.dtype(int)))
-        H[iSpecies] = sparse.csr_matrix((np.ones(len(I)), (I, J)), shape=W.get_shape())
+        W = pairwiseScoresMatrices[iSpecies].tocsr()
+        H[iSpecies] = WaterfallMethod._EntriesAbove(W, bestHitForSequence - tol)
         return H
 
     @staticmethod
@@ -410,21 +398,20 @@ class WaterfallMethod:
                     % (seqsInfo.nSeqs, seqsInfo.nSeqs)
                 )
                 graphFile.write("\n(mclmatrix\nbegin\n\n")
-            pool = mp.Pool(nProcess)
-            pool.map(
-                func,
-                [
-                    (seqsInfo, graphFN, iSpec, files.FileHandler.GetPickleDir())
-                    for iSpec in range(seqsInfo.nSpecies)
-                ],
-            )
-            for iSp in range(seqsInfo.nSpecies):
-                subprocess.call(
-                    "cat " + graphFN + "_%d" % iSp + " >> " + graphFN, shell=True
-                )
-                os.remove(graphFN + "_%d" % iSp)
+            # On a failure (or a worker killed, e.g. out of memory) ParallelMap
+            # stops the other workers and raises the child's error.
+            args = [
+                (seqsInfo, graphFN, iSpec, files.FileHandler.GetPickleDir())
+                for iSpec in range(seqsInfo.nSpecies)
+            ]
+            parallel_task_manager.ParallelMap(func, args, nProcess)
+            with open(graphFN, "ab") as graphFile:
+                for iSp in range(seqsInfo.nSpecies):
+                    part_fn = graphFN + "_%d" % iSp
+                    with open(part_fn, "rb") as part:
+                        shutil.copyfileobj(part, graphFile, 16 * 1024 * 1024)
+                    os.remove(part_fn)
             # Cleanup
-            pool.close()
             matrices.DeleteMatrices("B", files.FileHandler.GetPickleDir())
             matrices.DeleteMatrices("connect", files.FileHandler.GetPickleDir())
         return graphFN
@@ -483,22 +470,24 @@ class WaterfallMethod:
         RBH = [rbh.tocsr() for rbh in RBH]
         B = [b.tocsr() for b in B]
         RBH_B = [
-            (rbh.multiply(b)).tolil()
+            sparse.csr_matrix(rbh.multiply(b))
             for i, (rbh, b) in enumerate(zip(RBH, B))
             if i != iSpec
         ]
         # create a vector of these scores
         nseqi = seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[iSpec]]
+
+        def rbh_scores(rbh_b):
+            # The score in rows with exactly one stored entry, else 0.
+            rbh_b.sort_indices()
+            counts = np.diff(rbh_b.indptr)
+            z = np.zeros(nseqi)
+            one = counts == 1
+            z[one] = rbh_b.data[rbh_b.indptr[:-1][one]]
+            return z
+
         # nsp-1 x nseqi
-        Z = np.matrix(
-            [
-                [
-                    rhb_b.data[i][0] if rhb_b.getrowview(i).nnz == 1 else 0.0
-                    for i in range(nseqi)
-                ]
-                for rhb_b in RBH_B
-            ]
-        )  # RBH if it exists else zero
+        Z = np.matrix([rbh_scores(rbh_b) for rbh_b in RBH_B])  # RBH if it exists else zero
         nsp_m1 = Z.shape[0]
         # Zr = 1.0 / Z
         Z = np.asarray(Z, dtype=float)
@@ -581,26 +570,13 @@ class WaterfallMethod:
         connect = []
         nSeqs_i = seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[iSpec]]
         for jSpec in range(seqsInfo.nSpecies):
-            M = B[jSpec].tolil()
-            if iSpec != jSpec:
-                IIJJ = [
-                    (i, j)
-                    for i, (valueRow, indexRow) in enumerate(zip(M.data, M.rows))
-                    for j, v in zip(indexRow, valueRow)
-                    if v >= mostDistant[i]
-                ]
-            else:
-                IIJJ = [
-                    (i, j)
-                    for i, (valueRow, indexRow) in enumerate(zip(M.data, M.rows))
-                    for j, v in zip(indexRow, valueRow)
-                    if (i != j) and v >= mostDistant[i]
-                ]
-            II = [i for (i, j) in IIJJ]
-            JJ = [j for (i, j) in IIJJ]
-            onesArray = np.ones(len(IIJJ))
+            M = B[jSpec].tocsr()
+            rows = np.repeat(np.arange(M.shape[0]), np.diff(M.indptr))
+            keep = M.data >= mostDistant[rows]
+            if iSpec == jSpec:
+                keep &= rows != M.indices
             mat = sparse.csr_matrix(
-                (onesArray, (II, JJ)),
+                (np.ones(int(keep.sum())), (rows[keep], M.indices[keep])),
                 shape=(nSeqs_i, seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[jSpec]]),
             )
             connect.append(mat)

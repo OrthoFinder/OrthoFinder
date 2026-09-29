@@ -40,6 +40,7 @@ import itertools
 import multiprocessing as mp
 from collections import Counter, defaultdict
 from . import tree
+from ..utils import parallel_task_manager
 
 PY2 = sys.version_info <= (3,)
 csv_write_mode = 'wb' if PY2 else 'wt'
@@ -583,15 +584,17 @@ def process_trees(
         qWriteDupTrees=qWriteDupTrees,
     )
 
-    for batch in batched(tree_files, 1000): 
-        with mp.Pool(nProcessors, maxtasksperchild=1) as pool:
-            for result in pool.imap_unordered(worker_func, batch, chunksize=10):
-                if result is None:
-                    continue
-                supported, genesPostDup = result
-                for k, v in supported.items():
-                    agg_supported[k] += v
-                agg_genesPostDup |= genesPostDup
+    # A fresh pool per batch keeps worker memory bounded. On a failure (or a
+    # worker killed, e.g. out of memory) ParallelMap stops the other workers
+    # and raises the child's error.
+    for batch in batched(tree_files, 1000):
+        for result in parallel_task_manager.ParallelMap(worker_func, batch, nProcessors):
+            if result is None:
+                continue
+            supported, genesPostDup = result
+            for k, v in supported.items():
+                agg_supported[k] += v
+            agg_genesPostDup |= genesPostDup
 
     return agg_supported, agg_genesPostDup
 

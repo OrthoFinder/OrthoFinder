@@ -27,17 +27,25 @@ def WriteGraph_perSpecies(args):
         B_connect = matrices.MatricesAnd_s(connect2, B)
         del B, connect2
 
-        W = [b.sorted_indices().tolil() for b in B_connect]
+        # CSR with sorted columns: each row's entries are a slice of the arrays,
+        # instead of creating a row view per gene per species.
+        W = [b.tocsr().sorted_indices() for b in B_connect]
         del B_connect
+        W = [(w.indptr, w.indices, w.data) for w in W]
+        offset = seqsInfo.seqStartingIndices[iSpec]
+        jOffsets = [seqsInfo.seqStartingIndices[jSpec] for jSpec in range(seqsInfo.nSpecies)]
         for query in range(seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[iSpec]]):
-            offset = seqsInfo.seqStartingIndices[iSpec]
-            graphFile.write("%d    " % (offset + query))
-            for jSpec in range(seqsInfo.nSpecies):
-                row = W[jSpec].getrowview(query)
-                jOffset = seqsInfo.seqStartingIndices[jSpec]
-                for j, value in zip(row.rows[0], row.data[0]):
-                    graphFile.write("%d:%.3f " % (j + jOffset, value))
-            graphFile.write("$\n")
+            parts = ["%d    " % (offset + query)]
+            for (indptr, indices, data), jOffset in zip(W, jOffsets):
+                a, b = indptr[query], indptr[query + 1]
+                if a == b:
+                    continue
+                parts.extend(
+                    "%d:%.3f " % (j + jOffset, value)
+                    for j, value in zip(indices[a:b].tolist(), data[a:b].tolist())
+                )
+            parts.append("$\n")
+            graphFile.write("".join(parts))
         if iSpec == (seqsInfo.nSpecies - 1):
             graphFile.write(")\n")
         # util.PrintTime("Written final scores for species %d to graph file" % iSpec)

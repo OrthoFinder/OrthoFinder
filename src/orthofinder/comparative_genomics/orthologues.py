@@ -136,7 +136,11 @@ def TwoAndThreeGeneHOGs(ogSet, st_rooted_labelled, hog_writer):
             # We don't create files for 'species specific HOGs'
             st_node = tree_processor.MRCA_node(st_rooted_labelled, sp_present)
             hogs_to_write = hogs_to_write + [st_node.name]
-        genes = [g.ToString() for g in og] # Inefficient as will convert back again, but trivial cost I think
+        # og is a set: sort so the row order does not depend on hash randomisation.
+        genes = sorted(
+            (g.ToString() for g in og),
+            key=lambda s: tuple(int(x) for x in s.split("_")),
+        )
         hog_writer.write_hog_genes(genes, hogs_to_write, og_name)
 
 def TwoAndThreeGeneOrthogroups(

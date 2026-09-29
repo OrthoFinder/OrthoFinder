@@ -415,7 +415,10 @@ def DoOrthologuesForOrthoFinder(
         else:
             args_queue = mp.Queue()
 
-            for iog in iogs4:
+            # Start the largest trees first so one big tree does not run alone
+            # at the end. HOG rows are still committed in OG order.
+            ogs_all = ogSet.OGsAll()
+            for iog in sorted(iogs4, key=lambda i: -len(ogs_all[i])):
                 args_queue.put(iog)
 
             nOrthologues_SpPair = RunOrthologsParallel_Pipeline(
@@ -433,6 +436,7 @@ def DoOrthologuesForOrthoFinder(
                 fix_files=fix_files,
                 fd_limit=fd_limit,
                 writer_queue_size=max(4 * n_parallel, 32),
+                spill_dir=files.FileHandler.GetWorkingDirectory_Write(),
             )
 
 

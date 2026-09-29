@@ -780,6 +780,27 @@ class nOrtho_sp(object):
         self.n_m2m += other.n_m2m
         return self
 
+    def add_pair(self, iL, iR, nL, nR):
+        """Record one orthology relationship between nL genes in iL and nR genes in iR."""
+        self.n[iL, iR] += nL
+        self.n[iR, iL] += nR
+
+        if nL == 1 and nR == 1:
+            self.n_121[iL, iR] += 1
+            self.n_121[iR, iL] += 1
+
+        elif nL == 1:
+            self.n_12m[iL, iR] += 1
+            self.n_m21[iR, iL] += nR
+
+        elif nR == 1:
+            self.n_m21[iL, iR] += nL
+            self.n_12m[iR, iL] += 1
+
+        else:
+            self.n_m2m[iL, iR] += nL
+            self.n_m2m[iR, iL] += nR
+
 
 class nOrtho_cache(object):
     """matrix of approx number of unwritten cached orthologs"""

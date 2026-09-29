@@ -29,6 +29,8 @@ import sys
 import platform
 import time
 import types
+import signal
+import threading
 import datetime
 import traceback
 import subprocess
@@ -120,56 +122,292 @@ def PrintNoNewLine(text):
     # sys.stdout.write(text)
 
 
+class WorkerError(RuntimeError):
+    """
+    A child process or external command failed.
+
+    The message carries the child's error (traceback, exit status or the
+    command's output). Raising it, instead of calling Fail(), lets main()
+    record the message in checkpoint.txt before OrthoFinder exits.
+    """
+
+
+def TerminateProcesses(processes, grace=5.0):
+    """Stop all still-running child processes: terminate, then kill if needed."""
+    processes = [p for p in processes if p is not None]
+    for proc in processes:
+        if proc.is_alive():
+            proc.terminate()
+    deadline = time.monotonic() + grace
+    for proc in processes:
+        proc.join(timeout=max(0.0, deadline - time.monotonic()))
+    for proc in processes:
+        if proc.is_alive():
+            proc.kill()
+            proc.join()
+
+
+def ParallelMap(function, args_list, nProcesses):
+    """
+    Run function(args) for each element of args_list in a process pool and
+    return the results (in args_list order).
+
+    If any call fails, or a worker is killed (e.g. out of memory), the other
+    workers are stopped straight away and a WorkerError with the child's
+    traceback is raised.
+    """
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+    args_list = list(args_list)
+    if not args_list:
+        return []
+    pool = ProcessPoolExecutor(max_workers=max(1, min(nProcesses, len(args_list))))
+    futures = {pool.submit(function, args): i for i, args in enumerate(args_list)}
+    results = [None] * len(args_list)
+    try:
+        for future in as_completed(futures):
+            try:
+                results[futures[future]] = future.result()
+            except Exception as e:
+                # The child's traceback is attached as the exception's cause.
+                cause = e.__cause__
+                detail = str(cause) if cause is not None else ""
+                raise WorkerError(
+                    "Worker failed: %s: %s\n%s" % (type(e).__name__, e, detail)
+                ) from e
+    except BaseException:
+        for future in futures:
+            future.cancel()
+        # ProcessPoolExecutor has no public way to stop running workers.
+        TerminateProcesses(list(getattr(pool, "_processes", {}).values()))
+        pool.shutdown(wait=False, cancel_futures=True)
+        raise
+    pool.shutdown(wait=True)
+    return results
+
+
 def ManageQueue(runningProcesses, cmd_queue):
     """Manage a set of runningProcesses working through cmd_queue.
-    If there is an error the exit all processes as quickly as possible and 
-    exit via Fail() methods. Otherwise return when all work is complete
-    """            
-    # set all completed processes to None
-    qError = False
-#    dones = [False for _ in runningProcesses]
-    nProcesses = len(runningProcesses)
-    nProcesses_list = list(range(nProcesses))
-    while True:
-        if runningProcesses.count(None) == len(runningProcesses): break
-        time.sleep(.1)
-#        for proc in runningProcesses:
-        for i in nProcesses_list:
-            proc = runningProcesses[i]
-            if proc == None: continue
-            if not proc.is_alive():
-                if proc.exitcode != 0:
-                    qError = True
-                    while True:
-                        try:
-                            cmd_queue.get(True, .1)
-                        except queue.Empty:
-                            break
-                runningProcesses[i] = None
-    if qError:
-        Fail()
+    If a process fails, stop the others straight away and raise WorkerError.
+    Otherwise return when all work is complete.
+    """
+    try:
+        while True:
+            alive = False
+            for proc in runningProcesses:
+                if proc.is_alive():
+                    alive = True
+                elif proc.exitcode != 0:
+                    raise WorkerError(
+                        "%s (PID %s) exited with status %s"
+                        % (proc.name, proc.pid, proc.exitcode)
+                    )
+            if not alive:
+                return
+            time.sleep(.1)
+    except BaseException:
+        TerminateProcesses(runningProcesses)
+        cmd_queue.cancel_join_thread()
+        raise
 
 # not used
 def RunCommand_Simple(command):
     subprocess.call(command, env=my_env, shell=True)
 
 
+# How often to report an external program that is still running (seconds).
+COMMAND_WARN_INTERVAL = 1800.0
+# Optional hard limit per external command (seconds). None: never stop a
+# command just because it is slow; a large alignment or tree can take hours.
+COMMAND_TIMEOUT = None
+# Limit for the quick 'can this program run' checks at start-up (seconds).
+CHECK_COMMAND_TIMEOUT = 600
+
+_live_commands = set()
+_live_commands_lock = threading.Lock()
+# Set once a batch of commands has failed: no further command may start.
+_commands_aborted = threading.Event()
+
+
+def _format_duration(seconds):
+    seconds = int(round(seconds))
+    if seconds < 120:
+        return "%ds" % seconds
+    hours, minutes = divmod(seconds // 60, 60)
+    return "%dh %02dmin" % (hours, minutes) if hours else "%dmin" % minutes
+
+
+def _process_group_cpu_seconds(pgid):
+    """CPU seconds used so far by live processes in a process group (Linux only)."""
+    if not os.path.isdir("/proc"):
+        return None
+    total_ticks = 0
+    try:
+        entries = os.listdir("/proc")
+    except OSError:
+        return None
+    for entry in entries:
+        if not entry.isdigit():
+            continue
+        try:
+            with open("/proc/%s/stat" % entry) as f:
+                stat = f.read()
+        except OSError:
+            continue
+        # Fields after the "(comm)" field: state, ppid, pgrp, ..., utime, stime
+        fields = stat.rsplit(")", 1)[-1].split()
+        try:
+            if int(fields[2]) == pgid:
+                total_ticks += int(fields[11]) + int(fields[12])
+        except (IndexError, ValueError):
+            continue
+    return total_ticks / os.sysconf("SC_CLK_TCK")
+
+
+def _wait_for_group_exit(popen, grace):
+    deadline = time.monotonic() + grace
+    while time.monotonic() < deadline:
+        popen.poll()  # reap the shell so it does not linger as a zombie
+        try:
+            os.killpg(popen.pid, 0)
+        except (ProcessLookupError, PermissionError):
+            return True
+        time.sleep(0.1)
+    return False
+
+
+def _kill_command(popen, grace=5.0):
+    """Stop a command started by RunMonitoredCommand, including its child processes."""
+    if hasattr(os, "killpg"):
+        # The command runs in its own process group (start_new_session), so this
+        # reaches the real program, not just the shell that launched it.
+        for sig in (signal.SIGTERM, signal.SIGKILL):
+            try:
+                os.killpg(popen.pid, sig)
+            except (ProcessLookupError, PermissionError):
+                break
+            if _wait_for_group_exit(popen, grace):
+                break
+    elif popen.poll() is None:
+        try:
+            popen.kill()
+        except OSError:
+            pass
+    try:
+        popen.wait(timeout=grace)
+    except subprocess.TimeoutExpired:
+        pass
+
+
+def KillRunningCommands():
+    """
+    Stop every external command that is still running, and refuse to start
+    new ones until ResetCommandAbort() (used when a command fails or on abort).
+    """
+    with _live_commands_lock:
+        _commands_aborted.set()
+        running = list(_live_commands)
+    for popen in running:
+        _kill_command(popen)
+
+
+def ResetCommandAbort():
+    """Allow commands to start again (call before starting a new batch)."""
+    _commands_aborted.clear()
+
+
+def RunMonitoredCommand(command, env, stdout=None, stderr=None,
+                        warn_interval=None, timeout=None):
+    """
+    Run a shell command and return (returncode, stdout, stderr).
+
+    While it runs, a warning is printed every warn_interval seconds with the
+    elapsed time and the CPU time the command used in that interval, so a
+    slow program (using CPU) can be told apart from a stuck one (not using
+    CPU). The command is only stopped if timeout (or COMMAND_TIMEOUT) is set,
+    or if OrthoFinder itself is interrupted.
+    """
+    if warn_interval is None:
+        warn_interval = COMMAND_WARN_INTERVAL
+    if timeout is None:
+        timeout = COMMAND_TIMEOUT
+    use_group = hasattr(os, "killpg")
+
+    # Start and register under the lock, so KillRunningCommands() cannot miss
+    # a command that is starting at the same moment.
+    with _live_commands_lock:
+        if _commands_aborted.is_set():
+            raise WorkerError("Not started because another command failed: %s" % command)
+        popen = subprocess.Popen(
+            command, env=env, shell=True,
+            stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr,
+            start_new_session=use_group,
+        )
+        _live_commands.add(popen)
+
+    start = time.monotonic()
+    cpu_prev = 0.0
+    try:
+        while True:
+            wait = warn_interval
+            if timeout is not None:
+                wait = min(wait, max(0.0, start + timeout - time.monotonic()))
+            try:
+                out, err = popen.communicate(timeout=wait)
+                return popen.returncode, out, err
+            except subprocess.TimeoutExpired:
+                pass
+
+            elapsed = time.monotonic() - start
+            if timeout is not None and elapsed >= timeout:
+                _kill_command(popen)
+                out, err = popen.communicate()
+                raise subprocess.TimeoutExpired(command, timeout, output=out, stderr=err)
+
+            cpu_now = _process_group_cpu_seconds(popen.pid) if use_group else None
+            if cpu_now is None:
+                cpu_text = ""
+            else:
+                cpu_used = max(0.0, cpu_now - cpu_prev)
+                cpu_prev = cpu_now
+                cpu_text = (
+                    "; CPU time used in the last %s: %s%s" % (
+                        _format_duration(warn_interval), _format_duration(cpu_used),
+                        " (not using CPU - it may be stuck, e.g. waiting on disk or network)"
+                        if cpu_used < 1.0 else "",
+                    )
+                )
+            short_cmd = command if len(command) <= 300 else command[:300] + " ..."
+            print(
+                "WARNING: external command still running after %s%s\n  %s"
+                % (_format_duration(elapsed), cpu_text, short_cmd)
+            )
+    except BaseException:
+        _kill_command(popen)
+        raise
+    finally:
+        with _live_commands_lock:
+            _live_commands.discard(popen)
+
+
 def RunCommand(command, qPrintOnError=False, qPrintStderr=True, raise_on_error=False):
     """Run a single command"""
-    popen = subprocess.Popen(
-        command, env=my_env, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    capture = qPrintOnError or raise_on_error
+    returncode, stdout, stderr = RunMonitoredCommand(
+        command,
+        my_env,
+        stdout=subprocess.PIPE if capture else subprocess.DEVNULL,
+        stderr=subprocess.PIPE if capture else subprocess.DEVNULL,
     )
-    if qPrintOnError or raise_on_error:
-        stdout, stderr = popen.communicate()
-        if raise_on_error and popen.returncode != 0:
+    if capture:
+        if raise_on_error and returncode != 0:
             raise subprocess.CalledProcessError(
-                popen.returncode, command, output=stdout, stderr=stderr
+                returncode, command, output=stdout, stderr=stderr
             )
-        if popen.returncode != 0:
+        if returncode != 0:
             print(
                 (
                     "\nERROR: external program called by OrthoFinder returned an error code: %d"
-                    % popen.returncode
+                    % returncode
                 )
             )
             print(("\nCommand: %s" % command))
@@ -180,10 +418,7 @@ def RunCommand(command, qPrintOnError=False, qPrintStderr=True, raise_on_error=F
             print(("\nCommand: %s" % command))
             print(("\nstdout:\n%s" % stdout))
             print(("stderr:\n%s" % stderr))
-        return popen.returncode
-    else:
-        popen.communicate()
-        return popen.returncode
+    return returncode
 
 
 def CanRunCommand(
@@ -195,14 +430,25 @@ def CanRunCommand(
 ):
     if qPrint:
         PrintNoNewLine(f'Test can run "[orange3]{command.split()[0]}[/orange3]"')  # print without newline
-    capture = subprocess.Popen(
-        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=my_env
-    )
-    capture.wait()
-    stdout = [x for x in capture.stdout]
-    stderr = [x for x in capture.stderr]
-    if qCheckReturnCode:
-        return_code_check = capture.returncode == 0
+    # communicate() rather than wait(): a program that prints more than the
+    # pipe buffer would otherwise block forever. A dependency check should
+    # finish quickly, so it gets a (generous) time limit.
+    try:
+        returncode, out, err = RunMonitoredCommand(
+            command, my_env,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=CHECK_COMMAND_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired as e:
+        returncode = None
+        out = e.output or b""
+        err = (e.stderr or b"") + (
+            b"\nDid not finish within %d s; stopped." % CHECK_COMMAND_TIMEOUT
+        )
+    stdout = out.splitlines(True)
+    stderr = err.splitlines(True)
+    if qCheckReturnCode or returncode is None:
+        return_code_check = returncode == 0
     else:
         return_code_check = True
     if (
@@ -217,7 +463,10 @@ def CanRunCommand(
         if qPrint:
             util.printer.print(" - [bold red]failed")
         if not return_code_check:
-            util.printer.print("Returned a non-zero code: %d" % capture.returncode, style="error")
+            if returncode is None:
+                util.printer.print("Did not finish within %d s" % CHECK_COMMAND_TIMEOUT, style="error")
+            else:
+                util.printer.print("Returned a non-zero code: %d" % returncode, style="error")
         print("\nstdout:")
         for l in stdout:
             print(l)
@@ -331,10 +580,6 @@ def RunMethodParallel(
     ]
     ManageQueueNew(runningProcesses, total_tasks, nProcesses, result_queue, show_progress=show_progress)
 
-class WorkerError(RuntimeError):
-    """A worker failure, including its original traceback when available."""
-
-
 def ManageQueueNew(
         runningProcesses,
         total_tasks,
@@ -343,7 +588,16 @@ def ManageQueueNew(
         GRACE_PERIOD = 10.,
         STALL_TIMEOUT = 200.,
         show_progress = True,
+        HARD_TIMEOUT = None,
     ):
+    """
+    Wait for workers, failing on reported errors or abnormal exits.
+
+    STALL_TIMEOUT is the interval between warnings while no task completes,
+    not a deadline: a single large task (e.g. sorting a big file) can
+    legitimately take longer. HARD_TIMEOUT, if given, is the number of seconds
+    without a completed task after which the run is aborted.
+    """
 
     progressbar, task = util.get_progressbar(total_tasks, visible=show_progress)
     update_cycle = 1
@@ -354,6 +608,7 @@ def ManageQueueNew(
     completed_tasks = 0
     active_workers = nprocess
     last_progress_time = time.time()
+    last_warning_time = last_progress_time
     try:
         while completed_tasks < total_tasks or active_workers > 0:
             try:
@@ -371,10 +626,18 @@ def ManageQueueNew(
                         f"Workers exited before reporting completion "
                         f"({completed_tasks}/{total_tasks} tasks completed)."
                     )
-                if time.time() - last_progress_time > STALL_TIMEOUT:
+                now = time.time()
+                if HARD_TIMEOUT is not None and now - last_progress_time > HARD_TIMEOUT:
                     raise WorkerError(
-                        f"Stalled for {STALL_TIMEOUT}s (completed {completed_tasks}/{total_tasks})."
+                        f"No task completed for {HARD_TIMEOUT:.0f}s "
+                        f"(completed {completed_tasks}/{total_tasks})."
                     )
+                if now - last_warning_time > STALL_TIMEOUT:
+                    print(
+                        f"WARNING: No task has completed for {now - last_progress_time:.0f}s "
+                        f"(completed {completed_tasks}/{total_tasks}); workers are still running."
+                    )
+                    last_warning_time = now
                 continue
 
             if msg is None:
@@ -393,26 +656,29 @@ def ManageQueueNew(
                 if show_progress:
                     progressbar.update(task, advance=update_cycle)
                 last_progress_time = time.time()
+                last_warning_time = last_progress_time
                 continue
 
             raise TypeError(f"Unexpected message from worker: {type(msg)} {msg!r}")
 
-    finally:
-        for proc in runningProcesses:
-            proc.join(timeout=GRACE_PERIOD)
-        for proc in runningProcesses:
-            if proc.is_alive():
-                proc.terminate()
-        for proc in runningProcesses:
-            proc.join()
-
+    except BaseException:
+        # A failure: stop the other workers now instead of waiting for them.
         if show_progress:
             progressbar.stop()
-        try:
-            result_queue.close()
-            result_queue.join_thread()
-        except Exception:
-            pass            
+        TerminateProcesses(runningProcesses)
+        result_queue.cancel_join_thread()
+        raise
+
+    for proc in runningProcesses:
+        proc.join(timeout=GRACE_PERIOD)
+    TerminateProcesses(runningProcesses)
+    if show_progress:
+        progressbar.stop()
+    try:
+        result_queue.close()
+        result_queue.join_thread()
+    except Exception:
+        pass
     
 
 

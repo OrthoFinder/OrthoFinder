@@ -14,8 +14,15 @@ os.environ["ORTHOFINDER_TEST_ISOLATE"] = "1"
 
 ## ---------------- TEST OrthoFinder Commands ----------------
 OF_BASELINE_OPTIONS = [
-    "famsa_species_tree", 
-    "famsa_species_tree_assign"
+    # The first two are the core/assign pair compared with the expected results
+    # (OF_funcs.py uses baseline_options[0] and [1]), so keep them first.
+    "famsa_species_tree",
+    "famsa_species_tree_assign",
+    # test_split_ortholog_files.py compares the default and famsa runs.
+    "default",
+    "famsa",
+    # Assign run on top of the famsa core run.
+    "famsa_assign",
 ]
 
 ## ------- Default ExampleData ---------

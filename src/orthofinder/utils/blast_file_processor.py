@@ -28,6 +28,8 @@ import os
 import sys
 import csv
 import gzip
+import array
+import numpy as np
 from scipy import sparse
 try:
     from rich import print
@@ -38,7 +40,15 @@ from . import util
 PY2 = sys.version_info <= (3,)       
 file_read_mode = 'rb' if PY2 else 'rt'
 
-def GetBLAST6Scores(seqsInfo, blastDir_list, iSpecies, jSpecies, qExcludeSelfHits = True, sep = "_", qDoubleBlast=True, q_allow_empty=False):
+def GetBLAST6Scores(seqsInfo, blastDir_list, iSpecies, jSpecies, qExcludeSelfHits = True, sep = "_", qDoubleBlast=True, q_allow_empty=False, fmt="lil"):
+    """
+    Bit-score matrix (nSeqs_i x nSeqs_j) for the hits of species iSpecies
+    against jSpecies: the highest score for each (query, hit) pair; hits with
+    a score <= 0 are ignored. fmt is "lil" (default) or "csr".
+
+    Hits are collected into arrays and the matrix is built once, rather than
+    by setting one lil_matrix element per hit, which is several times slower.
+    """
     qSameSpecies = iSpecies==jSpecies
     qCheckForSelfHits = qExcludeSelfHits and qSameSpecies
     if not qDoubleBlast:
@@ -57,7 +67,12 @@ def GetBLAST6Scores(seqsInfo, blastDir_list, iSpecies, jSpecies, qExcludeSelfHit
         jSpeciesOpen = jSpecies
     nSeqs_i = seqsInfo.nSeqsPerSpecies[iSpecies]
     nSeqs_j = seqsInfo.nSeqsPerSpecies[jSpecies]
-    B = sparse.lil_matrix((nSeqs_i, nSeqs_j))
+
+    def result(I, J, S):
+        B = sparse.csr_matrix((S, (I, J)), shape=(nSeqs_i, nSeqs_j))
+        return B.tolil() if fmt == "lil" else B
+
+    empty = (np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.int64), np.zeros(0))
     row = ""
     for d in blastDir_list:
         if d[-1] != os.sep:
@@ -65,7 +80,10 @@ def GetBLAST6Scores(seqsInfo, blastDir_list, iSpecies, jSpecies, qExcludeSelfHit
         fn = d + "Blast%d_%d.txt" % (iSpeciesOpen, jSpeciesOpen)
         if os.path.exists(fn) or os.path.exists(fn + ".gz"): break
     if q_allow_empty and not os.path.exists(fn) and not os.path.exists(fn + ".gz"):
-        return B
+        return result(*empty)
+    I = array.array("q")
+    J = array.array("q")
+    S = array.array("d")
     try:
         with (gzip.open(fn + ".gz", file_read_mode) if os.path.exists(fn + ".gz") else open(fn, file_read_mode)) as blastfile:
             blastreader = csv.reader(blastfile, delimiter='\t')
@@ -85,25 +103,45 @@ def GetBLAST6Scores(seqsInfo, blastDir_list, iSpecies, jSpecies, qExcludeSelfHit
                 except (IndexError, ValueError):
                     sys.stderr.write("\nERROR: 12th field in BLAST results file line should be the bit-score for the hit\n")
                     raise
-                if (qCheckForSelfHits and sequence1ID == sequence2ID):
-                    continue
-                # store bit score
-                try:
-                    if score > B[sequence1ID, sequence2ID]: 
-                        B[sequence1ID, sequence2ID] = score   
-                except IndexError:
-                    def ord(n):
-                        return str(n)+("th" if 4<=n%100<=20 else {1:"st",2:"nd",3:"rd"}.get(n%10, "th"))
-#                        sys.stderr.write("\nError in input files, expected only %d sequences in species %d and %d sequences in species %d but found a hit in the Blast%d_%d.txt between sequence %d_%d (i.e. %s sequence in species) and sequence %d_%d (i.e. %s sequence in species)\n" %  (nSeqs_i, iSpecies, nSeqs_j, jSpecies, iSpecies, jSpecies, iSpecies, sequence1ID, ord(sequence1ID+1), jSpecies, sequence2ID, ord(sequence2ID+1)))
-                    sys.stderr.write("\nERROR: Inconsistent input files.\n")
-                    kSpecies, nSeqs_k, sequencekID = (iSpecies,  nSeqs_i, sequence1ID) if sequence1ID >= nSeqs_i else (jSpecies,  nSeqs_j, sequence2ID)
-                    print("ERROR: Blast%d_%d.txt is corrupted" % (iSpecies, jSpecies))
-                    sys.stderr.write("Species%d.fa contains only %d sequences " % (kSpecies,  nSeqs_k)) 
-                    sys.stderr.write("but found a query/hit in the Blast%d_%d.txt for sequence %d_%d (i.e. %s sequence in species %d).\n" %  (iSpecies, jSpecies, kSpecies, sequencekID, ord(sequencekID+1), kSpecies))
-                    util.Fail()
+                I.append(sequence1ID)
+                J.append(sequence2ID)
+                S.append(score)
     except Exception:
         print("ERROR: Blast%d_%d.txt is corrupted" % (iSpecies, jSpecies))
         sys.stderr.write("Malformatted line in %sBlast%d_%d.txt\nOffending line was:\n" % (d, iSpecies, jSpecies))
         sys.stderr.write("\t".join(row) + "\n")
         raise
-    return B
+
+    I = np.frombuffer(I, dtype=np.int64)
+    J = np.frombuffer(J, dtype=np.int64)
+    S = np.frombuffer(S, dtype=np.float64)
+    keep = S > 0     # the old element-wise update only stored scores above 0
+    if qCheckForSelfHits:
+        keep &= I != J
+    I, J, S = I[keep], J[keep], S[keep]
+    if I.size == 0:
+        return result(*empty)
+
+    bad = (I < 0) | (I >= nSeqs_i) | (J < 0) | (J >= nSeqs_j)
+    if bad.any():
+        k = int(np.argmax(bad))
+        sequence1ID, sequence2ID = int(I[k]), int(J[k])
+        def ord(n):
+            return str(n)+("th" if 4<=n%100<=20 else {1:"st",2:"nd",3:"rd"}.get(n%10, "th"))
+        sys.stderr.write("\nERROR: Inconsistent input files.\n")
+        kSpecies, nSeqs_k, sequencekID = (iSpecies,  nSeqs_i, sequence1ID) if not (0 <= sequence1ID < nSeqs_i) else (jSpecies,  nSeqs_j, sequence2ID)
+        text = ("Blast%d_%d.txt is corrupted: Species%d.fa contains only %d sequences but found a query/hit "
+                "for sequence %d_%d (i.e. %s sequence in species %d)."
+                % (iSpecies, jSpecies, kSpecies, nSeqs_k, kSpecies, sequencekID, ord(sequencekID+1), kSpecies))
+        print("ERROR: " + text)
+        raise ValueError(text)
+
+    # Keep the highest score for each (query, hit) pair: sort by pair, then
+    # score, and take the last entry of each pair.
+    key = I * nSeqs_j + J
+    order = np.lexsort((S, key))
+    key = key[order]
+    last = np.ones(key.size, dtype=bool)
+    last[:-1] = key[1:] != key[:-1]
+    key = key[last]
+    return result(key // nSeqs_j, key % nSeqs_j, S[order][last])

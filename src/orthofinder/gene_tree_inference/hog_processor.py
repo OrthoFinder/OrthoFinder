@@ -60,6 +60,10 @@ class HogWriter(object):
         self.iHOG = defaultdict(int)
         self.lock_iHOG = mp.Lock()
         self.species_tree = species_tree
+        # Name -> node, first match in the same (level) order as species_tree & name.
+        self.species_tree_nodes = {}
+        for node in species_tree.traverse():
+            self.species_tree_nodes.setdefault(str(node.name), node)
         species_names = [sp_ids[i] for i in self.iSps]
 
         self.write_output = write_output
@@ -208,14 +212,12 @@ class HogWriter(object):
         else:
             hogs_to_write = self.comp_nodes[n.sp_node][0].copy()
 
-        genes_ids_per_species_id = self.get_descendant_genes(n)
-
         if debug:
             print("Dups below: " + str(n.dups_below))
 
         stop_at_dups = lambda nn: nn.name in n.dups_below
 
-        sp_node = self.species_tree & n.sp_node
+        sp_node = self.species_tree_nodes[str(n.sp_node)]
 
         hogs_to_write.update({
             nn.name
@@ -236,6 +238,10 @@ class HogWriter(object):
 
         if debug:
             print(hogs_to_write)
+
+        # Only collect the genes below n when there is something to write:
+        # doing it for every node is quadratic in the size of the gene tree.
+        genes_ids_per_species_id = self.get_descendant_genes(n)
 
         return self.get_hog_file_entries(
             hogs_to_write,
@@ -494,7 +500,7 @@ class HogWriter(object):
         else:
             # get the highest in the tree
             attested = list(attested)
-            ancestor_lists = [(self.species_tree & a).get_ancestors() for a in attested]
+            ancestor_lists = [self.species_tree_nodes[str(a)].get_ancestors() for a in attested]
             x = len(attested)
             for i in range(x):
                 if all(attested[i] in ancestor_lists[j] for j in range(x) if j!=i):

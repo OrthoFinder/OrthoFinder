@@ -301,10 +301,8 @@ def RunSearch_accelerate(
         threads=options.nBlast,
     )
     if q_one_query:
-        return_code = parallel_task_manager.RunCommand(commands[0], qPrintOnError=True)
-        if return_code != 0:
-            print("ERROR: DIAMOND search failed, see messages above")
-            util.Fail()
+        # Raises with the command's output (recorded in checkpoint.txt) on failure.
+        parallel_task_manager.RunCommand(commands[0], qPrintOnError=True, raise_on_error=True)
         util.PrintTime("Done profiles search\n")
         return results_files
     program_caller.RunParallelCommands(
