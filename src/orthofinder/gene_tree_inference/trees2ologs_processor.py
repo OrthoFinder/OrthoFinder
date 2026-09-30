@@ -1088,9 +1088,6 @@ def RunOrthologsParallel_Pipeline(
     progress_queue = mp.Queue(maxsize=max(4 * nProcesses, 32))
     writer_status_queue = mp.Queue()
 
-    progressbar, task = util.get_progressbar(total_tasks)
-    progressbar.start()
-
     for _ in range(nProcesses):
         args_queue.put(None)
 
@@ -1145,6 +1142,11 @@ def RunOrthologsParallel_Pipeline(
         proc.start()
     for proc in runningProcesses:
         proc.start()
+
+    # Start the progress bar only after all children exist: its refresh thread
+    # holds the console lock while drawing, which a forked child could inherit.
+    progressbar, task = util.get_progressbar(total_tasks)
+    progressbar.start()
 
     nOrthologues_SpPair = util.nOrtho_sp(nspecies)
     errors = []   # error text for the WorkerError raised at the end
@@ -1352,18 +1354,19 @@ def RunOrthologsParallel_Pipeline(
         if fatal or sys.exc_info()[0] is not None:
             # A failed consumer can leave producers blocked on full queues.
             # Stop all children before joining any of them in the error path.
-            for proc in child_processes:
-                if proc.is_alive():
-                    proc.terminate()
+            parallel_task_manager.TerminateProcesses(child_processes)
             args_queue.cancel_join_thread()
-
-        for proc in child_processes:
-            proc.join(timeout=GRACE_PERIOD)
-        for proc in child_processes:
-            if proc.is_alive():
-                report_error("ERROR: child process (pid=%d) did not exit after completion." % proc.pid)
+        else:
+            # Everything reported completion: wait for the children to exit.
+            # They are not stopped for taking long, only warned about.
+            try:
+                parallel_task_manager.WaitForExit(
+                    child_processes, "orthologue pipeline processes", GRACE_PERIOD
+                )
+            except parallel_task_manager.WorkerError as e:
+                report_error("ERROR: %s" % e)
                 fatal = True
-                proc.terminate()
+                parallel_task_manager.TerminateProcesses(child_processes)
         for proc in child_processes:
             proc.join()
             if proc.exitcode != 0:

@@ -99,6 +99,28 @@ if getattr(sys, 'frozen', False):
     else:
         my_env['DYLD_LIBRARY_PATH'] = ''
 
+def _reset_console_locks_in_child():
+    """
+    A process created by fork() inherits every lock in the state it was in.
+    If another thread (e.g. a progress bar) was printing at that moment, the
+    console lock is held by a thread that does not exist in the child, and the
+    child's first print would block forever. Give the child fresh locks.
+    """
+    try:
+        from rich import get_console
+        consoles = [get_console(), util.printer.console]
+    except Exception:
+        return
+    for console in consoles:
+        for name in ("_lock", "_record_buffer_lock"):
+            if hasattr(console, name):
+                setattr(console, name, threading.RLock())
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_console_locks_in_child)
+
+
 system = platform.system()
 try:
     if system in ["Linux", "Darwin"]:
@@ -145,6 +167,39 @@ def TerminateProcesses(processes, grace=5.0):
         if proc.is_alive():
             proc.kill()
             proc.join()
+
+
+def WaitForExit(processes, what="child processes", warn_after=10.0, warn_interval=600.0):
+    """
+    Wait for processes that have finished their work to exit.
+
+    They are never stopped here: a process that is still running is only
+    stopped when something has failed. A warning is printed if they take
+    longer than warn_after seconds, and then every warn_interval seconds.
+    Raises WorkerError if one exits with a non-zero status.
+    """
+    start = time.monotonic()
+    next_warning = start + warn_after
+    while True:
+        alive = [p for p in processes if p.is_alive()]
+        for proc in processes:
+            if proc.exitcode not in (None, 0):
+                raise WorkerError(
+                    "%s (PID %s) exited with status %s" % (proc.name, proc.pid, proc.exitcode)
+                )
+        if not alive:
+            return
+        alive[0].join(timeout=0.5)
+        now = time.monotonic()
+        if now >= next_warning:
+            print(
+                "WARNING: waiting for %d %s to exit after finishing their work "
+                "(%.0fs): %s" % (
+                    len(alive), what, now - start,
+                    ", ".join("PID %s" % p.pid for p in alive[:5]),
+                )
+            )
+            next_warning = now + warn_interval
 
 
 def ParallelMap(function, args_list, nProcesses):
@@ -215,12 +270,10 @@ def RunCommand_Simple(command):
 
 
 # How often to report an external program that is still running (seconds).
+# There is deliberately no time limit: a program that is still running is
+# never stopped for being slow (a large alignment or tree can take hours).
+# Commands are only stopped when something has failed.
 COMMAND_WARN_INTERVAL = 1800.0
-# Optional hard limit per external command (seconds). None: never stop a
-# command just because it is slow; a large alignment or tree can take hours.
-COMMAND_TIMEOUT = None
-# Limit for the quick 'can this program run' checks at start-up (seconds).
-CHECK_COMMAND_TIMEOUT = 600
 
 _live_commands = set()
 _live_commands_lock = threading.Lock()
@@ -316,20 +369,18 @@ def ResetCommandAbort():
 
 
 def RunMonitoredCommand(command, env, stdout=None, stderr=None,
-                        warn_interval=None, timeout=None):
+                        warn_interval=None):
     """
     Run a shell command and return (returncode, stdout, stderr).
 
     While it runs, a warning is printed every warn_interval seconds with the
     elapsed time and the CPU time the command used in that interval, so a
     slow program (using CPU) can be told apart from a stuck one (not using
-    CPU). The command is only stopped if timeout (or COMMAND_TIMEOUT) is set,
-    or if OrthoFinder itself is interrupted.
+    CPU). The command is never stopped for taking long; only if another
+    command fails or OrthoFinder itself is stopped (KillRunningCommands).
     """
     if warn_interval is None:
         warn_interval = COMMAND_WARN_INTERVAL
-    if timeout is None:
-        timeout = COMMAND_TIMEOUT
     use_group = hasattr(os, "killpg")
 
     # Start and register under the lock, so KillRunningCommands() cannot miss
@@ -348,20 +399,14 @@ def RunMonitoredCommand(command, env, stdout=None, stderr=None,
     cpu_prev = 0.0
     try:
         while True:
-            wait = warn_interval
-            if timeout is not None:
-                wait = min(wait, max(0.0, start + timeout - time.monotonic()))
             try:
-                out, err = popen.communicate(timeout=wait)
+                # The timeout only sets how often we report; it never stops the command.
+                out, err = popen.communicate(timeout=warn_interval)
                 return popen.returncode, out, err
             except subprocess.TimeoutExpired:
                 pass
 
             elapsed = time.monotonic() - start
-            if timeout is not None and elapsed >= timeout:
-                _kill_command(popen)
-                out, err = popen.communicate()
-                raise subprocess.TimeoutExpired(command, timeout, output=out, stderr=err)
 
             cpu_now = _process_group_cpu_seconds(popen.pid) if use_group else None
             if cpu_now is None:
@@ -431,23 +476,14 @@ def CanRunCommand(
     if qPrint:
         PrintNoNewLine(f'Test can run "[orange3]{command.split()[0]}[/orange3]"')  # print without newline
     # communicate() rather than wait(): a program that prints more than the
-    # pipe buffer would otherwise block forever. A dependency check should
-    # finish quickly, so it gets a (generous) time limit.
-    try:
-        returncode, out, err = RunMonitoredCommand(
-            command, my_env,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=CHECK_COMMAND_TIMEOUT,
-        )
-    except subprocess.TimeoutExpired as e:
-        returncode = None
-        out = e.output or b""
-        err = (e.stderr or b"") + (
-            b"\nDid not finish within %d s; stopped." % CHECK_COMMAND_TIMEOUT
-        )
+    # pipe buffer would otherwise block forever.
+    returncode, out, err = RunMonitoredCommand(
+        command, my_env,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
     stdout = out.splitlines(True)
     stderr = err.splitlines(True)
-    if qCheckReturnCode or returncode is None:
+    if qCheckReturnCode:
         return_code_check = returncode == 0
     else:
         return_code_check = True
@@ -463,10 +499,7 @@ def CanRunCommand(
         if qPrint:
             util.printer.print(" - [bold red]failed")
         if not return_code_check:
-            if returncode is None:
-                util.printer.print("Did not finish within %d s" % CHECK_COMMAND_TIMEOUT, style="error")
-            else:
-                util.printer.print("Returned a non-zero code: %d" % returncode, style="error")
+            util.printer.print("Returned a non-zero code: %d" % returncode, style="error")
         print("\nstdout:")
         for l in stdout:
             print(l)
@@ -588,23 +621,26 @@ def ManageQueueNew(
         GRACE_PERIOD = 10.,
         STALL_TIMEOUT = 200.,
         show_progress = True,
-        HARD_TIMEOUT = None,
     ):
     """
     Wait for workers, failing on reported errors or abnormal exits.
 
     STALL_TIMEOUT is the interval between warnings while no task completes,
     not a deadline: a single large task (e.g. sorting a big file) can
-    legitimately take longer. HARD_TIMEOUT, if given, is the number of seconds
-    without a completed task after which the run is aborted.
+    legitimately take longer. Workers are only stopped when something fails.
+    GRACE_PERIOD is how long to wait for finished workers to exit before
+    printing a warning (they are still not stopped).
     """
 
+    # Start the workers before the progress bar: its refresh thread holds the
+    # console lock while drawing, and a process forked at that moment would
+    # inherit the lock already held and could block on its first print.
+    for proc in runningProcesses:
+        proc.start()
     progressbar, task = util.get_progressbar(total_tasks, visible=show_progress)
     update_cycle = 1
     if show_progress:
         progressbar.start()
-    for proc in runningProcesses:
-        proc.start()
     completed_tasks = 0
     active_workers = nprocess
     last_progress_time = time.time()
@@ -627,11 +663,6 @@ def ManageQueueNew(
                         f"({completed_tasks}/{total_tasks} tasks completed)."
                     )
                 now = time.time()
-                if HARD_TIMEOUT is not None and now - last_progress_time > HARD_TIMEOUT:
-                    raise WorkerError(
-                        f"No task completed for {HARD_TIMEOUT:.0f}s "
-                        f"(completed {completed_tasks}/{total_tasks})."
-                    )
                 if now - last_warning_time > STALL_TIMEOUT:
                     print(
                         f"WARNING: No task has completed for {now - last_progress_time:.0f}s "
@@ -669,9 +700,12 @@ def ManageQueueNew(
         result_queue.cancel_join_thread()
         raise
 
-    for proc in runningProcesses:
-        proc.join(timeout=GRACE_PERIOD)
-    TerminateProcesses(runningProcesses)
+    # All workers reported that they have finished: wait for them to exit.
+    try:
+        WaitForExit(runningProcesses, "workers", GRACE_PERIOD)
+    except BaseException:
+        TerminateProcesses(runningProcesses)
+        raise
     if show_progress:
         progressbar.stop()
     try:
