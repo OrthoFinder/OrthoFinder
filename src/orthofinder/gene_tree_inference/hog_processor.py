@@ -105,11 +105,7 @@ class HogWriter(object):
                     )
 
         # Map from HOGs to genes that must be contained in them
-        self.hog_contents = dict()  # sp_node_name = hog_name-> list of contents fo hog (internal nodes and leaves)
-        for n in species_tree.traverse():
-            desc = n.get_descendants()
-            self.hog_contents[n.name] = set([int(nn.name) if nn.is_leaf() else nn.name for nn in desc])
-        self.comp_nodes = self.get_comparable_nodes(self.species_tree)
+        self._index_species_tree(self.species_tree)
 
 
     def _get_hog_handle(self, hog_name):
@@ -207,10 +203,10 @@ class HogWriter(object):
             hogs_to_write = (
                 set()
                 if n.sp_node.startswith("N")
-                else self.comp_nodes[n.sp_node][0].copy()
+                else self.above_nodes[n.sp_node].copy()
             )
         else:
-            hogs_to_write = self.comp_nodes[n.sp_node][0].copy()
+            hogs_to_write = self.above_nodes[n.sp_node].copy()
 
         if debug:
             print("Dups below: " + str(n.dups_below))
@@ -350,7 +346,7 @@ class HogWriter(object):
             q_empty = True
             # 2. We know the scl, these are the 'taxonomic units' available (clades or individual species in species tree for this node of the gene tree)
             # Note there can be at most one of each. Only a subset of these will fall under this HOG.
-            units = self.hog_contents[h].intersection(genes_ids_per_species_id.keys())
+            units = self._species_below(h, genes_ids_per_species_id.keys())
             # print("Units: " + str(units))
             genes_row_ids = ["" for _ in self.iSps]
             genes_row = ["" for _ in self.iSps]
@@ -486,9 +482,9 @@ class HogWriter(object):
         for l1, l2 in itertools.combinations(mrcas, 2):
             if l1 == l2:
                 attested.add(l1)
-            elif l2 in self.comp_nodes[l1][1]:
+            elif self._is_below(l2, l1):
                 attested.add(l2)
-            elif l1 in self.comp_nodes[l2][1]:
+            elif self._is_below(l1, l2):
                 attested.add(l1)
         if len(attested) == 1:
             return attested.pop()
@@ -498,13 +494,15 @@ class HogWriter(object):
             # raise Exception()
             return None
         else:
-            # get the highest in the tree
-            attested = list(attested)
-            ancestor_lists = [self.species_tree_nodes[str(a)].get_ancestors() for a in attested]
-            x = len(attested)
-            for i in range(x):
-                if all(attested[i] in ancestor_lists[j] for j in range(x) if j!=i):
-                    return attested[i]
+            # Get the highest in the tree: the attested level that is an
+            # ancestor of every other attested level. (This used to test a node
+            # name against a list of node objects, which is never true, so the
+            # duplication was always rejected.) If the levels are not all on
+            # one path from the root there is no single highest level.
+            attested = sorted(attested, key=lambda a: self.tin[str(a)])
+            for top in attested:
+                if all(self._is_below(str(other), str(top)) for other in attested if other != top):
+                    return top
         print("WARNING: Unexpected gene tree topology 2")
         print(mrcas)
         # raise Exception()
@@ -550,27 +548,44 @@ class HogWriter(object):
     def scl_fn(n):
         return n.is_leaf() or getattr(n, "dup", False)
 
-    def get_comparable_nodes(self, sp_tree):
+    def _index_species_tree(self, sp_tree):
         """
-        Return a dictionary of comaprable nodes
-        Node NX < NY if NX is on the path between NY and the root.
-        If a node is not <, =, > another then they are incomparable
-        Args:
-            sp_tree - sp_tree with labelled nodes
-        Returns:
-            comp_nodes - dict:NX -> ( {n|n<NX}, {n|n>NX} ) i.e. (higher_nodes, lower_nodes)
+        Species-tree ancestry without a set of descendants per node.
+
+        Each node gets its preorder number tin and the end of its subtree tout,
+        so "X is strictly below Y" is tin[Y] < tin[X] < tout[Y]: two integers
+        per node. Storing the descendants of every node instead takes memory
+        that grows with nodes x subtree size (e.g. ~400 MB for an unbalanced
+        1,270-species tree, held in every worker process).
+
+        above_nodes[X] is the set of ancestors of X (needed as a set: it is
+        copied to start the set of HOGs to write at a gene-tree node).
         """
-        comp_nodes = dict()
-        for n in sp_tree.traverse('postorder'):
-            nodes_below = set()
-            if not n.is_leaf():
-                for ch in n.get_children():
-                    if not ch.is_leaf():
-                        nodes_below.update(ch.nodes_below)
-                    nodes_below.add(ch.name)
-            above = set([nn.name for nn in n.get_ancestors()])
-            n.add_feature('nodes_below', nodes_below)
-            comp_nodes[n.name] = (above, nodes_below, above.union(nodes_below.union(set(n.name))))
-        return comp_nodes
+        self.tin = {}
+        self.tout = {}
+        self.above_nodes = {}
+        order = list(sp_tree.traverse("preorder"))
+        for i, n in enumerate(order):
+            self.tin[n.name] = i
+        subtree_size = {}
+        for n in reversed(order):            # children before parents
+            subtree_size[n.name] = 1 + sum(subtree_size[ch.name] for ch in n.get_children())
+            self.tout[n.name] = self.tin[n.name] + subtree_size[n.name]
+        for n in order:                       # parents before children
+            self.above_nodes[n.name] = (
+                set() if n.up is None else self.above_nodes[n.up.name] | {n.up.name}
+            )
+
+    def _is_below(self, x, y):
+        """True if species-tree node x is strictly below node y."""
+        return self.tin[y] < self.tin[x] < self.tout[y]
+
+    def _species_below(self, h, species_ids):
+        """The species IDs (ints) whose species-tree leaf is strictly below node h."""
+        lo, hi, tin = self.tin[h], self.tout[h], self.tin
+        return {
+            isp for isp in species_ids
+            if str(isp) in tin and lo < tin[str(isp)] < hi
+        }
 
 

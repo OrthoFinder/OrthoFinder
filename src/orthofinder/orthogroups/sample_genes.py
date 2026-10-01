@@ -33,6 +33,18 @@ def get_embedding_vectors():
     y = [0.0, 0.12031822087625436, -0.006548892920800078, 0.6148427092374856, 0.8999931109979885, 0.9159034615116097, -0.2248776341570619, 0.5640041523838193, 0.24951671883889143, 0.527451024374676, 0.6520120008417274, -0.229131082802156, -0.878416213428115, -1.002773729034362, 0.20934299312386676, -0.6733718616949979, -0.9829046315103517, 0.7726524237395054, 0.39518870263656747, 0.027351205616309555, -0.5587327809552116, -0.7044914945390158, -0.6873284031366291]
     return x,y,d
 
+def _embedding_lookup():
+    """Per-byte lookup tables (256 entries) for the 2D amino-acid embedding."""
+    x0, x1, d = get_embedding_vectors()
+    index = np.zeros(256, dtype=np.intp)    # anything else (gaps, U, *, X, lower case) -> 0
+    for aa, k in d.items():
+        index[aa[0]] = k
+    return np.asarray(x0)[index], np.asarray(x1)[index]
+
+
+_EMBED_X0, _EMBED_X1 = _embedding_lookup()
+
+
 def embed(c, ndim = 2):
     """
     Takes an MSA and returns a feature vector. It is recommended to trim first.
@@ -41,17 +53,17 @@ def embed(c, ndim = 2):
         ndim - the dimensionality of the AA embedding
     Returns:
         M - Matrix (n_seqs, ndim*n_cols)
+
+    Vectorised with a 256-entry lookup table per coordinate; gives exactly the
+    values of the previous per-cell loop.
     """
     if ndim != 2:
         raise Exception()
     nseqs, ncols = c.shape
-    x0, x1, d = get_embedding_vectors()
+    codes = np.ascontiguousarray(c).view(np.uint8).reshape(nseqs, ncols)
     M = np.empty((nseqs, ncols*ndim))
-    for i in range(nseqs):
-        for j in range(ncols):
-            k = d[c[i,j]]
-            M[i, 2*j] = x0[k]
-            M[i, 2*j+1] = x1[k]
+    M[:, 0::2] = _EMBED_X0[codes]
+    M[:, 1::2] = _EMBED_X1[codes]
     return M
 
 def get_kmers(s, k):
@@ -171,9 +183,11 @@ def msa_biopython_matrix(fn):
     n = msa.get_alignment_length()
     m = len(msa)
     accs = [msa[i].name for i in range(m)]
+    # One row per sequence, built from the sequence bytes (instead of slicing
+    # the alignment column by column).
     z = np.empty((m, n), dtype="S1")
-    for i in range(n):
-        z[:, i] = list(msa[:, i])
+    for i, record in enumerate(msa):
+        z[i, :] = np.frombuffer(str(record.seq).encode("latin-1"), dtype="S1")
     return z, accs
 
 def run_from_aligned(infn, n_sample):
@@ -182,11 +196,13 @@ def run_from_aligned(infn, n_sample):
     with open(outfn, 'w') as outfile:
         outfile.write("\n".join(selected))
 
-def select_from_aligned(infn, n_sample, q_trim=True):
+def select_from_aligned(infn, n_sample, q_trim=True, rng=None):
     """
     Args:
         infn - input FASTA MSA filename
         n_sample - the number of sequences to sample
+        rng - random.Random used to top up the selection when k-means finds
+              fewer clusters than n_sample (default: the global generator)
     Post-condition:
         File is created: infn + ".selected.txt" with the names of the selected
         taxa, one per line.
@@ -245,14 +261,10 @@ def select_from_aligned(infn, n_sample, q_trim=True):
     cluster_representative = []
     for i_clust, centre in enumerate(kmeans.cluster_centers_):
         c = centre > 0.5
-        reps = []
-        similarity = []
-        for i_sample, l in enumerate(labels):
-            if l == i_clust:
-                reps.append(i_sample)
-                similarity.append(M[i_sample].dot(c))
-        if len(similarity) == 0:
+        reps = np.flatnonzero(labels == i_clust).tolist()
+        if len(reps) == 0:
             continue
+        similarity = [M[i_sample].dot(c) for i_sample in reps]
         j = np.argmax(similarity)
         cluster_representative.append(reps[j])
     cluster_representative = list(set(cluster_representative))
@@ -261,7 +273,7 @@ def select_from_aligned(infn, n_sample, q_trim=True):
     if n_extra > 0:
         # select some more to make it up to the total 
         not_used = set(range(n_keep)).difference(cluster_representative)
-        cluster_representative.extend(random.sample(sorted(not_used), n_extra))
+        cluster_representative.extend((rng or random).sample(sorted(not_used), n_extra))
         # print("Found extra sequences. Have %d" % len(cluster_representative))
     # print(cluster_representative)
     selected = [accs[d_new_old[i]] for i in cluster_representative]

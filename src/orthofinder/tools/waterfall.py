@@ -71,14 +71,27 @@ class scnorm:
         return pars
 
     @staticmethod
+    def ScaleRowsCols(B, row_vals, col_vals, factor=1.0):
+        """
+        Return the CSR matrix with entries factor * row_vals[i] * B[i,j] * col_vals[j],
+        equivalent to factor * diag(row_vals) * B * diag(col_vals) but computed
+        directly on the non-zero values in O(nnz).
+        """
+        B = sparse.csr_matrix(B, copy=True)
+        B.sum_duplicates()
+        rows = np.repeat(np.arange(B.shape[0]), np.diff(B.indptr))
+        B.data *= row_vals[rows]
+        B.data *= col_vals[B.indices]
+        if factor != 1.0:
+            B.data *= factor
+        B.eliminate_zeros()
+        return B
+
+    @staticmethod
     def NormaliseScoresByLogLengthProduct(b, Lq, Lh, params):
-        rangeq = list(range(len(Lq)))
-        rangeh = list(range(len(Lh)))
         li_vals = Lq ** (-params[0])
         lj_vals = Lh ** (-params[0])
-        li_matrix = sparse.csr_matrix((li_vals, (rangeq, rangeq)))
-        lj_matrix = sparse.csr_matrix((lj_vals, (rangeh, rangeh)))
-        return sparse.csr_matrix(10 ** (-params[1]) * li_matrix * b * lj_matrix)
+        return scnorm.ScaleRowsCols(b, li_vals, lj_vals, 10 ** (-params[1]))
 
 
 """
@@ -125,13 +138,9 @@ class WaterfallMethod:
             return sparse.csr_matrix(B)
         Lq = Lengths[iSpecies]
         Lh = Lengths[jSpecies]
-        rangeq = list(range(len(Lq)))
-        rangeh = list(range(len(Lh)))
         li_vals = Lq ** (-0.5)
         lj_vals = Lh ** (-0.5)
-        li_matrix = sparse.csr_matrix((li_vals, (rangeq, rangeq)))
-        lj_matrix = sparse.csr_matrix((lj_vals, (rangeh, rangeh)))
-        return sparse.csr_matrix(li_matrix * B * lj_matrix)
+        return scnorm.ScaleRowsCols(B, li_vals, lj_vals)
 
     @staticmethod
     def ProcessBlastHits(
@@ -400,9 +409,12 @@ class WaterfallMethod:
                 graphFile.write("\n(mclmatrix\nbegin\n\n")
             # On a failure (or a worker killed, e.g. out of memory) ParallelMap
             # stops the other workers and raises the child's error.
+            # Largest species first (load balancing); the parts are still
+            # joined in species order below.
+            n_seqs = [seqsInfo.nSeqsPerSpecies[sp] for sp in seqsInfo.speciesToUse]
             args = [
                 (seqsInfo, graphFN, iSpec, files.FileHandler.GetPickleDir())
-                for iSpec in range(seqsInfo.nSpecies)
+                for iSpec in sorted(range(seqsInfo.nSpecies), key=lambda i: -n_seqs[i])
             ]
             parallel_task_manager.ParallelMap(func, args, nProcess)
             with open(graphFN, "ab") as graphFile:
@@ -491,36 +503,22 @@ class WaterfallMethod:
         nsp_m1 = Z.shape[0]
         # Zr = 1.0 / Z
         Z = np.asarray(Z, dtype=float)
-        rs = []
-        for isp in range(nsp_m1):
-            rs.append([])
-            for jsp in range(nsp_m1):
-                if isp == jsp:
-                    rs[-1].append(1.0)
-                    continue
-
-                num = Z[isp, :]
-                den = Z[jsp, :]
-                mask = (num > 0) & (den > 0) 
-                if not np.any(mask):
-                    rs[-1].append(1.0)
-                else:
-                    ratio = num[mask] / den[mask]
-                    r = np.percentile(ratio, 100 - p)
-                    rs[-1].append(r)
-
-                # ratios = np.multiply(Z[isp, :], Zr[jsp, :])
-                # i_nonzeros = np.where(
-                #     np.logical_and(np.isfinite(ratios), ratios > 0)
-                # )  # only those which a score is availabe for both
-                # if i_nonzeros[0].size == 0:
-                #     rs[-1].append(1.0)  # no conversion between this pair
-                # else:
-                #     ratios = ratios[i_nonzeros]
-                #     r = np.percentile(np.asarray(ratios), 100 - p)
-                #     rs[-1].append(r)
-
-                # calculate the n vectors and take the min
+        # rs[isp, jsp]: the (100-p)th percentile of Z[isp]/Z[jsp] over the genes
+        # with an RBH in both species (1.0 on the diagonal and where there are
+        # none). All jsp are done together for each isp instead of one
+        # np.percentile call per pair (species^2 calls for each species);
+        # _RowPercentiles gives exactly the values np.percentile gives.
+        valid = Z > 0
+        rs = np.ones((nsp_m1, nsp_m1))
+        with np.errstate(divide="ignore", invalid="ignore"):
+            for isp in range(nsp_m1):
+                both = valid & valid[isp]
+                both[isp] = False
+                rows = np.flatnonzero(both.any(axis=1))
+                for start in range(0, len(rows), 256):   # bounded memory
+                    block = rows[start:start + 256]
+                    ratio = Z[isp, :] / Z[block]
+                    rs[isp, block] = WaterfallMethod._RowPercentiles(ratio, both[block], 100 - p)
         C = np.matrix(rs)  # Conversion matrix:
         # To convert from a hit in species j to one in species i multiply by Cij
         # To convert from a hit in species j to the furthest hit, need to take
@@ -564,6 +562,33 @@ class WaterfallMethod:
             bestHit[I] + 1e-6
         )  # to connect to one in its own species it must be closer than other species. We can deal with hits outside the species later
         return mostDistant
+
+    @staticmethod
+    def _RowPercentiles(values, valid, q):
+        """
+        For each row r: np.percentile(values[r][valid[r]], q) (linear method),
+        for all rows at once. Every row must have at least one valid value.
+        Follows numpy's computation step by step, so the results are
+        bit-identical to calling np.percentile on each row.
+        """
+        counts = valid.sum(axis=1)
+        x = np.where(valid, values, np.nan)
+        x.sort(axis=1)                       # NaNs sort to the end
+        qf = np.true_divide(q, 100)
+        v = (counts - 1) * qf                 # virtual index
+        prev = np.floor(v)
+        above = v >= counts - 1               # at/after the last value: take the last value
+        i_prev = np.where(above, counts - 1, prev).astype(np.intp)
+        i_next = np.where(above, counts - 1, prev + 1).astype(np.intp)
+        r = np.arange(len(counts))
+        a = x[r, i_prev]
+        b = x[r, i_next]
+        gamma = v - np.where(above, -1.0, prev)
+        diff_b_a = b - a
+        out = a + diff_b_a * gamma
+        hi = gamma >= 0.5
+        out[hi] = (b - diff_b_a * (1 - gamma))[hi]
+        return out
 
     @staticmethod
     def ConnectAllBetterThanCutoff_s(B, mostDistant, seqsInfo, iSpec):

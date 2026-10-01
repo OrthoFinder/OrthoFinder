@@ -131,6 +131,27 @@ nSeqsPerSpecies: Dict[int, int] - indexed by OrthoFinder species ID, info on all
 
 
 # Get Info from seqs IDs file?
+def CountFastaSequences(fastaFilename, block_size=1 << 24):
+    """
+    Number of lines starting with ">" in a FASTA file.
+
+    Counts the byte pattern "<newline>>" in large blocks (C-level bytes.count)
+    instead of looping over every line in Python; line ends "\n", "\r\n" and
+    "\r" are all recognised, as with Python's text-mode line splitting.
+    """
+    n = 0
+    previous = b"\n"            # the start of the file counts as a line start
+    with open(fastaFilename, "rb") as infile:
+        while True:
+            block = infile.read(block_size)
+            if not block:
+                return n
+            n += block.count(b"\n>") + block.count(b"\r>")
+            if block[:1] == b">" and previous in (b"\n", b"\r"):
+                n += 1             # a header right at the start of this block
+            previous = block[-1:]
+
+
 def GetSeqsInfo(inputDirectory_list, speciesToUse, nSpAll):
     inputDirectory_list = list(inputDirectory_list)
     speciesToUse = list(speciesToUse)
@@ -154,11 +175,7 @@ def GetSeqsInfo(inputDirectory_list, speciesToUse, nSpAll):
                     f"directories: {inputDirectory_list}"
                 )
             continue
-        n = 0
-        with open(fastaFilename) as infile:
-            for line in infile:
-                if line.startswith(">"):
-                    n += 1
+        n = CountFastaSequences(fastaFilename)
 
         nSeqsPerSpecies[iFasta] = n
 

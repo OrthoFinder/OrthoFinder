@@ -4,3 +4,4 @@ scikit-learn
 biopython
 rich
 ete4
+pandas>=2.0

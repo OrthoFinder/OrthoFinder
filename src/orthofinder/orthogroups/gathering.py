@@ -29,7 +29,11 @@ def WriteGraph_perSpecies(args):
 
         # CSR with sorted columns: each row's entries are a slice of the arrays,
         # instead of creating a row view per gene per species.
-        W = [b.tocsr().sorted_indices() for b in B_connect]
+        def csr_sorted(b):
+            # sorted_indices() always copies; only call it if the indices are not sorted.
+            b = b.tocsr()
+            return b if b.has_sorted_indices else b.sorted_indices()
+        W = [csr_sorted(b) for b in B_connect]
         del B_connect
         W = [(w.indptr, w.indices, w.data) for w in W]
         offset = seqsInfo.seqStartingIndices[iSpec]
@@ -75,6 +79,20 @@ def WriteGraph_perSpecies_homology(args):
         if iSpec == (seqsInfo.nSpecies - 1):
             graphFile.write(")\n")
         util.PrintTime("Written final scores for species %d to graph file" % iSpec)
+
+
+def LargestSpeciesFirst(seqsInfo):
+    """
+    Species job indices, largest proteome first.
+
+    Each per-species task processes one row of the species x species hit
+    matrices, so its cost grows with the species' number of genes. Starting
+    the largest first ("longest processing time first") stops one large
+    species from running alone at the end while other workers sit idle. Only
+    the order changes; every task does the same work.
+    """
+    n_seqs = [seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[i]] for i in range(seqsInfo.nSpecies)]
+    return sorted(range(seqsInfo.nSpecies), key=lambda i: -n_seqs[i])
 
 
 def GetSequenceLengths(seqsInfo):
@@ -139,7 +157,7 @@ def DoOrthogroups(
     files.FileHandler.GetPickleDir()  # create the pickle directory before the parallel processing to prevent a race condition
     if options.old_version:
         cmd_queue = mp.Queue()  
-        for iSpeciesJob in range(seqsInfo.nSpecies):  # The i-th job, not the OrthoFinder species ID
+        for iSpeciesJob in LargestSpeciesFirst(seqsInfo):  # The i-th job, not the OrthoFinder species ID
             cmd_queue.put(iSpeciesJob)
 
         # Should use PTM?
@@ -170,7 +188,7 @@ def DoOrthogroups(
     else:
 
         cmd_queue = mp.Queue()  
-        for iSpeciesJob in range(seqsInfo.nSpecies):  # The i-th job, not the OrthoFinder species ID
+        for iSpeciesJob in LargestSpeciesFirst(seqsInfo):  # The i-th job, not the OrthoFinder species ID
             cmd_queue.put(iSpeciesJob)
 
         for _ in range(options.nProcessAlg):
@@ -213,7 +231,7 @@ def DoOrthogroups(
         ## -------------------------------------------------------------
         if options.old_version:
             cmd_queue = mp.Queue()
-            for iSpecies in range(seqsInfo.nSpecies):
+            for iSpecies in LargestSpeciesFirst(seqsInfo):
                 cmd_queue.put((seqsInfo, iSpecies))
             # args_list = [(cmd_queue, files.FileHandler.GetPickleDir(), options.v2_scores) for i_ in range(options.nProcessAlg)]
             # parallel_task_manager.RunParallelMethods(waterfall.WaterfallMethod.Worker_ConnectCognates, args_list, options.nProcessAlg)
@@ -232,7 +250,7 @@ def DoOrthogroups(
         else:
             ## -------------------------------------------------------------------------
             cmd_queue = mp.Queue()
-            for iSpecies in range(seqsInfo.nSpecies):
+            for iSpecies in LargestSpeciesFirst(seqsInfo):
                 cmd_queue.put((seqsInfo, iSpecies))
 
             for _ in range(options.nProcessAlg):

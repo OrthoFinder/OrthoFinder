@@ -192,7 +192,7 @@ def BetweenCoreOrthogroupsWorkflow(
     else:
         ogs = acc.get_original_orthogroups()
     i_og_restart = 0
-    ogs_new_species, _ = acc.assign_genes(results_files)
+    ogs_new_species, _ = acc.assign_genes(results_files, options.nProcessAlg)
     clustersFilename_pairs = acc.write_all_orthogroups(
         ogs, ogs_new_species, []
     )  # this updates ogs
@@ -265,6 +265,8 @@ def BetweenCoreOrthogroupsWorkflow(
             astral.get_astral_command(
                 astral_fn, species_tree_unrooted_fn, options.nBlast
             ),
+            # ASTRAL-Pro writes its progress log to stderr: only show it if it fails.
+            qPrintStderr=False,
             raise_on_error=True,
         )
 
@@ -325,6 +327,26 @@ def BetweenCoreOrthogroupsWorkflow(
         print(str(i) + ": " + ", ".join([species_dict[str(isp)] for isp in clade]))
     print("")
 
+    # The clade-specific step costs k^2 searches (and more for clustering) per
+    # clade of k species: report its size and warn about very large clades.
+    clade_rows = acc.clade_costs(
+        [list(map(str, clade)) for clade in species_clades],
+        map(str, iSpeciesCore),
+        n_genes={str(isp): n for isp, n in enumerate(n_unassigned)},
+    )
+    for warning in acc.report_clades(clade_rows, species_dict):
+        run_logging.RunLogger.message(warning, level="WARNING")
+    print("")
+
+    if not species_clades:
+        # Every new species falls in a part of the tree covered by the core:
+        # there are no clade-specific orthogroups to infer.
+        print("No new-species clades: skipping clade-specific orthogroup inference\n")
+        clustersFilename_pairs, i_og_restart = acc.write_all_orthogroups(
+            ogs, {}, [], restart_index=i_og_restart
+        )
+        return clustersFilename_pairs, i_og_restart
+
     # Clade-specific orthogroup inference
     run_commands.CreateSearchDatabases(
         speciesInfoObj, options, prog_caller, q_unassigned_genes=True
@@ -348,7 +370,7 @@ def BetweenCoreOrthogroupsWorkflow(
             "OrthoFinder clutering on new species clade %d of %d"
             % (i_clade + 1, n_clades)
         )
-        print(str(i) + ": " + ", ".join([species_dict[str(isp)] for isp in clade]))
+        print(str(i_clade) + ": " + ", ".join([species_dict[str(isp)] for isp in clade]))
         speciesInfo_clade = copy.deepcopy(speciesInfoObj)
         speciesInfo_clade.speciesToUse = clade
         seqsInfo_clade = util.SeqsInfoRecompute(seqsInfo, clade)
@@ -367,7 +389,11 @@ def BetweenCoreOrthogroupsWorkflow(
     ]
 
     # OGs have had assigned genes added to them already
-    clustersFilename_pairs = acc.write_all_orthogroups(ogs, {}, ogs_clade_specific_list)
+    # Single-gene orthogroups removed here shift the positions of later ones,
+    # so the restart index is adjusted along with them.
+    clustersFilename_pairs, i_og_restart = acc.write_all_orthogroups(
+        ogs, {}, ogs_clade_specific_list, restart_index=i_og_restart
+    )
     return clustersFilename_pairs, i_og_restart
 
 

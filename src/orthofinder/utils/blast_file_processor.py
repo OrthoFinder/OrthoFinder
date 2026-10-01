@@ -28,9 +28,14 @@ import os
 import sys
 import csv
 import gzip
+import io
 import array
 import numpy as np
 from scipy import sparse
+try:
+    import pandas as pd
+except ImportError:   # optional: without it the line-by-line reader is used
+    pd = None
 try:
     from rich import print
 except ImportError:
@@ -39,6 +44,95 @@ from . import util
 
 PY2 = sys.version_info <= (3,)       
 file_read_mode = 'rb' if PY2 else 'rt'
+
+# Hit files are parsed in blocks of this many bytes (bounded memory).
+HIT_READ_BLOCK_BYTES = 64 * 1024 * 1024
+
+
+def _hit_file_blocks(path):
+    """Complete lines of a (gzipped) text file, in blocks of bytes."""
+    opener = gzip.open if path.endswith(".gz") else open
+    with opener(path, "rb") as infile:
+        rest = b""
+        while True:
+            block = infile.read(HIT_READ_BLOCK_BYTES)
+            if not block:
+                if rest.strip():
+                    yield rest if rest.endswith(b"\n") else rest + b"\n"
+                return
+            data = rest + block
+            cut = data.rfind(b"\n") + 1
+            if cut == 0:
+                rest = data
+                continue
+            yield data[:cut]
+            rest = data[cut:]
+
+
+def ReadHitColumns(path, n_fields, columns, dtypes):
+    """
+    Read columns of a tab-separated search-results file with pandas' C parser,
+    treating "_" as a field separator too, so OrthoFinder IDs such as "3_17"
+    become two integer columns. Columns are numbered after that split.
+
+    Much faster than a Python loop over csv rows: no Python object is created
+    per field, and numbers are parsed into arrays directly. Floats are parsed
+    with float_precision="round_trip", which is bit-identical to float().
+
+    dtypes: numpy dtypes, or str for a text column (returned as an object array).
+
+    Returns a list of numpy arrays (one per column), or None if pandas is not
+    installed. Raises ValueError if any line does not have exactly n_fields
+    fields (after the split) or a value is missing; callers then fall back to
+    their line-by-line reader, which reports the problem.
+    """
+    if pd is None:
+        return None
+    read_dtypes = [str if d in (str, object) else d for d in dtypes]
+    out_dtypes = [object if d in (str, object) else d for d in dtypes]
+    parts = [[] for _ in columns]
+    checked = False
+    for data in _hit_file_blocks(path):
+        data = data.replace(b"_", b"\t")
+        if not data.strip():
+            continue
+        if not checked:
+            first = data.lstrip(b"\n")
+            first = first[:first.find(b"\n")]
+            if first.count(b"\t") + 1 != n_fields:
+                raise ValueError("unexpected number of fields")
+            checked = True
+        try:
+            df = pd.read_csv(
+                io.BytesIO(data), sep="\t", header=None, engine="c",
+                names=list(range(n_fields)), usecols=columns,
+                dtype=dict(zip(columns, read_dtypes)),
+                float_precision="round_trip", skip_blank_lines=True,
+                na_filter=True, keep_default_na=False, na_values=[""],
+            )
+        except Exception as e:
+            raise ValueError("unexpected file layout: %s" % e)
+        for i, (col, dtype) in enumerate(zip(columns, out_dtypes)):
+            values = df[col]
+            if values.isna().any():
+                raise ValueError("missing values")
+            parts[i].append(values.to_numpy(dtype=dtype))
+    return [
+        np.concatenate(p) if p else np.zeros(0, dtype=dtype)
+        for p, dtype in zip(parts, out_dtypes)
+    ]
+
+
+def CountFieldsFirstLine(path):
+    """Number of fields on the first non-empty line, treating "_" as a separator too."""
+    opener = gzip.open if path.endswith(".gz") else open
+    with opener(path, "rb") as infile:
+        for line in infile:
+            line = line.rstrip(b"\r\n")
+            if line:
+                return line.count(b"\t") + line.count(b"_") + 1
+    return None
+
 
 def GetBLAST6Scores(seqsInfo, blastDir_list, iSpecies, jSpecies, qExcludeSelfHits = True, sep = "_", qDoubleBlast=True, q_allow_empty=False, fmt="lil"):
     """
@@ -81,6 +175,17 @@ def GetBLAST6Scores(seqsInfo, blastDir_list, iSpecies, jSpecies, qExcludeSelfHit
         if os.path.exists(fn) or os.path.exists(fn + ".gz"): break
     if q_allow_empty and not os.path.exists(fn) and not os.path.exists(fn + ".gz"):
         return result(*empty)
+    path = fn + ".gz" if os.path.exists(fn + ".gz") else fn
+    # Fast path: BLAST tabular, 12 fields, i.e. 14 after splitting the two IDs.
+    try:
+        cols = ReadHitColumns(path, 14, [2 * iQ + 1, 2 * iH + 1, 13],
+                              [np.int64, np.int64, np.float64])
+    except (ValueError, OSError):
+        cols = None   # the line-by-line reader below reports any problem
+    if cols is not None:
+        return _bit_score_matrix(cols[0], cols[1], cols[2], nSeqs_i, nSeqs_j,
+                                 qCheckForSelfHits, iSpecies, jSpecies, result, empty)
+
     I = array.array("q")
     J = array.array("q")
     S = array.array("d")
@@ -112,9 +217,14 @@ def GetBLAST6Scores(seqsInfo, blastDir_list, iSpecies, jSpecies, qExcludeSelfHit
         sys.stderr.write("\t".join(row) + "\n")
         raise
 
-    I = np.frombuffer(I, dtype=np.int64)
-    J = np.frombuffer(J, dtype=np.int64)
-    S = np.frombuffer(S, dtype=np.float64)
+    return _bit_score_matrix(
+        np.frombuffer(I, dtype=np.int64), np.frombuffer(J, dtype=np.int64),
+        np.frombuffer(S, dtype=np.float64), nSeqs_i, nSeqs_j,
+        qCheckForSelfHits, iSpecies, jSpecies, result, empty)
+
+
+def _bit_score_matrix(I, J, S, nSeqs_i, nSeqs_j, qCheckForSelfHits, iSpecies, jSpecies, result, empty):
+    """Max score per (query, hit) as a matrix; scores <= 0 and (optionally) self-hits dropped."""
     keep = S > 0     # the old element-wise update only stored scores above 0
     if qCheckForSelfHits:
         keep &= I != J

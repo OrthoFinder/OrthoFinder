@@ -1,5 +1,6 @@
 from . import ogs, trees
 import os
+import itertools
 import shutil
 import tempfile
 import csv
@@ -132,51 +133,85 @@ def update_output_files(
 
     return ogSet, new_ogs
 
-def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_names, rm_N0_ids=True):
+_HOG_ID_COLUMNS = ("HOG", "OG", "Gene Tree Parent Clade")
 
+
+def _first_id_in_species(gene, species_id, sequence_id_dict):
+    """The first sequence ID of this gene name that belongs to species_id ("" if none)."""
+    return next(
+        iter([s for s in sequence_id_dict.get(gene, set()) if s.split("_")[0] == species_id]), ""
+    )
+
+
+def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_names, rm_N0_ids=True):
+    """
+    Rewrite the N0 HOG file with sequence IDs in place of gene names.
+
+    Rows are read as lists and only their non-empty cells are converted: with
+    many species most cells are empty, and converting an empty cell always
+    gave "". The file written is the same as before.
+    """
+    fieldnames = list(_HOG_ID_COLUMNS) + species_names
     with open(hogs_n0_file, newline='') as infile, \
         tempfile.NamedTemporaryFile(
             mode='w', delete=False, newline='', dir=os.path.dirname(hogs_n0_file)
         ) as temp_file:
-        reader = csv.DictReader(infile, delimiter='\t')
+        reader = csv.reader(infile, delimiter='\t')
+        writer = csv.writer(temp_file, delimiter='\t', lineterminator="\n")
+        header = next(reader, None)
+        writer.writerow(fieldnames)
+        if header is not None:
+            unknown = set(header) - set(fieldnames)
+            if unknown:
+                raise ValueError("Unexpected columns in %s: %s" % (hogs_n0_file, sorted(unknown)[:5]))
+            out_pos = [fieldnames.index(name) for name in header]
+            species_of_column = [species_id_dict.get(name) for name in header]
+            is_id_column = [name in _HOG_ID_COLUMNS for name in header]
+            for row in reader:
+                if not row:
+                    continue                     # DictReader skipped blank lines too
+                if len(row) > len(header):
+                    raise ValueError("Row with more fields than the header in %s" % hogs_n0_file)
+                out = [""] * len(fieldnames)
+                for i in itertools.compress(range(len(row)), row):   # non-empty cells only
+                    val = row[i]
+                    if is_id_column[i]:
+                        out[out_pos[i]] = val
+                    elif "," in val:
+                        out[out_pos[i]] = ", ".join(
+                            _first_id_in_species(gene, species_of_column[i], sequence_id_dict)
+                            for gene in val.split(", ")
+                        )
+                    else:
+                        out[out_pos[i]] = _first_id_in_species(val, species_of_column[i], sequence_id_dict)
+                writer.writerow(out)
 
-        fieldnames = ["HOG", "OG", "Gene Tree Parent Clade"] + species_names
-        writer = csv.DictWriter(temp_file, fieldnames=fieldnames, delimiter='\t', lineterminator="\n")
-
-        writer.writeheader()
-        for row in reader:
-            new_row = {
-                key: (
-                    ", ".join(
-                        next(iter(
-                            [s for s in sequence_id_dict.get(gene, set()) 
-                             if s.split("_")[0] == species_id_dict[key]]
-                        ), "")
-                        for gene in str(val).split(", ")
-                    )
-                    if (val is not None and "," in str(val))
-                    else next(
-                        iter([s for s in sequence_id_dict.get(val, set()) 
-                              if s.split("_")[0] == species_id_dict[key]]), ""
-                    )
-                ) if key not in {'OG', 'Gene Tree Parent Clade', 'HOG'} else val
-                for key, val in row.items()
-            }
-            writer.writerow(new_row)
-    
     os.replace(temp_file.name, hogs_n0_file)
 #     # shutil.copy(hogs_n0_file, os.path.join(os.path.dirname(hogs_n0_file), "N0_ids.tsv"))
 
 def read_hog_file(hog_file):
+    """
+    The rows of a HOG file as dicts holding only the non-empty cells (the HOG,
+    OG and Gene Tree Parent Clade columns are always included).
+
+    With many species almost every species cell is empty; storing them all
+    would need one dict entry per species per HOG (e.g. 1,200 x 100,000).
+    Readers use row.get(species) and treat a missing cell like an empty one.
+    """
     hog_n0 = []
     with open(hog_file, newline = '') as csvfile:
-        reader = csv.DictReader(csvfile, delimiter='\t')
-        reader.fieldnames = [
-            # fieldname.replace('.', '_') 
-            fieldname
-            for fieldname in reader.fieldnames
-        ]
-        hog_n0 = [row for row in reader]
+        reader = csv.reader(csvfile, delimiter='\t')
+        header = next(reader, None)
+        if header is None:
+            return hog_n0
+        id_positions = [i for i, name in enumerate(header) if name in _HOG_ID_COLUMNS]
+        for row in reader:
+            if not row:
+                continue                         # DictReader skipped blank lines too
+            n = min(len(row), len(header))
+            cells = dict.fromkeys(i for i in id_positions if i < n)
+            cells.update(dict.fromkeys(itertools.compress(range(n), row)))
+            hog_n0.append({header[i]: row[i] for i in sorted(cells)})
     return hog_n0
 
 

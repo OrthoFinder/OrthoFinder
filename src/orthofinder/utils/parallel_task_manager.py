@@ -202,7 +202,7 @@ def WaitForExit(processes, what="child processes", warn_after=10.0, warn_interva
             next_warning = now + warn_interval
 
 
-def ParallelMap(function, args_list, nProcesses):
+def ParallelMap(function, args_list, nProcesses, progress=None):
     """
     Run function(args) for each element of args_list in a process pool and
     return the results (in args_list order).
@@ -210,6 +210,11 @@ def ParallelMap(function, args_list, nProcesses):
     If any call fails, or a worker is killed (e.g. out of memory), the other
     workers are stopped straight away and a WorkerError with the child's
     traceback is raised.
+
+    progress, if given, is called as progress(n_completed): first with 0 once
+    the workers have been started (start any progress bar then, not before,
+    so no worker is forked while its refresh thread holds a lock), and after
+    each completed task.
     """
     from concurrent.futures import ProcessPoolExecutor, as_completed
     args_list = list(args_list)
@@ -219,7 +224,9 @@ def ParallelMap(function, args_list, nProcesses):
     futures = {pool.submit(function, args): i for i, args in enumerate(args_list)}
     results = [None] * len(args_list)
     try:
-        for future in as_completed(futures):
+        if progress is not None:
+            progress(0)
+        for n_done, future in enumerate(as_completed(futures), start=1):
             try:
                 results[futures[future]] = future.result()
             except Exception as e:
@@ -229,6 +236,8 @@ def ParallelMap(function, args_list, nProcesses):
                 raise WorkerError(
                     "Worker failed: %s: %s\n%s" % (type(e).__name__, e, detail)
                 ) from e
+            if progress is not None:
+                progress(n_done)
     except BaseException:
         for future in futures:
             future.cancel()

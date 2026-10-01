@@ -610,6 +610,8 @@ class TreesForOrthogroups(object):
                     astral_pro.get_astral_command(
                         astral_fn, speciesTreeFN_ids, nProcesses
                     ),
+                    # ASTRAL-Pro writes its progress log to stderr: only show it if it fails.
+                    qPrintStderr=False,
                     raise_on_error=True,
                 )
 

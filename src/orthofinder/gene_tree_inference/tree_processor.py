@@ -295,13 +295,15 @@ def GetRoots(tree, species_tree_rooted, GeneToSpecies):
     roots_list = []
     scores_list = []   # the fraction completeness of the two clades
 #    roots_set = set()
+    # Species below/above each node: the same for every split, so computed once
+    # (the tree is not modified in this loop).
+    StoreSpeciesSets(tree, GeneToSpecies)   # sets of species
     for i in range(len(leaves)):
         t1 = leaves[i]
         t2 = set.union(*[l for j,l in enumerate(leaves) if j!=i])
         # G - set of species in gene tree
         # First relevant split in species tree is (A,B), such that A \cap G \neq \emptyset and A \cap G \neq \emptyset
         # label all nodes in gene tree according the whether subsets of A, B or both lie below node
-        StoreSpeciesSets(tree, GeneToSpecies)   # sets of species
         root_mapper = RootMap(t1, t2, GeneToSpecies)    
         sett1 = set(t1)
         sett2 = set(t2)

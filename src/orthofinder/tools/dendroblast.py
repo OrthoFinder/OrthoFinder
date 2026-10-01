@@ -274,32 +274,55 @@ class DendroBLASTTrees(object):
 def Worker_OGMatrices_ReadBLASTAndUpdateDistances(cmd_queue, worker_status_queue, iWorker, ogMatrices, nGenes, seqsInfo,
                                                   blastDir_list, ogsPerSpecies, qDoubleBlast):
     speciesToUse = seqsInfo.speciesToUse
+    og_genes = None   # per orthogroup and species: (gene iSeq array, matrix index array)
     with np.errstate(divide='ignore'):
         while True:
             try:
                 iiSp, sp1, nSeqs_sp1 = cmd_queue.get(True, 1)
                 worker_status_queue.put(("start", iWorker, iiSp))
                 Bs = [BlastFileProcessor.GetBLAST6Scores(seqsInfo, blastDir_list, sp1, sp2,
-                                                         qExcludeSelfHits = False, qDoubleBlast=qDoubleBlast)
+                                                         qExcludeSelfHits = False, qDoubleBlast=qDoubleBlast,
+                                                         fmt="csr")
                       for sp2 in speciesToUse]
                 mins = np.ones((nSeqs_sp1, 1), dtype=np.float64)*9e99 
                 maxes = np.zeros((nSeqs_sp1, 1), dtype=np.float64)
                 for B in Bs:
-                    m0, m1 = lil_minmax(B)
+                    m0, m1 = csr_minmax(B)
                     mins = np.minimum(mins, m0)
                     maxes = np.maximum(maxes, m1)
                 maxes_inv = 1./maxes
-                for jjSp, B  in enumerate(Bs):
-                    for og, m in zip(ogsPerSpecies, ogMatrices):
-                        for gi, i in og[iiSp]:
-                            a = int(np.asarray(gi.iSeq).item())
-                            mi  = float(np.asarray(mins[a]).item())
-                            inv = float(np.asarray(maxes_inv[a]).item())
-                            for gj, j in og[jjSp]:
-                                    b = int(np.asarray(gj.iSeq).item())
-                                    bij = float(np.asarray(B[a, b].item()))
-                                    m[i][j] = 0.5 * max(bij, mi) * inv
-                                    # m[i][j] = 0.5*max(B[gi.iSeq, gj.iSeq], mins[gi.iSeq]) * maxes_inv[gi.iSeq]
+                # m[i][j] = 0.5*max(B[gi.iSeq, gj.iSeq], mins[gi.iSeq]) * maxes_inv[gi.iSeq]
+                # for every gene pair of every orthogroup, computed with one
+                # sparse lookup per species pair (all orthogroups together)
+                # instead of one per gene pair.
+                if og_genes is None:
+                    og_genes = [
+                        [(np.array([int(g.iSeq) for g, _ in og[s]], dtype=np.int64),
+                          np.array([k for _, k in og[s]], dtype=np.intp))
+                         for s in range(len(og))]
+                        for og in ogsPerSpecies
+                    ]
+                for jjSp, B in enumerate(Bs):
+                    blocks, rows_a, cols_b = [], [], []
+                    for k, genes in enumerate(og_genes):
+                        a, i_idx = genes[iiSp]
+                        b, j_idx = genes[jjSp]
+                        if a.size and b.size:
+                            rows_a.append(np.repeat(a, b.size))
+                            cols_b.append(np.tile(b, a.size))
+                            blocks.append((k, i_idx, j_idx))
+                    if not blocks:
+                        continue
+                    A = np.concatenate(rows_a)
+                    scores = np.asarray(B[A, np.concatenate(cols_b)]).ravel()
+                    values = 0.5 * np.maximum(scores, mins[A, 0]) * maxes_inv[A, 0]
+                    pos = 0
+                    for k, i_idx, j_idx in blocks:
+                        block = values[pos:pos + i_idx.size * j_idx.size].reshape(i_idx.size, j_idx.size)
+                        pos += i_idx.size * j_idx.size
+                        m = ogMatrices[k]
+                        for i, row_values in zip(i_idx, block):
+                            np.ctypeslib.as_array(m[i])[j_idx] = row_values
                 del Bs, B, mins, maxes, m0, m1, maxes_inv    # significantly reduces RAM usage
                 worker_status_queue.put(("finish", iWorker, iiSp))
             except queue.Empty:
@@ -313,6 +336,19 @@ def GetRAMErrorText():
     return text
 
 # ==============================================================================================================================
+
+def csr_minmax(M):
+    """Per-row minimum and maximum of the stored values (rows without values: 9e99 and 0)."""
+    M = M.tocsr()
+    n = M.shape[0]
+    mins = np.ones((n, 1), dtype = np.float64) * 9e99
+    maxes = np.zeros((n, 1), dtype = np.float64)
+    has = np.diff(M.indptr) > 0
+    if has.any():
+        starts = M.indptr[:-1][has]
+        mins[has, 0] = np.minimum.reduceat(M.data, starts)
+        maxes[has, 0] = np.maximum.reduceat(M.data, starts)
+    return mins, maxes
 
 def lil_minmax(M):
     n = M.shape[0]
