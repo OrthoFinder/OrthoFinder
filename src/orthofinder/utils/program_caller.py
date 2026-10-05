@@ -211,6 +211,129 @@ class InvalidEntryException(Exception):
     pass
 
 
+# MMseqs2 steps that must be told nucleotide sequences are to be compared as
+# nucleotides (--search-type 3, like blastn); on DNA they otherwise stop
+# and ask for --search-type 2 (translated) or 3 (nucleotide).
+MMSEQS_SEARCH_TYPE_RE = re.compile(r"(^|[\s;&|/])mmseqs\s+(createindex|search|easy-search|easy-linsearch|linsearch)\b")
+_MMSEQS_CREATEINDEX_RE = re.compile(r"(^|[\s;&|/])mmseqs\s+createindex\b")
+_KMER_OPTION_RE = re.compile(r"(^|\s)-k(\s|=|$)")
+_SEARCH_TYPE_RE = re.compile(r"--search-type[\s=]+(\S+)")
+
+# k-mer length for MMseqs2 nucleotide searches. At MMseqs2's default (15) every
+# search allocates a k-mer table of ~8.4 GB, however small the input; 13 takes
+# ~0.5 GB and found as many hits in tests (see the comment in config.json).
+MMSEQS_NUCLEOTIDE_KMER = 13
+
+
+def AddNucleotideSearchType(command):
+    """
+    command for nucleotide sequences: "--search-type 3" and
+    "-k MMSEQS_NUCLEOTIDE_KMER" are added to each MMseqs2 search step that
+    does not set them already (the k-mer length only for nucleotide search,
+    type 3), and MMseqs2 createindex steps are left out. A nucleotide index holds a k-mer table
+    of fixed size (8 GB on disk at the default k-mer length, however small
+    the input), so each search builds its index in memory instead.
+    Other programs' commands are returned unchanged.
+    """
+    parts = re.split(r"(;|&&|\|\||\|)", command)
+    kept = []                  # [separator before it, command] pairs
+    for i in range(0, len(parts), 2):     # the commands, not the separators
+        part, sep = parts[i], parts[i - 1] if i else ""
+        if _MMSEQS_CREATEINDEX_RE.search(part):
+            continue
+        if MMSEQS_SEARCH_TYPE_RE.search(part):
+            stripped = part.rstrip()
+            options = ""
+            search_type = _SEARCH_TYPE_RE.search(part)
+            if search_type is None:
+                options += " --search-type 3"
+            # The k-mer length is for nucleotide k-mers: not for a search type
+            # the user chose (e.g. 2, translated, has amino-acid k-mers).
+            nucleotide = search_type is None or search_type.group(1) == "3"
+            if nucleotide and not _KMER_OPTION_RE.search(part):
+                options += " -k %d" % MMSEQS_NUCLEOTIDE_KMER
+            part = stripped + options + part[len(stripped):]
+        kept.append((sep, part))
+    if not kept:
+        return command
+    return "".join([kept[0][1].lstrip()] + [sep + part for sep, part in kept[1:]]).rstrip()
+
+
+def FillMethodThreads(command, method_threads):
+    """
+    (threads, command with its METHODTHREAD placeholder filled in): the
+    threads one command is run with, -mt capped at the number of cores;
+    DIAMOND always gets 1 (many of its commands run at once), as does a
+    command without the placeholder.
+    """
+    try:
+        prog = os.path.basename(shlex.split(command)[0]).lower()
+    except Exception:
+        prog = ""
+    if _METHODTHREAD_RE.search(command) and not prog.startswith("diamond"):  # diamond makedb / blastp
+        threads = max(1, min(int(method_threads), TOTAL_CORES))
+    else:
+        threads = 1
+    return threads, _METHODTHREAD_RE.sub(str(threads), command)
+
+
+# One codon per amino acid, to make nucleotide test sequences from the protein ones.
+_TEST_CODONS = {
+    "A": "GCT", "R": "CGT", "N": "AAT", "D": "GAT", "C": "TGT", "Q": "CAA", "E": "GAA",
+    "G": "GGT", "H": "CAT", "I": "ATT", "L": "CTG", "K": "AAA", "M": "ATG", "F": "TTT",
+    "P": "CCG", "S": "TCT", "T": "ACC", "W": "TGG", "Y": "TAT", "V": "GTT",
+}
+
+
+# The thread-count options of the search programs, by program.
+_SEARCH_THREAD_OPTIONS = (
+    (re.compile(r"^diamond$"), ("-p", "--threads")),
+    (re.compile(r"^mmseqs$"), ("--threads",)),
+    (re.compile(r"^(t?blast[npx]|psiblast|deltablast)$"), ("-num_threads",)),
+)
+
+
+def ResetSearchThreads(command):
+    """
+    A saved search command with its thread counts set back to METHODTHREAD.
+
+    Commands saved by -op get the -mt thread count (or more, when edited to
+    run on a cluster); when OrthoFinder runs them itself (a -b restart) the
+    count is filled in again when each command runs (FillMethodThreads): 1
+    by default, as many commands run at once (-t). Only the known thread
+    options of DIAMOND, MMseqs2 and BLAST+ are changed.
+    """
+    parts = re.split(r"(;|&&|\|\||\|)", command)
+    for i in range(0, len(parts), 2):     # the commands, not the separators
+        words = parts[i].split()
+        if not words:
+            continue
+        program = os.path.basename(words[0])
+        for program_re, options in _SEARCH_THREAD_OPTIONS:
+            if program_re.match(program):
+                for option in options:
+                    parts[i] = re.sub(r"(?<!\S)(%s)(\s+|=)\d+(?!\S)" % re.escape(option),
+                                      r"\g<1>\g<2>METHODTHREAD", parts[i])
+    return "".join(parts)
+
+
+def _NucleotideTestSequences():
+    """longer_sequence back-translated (header lines kept)."""
+    return "\n".join(
+        line if line.startswith(">") else "".join(_TEST_CODONS.get(c, "NNN") for c in line.strip())
+        for line in longer_sequence.split("\n")
+    )
+
+
+def _HasHitLines(path):
+    """Whether a (gzipped) search-results file has a hit line (not empty or only "#" comments)."""
+    from . import file_io
+    try:
+        return not file_io.hit_file_is_empty(path, file_io.STANDARD_HIT_FORMAT)
+    except (OSError, EOFError, UnicodeDecodeError):
+        return False
+
+
 class Method(object):
     def __init__(self, name, config_dict):
         self.skip_check = False
@@ -244,6 +367,9 @@ class ProgramCaller(object):
         self.tree = dict()
         self.search_db = dict()
         self.search_search = dict()
+        # Optional, for a search program OrthoFinder cannot read the output
+        # options of: the columns its results have, e.g. "qseqid sseqid bitscore".
+        self.search_output_fields = dict()
         # Add default methods
         # self.msa["mafft"] = Method(
         #     "mafft",
@@ -302,6 +428,8 @@ class ProgramCaller(object):
                         else:
                             self.search_db[name] = Method(name, {"cmd_line": v["db_cmd"]})
                             self.search_search[name] = Method(name, {"cmd_line": v["search_cmd"]})
+                            if "output_fields" in v:
+                                self.search_output_fields[name] = v["output_fields"]
                             if "output_filename" in v:
                                 print(("WARNING: Incorrectly formatted configuration file entry: %s" % name))
                                 print(
@@ -320,12 +448,17 @@ class ProgramCaller(object):
         self.search_search.update(
             other.search_search
         )  # search_db & search_search are only added together
+        self.search_output_fields.update(other.search_output_fields)
 
     def ListMSAMethods(self):
         return [key for key in self.msa]
 
     def ListTreeMethods(self):
         return [key for key in self.tree]
+
+    def GetSearchOutputFields(self, method_name):
+        """The columns declared with "output_fields" for a search method, or None."""
+        return self.search_output_fields.get(method_name)
 
     def ListSearchMethods(self):
         return [key for key in self.search_db]
@@ -377,8 +510,10 @@ class ProgramCaller(object):
         gapopen=None,
         gapextend=None,
         method_threads=None,
+        nucleotide=False,
     ):
-        return self._GetCommand(
+        """nucleotide: the sequences are DNA (see AddNucleotideSearchType)."""
+        command = self._GetCommand(
             "search_db",
             method_name,
             infilename,
@@ -390,6 +525,7 @@ class ProgramCaller(object):
         )[
             0
         ]  # output filename isn't returned
+        return AddNucleotideSearchType(command) if nucleotide else command
 
     def GetSearchMethodCommand_Search(
         self,
@@ -401,8 +537,10 @@ class ProgramCaller(object):
         gapopen=None,
         gapextend=None,
         method_threads=None,
+        nucleotide=False,
     ):
-        return self._GetCommand(
+        """nucleotide: the sequences are DNA (see AddNucleotideSearchType)."""
+        command = self._GetCommand(
             "search_search",
             method_name,
             queryfilename,
@@ -416,6 +554,26 @@ class ProgramCaller(object):
         )[
             0
         ]  # output filename isn't returned
+        return AddNucleotideSearchType(command) if nucleotide else command
+
+    def UsesDiamond(self, method_name):
+        """Whether a configured search method runs DIAMOND (which compares protein sequences only)."""
+        if method_name not in self.search_search:
+            return False
+        return re.search(r"(^|[\s;&|/])diamond\s", self.search_search[method_name].cmd) is not None
+
+    def UsesMakeBlastDB(self, method_name):
+        """Whether a configured search method builds BLAST+ databases (makeblastdb)."""
+        if method_name not in self.search_db:
+            return False
+        return re.search(r"(^|[\s;&|/])makeblastdb\s", self.search_db[method_name].cmd) is not None
+
+    def UsesMMseqs(self, method_name):
+        """Whether a configured search method runs MMseqs2."""
+        if method_name not in self.search_db:
+            return False
+        return any(MMSEQS_SEARCH_TYPE_RE.search(m.cmd)
+                   for m in (self.search_db[method_name], self.search_search[method_name]))
 
     def GetMSACommands(
         self,
@@ -618,40 +776,62 @@ class ProgramCaller(object):
         gapextend=None,
         method_threads="1",
     ):
-        success = False
-        fasta = self._WriteTestSequence_Longer(d_deps_check)
-        dbname = d_deps_check + method_name + "DBSpecies0"
-        stdout_db, stderr_db, cmd_db = self.CallSearchMethod_DB(
-            method_name,
-            fasta,
-            dbname,
-            scorematrix=scorematrix,
-            gapopen=gapopen,
-            gapextend=gapextend,
-            method_threads=method_threads,
-        )
-        # it doesn't matter what file(s) it writes out the database to, only that we can use the database
-        resultsfn = d_deps_check + "test_search_results.txt"
-        stdout_s, stderr_s, cmd_s = self.CallSearchMethod_Search(
-            method_name,
-            fasta,
-            dbname,
-            resultsfn,
-            scorematrix=scorematrix,
-            gapopen=gapopen,
-            gapextend=gapextend,
-            method_threads=method_threads,
-        )
-
-        success = os.path.exists(resultsfn) or os.path.exists(resultsfn + ".gz")
+        """
+        Run the search program's database and search commands on test
+        sequences searched against themselves: protein sequences, then the
+        same as nucleotides (for a nucleotide program such as blastn). It
+        works if either search finds hits.
+        """
+        stdout_all, stderr_all = [], []
+        for fasta_text in (longer_sequence, _NucleotideTestSequences()):
+            fasta = self._WriteTestSequence_Longer(d_deps_check, fasta_text)
+            dbname = d_deps_check + method_name + "DBSpecies0"
+            stdout_db, stderr_db, cmd_db = self.CallSearchMethod_DB(
+                method_name,
+                fasta,
+                dbname,
+                scorematrix=scorematrix,
+                gapopen=gapopen,
+                gapextend=gapextend,
+                method_threads=method_threads,
+            )
+            # it doesn't matter what file(s) it writes out the database to, only that we can use the database
+            resultsfn = d_deps_check + "test_search_results.txt"
+            for fn in (resultsfn, resultsfn + ".gz"):
+                if os.path.exists(fn):
+                    os.remove(fn)        # from the previous test sequences
+            stdout_s, stderr_s, cmd_s = self.CallSearchMethod_Search(
+                method_name,
+                fasta,
+                dbname,
+                resultsfn,
+                scorematrix=scorematrix,
+                gapopen=gapopen,
+                gapextend=gapextend,
+                method_threads=method_threads,
+            )
+            stdout_all += stdout_db + stdout_s
+            stderr_all += stderr_db + stderr_s
+            # A results file alone is not enough: with "... | gzip > OUTPUT.gz"
+            # the shell creates it even if the program is not installed.
+            success = any(
+                os.path.exists(fn) and _HasHitLines(fn) for fn in (resultsfn, resultsfn + ".gz")
+            )
+            if success:
+                break
         if not success:
             print("%s produced the following output:" % method_name)
-            print("\n".join(stdout_db))
-            print("\n".join(stderr_db))
-            print("\n".join(stdout_s))
-            print("\n".join(stderr_s))
+            print("\n".join(stdout_all))
+            print("\n".join(stderr_all))
+        # The test database and results are not needed again (an MMseqs2
+        # index alone is ~0.9 GB, whatever the size of the test sequences).
+        import glob
+        for fn in ([dbname] + glob.glob(glob.escape(dbname) + ".*")
+                   + [resultsfn, resultsfn + ".gz"]):
+            if os.path.isfile(fn):
+                os.remove(fn)
         cmd = cmd_db + "\n" + cmd_s
-        return success, stdout_db + stdout_s, stderr_db + stderr_s, cmd
+        return success, stdout_all, stderr_all, cmd
 
     def _CallMethod(
         self,
@@ -895,10 +1075,10 @@ class ProgramCaller(object):
             outfile.write(shorter_sequence)
         return fn
 
-    def _WriteTestSequence_Longer(self, working_dir):
+    def _WriteTestSequence_Longer(self, working_dir, fasta_text=None):
         fn = working_dir + "Species0.fa"
         with open(fn, "w") as outfile:
-            outfile.write(longer_sequence)
+            outfile.write(longer_sequence if fasta_text is None else fasta_text)
         return fn
 
     @staticmethod
@@ -935,10 +1115,13 @@ def RunParallelCommands(
     qTrim=False,
     q_print_on_error=False,
     q_always_print_stderr=False,
-    old_version=False,
-    dynamic_threads=False
+    dynamic_threads=False,
+    on_success=None,
 ):
-
+    """
+    on_success: called in this process with each command that succeeds (exit 0),
+    e.g. to record finished searches; an error in it is reported, not raised.
+    """
     if qListOfList:
         commands_and_no_filenames = [
             [(cmd, None) for cmd in cmd_list] for cmd_list in commands
@@ -958,8 +1141,8 @@ def RunParallelCommands(
         qTrim,
         q_print_on_error,
         q_always_print_stderr,
-        old_version,
-        dynamic_threads
+        dynamic_threads,
+        on_success=on_success,
     )
 
 
@@ -1009,8 +1192,8 @@ def _RunParallelCommandsAndMoveResultsFile(
     qTrim=False,
     q_print_on_error=False,
     q_always_print_stderr=False,
-    old_version=False,
-    dynamic_threads=False
+    dynamic_threads=False,
+    on_success=None,
 ):
     """
     Calls the commands in parallel and if required moves the results file to the required new filename
@@ -1026,87 +1209,57 @@ def _RunParallelCommandsAndMoveResultsFile(
                       of the inner list need to be run in the order they appear.
         q_print_on_error - If error code returend print stdout & stederr
     """
-    if old_version:
-        print("\n*** You are running David's version of Multiprocessing ***\n")
-        cmd_queue = queue.Queue()
-        i = -1
-        for i, cmd in enumerate(commands_and_filenames):
-            # print(cmd)
-            cmd_queue.put((i, cmd))
+    total_commands = len(commands_and_filenames)
+    if method_threads is None:
+        method_threads = "1"
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = [
-                executor.submit(
-                    parallel_task_manager.Worker_RunCommands_And_Move,
-                    cmd_queue,
-                    nProcesses,
-                    i + 1,
-                    qListOfList,
-                    q_print_on_error,
-                    q_always_print_stderr=q_always_print_stderr,
-                )
-                for _ in range(nProcesses)
-            ]
-            try:
-                for future in concurrent.futures.as_completed(futures):
-                    future.result()
-            except BaseException:
-                # First failure: no more commands, stop the running ones.
-                while True:
+
+    nProcesses = max(1, min((nProcesses, len(commands_and_filenames), TOTAL_CORES * 4)))
+
+    progressbar, task = util.get_progressbar(total_commands)
+    progressbar.start()
+    update_cycle = 1 #10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=nProcesses) as executor:
+        futures = {}
+        for cmd_unit in commands_and_filenames:
+            if cmd_unit is None:
+                continue
+            fut = executor.submit(
+                Worker_RunCommands_And_Move,
+                cmd_unit,
+                method_threads,
+                qListOfList,
+                q_print_on_error,
+                q_always_print_stderr,
+                dynamic_threads=dynamic_threads
+            )
+            futures[fut] = cmd_unit
+
+        try:
+            for i, future in enumerate(concurrent.futures.as_completed(futures)):
+                # The first failed command is raised straight away (with
+                # its stdout/stderr, which main() writes to checkpoint.txt).
+                result = future.result()
+                if result != 0 and q_print_on_error:
+                    print(f"ERROR occurred with command: {futures[future]}")
+                if result == 0 and on_success is not None:
                     try:
-                        cmd_queue.get_nowait()
-                    except queue.Empty:
-                        break
-                parallel_task_manager.KillRunningCommands()
-                raise
-
-    else:
-        total_commands = len(commands_and_filenames)
-        if method_threads is None:
-            method_threads = "1"
-
-
-        nProcesses = max(1, min((nProcesses, len(commands_and_filenames), TOTAL_CORES * 4)))
-
-        progressbar, task = util.get_progressbar(total_commands)
-        progressbar.start()
-        update_cycle = 1 #10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=nProcesses) as executor:
-            futures = {}
-            for cmd_unit in commands_and_filenames:
-                if cmd_unit is None:
-                    continue
-                fut = executor.submit(
-                    Worker_RunCommands_And_Move,
-                    cmd_unit,
-                    method_threads,
-                    qListOfList,
-                    q_print_on_error,
-                    q_always_print_stderr,
-                    dynamic_threads=dynamic_threads
-                )
-                futures[fut] = cmd_unit
-
-            try:
-                for i, future in enumerate(concurrent.futures.as_completed(futures)):
-                    # The first failed command is raised straight away (with
-                    # its stdout/stderr, which main() writes to checkpoint.txt).
-                    result = future.result()
-                    if result != 0 and q_print_on_error:
-                        print(f"ERROR occurred with command: {futures[future]}")
-                    if (i + 1) % update_cycle == 0:
-                        progressbar.update(task, advance=update_cycle)
-            except BaseException:
-                # A command failed or we were interrupted: don't start queued
-                # commands and stop running ones, otherwise leaving the pool
-                # would wait for all of them to finish.
-                for fut in futures:
-                    fut.cancel()
-                parallel_task_manager.KillRunningCommands()
-                progressbar.stop()
-                raise
-        progressbar.stop()
+                        on_success(futures[future][0] if not qListOfList else futures[future])
+                    except Exception as e:      # recording must not stop the run
+                        print("WARNING: could not record a finished command: %s" % e)
+                if (i + 1) % update_cycle == 0:
+                    progressbar.update(task, advance=update_cycle)
+        except BaseException:
+            # A command failed or we were interrupted: don't start queued
+            # commands and stop running ones, otherwise leaving the pool
+            # would wait for all of them to finish.
+            for fut in futures:
+                fut.cancel()
+            parallel_task_manager.KillRunningCommands()
+            progressbar.stop()
+            raise
+    progressbar.stop()
 
 
 
@@ -1202,29 +1355,7 @@ def RunCommand(command, method_threads, dynamic_threads=False, qPrintOnError=Fal
     # if threads_needed < 1:
     #     threads_needed = 1
 
-    try:
-        prog = os.path.basename(shlex.split(command)[0]).lower()
-    except Exception:
-        prog = "" 
-
-    base_cap = max(1, min(int(method_threads), TOTAL_CORES))
-    if _METHODTHREAD_RE.search(command):
-        # if dynamic_threads:
-        #     inp = extract_input_path(command)
-        #     if inp:
-        #         t_dyn = _threads_by_size(inp, TOTAL_CORES) 
-        #         threads_needed = min(t_dyn, base_cap)
-        #     else:
-        #         threads_needed = base_cap
-        # else:
-        threads_needed = base_cap
-
-        if prog.startswith("diamond"):  # diamond makedb / blastp
-            threads_needed = 1
-    else:
-        threads_needed = 1
-
-    command = _METHODTHREAD_RE.sub(str(threads_needed), command)
+    threads_needed, command = FillMethodThreads(command, method_threads)
 
     acquired = 0
     try:

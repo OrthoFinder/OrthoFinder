@@ -7,7 +7,6 @@ import heapq
 import pickle
 import tempfile
 import sys
-import csv
 import resource
 import traceback
 import warnings
@@ -21,7 +20,7 @@ try:
 except ImportError:
     ...
 
-from ..utils import util, files, parallel_task_manager
+from ..utils import util, files, parallel_task_manager, file_io
 from .tree_processor import IterOlogRow
 
 
@@ -137,7 +136,7 @@ class ParentOutputWriter(object):
                     "%s.tsv" % sp0_name
                 )
                 with util.file_open(filename, util.csv_write_mode, gz=self.save_space) as outfile:
-                    writer = csv.writer(outfile, delimiter="\t")
+                    writer = file_io.writer(outfile)
                     writer.writerow((
                         "Orthogroup",
                         "Species",
@@ -165,7 +164,7 @@ class ParentOutputWriter(object):
                     )
 
                     with open(fn, util.csv_write_mode) as outfile:
-                        writer = csv.writer(outfile, delimiter="\t")
+                        writer = file_io.writer(outfile)
                         writer.writerow(("Orthogroup", sp0_name, sp1_name))
 
         InitialiseSuspectGenesDirs(
@@ -175,7 +174,7 @@ class ParentOutputWriter(object):
         )
 
         with open(self.duplications_path, util.csv_write_mode) as outfile:
-            util.writerow(
+            file_io.write_unquoted(
                 outfile,
                 [
                     "Orthogroup",
@@ -263,7 +262,7 @@ class ParentOutputWriter(object):
             self.stride_dups
         )
 
-        text = "".join(util.getrow(row) for row in rows)
+        text = "".join(file_io.unquoted_line(row) for row in rows)
 
         self.cache.write(
             self.duplications_path,
@@ -585,7 +584,7 @@ def InitialiseSuspectGenesDirs(nspecies, speciesIDs, speciesDict):
     dSuspectOrthologues = files.FileHandler.GetPutativeXenelogsDir()
     for index1 in range(nspecies):
         with open(dSuspectOrthologues + '%s.tsv' % speciesDict[str(speciesIDs[index1])], util.csv_write_mode) as outfile:
-            writer1 = csv.writer(outfile, delimiter="\t")
+            writer1 = file_io.writer(outfile)
             writer1.writerow(("Orthogroup", speciesDict[str(speciesIDs[index1])], "Other"))
 
 def WriteSuspectGenes(nspecies, speciesToUse, suspect_genes, speciesDict, SequenceDict):
@@ -629,7 +628,7 @@ def DuplicationRows(og_name, duplications, spIDs, seqIDs, stride_dups):
             og_name,
             spIDs[sp_node_id] if q_terminal else sp_node_id,
             gene_node_name,
-            frac,
+            str(frac),   # as text: all-str rows take the fast path
             isSTRIDE,
             gene_list0,
             gene_list1
@@ -651,7 +650,7 @@ def WriteDuplications(dups_file_handle, og_name, duplications, spIDs, seqIDs, st
             isSTRIDE = "Terminal" if q_terminal else "Non-Terminal: STRIDE" if frozenset(genes0 + genes1) in stride_dups else "Non-Terminal"
         gene_list0 = ", ".join([seqIDs[g] for g in genes0])   # line can read ">1234 genes" for example, but this has been added to dict
         gene_list1 = ", ".join([seqIDs[g] for g in genes1])
-        util.writerow(dups_file_handle, [og_name, spIDs[sp_node_id] if q_terminal else sp_node_id, gene_node_name, frac, isSTRIDE, gene_list0, gene_list1]) 
+        file_io.write_unquoted(dups_file_handle, [og_name, spIDs[sp_node_id] if q_terminal else sp_node_id, gene_node_name, str(frac), isSTRIDE, gene_list0, gene_list1]) 
 
 
 
@@ -1025,7 +1024,6 @@ def RunOrthologsParallel_Pipeline(
         output_writer,
         iogs_ordered,
         n_ologs_cache=100,
-        compatibility_mode=False,
         write_hog_tree=False,
         fix_files=False,
         fd_limit=None,
@@ -1577,6 +1575,23 @@ def _open_text(path, mode, gz):
     return gzip.open(path, mode) if gz else open(path, mode)
 
 
+def _open_gz_text_as(path, name):
+    """
+    A gzipped text file written at path, but recording `name` as the file
+    name in its gzip header: a temporary file that is renamed when complete
+    keeps the final name when decompressed (gunzip -N, archive managers).
+    """
+    import io
+    raw = open(path, "wb")
+    try:
+        gz = gzip.GzipFile(filename=name, mode="wb", fileobj=raw)
+    except Exception:
+        raw.close()
+        raise
+    gz.myfileobj = raw     # closed with the GzipFile, as gzip.open does
+    return io.TextIOWrapper(gz)
+
+
 def _write_sorted_run(lines, run_path, gz):
     # Runs from a compressed file are compressed too (fast level), so the
     # temporary space stays close to the compressed size, not the full text.
@@ -1641,7 +1656,10 @@ def SortLinesInFile(fn, gz=False, has_header=False, chunk_chars=SORT_CHUNK_CHARS
             lines.sort()
             sorted_lines = lines
 
-        with _open_text(tmp_path, util.csv_write_mode, gz) as outfile:
+        # written as path's name (not the temporary name) in the gzip header
+        outfile = (_open_gz_text_as(tmp_path, os.path.basename(path)) if gz
+                   else open(tmp_path, util.csv_write_mode))
+        with outfile:
             if header is not None:
                 outfile.write(header)
             outfile.writelines(sorted_lines)

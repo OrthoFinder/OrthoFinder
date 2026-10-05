@@ -36,9 +36,26 @@ src_dir = os.path.join(repo_root, "src")
 if os.path.isdir(os.path.join(src_dir, "orthofinder")) and src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
-from orthofinder.utils import util, files
+from orthofinder.utils import util, files, run_state
 from orthofinder.tools import trees_msa
 from orthofinder.orthogroups import orthogroups_set
+
+
+def _species_ids(species_ids_lines):
+    """The species IDs in SpeciesIDs.txt lines ("0: A.fa")."""
+    return [int(l.split(":")[0]) for l in species_ids_lines.split("\n") if l != ""]
+
+
+def process_run_state(dres):
+    """
+    The working directories (wd_base, this results directory's first) and
+    species IDs of a results directory, from its run_state.json; None if it
+    has none (older versions, or the file removed: Log.txt is read instead).
+    """
+    results_dir, state = run_state.find(dres)
+    if not state.get("dirs", {}).get("base") or "ids_lines" not in state.get("species", {}):
+        return None
+    return run_state.dirs(results_dir, state)["base"], _species_ids(state["species"]["ids_lines"])
 
 
 def process_log(logFN):
@@ -52,8 +69,12 @@ def process_log(logFN):
     Notes:
     Should work with relevant paths to allow directory to move
     """
+    earlier_wds = []     # listed after the last WorkingDirectory_Base (this version)
     with open(logFN, 'r') as infile:
         for line in infile:
+            for key in files.EARLIER_WD_KEYS:
+                if line.startswith(key + ": "):
+                    earlier_wds.append(line.rstrip()[len(key) + 2:])
             if line.startswith("Species used:"):
                 species_ids_lines = ""
                 line = next(infile)
@@ -71,10 +92,14 @@ def process_log(logFN):
                     if not os.path.exists(wd_base_anchor):
                         print("ERROR: Missing directory: %s" % wd_base_anchor)
                         util.Fail()
-                wd_base_prev = files.PreviousFilesLocator_new.GetWDBaseChain(wd_base_anchor)
-    species_ids_lines = species_ids_lines.split("\n")
-    i_species = [int(l.split(":")[0]) for l in species_ids_lines if l != ""]
-    return wd_base_prev, i_species
+                earlier_wds = []
+    # the earlier working directories: in Log.txt, or (older versions) followed
+    # from previous_wd.txt
+    if earlier_wds:
+        wd_base_prev = [wd_base_anchor] + earlier_wds
+    else:
+        wd_base_prev = files.PreviousFilesLocator_new.GetWDBaseChain(wd_base_anchor)
+    return wd_base_prev, _species_ids(species_ids_lines)
 
 
 def read_hierarchical_orthogroup(fn, i_skip = 3):
@@ -111,12 +136,16 @@ def create_files_for_node(dres, node_name, dout):
     # Check can write to output directory
     d_out_fasta = create_output_directories(dout, node_name)
     ogs = read_hierarchical_orthogroup(fn_hogs)
-    # Log file - to get Working directory base
-    fn_log = os.path.join(dres, "Log.txt")
-    if not os.path.exists(fn_log):
-        print("ERROR: %s does not exist" % fn_log)
-        util.Fail()
-    wd_base_prev, i_species = process_log(fn_log)
+    # The working directories and species: from run_state.json, or Log.txt
+    # for results directories without one
+    found = process_run_state(dres)
+    if found is None:
+        fn_log = os.path.join(dres, "Log.txt")
+        if not os.path.exists(fn_log):
+            print("ERROR: %s does not exist" % fn_log)
+            util.Fail()
+        found = process_log(fn_log)
+    wd_base_prev, i_species = found
     # Sequence files
     for isp in i_species:
         if not any(os.path.exists(d + "/Species%d.fa" % isp) for d in wd_base_prev):

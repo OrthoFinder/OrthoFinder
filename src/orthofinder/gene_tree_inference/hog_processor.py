@@ -22,7 +22,7 @@ except ImportError:
     ...
 
 from .trees2ologs_processor import LazyFileCache
-from ..utils import util, files
+from ..utils import util, files, file_io
 
 
 PY2 = sys.version_info <= (3,)
@@ -38,10 +38,15 @@ class HogWriter(object):
             sp_ids, 
             species_to_use,
             write_to_rd,
-            write_output=True
+            write_output=True,
+            write_named=True,
         ):
         """
         Prepare files, get ready to write.
+        write_named - write the HOG files with gene names (N0.tsv, N1.tsv, ...);
+            otherwise only N0.ids.tsv (the HOGs of N0 with sequence IDs), which
+            is all the update of the results files needs (file_updates), with
+            the same HOG IDs.
         species_tree_node_names - list of species tree nodes
         seq_ids - dict of sequence ids
         sp_ids - dict of species ids
@@ -67,6 +72,7 @@ class HogWriter(object):
         species_names = [sp_ids[i] for i in self.iSps]
 
         self.write_output = write_output
+        self.write_named = write_named
         self.q_results = q_results
         self.node_names = list(species_tree_node_names)
         self.species_names = species_names
@@ -83,7 +89,7 @@ class HogWriter(object):
             if not os.path.exists(d):
                 os.mkdir(d)
 
-            for name in species_tree_node_names + ["N0.ids"]:
+            for name in (species_tree_node_names if write_named else []) + ["N0.ids"]:
                 if not name.endswith(".ids"):
                     fn = files.FileHandler.GetHierarchicalOrthogroupsFN(
                         name,
@@ -99,7 +105,7 @@ class HogWriter(object):
                 self.hog_paths[name] = fn
                 
                 with open(fn, util.csv_write_mode) as fh:
-                    util.writerow(
+                    file_io.write_unquoted(
                         fh,
                         ["HOG", "OG", "Gene Tree Parent Clade"] + species_names
                     )
@@ -109,8 +115,8 @@ class HogWriter(object):
 
 
     def _get_hog_handle(self, hog_name):
-        if not self.write_output:
-            return None
+        if not self.write_output or hog_name not in self.hog_paths:
+            return None      # not written (write_named=False: only N0.ids)
         fn = self.hog_paths[hog_name]
         return self.file_cache.get(fn, util.csv_append_mode, gz=False)
 
@@ -158,10 +164,11 @@ class HogWriter(object):
         for i_hog, sp_node_name in zip(i_hogs, sp_node_name_list):
             hog_id = "%s.HOG%07d" % (sp_node_name, i_hog)
             fh = self._get_hog_handle(sp_node_name)
-            util.writerow(
-                fh,
-                [hog_id, og_name, "-"] + row_genes
-            )
+            if fh is not None:
+                file_io.write_unquoted(
+                    fh,
+                    [hog_id, og_name, "-"] + row_genes
+                )
 
             if sp_node_name == "N0":
                 row_genes_ids = [
@@ -169,7 +176,7 @@ class HogWriter(object):
                     for isp in self.iSps
                 ]
                 fh_ids = self._get_hog_handle("N0.ids")
-                util.writerow(
+                file_io.write_unquoted(
                     fh_ids,
                     [hog_id, og_name, "-"] + row_genes_ids
                 )
@@ -528,11 +535,25 @@ class HogWriter(object):
             lock_hogs.acquire()
 
         try:
-            for h, hog_rows in d.items():
+            n0_ids = []      # HOG IDs given to this batch's N0 rows, in order
+            # N0 before N0.ids: each N0.ids row has the ID of its N0 row (the
+            # rows are in the same order), as write_hog_genes does, so the two
+            # files can be matched row by row (file_updates.hogs_converter).
+            for h in sorted(d, key=lambda name: name == "N0.ids"):
+                hog_rows = d[h]
                 fh = self._get_hog_handle(h)
-                for r in hog_rows:
-                    hog_id = "%s.HOG%07d" % (h, self.get_hog_index(h))
-                    util.writerow(fh, [hog_id] + r)
+                if fh is None and h != "N0":
+                    continue            # a level not written (write_named=False)
+                same_ids = h == "N0.ids" and len(hog_rows) == len(n0_ids)
+                for i, r in enumerate(hog_rows):
+                    if same_ids:
+                        hog_id = n0_ids[i]
+                    else:
+                        hog_id = "%s.HOG%07d" % (h, self.get_hog_index(h))
+                        if h == "N0":
+                            n0_ids.append(hog_id)   # the IDs of N0.ids rows, also when N0.tsv is not written
+                    if fh is not None:
+                        file_io.write_unquoted(fh, [hog_id] + r)
         finally:
             if lock_hogs is not None:
                 lock_hogs.release()

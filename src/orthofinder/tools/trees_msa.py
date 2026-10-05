@@ -236,41 +236,68 @@ def ReadAlignment(fn):
 
 def CreateConcatenatedAlignment(ogsToUse_ids, ogs, alignment_filename_function, output_filename, fSingleCopy, fMaxGap=0.5):
     allSpecies = {str(gene.iSp) for og in ogs for gene in og}
-    concatentaedAlignments = defaultdict(str)
+    # Each species' alignment is collected as a list of pieces and joined once:
+    # appending to a growing string copies it every time.
+    concatentaedAlignments = defaultdict(list)
     for iOg in ogsToUse_ids:
         try:
             speciesCounts = Counter([gene.iSp for gene in ogs[iOg]])
             selectedSeqs = {gene.ToString() for gene in ogs[iOg] if speciesCounts[gene.iSp] == 1}
             alignment = ReadAlignment(alignment_filename_function(iOg))
-            speciesInThisOg = set()
+            # This orthogroup's piece of each species' row, added only once the
+            # whole alignment is known to be usable, so the rows stay in step.
+            pieces = {}
             for name, al in alignment.seqs.items():
                 if name.split()[0] in selectedSeqs:
                     iSp = name.split("_")[0]
-                    speciesInThisOg.add(iSp)  # this allows for the MSA method to have failed to put the sequence in the MSA
-                    al = al.replace('*', '-')
-                    concatentaedAlignments[iSp] += al
-            # now put blanks for the missing species
-            for iSp in allSpecies.difference(speciesInThisOg):
-                concatentaedAlignments[iSp] += "-"*(alignment.length)
+                    pieces[iSp] = al.replace('*', '-')  # this allows for the MSA method to have failed to put the sequence in the MSA
+            if any(len(al) != alignment.length for al in pieces.values()):
+                # A malformed MSA (rows of different lengths) would shift the
+                # columns of every species after it.
+                print("WARNING: The sequences of an MSA have different lengths, it is not used for the species tree: %s"
+                      % alignment_filename_function(iOg))
+                continue
+            # now put blanks for the missing species, in a fixed order (set
+            # order differs between runs, and sets the rows' order)
+            for iSp in sorted(allSpecies.difference(pieces), key=int):
+                pieces[iSp] = "-"*(alignment.length)
+            for iSp, al in pieces.items():
+                concatentaedAlignments[iSp].append(al)
         except IndexError:
             # allow empty MSA (could fail for unknown reason)
             print("WARNING: An MSA failed for an unknown reason: %s" % alignment_filename_function(iOg))
             print("No tree or orthologs will be inferred for this orthogroup. To correct the issue, identify & correct the problematic gene sequence and rerun.")
             pass
+    concatentaedAlignments = {iSp: "".join(parts) for iSp, parts in concatentaedAlignments.items()}
     # Trim the completed alignment: to 50% of fraction of species present
     maxGap = (1.-fMaxGap*fSingleCopy)*len(allSpecies)
-    # vectorise this as the for-loop method took too long (45mins on 3M length alignment vs 1.5s)
-    # The write method doesn't require further optimisation. Took 0.15s on the same alignment
     if len(concatentaedAlignments) == 0 or len(list(concatentaedAlignments.values())[0]) == 0:
         print("All MSAs for the concatenated multiple sequence alignment were empty.")
         print("Please correct the error and re-run.")
         util.Fail()
     names = list(concatentaedAlignments.keys())
+    nChar = 80
+    try:
+        # one byte per position (a character array takes 4, and building it
+        # from lists of characters 8 more): species x columns can be large
+        length = len(concatentaedAlignments[names[0]])
+        M = np.frombuffer("".join(concatentaedAlignments[name] for name in names).encode("latin-1"),
+                          dtype=np.uint8).reshape(len(names), length)
+    except (UnicodeEncodeError, ValueError):
+        M = None      # unusual letters (rows all have the same length, see above): as before, below
+    if M is not None:
+        M = M[:, (M == ord("-")).sum(axis=0) <= maxGap]
+        with open(output_filename, 'w') as outfile:
+            for iSeq, name in enumerate(names):
+                outfile.write(">%s\n" % name)
+                seq = M[iSeq].tobytes().decode("latin-1")
+                for i in range(0, len(seq), nChar):
+                    outfile.write(seq[i:i+nChar] + "\n")
+        return
     M = np.array([list(concatentaedAlignments[name]) for name in names])
     gap_counts = sum(M == "-")
     i_keep = np.where(gap_counts <= maxGap)
     M = M[:, i_keep]
-    nChar = 80
     with open(output_filename, 'w') as outfile:
         for iSeq, name in enumerate(names):
             outfile.write(">%s\n" % name)
@@ -367,7 +394,6 @@ class TreesForOrthogroups(object):
             method_threads_large=None,
             method_threads_small=None, 
             threshold=None,
-            old_version=False,
             fix_files=True,
             astral=False,
             dynamic_threads=False,
@@ -405,7 +431,7 @@ class TreesForOrthogroups(object):
             self.GetAlignmentCommandsAndNewFilenames(
                 ogs, 
                 i_og_restart, 
-                method_threads=method_threads
+                method_threads=None  # filled in when run, which reserves that many cores (program_caller.FillMethodThreads)
             )
 
         alignCommands_and_filenames = copy.deepcopy(orig_alignCommands_and_filenames)
@@ -434,7 +460,6 @@ class TreesForOrthogroups(object):
                 cmd_order=cmd_order,
                 qTrim=qTrim,
                 q_print_on_error=print_on_error,
-                old_version=old_version,
                 dynamic_threads=dynamic_threads
             )
             if qDoSpeciesTree:
@@ -474,7 +499,7 @@ class TreesForOrthogroups(object):
                 alignmentFilesToUse, 
                 iogs_align, 
                 ogs,
-                method_threads=method_threads
+                method_threads=None  # filled in when run, which reserves that many cores (program_caller.FillMethodThreads)
         )
 
         treeCommands_and_filenames = copy.deepcopy(orig_treeCommands_and_filenames)
@@ -520,7 +545,6 @@ class TreesForOrthogroups(object):
                 cmd_order=cmd_order,
                 qTrim=qTrim,
                 q_print_on_error=print_on_error,
-                old_version=old_version,
                 dynamic_threads=dynamic_threads
             )
             CreateConcatenatedAlignment(iOgsForSpeciesTree, ogs, self.GetAlignmentFilename, concatenated_algn_fn, fSingleCopy)
@@ -537,7 +561,7 @@ class TreesForOrthogroups(object):
                             [concatenated_algn_fn], 
                             [speciesTreeFN_ids], 
                             ["SpeciesTree"],
-                            method_threads=method_threads 
+                            method_threads=None  # filled in when run, which reserves that many cores (program_caller.FillMethodThreads)
                         )
                     ]
             util.PrintUnderline("Inferring remaining multiple sequence alignments and gene trees") 
@@ -580,7 +604,6 @@ class TreesForOrthogroups(object):
                                                  cmd_order=cmd_order,
                                                  qTrim=qTrim,
                                                  q_print_on_error=print_on_error,
-                                                 old_version=old_version,
                                                  dynamic_threads=dynamic_threads
                                                  )
         

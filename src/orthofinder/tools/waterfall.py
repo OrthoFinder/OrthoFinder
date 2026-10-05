@@ -186,36 +186,6 @@ class WaterfallMethod:
 
 
     @staticmethod
-    def Worker_ProcessBlastHits(
-        seqsInfo,
-        blastDir_list,
-        Lengths,
-        cmd_queue,
-        d_pickle,
-        qDoubleBlast,
-        v2_scores,
-        q_allow_empty,
-    ):
-        while True:
-            try:
-                iSpecies = cmd_queue.get(True, 1)
-                WaterfallMethod.ProcessBlastHits(
-                    seqsInfo,
-                    blastDir_list,
-                    Lengths,
-                    iSpecies,
-                    d_pickle=d_pickle,
-                    qDoubleBlast=qDoubleBlast,
-                    v2_scores=v2_scores,
-                    q_allow_empty=q_allow_empty,
-                )
-            except queue.Empty:
-                return
-            except Exception:
-                i = seqsInfo.speciesToUse[iSpecies]
-                print("ERROR: Error processing files Blast%d_*" % i)
-                raise
-    @staticmethod
     def Worker_ProcessBlastHits_New(
         seqsInfo,
         blastDir_list,
@@ -340,20 +310,6 @@ class WaterfallMethod:
             RBHi, B, seqsInfo, iSpecies, v2_scores
         )
         matrices.DumpMatrixArray("connect", connect, iSpecies, d_pickle)
-
-    @staticmethod
-    def Worker_ConnectCognates(cmd_queue, d_pickle, v2_scores=True):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            while True:
-                try:
-                    args = cmd_queue.get(True, 1)
-                    WaterfallMethod.ConnectCognates(
-                        *args, d_pickle=d_pickle, v2_scores=v2_scores
-                    )
-                except queue.Empty:
-                    return
-
 
     @staticmethod
     def Worker_ConnectCognates_New(

@@ -26,12 +26,12 @@
 import gzip
 import os
 import sys
-import csv
 import glob
 import numpy as np
 import datetime
 from collections import namedtuple
 from . import logging as run_logging
+from . import file_io
 from ..citation import citation
 from ..tools import tree
 
@@ -480,6 +480,44 @@ def GetSpeciesToUse(speciesIDsFN):
     return speciesToUse, len(speciesToUse) + nSkipped, speciesToUse_names
 
 
+def PrintContinueHint(option, directory, what):
+    """After a run stopped early (-op, -og, -ogt, -ost): how to continue it."""
+    from rich.markup import escape
+    printer.print("\nTo continue this analysis from %s, run:" % what)
+    printer.print("    [bold]orthofinder %s [dark_cyan]%s[/dark_cyan][/bold]" % (option, escape(directory)))
+
+
+def PrintRunEnd(d_results, continue_option=None, continue_from=None):
+    """
+    The end of a run, also of one stopped early (-op, -og, -ogh, -ogt, -ost):
+    the results directory, how to continue a stopped run, and the citation.
+    """
+    from rich.markup import escape
+    d_results = os.path.normpath(d_results) + os.path.sep
+    printer.print("\n[bold]Results directory:[/bold]")
+    printer.print("    [dark_cyan]%s[/dark_cyan]" % escape(d_results))
+    if continue_option is not None:
+        PrintContinueHint(continue_option, d_results, continue_from)
+    PrintCitation(d_results)
+
+
+def PrintRestartInfo(options, directory):
+    """At the start of a restarted run (-b, -fg, -fgt, -fst): what it continues from."""
+    from rich.markup import escape
+    if options.qStartFromBlast and not options.qStartFromFasta:
+        what = "the sequence search results"
+    elif options.qStartFromGroups:
+        what = "the orthogroups"
+    elif options.qStartFromTrees:
+        what = "the gene trees"
+    elif options.qStartFromSpeciesTrees:
+        what = "the species tree"
+    else:
+        return
+    printer.print("\n[bold]Restarting[/bold] from %s in:" % what)
+    printer.print("    [dark_cyan]%s[/dark_cyan]" % escape(directory))
+
+
 def Success():
     parallel_task_manager.Success()
 
@@ -507,10 +545,64 @@ class IDExtractor(object):
         raise NotImplementedError("Should not be implemented")
 
 
+def CleanAccession(accession):
+    """
+    A FASTA header as a gene name: characters that would break the output
+    files are replaced by "_" (":" "," "(" ")" in trees; a tab, possible in a
+    full header line, would split the name across columns in the unquoted
+    HOG files).
+    """
+    return (
+        accession.replace(":", "_")
+        .replace(",", "_")
+        .replace("(", "_")
+        .replace(")", "_")
+        .replace("\t", "_")
+    )  # .replace(".", "_")
+
+
+class GeneNames(object):
+    """
+    The gene names of one species, kept unique, also as they are written in
+    the gene trees (where the characters newick cannot hold, ; [ ] = ..., are
+    replaced by "_"). Two headers that differ only in such characters
+    ("gene:1" and "gene,1", or "x[1]" and "x_1_") would give the same name,
+    and the genes could not be told apart in the trees and orthogroup
+    files: the later one gets a suffix ("gene_1_2"), the next free "_<n>" in
+    the order of the input file.
+    """
+
+    _TREE_UNSAFE = None
+
+    def __init__(self):
+        self.used = set()            # the names as written in trees
+
+    @classmethod
+    def _tree_form(cls, name):
+        if cls._TREE_UNSAFE is None:
+            import re
+            from ..tools import newick
+            cls._TREE_UNSAFE = re.compile("[" + newick._ILEGAL_NEWICK_CHARS + "]")
+        return cls._TREE_UNSAFE.sub("_", name)
+
+    def add(self, accession):
+        """The unique name of the next gene with this header."""
+        name = CleanAccession(accession)
+        tree_form = self._tree_form(name)
+        if tree_form in self.used:
+            n = 2
+            while "%s_%d" % (tree_form, n) in self.used:
+                n += 1
+            name, tree_form = "%s_%d" % (name, n), "%s_%d" % (tree_form, n)
+        self.used.add(tree_form)
+        return name
+
+
 class FullAccession(IDExtractor):
     def __init__(self, idsFilename):
         # only want the first part and nothing else (easy!)
         self.idToNameDict = dict()
+        names_in_species = {}
         with open(idsFilename, "r") as idsFile:
             for line in idsFile:
                 line = line.rstrip()
@@ -520,18 +612,15 @@ class FullAccession(IDExtractor):
                 id, accession = line.split(": ", 1)
                 id = id.replace("#", "")
                 id = id.strip()
-                # Replace problematic characters
-                accession = (
-                    accession.replace(":", "_")
-                    .replace(",", "_")
-                    .replace("(", "_")
-                    .replace(")", "_")
-                )  # .replace(".", "_")
                 if id in self.idToNameDict:
                     raise RuntimeError(
                         "ERROR: A duplicate id was found in the fasta files: % s" % id
                     )
-                self.idToNameDict[id] = accession
+                # Names are unique within a species (see GeneNames)
+                iSp = id.split("_")[0]
+                if iSp not in names_in_species:
+                    names_in_species[iSp] = GeneNames()
+                self.idToNameDict[id] = names_in_species[iSp].add(accession)
 
     def GetIDToNameDict(self):
         return self.idToNameDict
@@ -666,7 +755,6 @@ def WriteCitation(d):
 def PrintCitation(d=None):
     if d is not None:
         WriteCitation(d)
-    print()
     # printer.print(print_citation)
     printer.print("\n[bold]CITATION:[/bold]")
     printer.print(
@@ -855,18 +943,10 @@ class Finalise(object):
         ptm.Stop()
 
 
-def writerow(fh, row):
-    # CSV format specifies CRLF line endings: https://tools.ietf.org/html/rfc4180
-    # fh.write("\t".join(map(str, row)) + "\r\n")
-    cleaned = [str(x).rstrip("\r\n") for x in row]
-    fh.write("\t".join(cleaned) + "\n")
-
-
-def getrow(row):
-    # CSV format specifies CRLF line endings: https://tools.ietf.org/html/rfc4180
-    # return "\t".join(map(str, row)) + "\r\n"
-    cleaned = [str(x).rstrip("\r\n") for x in row]
-    return "\t".join(cleaned) + "\n"
+def seq_id_key(seq_id):
+    """Sort key for "species_sequence" IDs in numeric order (0_61 before 0_317)."""
+    iSp, iSeq = seq_id.split("_")
+    return int(iSp), int(iSeq)
 
 
 def version_parse_simple(sem_version):
@@ -972,14 +1052,14 @@ def split_ortholog_files(d_ologs, q_compress=False):
                 file_handles.append(
                     open(d_out + "%s__v__%s.tsv" % (sp0, sp1), csv_write_mode)
                 )
-            csv_writers[sp1] = csv.writer(file_handles[-1], delimiter="\t")
+            csv_writers[sp1] = file_io.writer(file_handles[-1])
             csv_writers[sp1].writerow(("Orthogroup", sp0, sp1))
         with (
             gzip.open(fn, csv_read_mode)
             if fn.endswith(".gz")
             else open(fn, csv_read_mode) as infile
         ):
-            reader = csv.reader(infile, delimiter="\t")
+            reader = file_io.unquoted_reader(infile)   # rows are written unquoted
             next(reader)  # skip header
             for row in reader:
                 if len(row) == 4:  # OG,species,genes1,genes2

@@ -55,7 +55,6 @@ def ReconciliationAndOrthologues(
         q_split_para_clades=False,
         fewer_open_files=False,
         save_space=False,
-        old_version=False,
         print_info=True,
         exist_msa=True,
         write_hog_tree=True,
@@ -64,6 +63,7 @@ def ReconciliationAndOrthologues(
         fd_limit=None,
         sort_non_hog_output=True,
         validate_hog_ids=True,
+        write_named_hogs=True,
     ):
 
     speciesTree_ids_fn = files.FileHandler.GetSpeciesTreeIDsRootedFN()
@@ -112,7 +112,8 @@ def ReconciliationAndOrthologues(
         SequenceDict,
         speciesDict,
         ogSet.speciesToUse,
-        write_to_rd=write_to_rd
+        write_to_rd=write_to_rd,
+        write_named=write_named_hogs,
     )
 
     try:
@@ -127,7 +128,6 @@ def ReconciliationAndOrthologues(
             nLowParallel,
             fewer_open_files,
             save_space,
-            old_version=old_version,
             print_info=print_info,
             exist_msa=exist_msa,
             write_hog_tree=write_hog_tree,
@@ -190,7 +190,8 @@ def TwoAndThreeGeneHOGs(ogSet, st_rooted_labelled, hog_writer):
             # We don't create files for 'species specific HOGs'
             st_node = MRCA_node(st_rooted_labelled, sp_present)
             hogs_to_write = hogs_to_write + [st_node.name]
-        genes = [g.ToString() for g in og] # Inefficient as will convert back again, but trivial cost I think
+        # sorted so the row does not depend on the gene order of the orthogroup
+        genes = sorted((g.ToString() for g in og), key=util.seq_id_key)
         hog_writer.write_hog_genes(genes, hogs_to_write, og_name)
 
 
@@ -323,7 +324,6 @@ def DoOrthologuesForOrthoFinder(
         n_parallel,
         fewer_open_files,
         save_space,
-        old_version=False,
         print_info=True,
         exist_msa=True,
         write_hog_tree=True,
@@ -431,7 +431,6 @@ def DoOrthologuesForOrthoFinder(
                 output_writer,
                 iogs_ordered=iogs4,
                 n_ologs_cache=100,
-                compatibility_mode=old_version,
                 write_hog_tree=write_hog_tree,
                 fix_files=fix_files,
                 fd_limit=fd_limit,

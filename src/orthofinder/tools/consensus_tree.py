@@ -169,6 +169,7 @@ def GetAllSplits(trees_dir):
             iFirst += 1
     if first_tree is None:
         print("ERROR: Could not read any of the trees for STAG species tree inference in %s" % trees_dir)
+        from ..utils import util
         util.Fail()
     taxa_ordered = first_tree.get_leaf_names()
     taxa_index = {taxon:i for i, taxon in enumerate(taxa_ordered)}

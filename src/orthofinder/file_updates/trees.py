@@ -102,16 +102,60 @@ def check_path(s):
         os.path.dirname(s) != ''
     )
 
+class TreeLeafNames(object):
+    """
+    Sequence IDs for the gene names on the leaves of the resolved gene trees.
+
+    A name of one gene maps to its ID. A name shared by several genes (the
+    same name after ID extraction, or the same once Newick-unsafe characters
+    are replaced by "_") is resolved per tree: its leaf gets the gene of that
+    name that is in the tree's orthogroup (from the converted N0 HOGs, which
+    hold the exact IDs), each gene once. Behaves as a dict of the
+    unambiguous names otherwise (in, get).
+    """
+
+    def __init__(self, name_to_id, ambiguous, og_ids):
+        self.name_to_id = name_to_id     # name -> ID, names of one gene
+        self.ambiguous = ambiguous       # name -> [IDs], names of several genes
+        self.og_ids = og_ids             # OG -> set of the IDs in it
+
+    def __contains__(self, name):
+        return name in self.name_to_id or name in self.ambiguous
+
+    def get(self, name, default=None):
+        return self.name_to_id.get(name, default)
+
+    def leaf_ids(self, unique_og, names):
+        """The ID of each leaf name of one orthogroup's tree (None if unknown)."""
+        in_og = self.og_ids.get(unique_og, set())
+        used = set()
+        ids = []
+        for name in names:
+            seq_id = self.name_to_id.get(name)
+            if seq_id is None and name in self.ambiguous:
+                seq_id = next((i for i in self.ambiguous[name] if i in in_og and i not in used), None)
+            if seq_id is not None:
+                used.add(seq_id)
+            ids.append(seq_id)
+        return ids
+
+
 def update_leaves(unique_og, gene_tree, spec_seq_id_dict=None):
-    for leaf in gene_tree.leaves(): #.iter_leaves():
-        original = leaf.name
-        if original is None or not original.strip():
-            print(f"Warning: Null or empty leaf name in tree {unique_og}")
-            continue
-        if spec_seq_id_dict is not None and original not in spec_seq_id_dict:
-            print(f"Warning: Leaf name '{original}' not found in mapping dictionary for {unique_og}")
-        if spec_seq_id_dict is not None:
-            leaf.name = spec_seq_id_dict.get(original, original)
+    leaves = [leaf for leaf in gene_tree.leaves() if leaf.name is not None and leaf.name.strip()]
+    if len(leaves) != len(list(gene_tree.leaves())):
+        print(f"Warning: Null or empty leaf name in tree {unique_og}")
+    if spec_seq_id_dict is None:
+        return gene_tree
+    names = [leaf.name for leaf in leaves]
+    if isinstance(spec_seq_id_dict, TreeLeafNames):
+        ids = spec_seq_id_dict.leaf_ids(unique_og, names)
+    else:
+        ids = [spec_seq_id_dict.get(name) for name in names]
+    for leaf, name, seq_id in zip(leaves, names, ids):
+        if seq_id is None:
+            print(f"Warning: Leaf name '{name}' not found in mapping dictionary for {unique_og}")
+        else:
+            leaf.name = seq_id
     return gene_tree
 
 def read_tree_file(unique_og, tree_file_index, spec_seq_id_dict=None):

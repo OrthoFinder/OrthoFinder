@@ -1,12 +1,11 @@
 import sys
 import os
-import csv
 from operator import itemgetter
 from collections import defaultdict, Counter
 
 from ..tools import trees_msa
 from ..tools import mcl as MCL
-from ..utils import util, files
+from ..utils import util, files, file_io
 
 import xml.etree.ElementTree as ET  # Y
 from xml.etree.ElementTree import SubElement  # Y
@@ -34,13 +33,15 @@ def post_hogs_processing(
     resultsBaseFilename = files.FileHandler.GetOrthogroupResultsFNBase()
     # util.PrintUnderline("Writing orthogroups to file")
     all_assigned = set([g for og in new_ogs for g in og])
-    unassigned = set(all_seq_ids).difference(all_assigned)
+    # Unassigned genes in sequence-ID order: iterating a set of strings gives a
+    # different order (and so different OG numbers) in every run.
+    unassigned = [g for g in dict.fromkeys(all_seq_ids) if g not in all_assigned]
     single_ogs_list = [{g} for g in unassigned]
     new_ogs.extend(single_ogs_list)
 
     with open(files.FileHandler.OGsAllIDFN(), "w") as outfile:
         for og in new_ogs:
-            outfile.write(", ".join(og) + "\n")
+            outfile.write(", ".join(sorted(og, key=util.seq_id_key)) + "\n")
 
     idsDict = MCL.WriteOrthogroupFiles(
         new_ogs, [files.FileHandler.GetSequenceIDsFN()], resultsBaseFilename
@@ -108,42 +109,37 @@ def post_hogs_processing(
 
 
 def update_ogs(input_path):
-    sorted_matrix = read_hogs_to_matrix(input_path)
+    """
+    The N0 HOGs as orthogroups, most genes first: (list of gene sets, {OG:
+    [[new OG name, HOG, parent clade], ...]}).
+    """
     name_dictionary = {}
     new_og_list = []
-    # For each line in sorted HOG order replace HOG name with index OG name (based on length of enumerate so HOG.N0 + 0*x + number)
-    for pos, line in enumerate(sorted_matrix):
-        new_og_name = "OG%07d" % pos
-        key = line[2]
-        if key in name_dictionary:
-            additional = [new_og_name] + [line[1]] + [line[3]]
-            new_value = name_dictionary[key]
-            new_value.append(additional)
-            name_dictionary.update({key: new_value})
-        else:
-            name_dictionary[key] = [[new_og_name] + [line[1]] + [line[3]]]
-
-        new_og_set = set(", ".join(line[4:]).replace("\n", "").split(", "))
-        new_og_list.append({gene for gene in new_og_set if len(gene) != 0})
+    # In sorted HOG order, name each HOG's orthogroup by its position
+    for pos, (count, hog, og, parent, genes) in enumerate(read_hogs_to_matrix(input_path)):
+        name_dictionary.setdefault(og, []).append(["OG%07d" % pos, hog, parent])
+        new_og_list.append(genes)
     return new_og_list, name_dictionary
 
 
 def read_hogs_to_matrix(input_path):
-    # holds lines to write to new output file
-    matrix = []
-    with open(input_path) as input_file:
-        for i, line in enumerate(input_file):
-            line_split = line.strip().split("\t")
-            if i == 0:
-                # species_names = line_split[3:]
-                continue
-            # Count number of genes in each line as a count.
-            count = len(list(filter(None, (", ".join(line_split[3:]).split(", ")))))
-            # Add line with gene count to matrix variable.
-            matrix.append([count] + line_split)
+    """
+    The HOGs of an N0.tsv as (gene count, HOG, OG, parent clade, set of
+    genes), most genes first (equal counts in file order).
 
-    sorted_matrix = sorted(matrix, key=itemgetter(0), reverse=True)
-    return sorted_matrix
+    Only the genes are kept, not the row of cells: with many species almost
+    every cell is empty, and a list of them per HOG would take most of the
+    memory (e.g. 1,000 species x 100,000 HOGs).
+    """
+    rows = []
+    with open(input_path) as input_file:
+        next(input_file, None)      # header
+        for line in input_file:
+            line_split = line.strip().split("\t")
+            genes = [g for cell in line_split[3:] if cell for g in cell.split(", ") if g]
+            rows.append((len(genes), line_split[0], line_split[1], line_split[2], set(genes)))
+    rows.sort(key=itemgetter(0), reverse=True)
+    return rows
 
 
 # def GetSingleID(speciesStartingIndices, seq, speciesToUse):
@@ -480,11 +476,11 @@ class MCL:
             open(singleGeneFilename, util.csv_write_mode) as singleGeneFile,
             open(outputFilename_counts, util.csv_write_mode) as outFile_counts,
         ):
-            ogid_filewriter = csv.writer(ogidfile, delimiter="\t")
-            fileWriter = csv.writer(outputFile, delimiter="\t")
+            ogid_filewriter = file_io.writer(ogidfile)
+            fileWriter = file_io.writer(outputFile)
 
-            fileWriter_counts = csv.writer(outFile_counts, delimiter="\t")
-            singleGeneWriter = csv.writer(singleGeneFile, delimiter="\t")
+            fileWriter_counts = file_io.writer(outFile_counts)
+            singleGeneWriter = file_io.writer(singleGeneFile)
             for writer in [ogid_filewriter, fileWriter, singleGeneWriter]:
                 row = ["Orthogroup"] + [
                     speciesNamesDict[index] for index in speciesToUse
@@ -539,9 +535,9 @@ class MCL:
     #     with open(outputFilename, util.csv_write_mode) as outputFile, \
     #         open(singleGeneFilename, util.csv_write_mode) as singleGeneFile, \
     #             open(outputFilename_counts, util.csv_write_mode) as outFile_counts:
-    #         fileWriter = csv.writer(outputFile, delimiter="\t")
-    #         fileWriter_counts = csv.writer(outFile_counts, delimiter="\t")
-    #         singleGeneWriter = csv.writer(singleGeneFile, delimiter="\t")
+    #         fileWriter = file_io.writer(outputFile)
+    #         fileWriter_counts = file_io.writer(outFile_counts)
+    #         singleGeneWriter = file_io.writer(singleGeneFile)
     #         for writer in [fileWriter, singleGeneWriter]:
     #             row = ["Orthogroup"] + [speciesNamesDict[index] for index in speciesToUse]
     #             writer.writerow(row)

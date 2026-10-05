@@ -155,68 +155,68 @@ def DoOrthogroups(
         blastDir_list = blastDir_list[:1]  # only use latet directory with unassigned gene searches
     
     files.FileHandler.GetPickleDir()  # create the pickle directory before the parallel processing to prevent a race condition
-    if options.old_version:
-        cmd_queue = mp.Queue()  
-        for iSpeciesJob in LargestSpeciesFirst(seqsInfo):  # The i-th job, not the OrthoFinder species ID
-            cmd_queue.put(iSpeciesJob)
+    cmd_queue = mp.Queue()  
+    for iSpeciesJob in LargestSpeciesFirst(seqsInfo):  # The i-th job, not the OrthoFinder species ID
+        cmd_queue.put(iSpeciesJob)
 
-        # Should use PTM?
-        # args_list = [(seqsInfo, blastDir_list, Lengths, cmd_queue, files.FileHandler.GetPickleDir(), options.qDoubleBlast, options.v2_scores, q_unassigned)
-        #              for i_ in range(options.nProcessAlg)]
-        # parallel_task_manager.RunParallelMethods(WaterfallMethod.Worker_ProcessBlastHits, args_list, options.nProcessAlg)
+    for _ in range(options.nProcessAlg):
+        cmd_queue.put(None)
+    
+    total_tasks = seqsInfo.nSpecies
+    # progressbar, task = util.get_progressbar(total_tasks)
+    # update_cycle = 1
+    # progressbar.start()
+    result_queue = mp.Queue()
+    runningProcesses = [
+        mp.Process(
+            target=waterfall.WaterfallMethod.Worker_ProcessBlastHits_New,
+            args=(
+                seqsInfo,
+                blastDir_list,
+                Lengths,
+                cmd_queue,
+                files.FileHandler.GetPickleDir(),
+                options.qDoubleBlast,
+                options.v2_scores,
+                q_unassigned,
+                result_queue,
+            ),
+        )
+        for _ in range(options.nProcessAlg)
+    ]
+
+    parallel_task_manager.ManageQueueNew(
+        runningProcesses, 
+        total_tasks, 
+        options.nProcessAlg, 
+        result_queue, 
+        GRACE_PERIOD = GRACE_PERIOD,
+        STALL_TIMEOUT = STALL_TIMEOUT
+    )
+
+    if options.gathering_version < (3, 0):
+        util.PrintTime("Connected putative homologues")
+        ## -------------------------------------------------------------
+        cmd_queue = mp.Queue()
+        for iSpecies in LargestSpeciesFirst(seqsInfo):
+            cmd_queue.put((seqsInfo, iSpecies))
+
+        for _ in range(options.nProcessAlg):
+            cmd_queue.put(None)
+        result_queue = mp.Queue()
 
         runningProcesses = [
             mp.Process(
-                target=waterfall.WaterfallMethod.Worker_ProcessBlastHits,
+                target=waterfall.WaterfallMethod.Worker_ConnectCognates_New,
                 args=(
-                    seqsInfo,
-                    blastDir_list,
-                    Lengths,
-                    cmd_queue,
-                    files.FileHandler.GetPickleDir(),
-                    options.qDoubleBlast,
-                    options.v2_scores,
-                    q_unassigned,
+                    cmd_queue,  
+                    result_queue, 
+                    files.FileHandler.GetPickleDir(), 
+                    options.v2_scores
                 ),
             )
             for i_ in range(options.nProcessAlg)
         ]
-
-        for proc in runningProcesses:
-            proc.start()
-        parallel_task_manager.ManageQueue(runningProcesses, cmd_queue)
-    else:
-
-        cmd_queue = mp.Queue()  
-        for iSpeciesJob in LargestSpeciesFirst(seqsInfo):  # The i-th job, not the OrthoFinder species ID
-            cmd_queue.put(iSpeciesJob)
-
-        for _ in range(options.nProcessAlg):
-            cmd_queue.put(None)
-        
-        total_tasks = seqsInfo.nSpecies
-        # progressbar, task = util.get_progressbar(total_tasks)
-        # update_cycle = 1
-        # progressbar.start()
-        result_queue = mp.Queue()
-        runningProcesses = [
-            mp.Process(
-                target=waterfall.WaterfallMethod.Worker_ProcessBlastHits_New,
-                args=(
-                    seqsInfo,
-                    blastDir_list,
-                    Lengths,
-                    cmd_queue,
-                    files.FileHandler.GetPickleDir(),
-                    options.qDoubleBlast,
-                    options.v2_scores,
-                    q_unassigned,
-                    result_queue,
-                ),
-            )
-            for _ in range(options.nProcessAlg)
-        ]
-
         parallel_task_manager.ManageQueueNew(
             runningProcesses, 
             total_tasks, 
@@ -225,58 +225,6 @@ def DoOrthogroups(
             GRACE_PERIOD = GRACE_PERIOD,
             STALL_TIMEOUT = STALL_TIMEOUT
         )
-
-    if options.gathering_version < (3, 0):
-        util.PrintTime("Connected putative homologues")
-        ## -------------------------------------------------------------
-        if options.old_version:
-            cmd_queue = mp.Queue()
-            for iSpecies in LargestSpeciesFirst(seqsInfo):
-                cmd_queue.put((seqsInfo, iSpecies))
-            # args_list = [(cmd_queue, files.FileHandler.GetPickleDir(), options.v2_scores) for i_ in range(options.nProcessAlg)]
-            # parallel_task_manager.RunParallelMethods(waterfall.WaterfallMethod.Worker_ConnectCognates, args_list, options.nProcessAlg)
-            
-            runningProcesses = [
-                mp.Process(
-                    target=waterfall.WaterfallMethod.Worker_ConnectCognates,
-                    args=(cmd_queue, files.FileHandler.GetPickleDir(), options.v2_scores),
-                )
-                for i_ in range(options.nProcessAlg)
-            ]
-            for proc in runningProcesses:
-                proc.start()
-            parallel_task_manager.ManageQueue(runningProcesses, cmd_queue)
-
-        else:
-            ## -------------------------------------------------------------------------
-            cmd_queue = mp.Queue()
-            for iSpecies in LargestSpeciesFirst(seqsInfo):
-                cmd_queue.put((seqsInfo, iSpecies))
-
-            for _ in range(options.nProcessAlg):
-                cmd_queue.put(None)
-            result_queue = mp.Queue()
-
-            runningProcesses = [
-                mp.Process(
-                    target=waterfall.WaterfallMethod.Worker_ConnectCognates_New,
-                    args=(
-                        cmd_queue,  
-                        result_queue, 
-                        files.FileHandler.GetPickleDir(), 
-                        options.v2_scores
-                    ),
-                )
-                for i_ in range(options.nProcessAlg)
-            ]
-            parallel_task_manager.ManageQueueNew(
-                runningProcesses, 
-                total_tasks, 
-                options.nProcessAlg, 
-                result_queue, 
-                GRACE_PERIOD = GRACE_PERIOD,
-                STALL_TIMEOUT = STALL_TIMEOUT
-            )
 
     
         graphFilename = waterfall.WaterfallMethod.WriteGraphParallel(

@@ -48,7 +48,54 @@ try:
 except ImportError:
     ...
 from . import util
+from . import run_state
 from .. import __version__
+
+# Log.txt line of the species tree an analysis uses (FileHandler.LogSpeciesTreeUsed).
+SPECIES_TREE_LOG_KEY = "FN_SpeciesTree: "
+# --assign: the first orthogroup whose gene tree was not inferred to place the
+# new species (the trees of those before it are reused by a restart).
+ASSIGN_FIRST_OG_LOG_KEY = "Assign_FirstOrthogroupToInfer: "
+
+# Log.txt lines of the programs a run used (StartLog), as the run_state settings.
+PROGRAM_LOG_KEYS = (("Search program: ", "search_program"), ("MSA program: ", "msa_program"),
+                    ("Tree program: ", "tree_program"))
+
+
+def StateFromLog(continuation_dir):
+    """
+    What a restart continues with, from the Log.txt of the results directory
+    it is given (or of the one holding that WorkingDirectory), in the form of
+    a run_state state, for results directories without run_state.json (older
+    versions, or the file removed): the programs used, the species tree
+    (FN_SpeciesTree) and, for --assign, the first orthogroup whose gene tree
+    was not inferred to place the new species. The last record of each counts.
+    Read before the restart writes its own Log.txt. {} if there is no Log.txt.
+    """
+    d = os.path.abspath(continuation_dir)
+    log_fn = next((os.path.join(r, "Log.txt") for r in (d, os.path.dirname(d))
+                   if os.path.exists(os.path.join(r, "Log.txt"))), None)
+    if log_fn is None:
+        return {}
+    state = {}
+    with open(log_fn, errors="replace") as infile:
+        for line in infile:
+            line = line.rstrip("\r\n")
+            for key, name in PROGRAM_LOG_KEYS:
+                if line.startswith(key):
+                    state.setdefault("settings", {})[name] = line[len(key):].strip()
+            if line.startswith(SPECIES_TREE_LOG_KEY):
+                state.setdefault("files", {})["species_tree"] = PreviousFilesLocator_new._InThisResultsDir(
+                    line[len(SPECIES_TREE_LOG_KEY):], log_fn, 2)
+            if line.startswith(ASSIGN_FIRST_OG_LOG_KEY):
+                state.setdefault("assign", {})["i_og_restart"] = int(line[len(ASSIGN_FIRST_OG_LOG_KEY):])
+    return state
+
+
+# Log.txt lines of the earlier working directories an analysis reads from,
+# after its own (WorkingDirectory_Base): those of the core analysis (--assign),
+# or of the analysis it added species to (-b with -f).
+EARLIER_WD_KEYS = ("WorkingDirectory_Core", "WorkingDirectory_Previous")
 
 class __Files_new_dont_manually_create__(object):    
     def __init__(self):
@@ -68,6 +115,7 @@ class __Files_new_dont_manually_create__(object):
         self.speciesUNTreeRootedIDsFN = None
         self.multipleRootedSpeciesTreesDir = None
         self.species_ids_corrected = None
+        self.q_assign = False
      
     """ ========================================================================================== """
     # RefactorDS - FileHandler
@@ -115,10 +163,8 @@ class __Files_new_dont_manually_create__(object):
         if old_wd_base_list != None:
             shutil.copy(old_wd_base_list[0] + "SpeciesIDs.txt", self.wd_current + "SpeciesIDs.txt")
             shutil.copy(old_wd_base_list[0] + "SequenceIDs.txt", self.wd_current + "SequenceIDs.txt")
-            # Log the first wd in list, this can then be followed back to previous ones
-            # Log file - point to WD at start of chain which contains the new species
-            # wd_base_list - should contain current directory and then previous linked directories
-            with open(self.wd_current + "previous_wd.txt", 'w') as outfile: outfile.write(old_wd_base_list[0] + "\n")
+            # The earlier working directories are recorded in run_state.json and
+            # Log.txt (StartLog); older versions wrote previous_wd.txt instead.
             self.wd_base.extend(old_wd_base_list)
         self.wd_trees = self.wd_current
         self.StartLog(search_program=search_program, msa_program=msa_program, tree_program=tree_program,
@@ -177,8 +223,6 @@ class __Files_new_dont_manually_create__(object):
                                                         extended_filename=extended_filename)
             self.wd_current = os.path.join(self.rd1, "WorkingDirectory")  + os.sep
             os.mkdir(self.wd_current)
-        with open(os.path.join(self.rd1, "Log.txt"), 'w'):
-            pass
         self.wd_trees = self.wd_current
         self.StartLog(search_program=search_program, msa_program=msa_program, tree_program=tree_program,
                       scorematrix=scorematrix, gapopen=gapopen, gapextend=gapextend)
@@ -248,6 +292,8 @@ class __Files_new_dont_manually_create__(object):
         self.LogWorkingDirectoryTrees()
                                          
     def CreateOutputDirectories(self, options, previous_files_locator, base_dir, fastaDir=None):
+        # --assign; a restart reads it from run_state.json (StartLog), or Log.txt
+        self.q_assign = bool(options.qFastAdd) or getattr(previous_files_locator, "q_assign", False)
         if (options.qStartFromFasta and options.qStartFromBlast) or options.qFastAdd:
             wd1 = previous_files_locator.GetStartFromBlast()
             self.CreateOutputDirFromStart_new(fastaDir, base_dir, 
@@ -388,8 +434,12 @@ class __Files_new_dont_manually_create__(object):
         text = "\nSpecies used: \n"
         fn = self.GetSpeciesIDsFN()
         with open(fn, 'r') as infile:
-            text += "".join(infile.readlines())
+            species_ids_lines = "".join(infile.readlines())
+        text += species_ids_lines
         self.WriteToLog(text + "\n")
+        # the species of this analysis (SpeciesIDs.txt may later be edited, e.g.
+        # to leave out species with '#', for another run): -fg etc. use these
+        run_state.update(self.rd1, "species", ids_lines=species_ids_lines)
         
     """ Standard Directories
         ========================================================================================== """
@@ -758,7 +808,7 @@ class __Files_new_dont_manually_create__(object):
             if not os.path.exists(d): os.mkdir(d)
             return d
         else:
-            raise NotImplemented() 
+            raise NotImplementedError()
     
     # def GetWDOGsReconTreeDir(self):
     #     d = self.wd_trees + "Resolved_Gene_Trees_1/" 
@@ -813,7 +863,14 @@ class __Files_new_dont_manually_create__(object):
     
     def StartLog(self, search_program=None, msa_program=None, tree_program=None, 
                  scorematrix=None, gapopen=None, gapextend=None):
-
+        """
+        Start Log.txt afresh, for a restart too: it records this run only. A
+        restart reads what it needs from the previous Log.txt before this
+        (StateFromLog, PreviousFilesLocator_new, when there is no
+        run_state.json), and records the directories, species tree etc. again.
+        """
+        with open(os.path.join(self.rd1, "Log.txt"), "w"):
+            pass
         self.WriteToLog("Started OrthoFinder version " + __version__ + "\n", True)
         text = "Command Line: " + " ".join(sys.argv) + "\n\n"
 
@@ -832,14 +889,40 @@ class __Files_new_dont_manually_create__(object):
             text += f"Gap open: {gapopen}\n"
 
         text += "\nWorkingDirectory_Base: %s\n" % self.wd_base[0]
+        # The earlier working directories the analysis also reads from (a
+        # restart without run_state.json reads them from here): those of the
+        # core analysis for --assign, otherwise those of the analysis that
+        # species were added to (-b with -f).
+        if len(self.wd_base) > 1:
+            q_assign = self.q_assign or run_state.read(self.rd1).get("run", {}).get("analysis") == "assign"
+            if q_assign:
+                text += "ResultsDirectory_Core: %s\n" % (os.path.dirname(os.path.normpath(self.wd_base[1])) + os.sep)
+            key = "WorkingDirectory_Core" if q_assign else "WorkingDirectory_Previous"
+            text += "".join("%s: %s\n" % (key, d) for d in self.wd_base[1:])
         self.WriteToLog(text)
+        # the directories, as the restart options read them (run_state)
+        run_state.record_dirs(self.rd1, working=self.wd_current, base=self.wd_base, trees=self.wd_trees)
         if self.clustersFilename != None:self.LogOGs()
     
     def LogOGs(self):
         self.WriteToLog("FN_Orthogroups: %s\n" % (self.clustersFilename + "_id_pairs.txt"))
+        run_state.record_file(self.rd1, "orthogroups", self.clustersFilename + "_id_pairs.txt")
     
+    def LogAssignFirstOrthogroupToInfer(self, i_og_restart):
+        """--assign: see ASSIGN_FIRST_OG_LOG_KEY (a restart without run_state.json reads it from here, StateFromLog)."""
+        self.WriteToLog("%s%d\n" % (ASSIGN_FIRST_OG_LOG_KEY, i_og_restart))
+
+    def LogSpeciesTreeUsed(self, species_tree_fn):
+        """
+        The species tree the analysis uses (-s, or for --assign the one inferred
+        to place the new species): a restart without run_state.json reads it
+        from here (StateFromLog).
+        """
+        self.WriteToLog("%s%s\n" % (SPECIES_TREE_LOG_KEY, species_tree_fn))
+
     def LogWorkingDirectoryTrees(self):
         self.WriteToLog("WorkingDirectory_Trees: %s\n" % self.wd_trees)
+        run_state.record_dirs(self.rd1, trees=self.wd_trees)
         
     def MakeResultsDirectory2(self, tree_generation_method, stop_after="", append_name=""):
         """
@@ -925,6 +1008,7 @@ class PreviousFilesLocator(object):
         self.speciesTreeRootedIDsFN = None
         self.speciesTreeUNRootedIDsFN = None
         self.species_ids_lines = None
+        self.q_assign = False       # an --assign analysis (Log.txt lists WorkingDirectory_Core)
                 
     def GetHomeForResults(self):
         return self.home_for_results
@@ -962,8 +1046,15 @@ class PreviousFilesLocator_new(PreviousFilesLocator):
         Should work with relevant paths to allow directory to move
         Other methods can then check that the data required for a particular run is available
         """
+        wd_base_anchor = None
+        earlier_wds = []     # WorkingDirectory_Core/_Previous lines after the last WorkingDirectory_Base
         with open(logFN, 'r') as infile:
             for line in infile:
+                for key in EARLIER_WD_KEYS:
+                    if line.startswith(key + ": "):
+                        earlier_wds.append(line.rstrip()[len(key) + 2:])
+                        self.q_assign = key == "WorkingDirectory_Core"
+
                 if line.startswith("Species used:"):
                     self.species_ids_lines = ""
                     line = next(infile)
@@ -974,7 +1065,7 @@ class PreviousFilesLocator_new(PreviousFilesLocator):
                 wd_trees_str = "WorkingDirectory_Trees: "
                 clusters_str = "FN_Orthogroups: "
                 if line.startswith(wd_base_str): 
-                    wd_base_anchor = line.rstrip()[len(wd_base_str):]
+                    wd_base_anchor = self._InThisResultsDir(line.rstrip()[len(wd_base_str):], logFN, 1)
                     if not os.path.exists(wd_base_anchor):
                         # try to see if it's a relative directory to current one
                         path, d_wd = os.path.split(wd_base_anchor[:-1])
@@ -984,11 +1075,12 @@ class PreviousFilesLocator_new(PreviousFilesLocator):
                         if not os.path.exists(wd_base_anchor):
                             print("ERROR: Missing directory: %s" % wd_base_anchor)
                             util.Fail()
-                    self.wd_base_prev = self.GetWDBaseChain(wd_base_anchor)
-                    self.wd_trees = self.wd_base_prev[0]
+                    earlier_wds = []
+                    self.wd_base_prev = [wd_base_anchor]
+                    self.wd_trees = wd_base_anchor
                 if line.startswith(clusters_str): 
                     clusters_fn_full_path = line.rstrip()[len(clusters_str):]
-                    self.clustersFilename_pairs = clusters_fn_full_path 
+                    self.clustersFilename_pairs = self._InThisResultsDir(clusters_fn_full_path, logFN, 2)
                     if not os.path.exists(self.clustersFilename_pairs):
                         # try to see if it's a relative directory to current one
                         path, clusters_fn = os.path.split(self.clustersFilename_pairs)
@@ -1001,7 +1093,7 @@ class PreviousFilesLocator_new(PreviousFilesLocator):
                             util.Fail()
 #                    self._GetOGsFile(wd_ogs_path)
                 if line.startswith(wd_trees_str): 
-                    self.wd_trees = line.rstrip()[len(wd_trees_str):]
+                    self.wd_trees = self._InThisResultsDir(line.rstrip()[len(wd_trees_str):], logFN, 1)
                     if not os.path.exists(self.wd_trees):
                         # try to see if it's a relative directory to current one
                         path, d_wd = os.path.split(self.wd_trees[:-1])
@@ -1013,6 +1105,43 @@ class PreviousFilesLocator_new(PreviousFilesLocator):
                             util.Fail()
                     self.speciesTreeRootedIDsFN = os.path.join(self.wd_trees, "SpeciesTree_rooted_ids.txt") 
                     self.speciesTreeUNRootedIDsFN = os.path.join(self.wd_trees, "SpeciesTree_unrooted_ids.txt")
+
+        if wd_base_anchor is not None:
+            # The earlier working directories the analysis reads from: listed in
+            # Log.txt (this version), or followed from previous_wd.txt (older
+            # versions, which wrote one in each working directory).
+            if earlier_wds:
+                for d in earlier_wds:
+                    if not os.path.isdir(d):
+                        print("ERROR: Missing directory: %s" % d)
+                        util.Fail()
+                self.wd_base_prev = [wd_base_anchor] + earlier_wds
+            else:
+                self.wd_base_prev = self.GetWDBaseChain(wd_base_anchor)
+
+    @staticmethod
+    def _InThisResultsDir(recorded, logFN, n_parts):
+        """
+        A path recorded in Log.txt, in the results directory being restarted
+        if it has it there: the last n_parts of the recorded path (e.g.
+        "WorkingDirectory/") under the directory of logFN. Paths are recorded
+        absolute, so for a results directory that was copied or moved they
+        name the original location, which must not be read or written then
+        (whatever the copy is called).
+        A working directory is used here only if it is a complete one (it has
+        the run's SpeciesIDs.txt): older versions restarted into a new results
+        directory whose WorkingDirectory held only the new files, and whose
+        Log.txt names the results directory it continued from.
+        Otherwise the recorded path (checked by the caller).
+        """
+        trailing = recorded.endswith(os.sep)
+        parts = recorded.rstrip(os.sep).split(os.sep)[-n_parts:]
+        local = os.path.join(os.path.dirname(os.path.abspath(logFN)), *parts)
+        if n_parts == 1 and not os.path.exists(os.path.join(local, "SpeciesIDs.txt")):
+            return recorded
+        if os.path.exists(local):
+            return local + (os.sep if trailing else "")
+        return recorded
 
     @staticmethod           
     def GetWDBaseChain(wd_base_anchor):
@@ -1033,6 +1162,36 @@ class PreviousFilesLocator_new(PreviousFilesLocator):
                 
             
 """ ************************************************************************************************************************* """
+
+class PreviousFilesLocator_state(PreviousFilesLocator):
+    """
+    The files of a results directory from its run_state.json (see run_state):
+    the working directories it reads from (base), its orthogroups file, its
+    trees directory. Raises Unprocessable if the directory has no state
+    (e.g. made by an older version): Log.txt is then read instead.
+    """
+    def __init__(self, options, continuationDir):
+        PreviousFilesLocator.__init__(self)
+        results_dir, state = run_state.find(continuationDir)
+        if not state.get("dirs", {}).get("base"):
+            raise Unprocessable("No run_state.json in %s" % continuationDir)
+        self.results_dir = results_dir
+        self.home_for_results = os.path.abspath(os.path.join(results_dir, "..")) + os.sep
+        if options.qStartFromFasta and not options.qStartFromBlast:
+            return
+        dirs = run_state.dirs(results_dir, state)
+        for d in dirs["base"]:
+            if not os.path.isdir(d):
+                print("ERROR: A working directory of this analysis is missing: %s" % d)
+                print("(recorded in %s)" % run_state.state_path(results_dir))
+                util.Fail()
+        self.wd_base_prev = dirs["base"]
+        self.wd_trees = dirs.get("trees") or self.wd_base_prev[0]
+        self.clustersFilename_pairs = run_state.file(results_dir, state, "orthogroups")
+        self.species_ids_lines = state.get("species", {}).get("ids_lines")
+        self.speciesTreeRootedIDsFN = os.path.join(self.wd_trees, "SpeciesTree_rooted_ids.txt")
+        self.speciesTreeUNRootedIDsFN = os.path.join(self.wd_trees, "SpeciesTree_unrooted_ids.txt")
+
 
 class PreviousFilesLocator_old(PreviousFilesLocator):
     def __init__(self, options, continuationDir):
@@ -1219,8 +1378,12 @@ def InitialiseFileHandler(
         base_dir = resultsDir_nonDefault if resultsDir_nonDefault != None else fastaDir + "OrthoFinder/"
     else:
         try:
-            # Try to process these as the new directory structure
-            pfl = PreviousFilesLocator_new(options, continuationDir)
+            try:
+                # The locations recorded in the results directory (run_state.json)
+                pfl = PreviousFilesLocator_state(options, continuationDir)
+            except Unprocessable:
+                # Otherwise from its Log.txt (results of older versions)
+                pfl = PreviousFilesLocator_new(options, continuationDir)
             # don't create any new directory, it already exists
             base_dir = pfl.GetHomeForResults()
 

@@ -1,4 +1,4 @@
-from ..utils import util, files
+from ..utils import util, files, file_io
 import os
 from collections import Counter
 
@@ -150,7 +150,16 @@ def IDsFileOK(filename):
 #         )
 #     return speciesInfo, speciesToUse_names
 
-def GetMissingBlastResults(species_to_use, qDoubleBlast):
+def GetBlastResultsToCreate(species_to_use, qDoubleBlast, only=None):
+    """
+    The required search results that are missing or incomplete (their search
+    was interrupted), as (filename without .gz, incomplete file or None).
+    only: if given, just these filenames (without .gz) are checked.
+
+    No file is read: checkpoint.txt in the results directory tells whether
+    the searches were interrupted, and if so which ones finished, with the
+    size of their results (file_io.search_checkpoint).
+    """
     required = [
         files.FileHandler.GetBlastResultsFN(
             iSpecies, jSpecies, raise_exception=False
@@ -159,10 +168,35 @@ def GetMissingBlastResults(species_to_use, qDoubleBlast):
         for jSpecies in species_to_use
         if qDoubleBlast or jSpecies >= iSpecies
     ]
-    return [
-        fn for fn in required
-        if not (os.path.exists(fn) or os.path.exists(fn + ".gz"))
-    ]
+    if only is not None:
+        only = set(only)
+        required = [fn for fn in required if fn in only]
+
+    return ResultsToCreate(required)
+
+
+def ResultsToCreate(required):
+    """
+    Of the search results files required (names without .gz), those missing
+    or incomplete, as (filename, incomplete file or None): see
+    GetBlastResultsToCreate.
+    """
+    checkpoints = {}
+    def complete(path):
+        d, name = os.path.split(path)
+        if d not in checkpoints:
+            checkpoints[d] = file_io.search_checkpoint(d)
+        interrupted, done = checkpoints[d]
+        return not interrupted or done.get(name) == os.path.getsize(path)
+
+    to_create = []
+    for fn in required:
+        path = fn + ".gz" if os.path.exists(fn + ".gz") else fn if os.path.exists(fn) else None
+        if path is None:
+            to_create.append((fn, None))
+        elif not complete(path):
+            to_create.append((fn, path))
+    return to_create
 
 
 def ProcessPreviousFiles(workingDir_list, qDoubleBlast, check_blast=True):

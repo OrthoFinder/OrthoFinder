@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import os
-import csv
 import datetime
 import numpy as np
 from collections import Counter, defaultdict
@@ -13,7 +12,7 @@ except ImportError:
 from rich.table import Table
 from rich.console import Console
 
-from ..utils import util, files
+from ..utils import util, files, file_io
 from ..tools import tree
 
 
@@ -44,7 +43,7 @@ def WriteOrthologuesStats(ogSet, nOrtho_sp):
     ogCount_50 = defaultdict(int)
     if not os.path.exists(files.FileHandler.GetDuplicationsFN()): return
     with open(files.FileHandler.GetDuplicationsFN(), util.csv_read_mode) as infile:
-        reader = csv.reader(infile, delimiter="\t")
+        reader = file_io.unquoted_reader(infile)   # written unquoted
         next(reader)
         # for line in reader:
         #     try:
@@ -60,7 +59,7 @@ def WriteOrthologuesStats(ogSet, nOrtho_sp):
                 nodeCount_50[node] += 1
                 ogCount_50[og] += 1
     with open(d + "Duplications_per_Species_Tree_Node.tsv", util.csv_write_mode) as outfile:
-        writer = csv.writer(outfile, delimiter="\t")
+        writer = file_io.writer(outfile)
         writer.writerow(["Species Tree Node", "Duplications (all)", "Duplications (50% support)"])
 #        max_node = max([int(s[1:]) for s in nodeCount.keys()])    # Get largest node number
         for node in nodeCount:
@@ -74,7 +73,7 @@ def WriteOrthologuesStats(ogSet, nOrtho_sp):
     with open(out_tree_fn, 'w') as outfile:
         outfile.write(t.write(format=1)[:-1] + t.name + ";")
     with open(d + "Duplications_per_Orthogroup.tsv", util.csv_write_mode) as outfile:
-        writer = csv.writer(outfile, delimiter="\t")
+        writer = file_io.writer(outfile)
         writer.writerow(["Orthogroup", "Duplications (all)", "Duplications (50% support)"])
         if len(ogCount) > 0:
             max_og = max([int(s[2:]) for s in ogCount.keys()]) 
@@ -85,7 +84,7 @@ def WriteOrthologuesStats(ogSet, nOrtho_sp):
 
 def WriteOrthologuesMatrix(fn, matrix, speciesToUse, speciesDict):
     with open(fn, util.csv_write_mode) as outfile:
-        writer = csv.writer(outfile, delimiter="\t")
+        writer = file_io.writer(outfile)
         writer.writerow([""] + [speciesDict[str(index)] for index in speciesToUse])
         for ii, iSp in enumerate(speciesToUse):
             overlap = [matrix[ii, jj] for jj, jSp in enumerate(speciesToUse)]
@@ -106,7 +105,7 @@ def OrthogroupsMatrix(iSpecies, properOGs):
 # def Stats_SpeciesOverlaps(fn, speciesNamesDict, iSpecies, speciesPresence):
 #     """ Number of orthogroups in which each species-pair is present. Called by Stats"""
 #     with open(fn, util.csv_write_mode) as outfile:
-#         writer = csv.writer(outfile, delimiter="\t")
+#         writer = file_io.writer(outfile)
 #         writer.writerow([""] + [speciesNamesDict[index] for index in iSpecies])
 #         for iSp in iSpecies:
 #             overlap = [len([1 for og in speciesPresence if (iSp in og and jSp in og)]) for jSp in iSpecies]
@@ -192,8 +191,8 @@ def Stats(ogs, speciesNamesDict, iSpecies, iResultsVersion, fastaWriter, ids_dic
     percentFormat = "%0.1f"
     with open(filename_sp, util.csv_write_mode) as outfile_species, \
         open(filename_sum, util.csv_write_mode) as outfile_sum:
-        writer_sp = csv.writer(outfile_species, delimiter="\t")
-        writer_sum = csv.writer(outfile_sum, delimiter="\t")
+        writer_sp = file_io.writer(outfile_species)
+        writer_sum = file_io.writer(outfile_sum)
         # header
         writer_sp.writerow([""] + [speciesNamesDict[index] for index in iSpecies])
 
@@ -226,12 +225,13 @@ def Stats(ogs, speciesNamesDict, iSpecies, iResultsVersion, fastaWriter, ids_dic
         # Number of Orthogroups
         speciesPresence = [set([g[0] for g in og]) for og in properOGs]
         nOgs = len(properOGs)
+        # one pass over the orthogroups rather than one per species
+        nOGsWithSpecies = Counter(iSp for og_sp in speciesPresence for iSp in og_sp)
         writer_sum.writerow(["Number of orthogroups", nOgs])
         writer_sp.writerow(
-            ["Number of orthogroups containing species"] + [sum([iSp in og_sp for og_sp in speciesPresence]) for iSp in
-                                                            iSpecies])
+            ["Number of orthogroups containing species"] + [nOGsWithSpecies[iSp] for iSp in iSpecies])
         writer_sp.writerow(["Percentage of orthogroups containing species"] + [percentFormat % (
-            (100. * sum([iSp in og_sp for og_sp in speciesPresence]) / len(properOGs)) if len(properOGs) > 0 else 0.)
+            (100. * nOGsWithSpecies[iSp] / len(properOGs)) if len(properOGs) > 0 else 0.)
                                                                                for iSp in iSpecies])
 
         # Species specific orthogroups - orthogroups-based
@@ -242,9 +242,10 @@ def Stats(ogs, speciesNamesDict, iSpecies, iResultsVersion, fastaWriter, ids_dic
 
         # Species specific orthogroups - gene-based
         iSpeciesSpecificOGs = [i for i, og_sp in enumerate(speciesPresence) if len(og_sp) == 1]
-        iSpSpecificOGsGeneCounts = [
-            sum([len(properOGs[iog]) for iog in iSpeciesSpecificOGs if properOGs[iog][0][0] == iSp]) for iSp in
-            iSpecies]
+        nGenesInSpeciesSpecificOGs = Counter()
+        for iog in iSpeciesSpecificOGs:
+            nGenesInSpeciesSpecificOGs[properOGs[iog][0][0]] += len(properOGs[iog])
+        iSpSpecificOGsGeneCounts = [nGenesInSpeciesSpecificOGs[iSp] for iSp in iSpecies]
         writer_sp.writerow(["Number of genes in species-specific orthogroups"] + iSpSpecificOGsGeneCounts)
         writer_sum.writerow(["Number of genes in species-specific orthogroups", sum(iSpSpecificOGsGeneCounts)])
         writer_sp.writerow(["Percentage of genes in species-specific orthogroups"] + [
@@ -335,7 +336,8 @@ def Stats(ogs, speciesNamesDict, iSpecies, iResultsVersion, fastaWriter, ids_dic
 def add_unassigned_genes(ogs, all_seq_ids):
     """Extend OGs with unassigned genes as singletons"""
     all_assigned = set([g for og in ogs for g in og])
-    unassigned = set(all_seq_ids).difference(all_assigned)
+    # in sequence-ID order, not set order (which differs between runs)
+    unassigned = [g for g in dict.fromkeys(all_seq_ids) if g not in all_assigned]
     ogs.extend([{g,} for g in unassigned])
     return ogs
 

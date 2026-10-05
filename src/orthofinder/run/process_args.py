@@ -107,6 +107,8 @@ class Options(object):  #
         self.qTrim = True
         self.gathering_version = (1, 0)  # < 3 is the original method
         self.search_program = "diamond"
+        self.search_program_given = False   # -S on the command line
+        self.search_program_from_run = False   # restored from the run being continued
         self.msa_program = "famsa"
         self.tree_program = "fasttree"
         self.recon_method = "of_recon"
@@ -135,7 +137,6 @@ class Options(object):  #
         self.threshold = None
         self.method_threads_large = None
         self.method_threads_small = None
-        self.old_version = False
         self.fix_files = True
         self.config = None
         self.min_seq = 4
@@ -508,9 +509,21 @@ def ProcessArgs(args):
                         % nThreadsDefault
                     )
                     options.method_threads = str(nThreadsDefault)
+                if int(options.method_threads) < 1:
+                    raise ValueError
             except:
                 print("Incorrect argument for number of method threads: %s\n" % arg)
                 util.Fail()
+            if int(options.method_threads) > 1:
+                # Each alignment/tree command of a program that takes a thread
+                # count (FAMSA, IQ-TREE, RAxML-NG) then reserves this many
+                # cores: fewer run at once, which is slower for many small ones.
+                printer.print(
+                    "WARNING: -mt %s: each alignment and tree command that takes a thread count "
+                    "(e.g. FAMSA, IQ-TREE, RAxML-NG) will use %s cores, so fewer commands run at "
+                    "the same time. Most gene trees are small and run fastest on 1 core each: "
+                    "for many species/orthogroups -mt 1 (the default) is usually faster.\n"
+                    % (options.method_threads, options.method_threads), style="warning")
 
         # elif arg == "-mtl" or arg == "--method-threads-large":
         #     if len(args) == 0:
@@ -642,9 +655,6 @@ def ProcessArgs(args):
         elif arg == "-rmrgt" or arg == "--rm-resolved-gene-trees":
             options.rm_resolved_gene_trees = False
 
-        elif arg == "--old-version":
-            options.old_version = True
-
         elif arg == "--no-print-info":
             options.print_info = False
 
@@ -706,6 +716,8 @@ def ProcessArgs(args):
             options.fix_files = False
 
         elif arg == "-rmlg":
+            # keep the legacy files (they are removed by default), incl. the
+            # HOGs with gene names from before the orthogroups are updated
             options.rm_legacy = False
 
         # elif arg == "-x" or arg == "--orthoxml":
@@ -789,15 +801,19 @@ def ProcessArgs(args):
             options.v2_scores = True
 
         elif arg == "-S" or arg == "--search":
-            choices = ["blast"] + prog_caller.ListSearchMethods()
+            choices = prog_caller.ListSearchMethods()
+            if "blast" not in choices:
+                choices = ["blast"] + choices   # another name for "blastp"
             switch_used = arg
             if len(args) == 0:
                 print("Missing option for command line argument %s\n" % arg)
                 util.Fail()
 
             arg = args.pop(0)
+            # "-S blast" becomes blastn (with -d) or blastp (ResolveSearchProgram)
             if arg in choices:
                 options.search_program = arg
+                options.search_program_given = True
             else:
                 print("Invalid argument for option %s: %s" % (switch_used, arg))
                 print("Valid options are: {%s}\n" % (", ".join(choices)))
@@ -1085,7 +1101,7 @@ def ProcessArgs(args):
         )
         util.Fail()
 
-    if options.search_program not in (prog_caller.ListSearchMethods() + ["blast"]):
+    if options.search_program not in prog_caller.ListSearchMethods() + ["blast"]:
         print(
             "ERROR: Search program (%s) not configured in config.json file"
             % options.search_program
@@ -1225,4 +1241,44 @@ def CheckOptions(options, speciesToUse):
                     "ERROR: Attempted to open required files for OrthoFinder run but an unexpected error occurred. \n\nStacktrace:"
                 )
                 raise
+    return options
+
+
+def ResolveSearchProgram(options, prog_caller):
+    """
+    The search programs whose commands depend on whether the input is
+    nucleotide (-d) or protein:
+      - "-S blast" is BLAST+ blastn with -d and blastp otherwise, as
+        configured for "blastn"/"blastp" in config.json;
+      - MMseqs2 (any configured method that runs it) needs --search-type 3
+        for nucleotide sequences, which is then added to its commands with
+        a k-mer length (program_caller.AddNucleotideSearchType).
+    DIAMOND compares protein sequences only: with -d the default search is
+    BLAST+ blastn instead, and DIAMOND given with -S is an error (a restart
+    keeps the program of the run it continues, which ran its searches).
+    The input is not read here: nucleotide input must be given with -d
+    (without it, fasta_processor.ProcessesNewFasta stops with an error).
+    """
+    if options.dna and prog_caller.UsesDiamond(options.search_program) and not options.search_program_from_run:
+        if options.search_program_given:
+            print('ERROR: The search program "%s" (DIAMOND) compares protein sequences only, and the '
+                  'input is nucleotide (-d). Use "-S blast" (BLAST+ blastn) or "-S mmseqs" (MMseqs2), '
+                  'or leave out -S to use blastn.' % options.search_program)
+            util.Fail()
+        print('Search program: nucleotide input (-d) is searched with BLAST+ blastn by default, as '
+              'DIAMOND compares protein sequences only ("-S mmseqs" is faster on large inputs)\n')
+        if "blastn" in prog_caller.ListSearchMethods():
+            options.search_program = "blastn"
+            return options
+        options.search_program = "blast"
+    q_blast = options.search_program == "blast" and "blast" not in prog_caller.ListSearchMethods()
+    if q_blast:
+        options.search_program = "blastn" if options.dna else "blastp"
+        print('Search program: "-S blast" uses BLAST+ %s (%s sequences), as configured for "%s" in config.json\n'
+              % (options.search_program, "nucleotide" if options.dna else "protein", options.search_program))
+    elif options.dna and prog_caller.UsesMMseqs(options.search_program):
+        print('Search program: "%s" (MMseqs2) compares the nucleotide sequences as nucleotides: '
+              '"--search-type 3 -k %d" is added to its search commands, and no index is created '
+              '(see the mmseqs comment in config.json)\n'
+              % (options.search_program, program_caller.MMSEQS_NUCLEOTIDE_KMER))
     return options

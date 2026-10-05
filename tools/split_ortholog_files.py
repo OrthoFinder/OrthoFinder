@@ -26,6 +26,7 @@ split_ortholog_files Results_*/ --compress
 import argparse
 import csv
 import gzip
+import itertools
 import os
 from concurrent.futures import ProcessPoolExecutor
 from contextlib import ExitStack
@@ -116,8 +117,11 @@ def split_species_file(task):
             output_count += 1
 
         with open_text(source_file, "rt") as infile:
-            reader = csv.reader(infile, delimiter="\t")
-            header = next(reader, None)
+            # The header is written with csv (quoted if a species name needs
+            # it), the rows unquoted (a gene name may start with a quote), so
+            # the rows are split at tabs rather than read with csv.
+            header = next(csv.reader(itertools.islice(infile, 1), delimiter="\t"), None)
+            reader = (line.rstrip("\r\n").split("\t") for line in infile)
             expected_header = [
                 "Orthogroup",
                 "Species",

@@ -3,6 +3,8 @@ import sys
 import gzip
 import os.path
 import glob
+from collections import Counter
+from rich.markup import escape
 try:
     from rich import print
 except ImportError:
@@ -11,6 +13,81 @@ from . import util, files
 from ..utils.util import printer
 
 # count = 0 
+
+# Input FASTA files are those with these extensions.
+FASTA_EXTENSIONS = {"fa", "faa", "fasta", "fas", "pep", "fna"}
+
+# Telling nucleotide from protein sequences. Protein uses ~20 letters, DNA
+# almost only A, C, G, T/U and N, so:
+#   - a letter that is never a nucleotide (IUPAC) code means protein: E F I L
+#     P Q (amino acids), J O Z (rare amino acids), X (unknown amino acid), *;
+#   - otherwise the sequences are nucleotide if at least NUCLEOTIDE_FRACTION
+#     of the letters are A, C, G, T, U or N, and protein if not (a protein
+#     can lack all the letters above, e.g. a short or low-complexity one).
+#     In protein files 22-37% of the letters are A/C/G/T/N (whole files;
+#     measured on Mycoplasma, Chlamydomonas and the test proteomes), in DNA
+#     ~100%: 0.75 leaves a wide margin, and allows DNA with many ambiguity
+#     codes (R, Y, K, ...).
+# Up to SEQUENCE_LINES_TO_CHECK lines / SEQUENCE_LETTERS_TO_CHECK letters of a
+# file are looked at.
+PROTEIN_ONLY_LETTERS = frozenset("EFILPQJOZX*")
+NUCLEOTIDE_LETTERS = frozenset("ACGTUN")
+NUCLEOTIDE_FRACTION = 0.75
+SEQUENCE_LINES_TO_CHECK = 1000
+SEQUENCE_LETTERS_TO_CHECK = 100000
+
+
+def is_input_fasta_name(f):
+    """Whether a file name is that of an input FASTA file (by its extension; not macOS "._" files)."""
+    return len(f.rsplit(".", 1)) == 2 and f.rsplit(".", 1)[1].lower() in FASTA_EXTENSIONS and not f.startswith("._")
+
+
+class SequenceTypeSample(object):
+    """
+    The letters of the first sequence lines of a FASTA file, enough to tell
+    nucleotide from protein sequences (see above). add() each sequence line
+    as the file is read; it ignores lines once enough have been seen.
+    """
+
+    def __init__(self):
+        self.counts = Counter()
+        self.n_lines = 0
+        self.n_letters = 0
+
+    @property
+    def full(self):
+        return self.n_lines >= SEQUENCE_LINES_TO_CHECK or self.n_letters >= SEQUENCE_LETTERS_TO_CHECK
+
+    def add(self, line):
+        if self.full:
+            return
+        line = line.strip().upper().replace("-", "").replace(".", "")
+        if line:
+            self.counts.update(line)
+            self.n_letters += len(line)
+            self.n_lines += 1
+
+    def type(self):
+        """"protein", "dna" or "empty"."""
+        if self.n_letters == 0:
+            return "empty"
+        if any(self.counts[c] for c in PROTEIN_ONLY_LETTERS):
+            return "protein"
+        n_nucleotide = sum(self.counts[c] for c in NUCLEOTIDE_LETTERS)
+        return "dna" if n_nucleotide >= NUCLEOTIDE_FRACTION * self.n_letters else "protein"
+
+
+def sequence_type(fn):
+    """"protein", "dna" or "empty", from the first sequences of a FASTA file."""
+    sample = SequenceTypeSample()
+    with open(fn) as infile:
+        for line in infile:
+            if not line.startswith(">"):
+                sample.add(line)
+                if sample.full:
+                    break
+    return sample.type()
+
 
 class FastaWriter(object):
     def __init__(self, sourceFastaFilename, qUseOnlySecondPart=False, qGlob=False, qFirstWord=False, qWholeLine=False):
@@ -111,7 +188,7 @@ def ProcessesNewFasta(
     Process fasta files and return a Directory object with all paths completed.
     """
 
-    fastaExtensions = {"fa", "faa", "fasta", "fas", "pep", "fna"}
+    fastaExtensions = FASTA_EXTENSIONS
     # Check files present
     qOk = True
     if not os.path.exists(fastaDir):
@@ -122,7 +199,7 @@ def ProcessesNewFasta(
     excludedFiles = []
 
     for f in files_in_directory:
-        if len(f.rsplit(".", 1)) == 2 and f.rsplit(".", 1)[1].lower() in fastaExtensions and not f.startswith("._"):
+        if is_input_fasta_name(f):
             originalFastaFilenames.append(f)
         else:
             excludedFiles.append(f)
@@ -142,6 +219,22 @@ def ProcessesNewFasta(
         print("ERROR: Attempted to add a second copy of a previously included species:")
         for fn in originalFastaFilenames:
             if fn in speciesToUse_prev_names: print(fn)
+        print("")
+        util.Fail()
+
+    # A species is named by its file name without the extension (as in the
+    # species tree and the results): "A.fa" and "A.fna" would both be "A".
+    files_of_name = {}
+    for fn in sorted(speciesToUse_prev_names) + sorted(originalFastaFilenames):
+        files_of_name.setdefault(fn.rsplit(".", 1)[0], []).append(fn)
+    same_name = {name: fns for name, fns in files_of_name.items() if len(fns) > 1}
+    if same_name:
+        print("ERROR: Species must have different names. These files would give species of the same name "
+              "(the file name without its extension):")
+        for name, fns in sorted(same_name.items()):
+            print("  %s: %s" % (name, ", ".join(fns)))
+        if speciesToUse_prev_names:
+            print("(including the species already in the analysis)")
         print("")
         util.Fail()
 
@@ -182,6 +275,7 @@ def ProcessesNewFasta(
     duplicated = False
 
     species_seen_dict = {}
+    renamed = []      # (file, header, name): headers that clean to a name already used
 
     with open(sequence_id_fn, 'a') as idsFile, open(species_id_fn, 'a') as speciesFile:
         for fastaFilename in originalFastaFilenames:
@@ -190,10 +284,12 @@ def ProcessesNewFasta(
             fastaFilename = fastaFilename.rstrip()
             speciesFile.write("%d: %s\n" % (iSpecies, fastaFilename))
             baseFilename, extension = os.path.splitext(fastaFilename)
-            mLinesToCheck = 100
-            qHasAA = False
 
             species_seen_dict[fastaFilename] = {}
+            gene_names = util.GeneNames()     # the names the genes get (util.FullAccession)
+            # -d declares nucleotide input; without it the start of each file
+            # is checked as it is read (it costs a few ms per proteome)
+            sequence_sample = None if q_dna else SequenceTypeSample()
 
             with open(fastaDir + os.sep + fastaFilename, 'r') as fastaFile:
                 for iLine, line in enumerate(fastaFile):
@@ -212,21 +308,25 @@ def ProcessesNewFasta(
                             duplicated = True
                         else:
                             species_seen_dict[fastaFilename][acc] = 0
+                            name = gene_names.add(acc)
+                            if name != util.CleanAccession(acc):
+                                renamed.append((fastaFilename, acc, name))
                         # acc = f"{acc}_{seen[acc]}"
                         idsFile.write("%s: %s\n" % (newID, acc))
                         outputFasta.write(">%s\n" % newID)    
                         iSeq += 1
                     else:
                         line = line.upper()    # allow lowercase letters in sequences
-                        if not qHasAA and (iLine < mLinesToCheck):
-#                            qHasAA = qHasAA or any([c in line for c in ['D','E','F','H','I','K','L','M','N','P','Q','R','S','V','W','Y']])
-                            qHasAA = qHasAA or any([c in line for c in ['E','F','I','L','P','Q']]) # AAs minus nucleotide ambiguity codes
+                        if sequence_sample is not None:
+                            sequence_sample.add(line)
                         outputFasta.write(line)
                 outputFasta.write("\n")
-            if (not qHasAA) and (not q_dna):
+            outputFasta.close()
+            # Nucleotide input needs -d: the search programs (DIAMOND by
+            # default) would otherwise compare it as protein, without error
+            if sequence_sample is not None and sequence_sample.type() == "dna":
                 qOk = False
                 print("ERROR: %s appears to contain nucleotide sequences instead of amino acid sequences. Use '-d' option" % fastaFilename)
-            outputFasta.close()
             iSpecies += 1
             iSeq = 0
         if not qOk:
@@ -241,6 +341,14 @@ def ProcessesNewFasta(
                     printer.print(f"{acc_count+1}: {acc} - [orange3]{filename}[/orange3]")
         printer.print("Please check the input file and make sure the gene names are unique.\n", style="error")
         util.Fail()
+
+    if renamed:
+        printer.print("\nWARNING: Some gene names would be the same once the characters that output "
+                      "files cannot hold (: , ( ) ; [ ] =) are replaced by _. These genes have been "
+                      "given distinct names:", style="warning")
+        for fastaFilename, acc, name in renamed:
+            printer.print(f"    {escape(acc)} -> {escape(name)}  [orange3]{escape(fastaFilename)}[/orange3]")
+        print()
 
     if len(originalFastaFilenames) > 0: outputFasta.close()
     speciesInfoObj.speciesToUse = speciesInfoObj.speciesToUse + newSpeciesIDs

@@ -249,30 +249,6 @@ def ParallelMap(function, args_list, nProcesses, progress=None):
     return results
 
 
-def ManageQueue(runningProcesses, cmd_queue):
-    """Manage a set of runningProcesses working through cmd_queue.
-    If a process fails, stop the others straight away and raise WorkerError.
-    Otherwise return when all work is complete.
-    """
-    try:
-        while True:
-            alive = False
-            for proc in runningProcesses:
-                if proc.is_alive():
-                    alive = True
-                elif proc.exitcode != 0:
-                    raise WorkerError(
-                        "%s (PID %s) exited with status %s"
-                        % (proc.name, proc.pid, proc.exitcode)
-                    )
-            if not alive:
-                return
-            time.sleep(.1)
-    except BaseException:
-        TerminateProcesses(runningProcesses)
-        cmd_queue.cancel_join_thread()
-        raise
-
 # not used
 def RunCommand_Simple(command):
     subprocess.call(command, env=my_env, shell=True)
@@ -519,69 +495,6 @@ def CanRunCommand(
 
 
 q_print_first_traceback_0 = False
-
-
-def Worker_RunCommands_And_Move(
-    cmd_and_filename_queue,
-    nProcesses,
-    nToDo,
-    qListOfLists,
-    q_print_on_error,
-    q_always_print_stderr,
-):
-    """
-    Continuously takes commands that need to be run from the cmd_and_filename_queue until the queue is empty. If required, moves
-    the output filename produced by the cmd to a specified filename. The elements of the queue can be single cmd_filename tuples
-    or an ordered list of tuples that must be run in the provided order.
-
-    Args:
-        cmd_and_filename_queue - queue containing (cmd, actual_target_fn) tuples (if qListOfLists is False) or a list of such
-            tuples (if qListOfLists is True). Alternatively, 'cmd' can be a python fn and actual_target_fn the fn to call it on.
-        nProcesses - the number of processes that are working on the queue.
-        nToDo - The total number of elements in the original queue
-        qListOfLists - Boolean, whether each element of the queue corresponds to a single command or a list of ordered commands
-        qShell - Boolean, should a shell be used to run the command.
-
-    Implementation:
-        nProcesses and nToDo are used to print out the progress.
-    """
-    while True:
-        try:
-            i, command_fns_list = cmd_and_filename_queue.get(True, 1)
-            nDone = i - nProcesses + 1
-            if (
-                nDone >= 0
-                and divmod(
-                    nDone, 10 if nToDo <= 200 else 100 if nToDo <= 2000 else 1000
-                )[1]
-                == 0
-            ):
-                PrintTime("Done %d of %d" % (nDone, nToDo))
-            if not qListOfLists:
-                command_fns_list = [command_fns_list]
-            for command, fns in command_fns_list:
-                if isinstance(command, types.FunctionType):
-                    # This will block the process, but it is ok for trimming, it takes minimal time
-                    fn = command
-                    fn(*fns)
-                else:
-                    if not isinstance(command, str):
-                        raise TypeError(f"Cannot run command: {command!r}")
-                    else:
-                        RunCommand(
-                            command,
-                            qPrintOnError=q_print_on_error,
-                            qPrintStderr=q_always_print_stderr,
-                            raise_on_error=True,
-                        )
-                        if fns != None:
-                            actual, target = fns
-                            if os.path.exists(actual):
-                                os.rename(actual, target)
-        except queue.Empty:
-            return
-        except BaseException:
-            raise
 
 
 q_print_first_traceback_1 = False

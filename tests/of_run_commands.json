@@ -12,6 +12,7 @@
         "methodthreads_minseq": "orthofinder -f INPUT -mt 2 -ms 5 -pof",
         "v2_scores_output_extension": "orthofinder -f INPUT --scores-v2 -efn -pof",
         "blast": "orthofinder -f INPUT -S blast -pof --no-print-info",
+        "blastp": "orthofinder -f INPUT -S blastp -pof --no-print-info",
         "mmseqs": "orthofinder -f INPUT -S mmseqs -pof --no-print-info",
         "dendroblast": "orthofinder -f INPUT -M dendroblast -pof --no-print-info",
         "mafft": "orthofinder -f INPUT -A mafft -pof --no-print-info",
@@ -21,8 +22,10 @@
         "astral": "orthofinder -f INPUT -ST astral -nk 2 -pof --no-print-info",
         "oneway_search": "orthofinder -f INPUT -1 -z -y -pof --no-print-info",
         "no_fix_files": "orthofinder -f INPUT --no-fix-files -pof --no-print-info",
-        "old_version": "orthofinder -f INPUT --old-version -pof --no-print-info",
-        "dna": "orthofinder -f DNA_INPUT -d -pof --no-print-info"
+        "dna": "orthofinder -f DNA_INPUT -d -pof --no-print-info",
+        "blastn": "orthofinder -f DNA_INPUT -d -S blastn -pof --no-print-info",
+        "blast_dna": "orthofinder -f DNA_INPUT -d -S blast -pof --no-print-info",
+        "mmseqs_dna": "orthofinder -f DNA_INPUT -d -S mmseqs -pof --no-print-info"
     },
     "Core": {
         "famsa": "orthofinder -f INPUT -pof --no-print-info",

@@ -10,7 +10,7 @@ from orthofinder.tools import tree, stride
 from orthofinder.run.process_args import Options
 from orthofinder.file_updates.ogs import OrthoGroupsSet, update_ogs, IDFullDict
 from orthofinder.file_updates.trees import read_tree_file
-from orthofinder.file_updates.file_updates import id_converter, hogs_converter, read_hog_file, hog_file_over4genes, index_files
+from orthofinder.file_updates.file_updates import hogs_converter, read_hog_file, hog_file_over4genes, index_files
 from orthofinder.run.species_info import SpeciesNameDict, ProcessPreviousFiles
 from orthofinder.gene_tree_inference.trees2ologs_of import (
     GetSpeciesNeighbours, 
@@ -262,7 +262,6 @@ class OrthoFinderTestFuncs:
             q_split_para_clades=False,
             fewer_open_files=False,
             save_space=False,
-            old_version=False,
             print_info=True,
             exist_msa=True,
             write_hog_tree=True,
@@ -460,7 +459,6 @@ class OrthoFinderTestFuncs:
     def get_orthogroups(self):
         old_hog_n0_file = os.path.join(self.current_working_dir, "Legacy", "HOGs", "N0.tsv")
         ogSet = self.get_og_obj()
-        species_id_dict, sequence_id_dict = id_converter(ogSet.SpeciesDict(),  ogSet.SequenceDict())
         species_to_use = ogSet.speciesToUse
         sp_ids = ogSet.SpeciesDict()
         iSps = list(map(str, sorted(species_to_use)))   # list of strings
@@ -470,7 +468,7 @@ class OrthoFinderTestFuncs:
         speciesInfoObj = self.get_species_info_obj()
         speciesNamesDict = self.get_species_name_dict()
         all_seq_ids = ogSet.AllUsedSequenceIDs()
-        hogs_converter(old_hog_n0_file, sequence_id_dict, species_id_dict, species_names)
+        hogs_converter(os.path.join(os.path.dirname(old_hog_n0_file), "N0.ids.tsv"), old_hog_n0_file, species_names)
         new_ogs, name_dictionary =  update_ogs(old_hog_n0_file)
         all_assigned = set([g for og in new_ogs for g in og])
         unassigned = set(all_seq_ids).difference(all_assigned)

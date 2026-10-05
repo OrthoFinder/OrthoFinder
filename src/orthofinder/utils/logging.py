@@ -175,6 +175,13 @@ class RunLogger:
         return decorate
 
     @classmethod
+    def step(cls, name: str, text: str, level: int | str = "INFO") -> None:
+        """Record a message of a named workflow step ("[name] text") in the owning process."""
+        logger = cls._current()
+        if logger is not None:
+            logger.step(name, text, level=level)
+
+    @classmethod
     def message(cls, message: str, level: int | str = "INFO") -> None:
         """Write a milestone without Rich markup in the owning process."""
         logger = cls._current()

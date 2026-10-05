@@ -1,12 +1,13 @@
 from . import ogs, trees
 import os
 import itertools
+import re
 import shutil
 import tempfile
-import csv
 from collections import defaultdict
 
-from ..utils import files, util
+from ..utils import files, util, file_io
+from ..tools import newick
 
 def update_output_files(
         sp_ids,
@@ -27,7 +28,6 @@ def update_output_files(
      
     iSps = list(map(str, sorted(species_to_use)))   # list of strings
     species_names = [sp_ids[i] for i in iSps]
-    species_id_dict, sequence_id_dict = id_converter(sp_ids, id_sequence_dict)
 
     ## ------------------------ Fix OGs and OG Sequences -------------------------
     old_hog_n0_file = files.FileHandler.WDHierarchicalOrthogroupsFNN0()
@@ -39,7 +39,7 @@ def update_output_files(
                 files.FileHandler.GetLegacyHOGDir()
             )
 
-    hogs_converter(hog_n0_file, sequence_id_dict, species_id_dict, species_names)
+    hogs_converter(files.FileHandler.GetWorkingDirectory_Write() + "N0.ids.tsv", hog_n0_file, species_names)
 
     seq_dir = files.FileHandler.GetResultsSeqsDir()
     util.clear_dir(seq_dir)
@@ -54,10 +54,6 @@ def update_output_files(
         q_incremental=q_incremental,
     )
 
-    spec_seq_id_dict = {
-        val: key
-        for key, val in idDict.items()
-    }
 
     util.PrintTime("Updating MSA/Trees")
 
@@ -74,6 +70,8 @@ def update_output_files(
     if prev_wd is not None:
         align_id_dir = os.path.join(prev_wd, "Alignments_ids")
     old_hog_n0 = read_hog_file(hog_n0_file)
+    # gene names of the trees -> IDs (a name of several genes: per orthogroup)
+    spec_seq_id_dict = tree_name_to_id_dict(idDict, old_hog_n0, species_names)
     hog_n0_over4genes = hog_file_over4genes(old_hog_n0, 2)
 
     del old_hog_n0
@@ -133,61 +131,97 @@ def update_output_files(
 
     return ogSet, new_ogs
 
+_NEWICK_UNSAFE = re.compile("[" + newick._ILEGAL_NEWICK_CHARS + "]")
+
+
+def tree_name_to_id_dict(idDict, hog_n0_rows=(), species_names=()):
+    """
+    The sequence IDs of the gene names on the gene trees' leaves
+    (trees.TreeLeafNames), as names appear in the trees.
+
+    The tree writer replaces characters that Newick cannot hold (; [ ] = ...)
+    by "_", so "protein [E. coli]" is "protein _E. coli_" in a tree. Both
+    forms map to the ID. A name (or tree form) shared by several genes is
+    resolved per tree, from the IDs of each orthogroup in hog_n0_rows (the
+    converted N0 HOGs: rows with "OG" and one column of IDs per species).
+    """
+    by_name = defaultdict(set)
+    others = {}                      # entries that are not genes ("0" -> species name)
+    for seq_id, name in idDict.items():
+        if "_" not in seq_id:
+            others[name] = seq_id
+            continue
+        by_name[name].add(seq_id)
+        by_name[_NEWICK_UNSAFE.sub("_", name)].add(seq_id)
+    name_to_id, ambiguous = {}, {}
+    for name, seq_ids in by_name.items():
+        if len(seq_ids) == 1:
+            name_to_id[name] = next(iter(seq_ids))
+        else:
+            ambiguous[name] = sorted(seq_ids, key=util.seq_id_key)
+    for name, seq_id in others.items():
+        if name not in by_name:
+            name_to_id[name] = seq_id
+    # the orthogroups of the genes with an ambiguous name (only those are needed)
+    ambiguous_ids = {seq_id for ids in ambiguous.values() for seq_id in ids}
+    og_ids = defaultdict(set)
+    if ambiguous_ids:
+        for row in hog_n0_rows:
+            for col in species_names:
+                if row.get(col):
+                    og_ids[row["OG"]].update(
+                        g for g in (x.strip() for x in row[col].split(",")) if g in ambiguous_ids)
+    return trees.TreeLeafNames(name_to_id, ambiguous, dict(og_ids))
+
+
 _HOG_ID_COLUMNS = ("HOG", "OG", "Gene Tree Parent Clade")
 
 
-def _first_id_in_species(gene, species_id, sequence_id_dict):
-    """The first sequence ID of this gene name that belongs to species_id ("" if none)."""
-    return next(
-        iter([s for s in sequence_id_dict.get(gene, set()) if s.split("_")[0] == species_id]), ""
-    )
-
-
-def hogs_converter(hogs_n0_file, sequence_id_dict, species_id_dict, species_names, rm_N0_ids=True):
+def hogs_converter(hogs_n0_ids_file, hogs_n0_file, species_names):
     """
-    Rewrite the N0 HOG file with sequence IDs in place of gene names.
+    Write the N0 HOG file with sequence IDs (hogs_n0_file), for the update of
+    the results files, from N0.ids.tsv (hogs_n0_ids_file): the HogWriter
+    writes it in the same run, with every HOG of N0 in sequence IDs and the
+    same HOG IDs as N0.tsv. The IDs are exact (two genes of a species with the
+    same name keep their own), so the HOG files with gene names need not be
+    written for this (they are only kept as legacy files, -rmlg).
 
-    Rows are read as lists and only their non-empty cells are converted: with
-    many species most cells are empty, and converting an empty cell always
-    gave "". The file written is the same as before.
+    The columns are put in the order of the results (species_names); rows are
+    read as lists and only their non-empty cells are copied: with many species
+    most cells are empty.
     """
     fieldnames = list(_HOG_ID_COLUMNS) + species_names
-    with open(hogs_n0_file, newline='') as infile, \
-        tempfile.NamedTemporaryFile(
-            mode='w', delete=False, newline='', dir=os.path.dirname(hogs_n0_file)
-        ) as temp_file:
-        reader = csv.reader(infile, delimiter='\t')
-        writer = csv.writer(temp_file, delimiter='\t', lineterminator="\n")
-        header = next(reader, None)
-        writer.writerow(fieldnames)
-        if header is not None:
-            unknown = set(header) - set(fieldnames)
-            if unknown:
-                raise ValueError("Unexpected columns in %s: %s" % (hogs_n0_file, sorted(unknown)[:5]))
-            out_pos = [fieldnames.index(name) for name in header]
-            species_of_column = [species_id_dict.get(name) for name in header]
-            is_id_column = [name in _HOG_ID_COLUMNS for name in header]
-            for row in reader:
-                if not row:
-                    continue                     # DictReader skipped blank lines too
-                if len(row) > len(header):
-                    raise ValueError("Row with more fields than the header in %s" % hogs_n0_file)
-                out = [""] * len(fieldnames)
-                for i in itertools.compress(range(len(row)), row):   # non-empty cells only
-                    val = row[i]
-                    if is_id_column[i]:
-                        out[out_pos[i]] = val
-                    elif "," in val:
-                        out[out_pos[i]] = ", ".join(
-                            _first_id_in_species(gene, species_of_column[i], sequence_id_dict)
-                            for gene in val.split(", ")
-                        )
-                    else:
-                        out[out_pos[i]] = _first_id_in_species(val, species_of_column[i], sequence_id_dict)
-                writer.writerow(out)
+    temp_name = None
+    try:
+        with open(hogs_n0_ids_file, newline='') as infile, \
+            tempfile.NamedTemporaryFile(
+                mode='w', delete=False, newline='', dir=os.path.dirname(hogs_n0_file)
+            ) as temp_file:
+            temp_name = temp_file.name
+            reader = file_io.unquoted_reader(infile)   # HOG files are written unquoted
+            writer = file_io.writer(temp_file)
+            header = next(reader, None)
+            writer.writerow(fieldnames)
+            if header is not None:
+                unknown = set(header) - set(fieldnames)
+                if unknown:
+                    raise ValueError("Unexpected columns in %s: %s" % (hogs_n0_ids_file, sorted(unknown)[:5]))
+                out_pos = [fieldnames.index(name) for name in header]
+                for row in reader:
+                    if not row:
+                        continue
+                    if len(row) > len(header):
+                        raise ValueError("Row with more fields than the header in %s" % hogs_n0_ids_file)
+                    out = [""] * len(fieldnames)
+                    for i in itertools.compress(range(len(row)), row):   # non-empty cells only
+                        out[out_pos[i]] = row[i]
+                    writer.writerow(out)
+    except BaseException:
+        if temp_name is not None and os.path.exists(temp_name):
+            os.remove(temp_name)
+        raise
+    os.replace(temp_name, hogs_n0_file)
 
-    os.replace(temp_file.name, hogs_n0_file)
-#     # shutil.copy(hogs_n0_file, os.path.join(os.path.dirname(hogs_n0_file), "N0_ids.tsv"))
 
 def read_hog_file(hog_file):
     """
@@ -200,7 +234,7 @@ def read_hog_file(hog_file):
     """
     hog_n0 = []
     with open(hog_file, newline = '') as csvfile:
-        reader = csv.reader(csvfile, delimiter='\t')
+        reader = file_io.reader(csvfile)
         header = next(reader, None)
         if header is None:
             return hog_n0
@@ -283,18 +317,6 @@ def index_files(id_dir, extension=".fa"):
     
     return file_index
 
-
-def id_converter(sp_ids, id_sequence_dict):
-    sequence_id_dict = defaultdict(set)
-    for key, value in id_sequence_dict.items():
-        sequence_id_dict[value].add(key)
-
-    species_id_dict = {
-        val: key 
-        for key, val in sp_ids.items()
-    }
-
-    return species_id_dict, sequence_id_dict
 
 def build_hog_index(unique_ogs, hog_rows):
     unique_set = {str(og).strip() for og in unique_ogs}

@@ -1,4 +1,3 @@
-import csv
 import glob
 import gzip
 import os
@@ -15,7 +14,7 @@ import numpy as np
 
 from . import sample_genes
 from ..tools import mcl, tree
-from ..utils import util, files, parallel_task_manager, fasta_processor, blast_file_processor
+from ..utils import util, files, parallel_task_manager, fasta_processor, file_io
 from ..run import run_commands
 from . import orthogroups_set
 
@@ -83,7 +82,15 @@ def prepare_accelerate_database(
     return fn_diamond_db, q_hogs
 
 
-def _ogs_from_diamond_results_fast(fn_og_results_out, q_ignore_sub):
+# Hits of genes against the orthogroup profiles. The columns depend on the
+# search program and its options (file_io.hit_format); subject IDs are
+# "<og>_<species>_<seq>".
+_OG_HIT_ID_PARTS = {"qseqid": ("query_species", "query_seq"),
+                    "sseqid": ("og", "subject_species", "subject_seq")}
+_OG_HIT_COLUMNS = ("query_species", "query_seq", "og", "subject_species", "evalue")
+
+
+def _ogs_from_diamond_results_fast(fn_og_results_out, q_ignore_sub, layout):
     """
     Same result as ogs_from_diamond_results (below), computed with arrays.
     Returns None if pandas is unavailable or the file has an unexpected layout.
@@ -93,33 +100,29 @@ def _ogs_from_diamond_results_fast(fn_og_results_out, q_ignore_sub):
     and species compared as text, exactly as the sorted() of tuples did.
     """
     try:
-        n_fields = blast_file_processor.CountFieldsFirstLine(fn_og_results_out)
-        if n_fields is None:
+        if file_io.hit_file_is_empty(fn_og_results_out, layout):
             return defaultdict(), defaultdict(lambda: defaultdict(int))
-        if n_fields < 7:
-            return None
-        columns = [0, 1, 2, 3, n_fields - 2]
         # Orthogroup IDs are written as "%07d": read as numbers if they all are
         # (then numeric order is text order), otherwise as text.
         try:
-            cols = blast_file_processor.ReadHitColumns(
-                fn_og_results_out, n_fields, columns,
-                [np.int64, np.int64, np.int64, np.int64, np.float64],
+            cols = file_io.read_hit_columns(
+                fn_og_results_out, _OG_HIT_COLUMNS, fmt=layout, id_parts=_OG_HIT_ID_PARTS,
+                dtypes={"og": "int64"},
             )
-            if cols is not None and len(cols[2]) and (cols[2].min() < 0 or cols[2].max() >= 10 ** 7):
+            if cols is not None and len(cols["og"]) and (cols["og"].min() < 0 or cols["og"].max() >= 10 ** 7):
                 raise ValueError("orthogroup IDs not all 7 digits")
             og_numeric = True
         except ValueError:
-            cols = blast_file_processor.ReadHitColumns(
-                fn_og_results_out, n_fields, columns,
-                [np.int64, np.int64, str, np.int64, np.float64],
+            cols = file_io.read_hit_columns(
+                fn_og_results_out, _OG_HIT_COLUMNS, fmt=layout, id_parts=_OG_HIT_ID_PARTS,
+                dtypes={"og": str},
             )
             og_numeric = False
     except (ValueError, OSError):
         return None
     if cols is None:
         return None
-    q_sp, q_seq, og, h_sp, score = cols
+    q_sp, q_seq, og, h_sp, score = (cols[c] for c in _OG_HIT_COLUMNS)
     og_assignments = defaultdict()
     species_closest_hits = defaultdict(lambda: defaultdict(int))
     if len(score) == 0:
@@ -132,7 +135,8 @@ def _ogs_from_diamond_results_fast(fn_og_results_out, q_ignore_sub):
         og_values, og_index = np.unique(og, return_inverse=True)
         og_text = np.array(["%07d" % x for x in og_values], dtype=object)
     else:
-        og_codes, og_distinct = blast_file_processor.pd.factorize(og, sort=False)
+        import pandas as pd   # installed: this path is only taken when file_io.use_pandas()
+        og_codes, og_distinct = pd.factorize(og, sort=False)
         og_distinct = np.asarray(og_distinct, dtype=object)
         if q_ignore_sub:
             og_distinct = np.array([x.split(".", 1)[0] for x in og_distinct], dtype=object)
@@ -157,12 +161,14 @@ def _ogs_from_diamond_results_fast(fn_og_results_out, q_ignore_sub):
     return og_assignments, species_closest_hits
 
 
-def ogs_from_diamond_results(fn_og_results_out, q_ignore_sub=False):
+def ogs_from_diamond_results(fn_og_results_out, q_ignore_sub=False, layout=None):
     """
     Get the OG based on the DIAMOND results
     Args:
         fn_og_results_out - fn of compressed DIAMOND results
         q_ignore_sub - ignore any subtrees and just look at overall OGs
+        layout - file_io.HitFormat, the columns of the file (default: the
+                 standard BLAST tabular columns)
     Returns:
         iog        : List[str] "int.int" or "int" of ordered, ambiguous assignments
         species_closest_hits : Dict[str, Dict[str, int]] search_species -> Dict[hit_species, n_closest_hits]
@@ -170,33 +176,28 @@ def ogs_from_diamond_results(fn_og_results_out, q_ignore_sub=False):
         Hits to other groups are returned if np.log10 difference is less than 10
         and -np.log10 score > difference.
     """
-    fast = _ogs_from_diamond_results_fast(fn_og_results_out, q_ignore_sub)
-    if fast is not None:
-        return fast
+    if layout is None:
+        layout = file_io.STANDARD_HIT_FORMAT
+    if file_io.use_pandas(fn_og_results_out):
+        fast = _ogs_from_diamond_results_fast(fn_og_results_out, q_ignore_sub, layout)
+        if fast is not None:
+            return fast
 
     ogs_sp_hits = defaultdict(list)
     scores_all_genes = defaultdict(list)
 
-    if fn_og_results_out.endswith(".gz"):
-        with gzip.open(fn_og_results_out, "rt") as infile:
-            reader = csv.reader(infile, delimiter="\t")
-            for line in reader:
-                gene = line[0]
-                og, sp, _ = line[1].split("_")
-                ogs_sp_hits[gene].append(
-                    (og.split(".", 1)[0] if q_ignore_sub else og, sp)
-                )
-                scores_all_genes[gene].append(float(line[-2]))
-    else:
-        with open(fn_og_results_out, "rt") as infile:
-            reader = csv.reader(infile, delimiter="\t")
-            for line in reader:
-                gene = line[0]
-                og, sp, _ = line[1].split("_")
-                ogs_sp_hits[gene].append(
-                    (og.split(".", 1)[0] if q_ignore_sub else og, sp)
-                )
-                scores_all_genes[gene].append(float(line[-2]))
+    # Search output is never quoted, so a plain split gives the fields
+    i_query, i_subject, i_evalue = (layout.index(f) for f in ("qseqid", "sseqid", "evalue"))
+    opener = gzip.open if fn_og_results_out.endswith(".gz") else open
+    with opener(fn_og_results_out, "rt") as infile:
+        for line in file_io.hit_lines(infile, layout):
+            line = line.rstrip("\r\n").split("\t")
+            gene = line[i_query]
+            og, sp, _ = line[i_subject].split("_")
+            ogs_sp_hits[gene].append(
+                (og.split(".", 1)[0] if q_ignore_sub else og, sp)
+            )
+            scores_all_genes[gene].append(float(line[i_evalue]))
 
     all_genes = list(ogs_sp_hits.keys())
     og_assignments = defaultdict()
@@ -234,27 +235,29 @@ def get_original_orthogroups():
     return ogs
 
 
-def _ogs_from_diamond_results_plain(fn):
+def _ogs_from_diamond_results_plain(fn_and_layout):
     """ogs_from_diamond_results with plain dicts, so it can be returned from a worker."""
-    ogs_all_genes, species_closest_hits = ogs_from_diamond_results(fn)
+    fn, layout = fn_and_layout
+    ogs_all_genes, species_closest_hits = ogs_from_diamond_results(fn, layout=layout)
     return dict(ogs_all_genes), {k: dict(v) for k, v in species_closest_hits.items()}
 
 
-def assign_genes(results_files, n_processes=1):
+def assign_genes(results_files, n_processes=1, layout=None):
     """
     Returns OGs with the new species added + species group: Dict[query_species, closest_species]
 
     The results files (one per new species) are independent and are read in
-    parallel; they are combined in the same order as before.
+    parallel; they are combined in the same order as before. layout: their
+    columns (file_io.HitFormat), as the search command wrote them.
     """
     ogs = defaultdict(set)
     species_closest_hits_totals = defaultdict(lambda: defaultdict(int))
     if n_processes > 1 and len(results_files) > 1:
         per_file = parallel_task_manager.ParallelMap(
-            _ogs_from_diamond_results_plain, results_files, n_processes
+            _ogs_from_diamond_results_plain, [(fn, layout) for fn in results_files], n_processes
         )
     else:
-        per_file = [_ogs_from_diamond_results_plain(fn) for fn in results_files]
+        per_file = [_ogs_from_diamond_results_plain((fn, layout)) for fn in results_files]
     for ogs_all_genes, species_closest_hits in per_file:
         for query_species, hits in species_closest_hits.items():
             for hit_species, count in hits.items():
@@ -428,10 +431,15 @@ def create_profiles_database(
         else:
             fn_fasta = wd + fn_base + ".%d_%s.fa" % (n_for_profile, selection)
 
-    fn_diamond_db = fn_fasta + ".dmnd"
-    if os.path.exists(fn_diamond_db) and (
-        options.search_program.split("_", 1)[0] in ["diamond", "blastp", "blastn"]
-    ):
+    # The database is made by the search program, in the core's working
+    # directory, and only a DIAMOND one (.dmnd, as older versions named it) is
+    # reused by later --assign runs: another program cannot read it (e.g.
+    # blastp given a .dmnd), so other programs' databases have their own name
+    # and are made each time (BLAST+ ones are removed after the search,
+    # run_commands.remove_search_only_files).
+    q_diamond = options.search_program.split("_", 1)[0] == "diamond"
+    fn_diamond_db = fn_fasta + (".dmnd" if q_diamond else ".%s_db" % options.search_program)
+    if q_diamond and os.path.exists(fn_diamond_db):
         # print("Profiles database already exists and will be reused: %s" % fn_diamond_db)
         print("Profiles database already exists and will be reused: ")
         print(f"[dark_cyan]{fn_diamond_db}[dark_cyan]")
@@ -536,7 +544,7 @@ def read_hogs(din, hog_name, ids_rev=None):
         raise RuntimeError
     ogs = []
     with open(fn, util.csv_read_mode) as infile:
-        reader = csv.reader(infile, delimiter="\t")
+        reader = file_io.unquoted_reader(infile)   # HOG files are written unquoted
         next(reader)  # header
         for line in reader:
             ogs.append([])
@@ -560,7 +568,9 @@ def write_unassigned_fasta(ogs_orig_list, ogs_new_genes, speciesInfoObj):
     n_unassigned = []
     for iSp in range(speciesInfoObj.nSpAll):
         fw = fasta_processor.FastaWriter(files.FileHandler.GetSpeciesFastaFN(iSp))
-        unassigned = set(fw.SeqLists.keys()).difference(assigned_genes)
+        # in the order of the species' FASTA file (set order differs between runs,
+        # and the order of the genes changes the searches and clustering that follow)
+        unassigned = [g for g in fw.SeqLists if g not in assigned_genes]
         n_unassigned.append(len(unassigned))
         fw.WriteSeqsToFasta(
             unassigned,

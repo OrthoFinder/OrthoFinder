@@ -199,7 +199,7 @@ def PrintHelp(prog_caller):
         "-o <[bright_magenta]txt[/bright_magenta]>", "Non-default results directory"
     )
     # print(" -d                      Input is DNA sequences")                ### is this still an option??
-    table_options.add_row("-d", "Input is DNA sequences.")
+    table_options.add_row("-d", "Input is DNA sequences (searched with BLAST+ blastn by default, or -S mmseqs; DIAMOND cannot be used).")
 
     # print(
     #     " -efn                    Extend the output directory name with the name of the scoring matrix, gap penalties, search program, MSA program and tree program"
@@ -247,6 +247,7 @@ def PrintHelp(prog_caller):
     )
 
     table_options.add_row("-pof", "Save the pairwise ortholog files")
+    table_options.add_row("-rmlg", "Keep the legacy files (WorkingDirectory/Legacy), e.g. the HOGs (with gene names) from before the orthogroups are updated from them")
 
     # print(" -h                      Print this help text")
 

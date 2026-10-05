@@ -11,6 +11,8 @@
     "__comment": "GAPOPEN: Gap open penalty used in DIAMOND search",
     "__comment": "GAPEXTEND: Gap extend penalty used in DIAMOND search",
     "__comment": "METHODTHREAD: Number of threads used by different methods",
+    "__comment": "Search results: OrthoFinder reads the query ID, subject ID and bit score (and the e-value with --assign) of each hit, as tab-separated columns. Their positions are read from the output options in search_cmd: BLAST+ -outfmt 6 or 7 (with or without a column list, e.g. -outfmt \"6 qseqid sseqid evalue bitscore\"), DIAMOND --outfmt 6 (e.g. --outfmt 6 qseqid sseqid bitscore evalue) and MMseqs2 --format-output/--format-mode 0 or 4. Without such options the standard 12 BLAST tabular columns are expected (qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore).",
+    "__comment": "output_fields (optional, search entries): for another search program, the columns its results have, in order, using the BLAST names, e.g. \"output_fields\": \"qseqid sseqid evalue bitscore\". It must include qseqid, sseqid and bitscore (and evalue to use --assign).",
     "muscle": {
         "program_type": "msa",
         "cmd_line": "muscle -align INPUT -output OUTPUT"
@@ -53,7 +55,7 @@
     "__comment": "If the Numerical underflow error occurs then the tree will be run a second time with the safe option selected.",
     "iqtree3": {
         "program_type": "tree",
-        "cmd_line": "iqtree3 -s INPUT --prefix PATH/IDENTIFIER -quiet",
+        "cmd_line": "iqtree3 -s INPUT --prefix PATH/IDENTIFIER -T METHODTHREAD -quiet",
         "output_filename": "PATH/IDENTIFIER.treefile"
     },
     "diamond": {
@@ -76,11 +78,13 @@
         "db_cmd": "diamond makedb --ignore-warnings --in INPUT -d OUTPUT",
         "search_cmd": "diamond blastp --ignore-warnings -d DATABASE -q INPUT -o OUTPUT --custom-matrix SCOREMATRIX  --gapopen GAPOPEN --gapextend GAPEXTEND --ultra-sensitive -p 1 --quiet -e 0.001 --compress 1"
     },
+    "__comment": "blastp/blastn write their results with -out and then gzip them (rather than piping into gzip), so that a failed search is reported: the exit status of a pipe is that of its last command.",
     "blastp": {
         "program_type": "search",
         "db_cmd": "makeblastdb -dbtype prot -in INPUT -out OUTPUT",
-        "search_cmd": "blastp -outfmt 6 -evalue 0.001 -query INPUT -db DATABASE | gzip > OUTPUT.gz"
+        "search_cmd": "blastp -outfmt 6 -evalue 0.001 -query INPUT -db DATABASE -out OUTPUT && gzip -f OUTPUT"
     },
+    "__comment": "MMseqs2 and nucleotide sequences: when the input is nucleotide (-d), OrthoFinder adds \"--search-type 3 -k 13\" to the mmseqs search commands below and leaves out createindex. The k-mer length (-k) sets the size of the k-mer table MMseqs2 builds for every search, whatever the input size: at its default for nucleotides (k=15) the table takes ~8.4 GB of memory per search (and ~8 GB of disk per species with createindex), so running several searches at once (-t) can exhaust memory; k=13 takes ~0.5 GB and k=11 ~40 MB. A shorter k-mer finds more candidate matches (here k=13 found slightly more hits than k=15) but can make searches of large genomes slower. To use another length, add -k N to the mmseqs search command in search_cmd: OrthoFinder then keeps it (it also applies to protein input).",
     "mmseqs": {
         "program_type": "search",
         "db_cmd": "mmseqs createdb INPUT OUTPUT.fa ; mmseqs createindex OUTPUT.fa /tmp",
@@ -89,6 +93,6 @@
     "blastn": {
         "program_type": "search",
         "db_cmd": "makeblastdb -dbtype nucl -in INPUT -out OUTPUT",
-        "search_cmd": "blastn -outfmt 6 -evalue 0.001 -query INPUT -db DATABASE | gzip > OUTPUT.gz"
+        "search_cmd": "blastn -task blastn -outfmt 6 -evalue 0.001 -query INPUT -db DATABASE -out OUTPUT && gzip -f OUTPUT"
     }
 }

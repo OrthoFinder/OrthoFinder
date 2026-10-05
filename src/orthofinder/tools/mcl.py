@@ -25,14 +25,13 @@
 # david_emms@hotmail.com
 from __future__ import absolute_import
 import sys
-import csv
 from typing import List, Set
 try:
     from rich import print
 except ImportError:
     ...
 
-from ..utils import parallel_task_manager, util, files
+from ..utils import parallel_task_manager, util, files, file_io
 
 from collections import defaultdict, Counter
 import xml.etree.ElementTree as ET              # Y
@@ -299,11 +298,11 @@ class MCL:
             open(singleGeneFilename, util.csv_write_mode) as singleGeneFile, \
             open(outputFilename_counts, util.csv_write_mode) as outFile_counts:
             
-            ogid_filewriter = csv.writer(ogidfile, delimiter="\t")
-            fileWriter = csv.writer(outputFile, delimiter="\t")
+            ogid_filewriter = file_io.writer(ogidfile)
+            fileWriter = file_io.writer(outputFile)
             
-            fileWriter_counts = csv.writer(outFile_counts, delimiter="\t")
-            singleGeneWriter = csv.writer(singleGeneFile, delimiter="\t")
+            fileWriter_counts = file_io.writer(outFile_counts)
+            singleGeneWriter = file_io.writer(singleGeneFile)
             for writer in [ogid_filewriter, fileWriter, singleGeneWriter]:
                 row = ["Orthogroup"] + [speciesNamesDict[index] for index in speciesToUse]
                 writer.writerow(row)

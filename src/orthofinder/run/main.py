@@ -43,6 +43,7 @@ if __name__ == "__main__":
     #     mp.set_start_method('spawn')
 
 import os  # Y
+import glob
 
 # os.environ["OPENBLAS_NUM_THREADS"] = "1"    # fix issue with numpy/openblas. Will mean that single threaded options aren't automatically parallelised
 
@@ -56,8 +57,9 @@ from ..utils import (
     files,
     util,
     program_caller,
-    # split_ortholog_files,
     fasta_processor,
+    file_io,
+    run_state,
 )
 from ..orthogroups import gathering, orthogroups_set
 from ..orthogroups import accelerate as acc
@@ -70,6 +72,7 @@ from . import process_args, check_dependencies, run_commands, species_info
 from .. import orphan_genes_version, __version__, __location__
 from ..comparative_genomics import orthologues
 from ..utils.util import printer
+from rich.markup import escape
 
 try:
     from rich import print
@@ -154,7 +157,6 @@ def GetOrthologues(
         options.method_threads_large,
         options.method_threads_small,
         options.threshold,
-        options.old_version,
         options.speciesTreeFN,
         options.qStopAfterSeqs,
         options.qStopAfterAlignments,
@@ -172,6 +174,27 @@ def GetOrthologues(
     # util.PrintTime("Done writing files")
 
 
+def WarnSpeciesWithoutAssignedGenes(ogs_new_species, speciesInfoObj, speciesNamesDict):
+    """
+    --assign: warn about new species none of whose genes were assigned to a
+    core orthogroup (no hits in the orthogroup-profile search). Such a species
+    is in no gene tree, so it cannot be placed in the species tree, and its
+    genes stay unassigned: the run would otherwise end as if it had worked.
+    """
+    with_genes = {int(g.split("_", 1)[0]) for genes in ogs_new_species.values() for g in genes}
+    missing = [iSp for iSp in range(speciesInfoObj.iFirstNewSpecies, speciesInfoObj.nSpAll)
+               if iSp not in with_genes]
+    if missing:
+        printer.print(
+            "\nWARNING: No genes of these new species were assigned to the core orthogroups (no hits "
+            "in the search against the orthogroup profiles): %s. They cannot be placed in the species "
+            "tree, and their genes will be unassigned. Check that they are related to the core species "
+            "and that the search program can compare these sequences (e.g. for nucleotide sequences, "
+            "-d with -S blast or -S mmseqs).\n"
+            % escape(", ".join(str(speciesNamesDict.get(iSp, iSp)) for iSp in missing)),
+            style="warning")
+
+
 def BetweenCoreOrthogroupsWorkflow(
     continuationDir,
     speciesInfoObj,
@@ -181,9 +204,13 @@ def BetweenCoreOrthogroupsWorkflow(
     speciesNamesDict,
     results_files,
     q_hogs,
+    results_layout=None,
+    only_missing=False,
 ):
     """
     Infer clade-specific orthogroups for the new species clades
+    only_missing: continuing a run (-b): only the clade searches whose results are missing or incomplete
+    results_layout: file_io.HitFormat - columns of the profile-search results
     n_unassigned: List[int] - number of unassigned genes per species
     """
     # Get current orthogroups - original orthogroups plus genes assigned to them
@@ -192,7 +219,8 @@ def BetweenCoreOrthogroupsWorkflow(
     else:
         ogs = acc.get_original_orthogroups()
     i_og_restart = 0
-    ogs_new_species, _ = acc.assign_genes(results_files, options.nProcessAlg)
+    ogs_new_species, _ = acc.assign_genes(results_files, options.nProcessAlg, layout=results_layout)
+    WarnSpeciesWithoutAssignedGenes(ogs_new_species, speciesInfoObj, speciesNamesDict)
     clustersFilename_pairs = acc.write_all_orthogroups(
         ogs, ogs_new_species, []
     )  # this updates ogs
@@ -244,7 +272,6 @@ def BetweenCoreOrthogroupsWorkflow(
             method_threads_large=options.method_threads_large,
             method_threads_small=options.method_threads_small,
             threshold=options.threshold,
-            old_version=options.old_version,
             userSpeciesTree=None,
             qStopAfterSeqs=False,
             qStopAfterAlign=False,
@@ -360,6 +387,7 @@ def BetweenCoreOrthogroupsWorkflow(
         prog_caller,
         n_genes_per_species=n_unassigned,
         species_clades=species_clades,
+        only_missing=only_missing,
     )
     # process the results files - only if they are present and non-empty
     options.v2_scores = True
@@ -407,7 +435,6 @@ def BetweenCoreOrthogroupsWorkflow(
 #         options.qAddSpeciesToIDs,
 #         options.qSplitParaClades,
 #         options.fewer_open_files,
-#         old_version=options.old_version,
 #         exist_msa=options.qMSATrees,
 #         fix_files=options.fix_files,
 #         mclInflation=options.mclInflation
@@ -416,6 +443,7 @@ def BetweenCoreOrthogroupsWorkflow(
 
 def main(args=None):
     files.FileHandler.reset()
+    file_io.clear_caches()   # main() may run more than once in a process (e.g. tests)
     start = time.perf_counter()
     log = None
     current_step = "Initialisation"
@@ -445,6 +473,31 @@ def main(args=None):
             " Copyright (C) 2014 [bold dark_goldenrod]David Emms[/bold dark_goldenrod]\n"
         )
 
+        # A restart continues as the run would have gone on (run_state): with
+        # its settings (programs, -d etc., unless given again). Restored first,
+        # so that what follows (e.g. "-S blast" as blastn or blastp) and what is
+        # reported and recorded agree with the settings the restart runs with.
+        i_og_restart_state = 0
+        state = {}
+        changed = []
+        q_restart = ((options.qStartFromBlast and not options.qStartFromFasta) or options.qStartFromGroups
+                     or options.qStartFromTrees or options.qStartFromSpeciesTrees)
+        if q_restart and continuationDir is not None:
+            _, state = run_state.find(continuationDir)
+            if not state:
+                # no run_state.json (older versions, or the file removed): what
+                # Log.txt records, read before this run rewrites it
+                state = files.StateFromLog(continuationDir)
+            i_og_restart_state = state.get("assign", {}).get("i_og_restart", 0)
+            changed = run_state.restore_settings(state, options, input_args)
+            # the run's search program (restored above, or the same as the default)
+            options.search_program_from_run = ("search_program" in state.get("settings", {})
+                                               and not options.search_program_given)
+
+        # "-S blast" is blastn or blastp (-d). Before the file handler is set
+        # up, as it logs the search program.
+        options = process_args.ResolveSearchProgram(options, prog_caller)
+
         files.InitialiseFileHandler(
             options,
             fastaDir,
@@ -454,6 +507,16 @@ def main(args=None):
         )
 
 
+        # A restart keeps the record of the stages it continues from, not of
+        # those it runs again (so running it again does not record them twice).
+        orthogroup_stages = ("Infer orthogroups", "Infer clade-specific orthogroups")
+        if options.qStartFromBlast and not options.qStartFromFasta:
+            file_io.trim_checkpoint(files.FileHandler.GetCheckPointFN(), redo=orthogroup_stages)
+        elif options.qStartFromGroups:
+            file_io.trim_checkpoint(files.FileHandler.GetCheckPointFN(), completed=[orthogroup_stages])
+        elif options.qStartFromTrees or options.qStartFromSpeciesTrees:
+            file_io.trim_checkpoint(files.FileHandler.GetCheckPointFN(),
+                                    completed=[orthogroup_stages, ("Build alignments and gene trees",)])
         log = run_logging.Logger(
             files.FileHandler.GetCheckPointFN(),
             fmt="%(asctime)s : %(message)s",
@@ -480,12 +543,50 @@ def main(args=None):
         printer.print("[bold]Results directory:[/bold]")
         printer.print(f"    [dark_cyan]{files.FileHandler.GetResultsDirectory1()}")
 
+        # A restart also continues with the species tree the run used (unless
+        # -s is given), and its point for restarting gene-tree inference
+        # (--assign); its settings were restored above.
+        results_dir = files.FileHandler.GetResultsDirectory1()
+        if q_restart:
+            if changed:
+                printer.print("Continuing with the settings of the run being continued: %s"
+                              % escape(", ".join("%s=%s" % c for c in changed)))
+                files.FileHandler.WriteToLog("Settings of the run being continued: %s\n"
+                                             % ", ".join("%s=%s" % c for c in changed))
+            kept_tree = run_state.file(results_dir, state, "species_tree")
+            if i_og_restart_state:
+                # kept in this run's Log.txt too (a restart rewrites it)
+                files.FileHandler.LogAssignFirstOrthogroupToInfer(i_og_restart_state)
+            if options.speciesTreeFN is None and kept_tree is not None:
+                options.speciesTreeFN = kept_tree
+                printer.print("Using the species tree of the run being continued:")
+                printer.print("    [dark_cyan]%s[/dark_cyan]" % escape(kept_tree))
+        # -b on the results of an --assign analysis continues that analysis
+        assign_resume = (options.qStartFromBlast and not options.qStartFromFasta
+                         and state.get("run", {}).get("analysis") == "assign")
+        if assign_resume and not ("first_new_species" in state.get("assign", {})
+                                  and "new_species" in state.get("assign", {})
+                                  and "core_results" in state.get("dirs", {})):
+            # stopped before the new species were added (e.g. while creating
+            # the orthogroup profiles): there is nothing to continue from
+            files.FileHandler.LogFailAndExit(
+                "ERROR: The '--assign' run in %s stopped before its new species were added, so it "
+                "cannot be continued with -b. Run --assign again." % results_dir)
+        run_state.record_run(results_dir, "assign" if options.qFastAdd else "core",
+                             " ".join(["orthofinder"] + input_args))
+        run_state.save_settings(results_dir, options)
+        if options.speciesTreeFN is not None:
+            files.FileHandler.LogSpeciesTreeUsed(run_state.keep_species_tree(results_dir, options.speciesTreeFN))
+
         check_dependencies.CheckDependencies(
             options,
             user_specified_M,
             prog_caller,
             files.FileHandler.GetWorkingDirectory1_Read()[0],
+            q_assign=assign_resume,
         )
+        if continuationDir is not None:
+            util.PrintRestartInfo(options, continuationDir)
 
 
         # if using previous Trees etc., check these are all present - Job for orthologues
@@ -600,7 +701,7 @@ def main(args=None):
                     speciesXML=speciesXML,
                 )
 
-        elif options.qStartFromBlast:
+        elif options.qStartFromBlast and not assign_resume:
             working_dirs = files.FileHandler.GetWorkingDirectory1_Read()
 
             speciesInfoObj, _ = species_info.ProcessPreviousFiles(
@@ -609,51 +710,46 @@ def main(args=None):
                 check_blast=False,
             )
 
-            missing_blast_results = species_info.GetMissingBlastResults(
+            # A results directory of an --assign run has the searches of the new
+            # species against the orthogroup profiles (Blast<i>_-1.txt), not
+            # the all-versus-all searches that -b continues from.
+            if glob.glob(os.path.join(glob.escape(working_dirs[0]), "Blast*_-1.txt*")):
+                files.FileHandler.LogFailAndExit(
+                    "ERROR: %s is the working directory of an '--assign' run, which cannot be "
+                    "restarted with -b (it has no all-versus-all search results). Run --assign "
+                    "again to complete it."
+                    % working_dirs[0])
+            # Results that are missing, or incomplete because their search was
+            # interrupted, are created by running their commands from
+            # blast_commands.txt, writing to this working directory.
+            to_create = species_info.GetBlastResultsToCreate(
                 speciesInfoObj.speciesToUse, options.qDoubleBlast
             )
-            if missing_blast_results:
-                commands_fn = os.path.join(working_dirs[0], "blast_commands.txt")
-                if os.path.exists(commands_fn):
-                    with open(commands_fn) as reader:
-                        commands = [line.strip() for line in reader if line.strip()]
-
-                    print(
-                        "\nRequired BLAST results are missing; running commands from %s"
-                        % commands_fn, end="\n"
-                    )
-                    print("Using %d thread(s)" % options.nBlast)
-                    util.PrintTime("This may take some time...")
-                    current_step = "Sequence search"
-                    log.step(current_step, "Started")
-                    program_caller.RunParallelCommands(
-                        options.nBlast,
-                        commands,
-                        method_threads=options.method_threads,
-                        method_threads_large=options.method_threads_large,
-                        method_threads_small=options.method_threads_small,
-                        threshold=options.threshold,
-                        cmd_order=options.cmd_order,
-                        tasksize=None,
-                        qListOfList=False,
-                        q_print_on_error=True,
-                        q_always_print_stderr=False,
-                        old_version=options.old_version,
-                        dynamic_threads=options.dynamic_threads,
-                    )
-                    log.step(current_step, "Completed")
-                    current_step = "Workflow"
-
-                # Recheck after running saved commands, or report the files that
-                # are missing when no saved command file was available.
+            if to_create:
+                current_step = "Sequence search"
+                log.step(current_step, "Started")
+                run_commands.recreate_search_results(to_create, working_dirs[0], options, prog_caller)
+                log.step(current_step, "Completed")
+                current_step = "Workflow"
                 speciesInfoObj, _ = species_info.ProcessPreviousFiles(
                     working_dirs, options.qDoubleBlast, check_blast=True
                 )
+                still = species_info.GetBlastResultsToCreate(
+                    speciesInfoObj.speciesToUse, options.qDoubleBlast,
+                    only=[fn for fn, _ in to_create],     # the others were checked already
+                )
+                if still:
+                    files.FileHandler.LogFailAndExit(
+                        "ERROR: These search results are still missing or incomplete after running "
+                        "their commands:\n%s" % "\n".join(path or fn for fn, path in still)
+                    )
             files.FileHandler.LogSpecies()
 
-            print(
-                "\nUsing previously calculated BLAST results in %s"
-                % (files.FileHandler.GetWorkingDirectory1_Read()[0]), end="\n"
+            if not to_create:
+                printer.print("All required search results are present and complete.")
+            printer.print(
+                "\nUsing the sequence search results in [dark_cyan]%s[/dark_cyan]"
+                % escape(files.FileHandler.GetWorkingDirectory1_Read()[0])
             )
             options = process_args.CheckOptions(options, speciesInfoObj.speciesToUse)
             # 4.
@@ -729,6 +825,7 @@ def main(args=None):
                 speciesInfoObj,
                 options,
                 prog_caller,
+                i_og_restart=i_og_restart_state,
                 speciesXML=speciesXML,
             )
 
@@ -752,7 +849,6 @@ def main(args=None):
             #     options.qAddSpeciesToIDs,
             #     options.qSplitParaClades,
             #     options.fewer_open_files,
-            #     old_version=options.old_version,
             #     exist_msa=options.qMSATrees,
             #     fix_files=options.fix_files,
             #     mclInflation=options.mclInflation
@@ -779,7 +875,6 @@ def main(args=None):
                 options.nProcessAlg,
                 options.qAddSpeciesToIDs,
                 options.fewer_open_files,
-                options.old_version,
                 options.speciesTreeFN,
                 options.qStopAfterSeqs,
                 options.qStopAfterAlignments,
@@ -790,6 +885,7 @@ def main(args=None):
                 options.qSplitParaClades,
                 save_space=options.save_space,
                 root_from_previous=False,
+                i_og_restart=i_og_restart_state,
             )
         elif options.qStartFromSpeciesTrees:
             speciesInfoObj, _ = species_info.ProcessPreviousFiles(
@@ -821,24 +917,48 @@ def main(args=None):
                 options.qAddSpeciesToIDs,
                 options.speciesTreeFN,
                 options.fewer_open_files,  # Open one ortholog file per species when analysing trees
-                old_version=options.old_version,
                 q_split_para_clades=options.qSplitParaClades,
-                i_og_restart=0,
+                i_og_restart=i_og_restart_state,
                 speciesXML=None,
             )
 
-        elif options.qFastAdd:
-            # Prepare previous directory as database
-            speciesInfoObj, speciesToUse_names = species_info.ProcessPreviousFiles(
-                files.FileHandler.GetWorkingDirectory1_Read(),
-                options.qDoubleBlast,
-                check_blast=False,
-            )
+        elif options.qFastAdd or assign_resume:
+            if assign_resume:
+                # Continuing an --assign analysis stopped or interrupted
+                # (-op, or during its searches): the core analysis and the new
+                # species are those recorded (run_state). Its working directory
+                # (the first base directory) already holds the new species.
+                assign = run_state.assign_info(results_dir, state)
+                state_dirs = run_state.dirs(results_dir, state)
+                continuationDir = state_dirs["core_results"]
+                fastaDir = assign["new_species"]
+                first_new_species = assign["first_new_species"]
+                printer.print("\nContinuing the --assign analysis of the new species in [dark_cyan]%s"
+                              % escape(fastaDir))
+                printer.print("to the core analysis in [dark_cyan]%s" % escape(continuationDir))
+                # whether its profile search finished, before this run logs its own
+                profile_search_done = not file_io.search_checkpoint(
+                    files.FileHandler.GetWorkingDirectory1_Read()[0], step="Search orthogroup profiles")[0]
+                # The core species, as the run had them when it started (its
+                # working directory had the core's SpeciesIDs.txt, the new
+                # species were added after the profiles were made)
+                speciesInfoObj = util.SpeciesInfo()
+                speciesInfoObj.speciesToUse = list(range(first_new_species))
+                speciesInfoObj.nSpAll = first_new_species
+                wd_list = files.FileHandler.GetWorkingDirectory1_Read()[1:]   # the core's
+            else:
+                # Prepare previous directory as database
+                speciesInfoObj, speciesToUse_names = species_info.ProcessPreviousFiles(
+                    files.FileHandler.GetWorkingDirectory1_Read(),
+                    options.qDoubleBlast,
+                    check_blast=False,
+                )
+                profile_search_done = False
+                wd_list = files.FileHandler.GetWorkingDirectory1_Read()
             # Check previous directory has been done with MSA trees
             if not acc.check_for_orthoxcelerate(continuationDir, speciesInfoObj):
                 util.Fail()
             util.PrintUnderline("Creating orthogroup profiles")
-            wd_list = files.FileHandler.GetWorkingDirectory1_Read()
             current_step = "Create orthogroup profiles"
             log.step(current_step, "Started")
             fn_diamond_db, q_hogs = acc.prepare_accelerate_database(
@@ -857,12 +977,25 @@ def main(args=None):
             #     "\nAdding new species in %s to existing analysis in %s"
             #     % (fastaDir, continuationDir)
             # )
-            printer.print(f"\nAdding new species in [dark_cyan]{fastaDir}")
-            printer.print(f"to existing analysis in [dark_cyan]{continuationDir}")
+            if assign_resume:
+                # the new species were added by the run being continued
+                speciesInfoObj, _ = species_info.ProcessPreviousFiles(
+                    files.FileHandler.GetWorkingDirectory1_Read(),
+                    options.qDoubleBlast,
+                    check_blast=False,
+                )
+                speciesInfoObj.iFirstNewSpecies = first_new_species
+            else:
+                printer.print(f"\nAdding new species in [dark_cyan]{fastaDir}")
+                printer.print(f"to existing analysis in [dark_cyan]{continuationDir}")
 
-            speciesInfoObj = fasta_processor.ProcessesNewFasta(
-                fastaDir, options.dna, speciesInfoObj, speciesToUse_names
-            )
+                speciesInfoObj = fasta_processor.ProcessesNewFasta(
+                    fastaDir, options.dna, speciesInfoObj, speciesToUse_names
+                )
+                # the core analysis and the new species, for a restart of this one
+                run_state.record_assign(results_dir, core_results=continuationDir, new_species=fastaDir,
+                                        first_new_species=speciesInfoObj.iFirstNewSpecies)
+                run_state.record_dirs(results_dir, core_working=files.FileHandler.GetWorkingDirectory1_Read()[1])
 
             if options.search_program in ["mmseqs"]:
                 print(f"Create {options.search_program} new species database")
@@ -879,8 +1012,9 @@ def main(args=None):
             # Add genes to orthogroups
             current_step = "Search orthogroup profiles"
             log.step(current_step, "Started")
-            results_files = run_commands.RunSearch_accelerate(
-                options, speciesInfoObj, fn_diamond_db, prog_caller
+            results_files, results_layout = run_commands.RunSearch_accelerate(
+                options, speciesInfoObj, fn_diamond_db, prog_caller,
+                reuse_complete=profile_search_done,
             )
             log.step(current_step, "Completed")
             current_step = "Workflow"
@@ -908,6 +1042,8 @@ def main(args=None):
                     speciesNamesDict,
                     results_files,
                     q_hogs,
+                    results_layout=results_layout,
+                    only_missing=assign_resume,
                 )
                 log.step(current_step, "Completed")
                 current_step = "Workflow"
@@ -926,6 +1062,10 @@ def main(args=None):
                     options.speciesTreeFN = files.FileHandler.GetSpeciesTreeResultsFN(
                         None, True
                     )
+                # kept for a restart (-fg, -fgt, -fst) after a stop (-og, -ogt, -ost)
+                files.FileHandler.LogSpeciesTreeUsed(run_state.keep_species_tree(results_dir, options.speciesTreeFN))
+                run_state.update(results_dir, "assign", i_og_restart=i_og_restart)
+                files.FileHandler.LogAssignFirstOrthogroupToInfer(i_og_restart)
             if options.fix_files and not options.qStopAfterMCLGroups:
                 GetOrthologues(
                     seqsInfo,
@@ -974,13 +1114,16 @@ def main(args=None):
                 sp_path = os.path.join(
                     files.FileHandler.GetOrthologuesDirectory(), f"{sp0_name}.tsv"
                 )
-                if os.path.exists(sp_path):
+                # the uncompressed file left from writing the .tsv.gz; only a
+                # regular file is removed, never e.g. a folder a user extracted to
+                if os.path.isfile(sp_path):
                     os.remove(sp_path)
 
         # printer.print("\nResults:\n    %s" % d_results, style="path")
-        printer.print("\n[bold]Results directory:[/bold]")
-        printer.print(f"    [dark_cyan]{d_results}")
-        util.PrintCitation(d_results)
+        if options.qStopAfterMCLGroups:      # stopped after the orthogroups (-og)
+            util.PrintRunEnd(d_results, "-fg", "its orthogroups")
+        else:
+            util.PrintRunEnd(d_results)
         files.FileHandler.WriteToLog("OrthoFinder run completed\n", True)
         log.step(current_step, "Completed")
         current_step = "Workflow"

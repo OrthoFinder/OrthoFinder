@@ -37,6 +37,7 @@ except ImportError:
     ...
 
 import itertools
+import zlib
 import multiprocessing as mp
 from collections import Counter, defaultdict
 from . import tree
@@ -499,18 +500,20 @@ End of Parallelisation wrappers
    
 def AnalyseSpeciesTree(speciesTree):
     species = frozenset(speciesTree.get_leaf_names())
-    parts = list(get_partitions(speciesTree))
+    # Fixed order (not set order, which differs between runs): it decides which of
+    # two equally good roots is reported and how the rooted tree is laid out.
+    parts = sorted(get_partitions(speciesTree), key=lambda p: (len(p), sorted(p)))
     nSpecies = len(species)
     dict_clades = dict() # dictionary of clades we require evidence of duplicates from for each partition
     clade_names = dict()
     for p in parts:
         if len(p) == nSpecies: continue
-        speciesTree.set_outgroup(list(species.difference(p))[0])
+        speciesTree.set_outgroup(min(species.difference(p)))
         if len(p) == 1:
             # no use for identifying clades
             continue
         n = speciesTree.get_common_ancestor(p)
-        clade_names[p] = n.name + "_" + str(hash("".join(p)))[-8:]
+        clade_names[p] = n.name + "_" + str(zlib.crc32("".join(sorted(p)).encode()))[-8:]   # hash() differs between runs
         # go down two steps
         ch = n.get_children()
         ch0 = [ch[0]] if ch[0].is_leaf() else ch[0].get_children() 
@@ -520,10 +523,10 @@ def AnalyseSpeciesTree(speciesTree):
 
 def RootAtClade(t, accs_in_clade):
     if len(accs_in_clade) == 1:
-        t.set_outgroup(list(accs_in_clade)[0])
+        t.set_outgroup(min(accs_in_clade))
         return t
     accs = set(t.get_leaf_names())
-    dummy = list(accs.difference(accs_in_clade))[0]
+    dummy = min(accs.difference(accs_in_clade))   # any leaf outside the clade, but always the same one
     t.set_outgroup(dummy)
     node = t.get_common_ancestor(accs_in_clade)
     t.set_outgroup(node)
@@ -647,7 +650,7 @@ def GetRoot(speciesTreeFN, treesDir, GeneToSpeciesMap, nProcessors, qWriteDupTre
     clusters.update(l)
     all_stride_dup_genes.update(stride_dup_genes)
     roots, nSupport = ParsimonyRoot(species, list(dict_clades.keys()), clusters)
-    roots = list(set(roots))
+    roots = list(dict.fromkeys(roots))   # de-duplicated, keeping the order
     speciesTrees_rootedFNs =[]
     # Get distance of each from a supported clade
     topDist = []

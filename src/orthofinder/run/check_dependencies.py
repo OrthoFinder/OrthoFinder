@@ -5,15 +5,6 @@ import subprocess
 from .. import __location__
 from ..utils.util import printer
 
-def CanRunBLAST():
-    if parallel_task_manager.CanRunCommand("makeblastdb -help") and parallel_task_manager.CanRunCommand("blastp -help"):
-        return True
-    else:
-        printer.print("ERROR: Cannot run BLAST+", style="error")
-        program_caller.ProgramCaller.PrintDependencyCheckFailure("makeblastdb -help\nblastp -help")
-        printer.print("Please check BLAST+ is installed and that the executables are in the system path\n", style="error")
-        return False
-
 def CanRunMCL():
     command = "mcl -h"
     if parallel_task_manager.CanRunCommand(command):
@@ -40,26 +31,25 @@ def CanRunASTRAL():
         printer.print("Please check astral-pro is installed and that the executables are in the system path\n", style="error")
         return False
 
-def CheckDependencies(options, user_specified_m, prog_caller, dirForTempFiles):
+def CheckDependencies(options, user_specified_m, prog_caller, dirForTempFiles, q_assign=False):
+    """q_assign: an --assign analysis (also when continued with -b)"""
+    q_assign = q_assign or options.qFastAdd
     util.PrintUnderline("Checking required programs are installed", True)
     if not user_specified_m:
         printer.print('Running with the recommended MSA tree inference by default. To revert to legacy method use "-M dendroblast".\n')
-    if options.qStartFromFasta or options.qFastAdd:
-        if options.search_program == "blast":
-            if not CanRunBLAST(): util.Fail()
-        else:
-            d_deps_check = files.FileHandler.GetDependenciesCheckDir()
-            success, stdout, stderr, cmd = prog_caller.TestSearchMethod(options.search_program, 
-                                                                        d_deps_check,
-                                                                        scorematrix=options.score_matrix,
-                                                                        gapopen=options.gapopen,
-                                                                        gapextend=options.gapextend
-                                                                        )
-            if not success:
-                printer.print("\nERROR: Cannot run %s" % options.search_program, style="error")
-                prog_caller.PrintDependencyCheckFailure(cmd)
-                printer.print("Please check %s is installed and that the executables are in the system path\n" % options.search_program,  style="error")
-                util.Fail()
+    if options.qStartFromFasta or q_assign:
+        d_deps_check = files.FileHandler.GetDependenciesCheckDir()
+        success, stdout, stderr, cmd = prog_caller.TestSearchMethod(options.search_program, 
+                                                                    d_deps_check,
+                                                                    scorematrix=options.score_matrix,
+                                                                    gapopen=options.gapopen,
+                                                                    gapextend=options.gapextend
+                                                                    )
+        if not success:
+            printer.print("\nERROR: Cannot run %s" % options.search_program, style="error")
+            prog_caller.PrintDependencyCheckFailure(cmd)
+            printer.print("Please check %s is installed and that the executables are in the system path\n" % options.search_program,  style="error")
+            util.Fail()
     if (options.qStartFromFasta or options.qStartFromBlast) and not CanRunMCL():
         util.Fail()
     if not (options.qStopAfterPrepare or options.qStopAfterSeqs or options.qStopAfterGroups or options.qStartFromTrees):
@@ -75,7 +65,7 @@ def CheckDependencies(options, user_specified_m, prog_caller, dirForTempFiles):
             print("Dependencies have been met for inference of orthogroups but not for the subsequent orthologue inference.")
             print("Either install the required dependencies or use the option '-og' to stop the analysis after the inference of orthogroups.\n")
             util.Fail()
-    if options.qFastAdd:
+    if q_assign:
         if not CanRunASTRAL():
             util.Fail()
 

@@ -23,7 +23,7 @@ except ImportError:
     ...
 from ..tools import tree as tree_lib
 from . import resolve
-from ..utils import util, files
+from ..utils import util, files, file_io
 
 
 debug = False   # HOGs
@@ -757,7 +757,7 @@ def GetLinesForOlogFiles(
 
     sp_to_i = {str(sp): i for i, sp in enumerate(iSpeciesToUse)}
     sp_label = [speciesDict[str(sp)] for sp in iSpeciesToUse]
-    getrow = util.getrow
+    getrow = file_io.unquoted_line
 
     seq_cache = {}
 

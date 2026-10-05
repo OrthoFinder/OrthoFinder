@@ -37,27 +37,19 @@ def GetOrderedSearchCommands(
     
     taskSizes, speciesPairs = util.SortArrayPairByFirst(taskSizes, speciesPairs, qLargestFirst=qLargestFirst)
     
-    if options.old_version:
-        method_threads = options.method_threads
-    else:
-        method_threads = None
+    method_threads = None
 
-    if options.search_program == "blast":
-        commands = [" ".join(["blastp", "-outfmt", "6", "-evalue", "0.001",
-                              "-query", files.FileHandler.GetSpeciesUnassignedFastaFN(iFasta) if q_new_species_unassigned_genes else files.FileHandler.GetSpeciesFastaFN(iFasta),
-                              "-db", files.FileHandler.GetSpeciesDatabaseN(iDB),
-                              "-out", files.FileHandler.GetBlastResultsFN(iFasta, iDB, qForCreation=True)]) for iFasta, iDB in speciesPairs]
-    else:
-        commands = [prog_caller.GetSearchMethodCommand_Search(options.search_program,
-                        files.FileHandler.GetSpeciesUnassignedFastaFN(iFasta) if q_new_species_unassigned_genes else files.FileHandler.GetSpeciesFastaFN(iFasta),
-                        files.FileHandler.GetSpeciesDatabaseN(iDB, options.search_program),
-                        files.FileHandler.GetBlastResultsFN(iFasta, iDB, qForCreation=True),
-                        scorematrix=options.score_matrix,
-                        gapopen=options.gapopen,
-                        gapextend=options.gapextend,
-                        method_threads=method_threads
-                        ) 
-                        for iFasta, iDB in speciesPairs]
+    commands = [prog_caller.GetSearchMethodCommand_Search(options.search_program,
+                    files.FileHandler.GetSpeciesUnassignedFastaFN(iFasta) if q_new_species_unassigned_genes else files.FileHandler.GetSpeciesFastaFN(iFasta),
+                    files.FileHandler.GetSpeciesDatabaseN(iDB, options.search_program),
+                    files.FileHandler.GetBlastResultsFN(iFasta, iDB, qForCreation=True),
+                    scorematrix=options.score_matrix,
+                    gapopen=options.gapopen,
+                    gapextend=options.gapextend,
+                    method_threads=method_threads,
+                    nucleotide=options.dna,
+                    ) 
+                    for iFasta, iDB in speciesPairs]
     return commands, taskSizes
 
 
@@ -71,58 +63,47 @@ def GetOrderedSearchCommands_clades(
     """
     Search all species
     """
-    if options.old_version:
-        method_threads = options.method_threads
-    else:
-        method_threads = None
+    method_threads = None
 
     exclude = {isp for isp, n_genes in enumerate(n_genes_per_species) if n_genes == 0}
     speciesPairs = []
     for clade in species_clades:
         clade = list(set(clade).difference(exclude))
         speciesPairs.extend([(i, j) for i, j in itertools.product(clade, clade)])
-    if options.search_program == "blast":
-        commands = [
-            " ".join(["blastp", "-outfmt", "6", "-evalue", "0.001",
-                "-query", files.FileHandler.GetSpeciesUnassignedFastaFN(iFasta),
-                "-db", files.FileHandler.GetSpeciesDatabaseN(iDB),
-                "-out", files.FileHandler.GetBlastResultsFN(iFasta, iDB, qForCreation=True)]) 
-            for iFasta, iDB in speciesPairs
-        ]
-    else:
-        commands = []
-        for iFasta, iDB in speciesPairs:
-            if options.search_program in ["mmseqs"]:
-                unassigned = files.FileHandler.GetSpeciesUnassignedFastaFN(iFasta)
-                query = os.path.join(os.path.dirname(unassigned), os.path.basename(unassigned).split(".", 1)[-1])
-            else:
-                query = files.FileHandler.GetSpeciesUnassignedFastaFN(iFasta)
+    commands = []
+    for iFasta, iDB in speciesPairs:
+        if options.search_program in ["mmseqs"]:
+            unassigned = files.FileHandler.GetSpeciesUnassignedFastaFN(iFasta)
+            query = os.path.join(os.path.dirname(unassigned), os.path.basename(unassigned).split(".", 1)[-1])
+        else:
+            query = files.FileHandler.GetSpeciesUnassignedFastaFN(iFasta)
 
-            commands.append(
-                prog_caller.GetSearchMethodCommand_Search(
-                    options.search_program,
-                    query,
-                    files.FileHandler.GetSpeciesDatabaseN(iDB, options.search_program),
-                    files.FileHandler.GetBlastResultsFN(iFasta, iDB, qForCreation=True),
-                    scorematrix=options.score_matrix,
-                    gapopen=options.gapopen,
-                    gapextend=options.gapextend,
-                    method_threads=method_threads
-                )
+        commands.append(
+            prog_caller.GetSearchMethodCommand_Search(
+                options.search_program,
+                query,
+                files.FileHandler.GetSpeciesDatabaseN(iDB, options.search_program),
+                files.FileHandler.GetBlastResultsFN(iFasta, iDB, qForCreation=True),
+                scorematrix=options.score_matrix,
+                gapopen=options.gapopen,
+                gapextend=options.gapextend,
+                method_threads=method_threads,
+                nucleotide=options.dna,
             )
-        # commands = [
-        #     prog_caller.GetSearchMethodCommand_Search(
-        #         options.search_program,
-        #         files.FileHandler.GetSpeciesUnassignedFastaFN(iFasta),
-        #         files.FileHandler.GetSpeciesDatabaseN(iDB, options.search_program),
-        #         files.FileHandler.GetBlastResultsFN(iFasta, iDB, qForCreation=True),
-        #         scorematrix=options.score_matrix,
-        #         gapopen=options.gapopen,
-        #         gapextend=options.gapextend,
-        #         method_threads=method_threads
-        #     ) 
-        #     for iFasta, iDB in speciesPairs
-        # ]
+        )
+    # commands = [
+    #     prog_caller.GetSearchMethodCommand_Search(
+    #         options.search_program,
+    #         files.FileHandler.GetSpeciesUnassignedFastaFN(iFasta),
+    #         files.FileHandler.GetSpeciesDatabaseN(iDB, options.search_program),
+    #         files.FileHandler.GetBlastResultsFN(iFasta, iDB, qForCreation=True),
+    #         scorematrix=options.score_matrix,
+    #         gapopen=options.gapopen,
+    #         gapextend=options.gapextend,
+    #         method_threads=method_threads
+    #     ) 
+    #     for iFasta, iDB in speciesPairs
+    # ]
     tasksize =  [
         os.stat(files.FileHandler.GetSpeciesDatabaseN(iDB, options.search_program)).st_size
         for iFasta, iDB in speciesPairs
@@ -141,10 +122,7 @@ def GetOrderedSearchCommands_accelerate(speciesInfoObj, diamond_db, options, pro
     iSpeciesNew = list(range(speciesInfoObj.iFirstNewSpecies, speciesInfoObj.nSpAll))
     tasksize = None
 
-    if options.old_version:
-        method_threads = options.method_threads
-    else:
-        method_threads = None
+    method_threads = None
     
     if q_one_query:
         wd = files.FileHandler.GetSpeciesSeqsDir()[0]
@@ -173,7 +151,8 @@ def GetOrderedSearchCommands_accelerate(speciesInfoObj, diamond_db, options, pro
                 scorematrix=options.score_matrix, 
                 gapopen=options.gapopen, 
                 gapextend=options.gapextend,#
-                method_threads=method_threads
+                method_threads=method_threads,
+                nucleotide=options.dna,
             )
             for iFasta in iSpeciesNew
         ]
