@@ -4,7 +4,8 @@ version 0.3), for other tools, and as pages to look at in a web browser:
 
     Orthogroups/Orthogroups.orthoxml, Orthogroups.html
     Phylogenetic_Hierarchical_Orthogroups/N<i>.orthoxml (one per N<i>.tsv), HOGs.html
-    Orthologs/Orthologs.orthoxml, Orthologs.html (only with -pof: with many species they are very large)
+    Orthologs/Orthologs.orthoxml, Orthologs.html                     } only with -pof: with many
+    Putative_Xenologs/Putative_Xenologs.orthoxml, Putative_Xenologs.html } species they are very large
 
 A gene has the same id in all the OrthoXML files. The species information
 comes from the input FASTA files. OrthoXML requires an NCBI taxonomy ID and a
@@ -98,7 +99,7 @@ def write_results(species, ogs, n_seqs_per_species, id_dict, species_to_use, res
 
 # --- HOGs and orthologs, from the results files ----------------------------------
 
-def write_hogs_and_orthologs(orthogroups_orthoxml, hog_dir, orthologs_dir):
+def write_hogs_and_orthologs(orthogroups_orthoxml, hog_dir, orthologs_dir, xenologs_dir=None):
     """
     From the final results files: an OrthoXML file for each
     Phylogenetic_Hierarchical_Orthogroups/N<i>.tsv and one for the orthologs
@@ -111,6 +112,8 @@ def write_hogs_and_orthologs(orthogroups_orthoxml, hog_dir, orthologs_dir):
         written += write_hogs(species, gene_ids, hog_dir)
     if orthologs_dir and os.path.isdir(orthologs_dir):
         written += write_orthologs(species, gene_ids, orthologs_dir)
+    if xenologs_dir and os.path.isdir(xenologs_dir):
+        written += write_xenologs(species, gene_ids, xenologs_dir)
     return written
 
 
@@ -220,6 +223,73 @@ def write_orthologs(species, gene_ids, orthologs_dir):
         stats=[(len(views), "species pairs"), (len(all_rows), "ortholog relationships"),
                (sum(len(r[2]) * len(r[3]) for r in all_rows), "ortholog gene pairs"),
                (sum(r[1] == "one-to-one" for r in all_rows), "one-to-one")],
+        views=views)
+    return [out_xml, out_html]
+
+
+def write_xenologs(species, gene_ids, xenologs_dir):
+    """
+    Putative_Xenologs/<species>.tsv (Orthogroup, <species>, Other): each
+    putative xenolog relationship is in the files of both its species, and the
+    other species is not named. It is the species whose file has the same
+    relationship the other way round (or, failing that, the only species with
+    all the genes of the Other column). OrthoXML has no xenologs: they are
+    ortholog groups with the property "type" "putative xenolog".
+    """
+    names = [name for name, _ in species]
+    index = {name: i for i, name in enumerate(names)}
+    rows = {}  # species index -> [(orthogroup, genes, other genes)]
+    for i, name in enumerate(names):
+        fn = os.path.join(xenologs_dir, name + ".tsv")
+        if not os.path.exists(fn):
+            fn += ".gz"
+        if not os.path.exists(fn):
+            continue
+        with (gzip.open(fn, "rt", newline="") if fn.endswith(".gz") else open(fn, newline="")) as infile:
+            reader = csv.reader(infile, delimiter="\t")
+            next(reader, None)
+            rows[i] = [(og, tuple(split_genes(a)), tuple(split_genes(b))) for og, a, b in reader]
+    as_seen_by = {i: {(og, frozenset(a), frozenset(b)) for og, a, b in r} for i, r in rows.items()}
+    pairs, n_unplaced = {}, 0
+    for i, species_rows in rows.items():
+        for og, genes, others in species_rows:
+            mirror = (og, frozenset(others), frozenset(genes))
+            candidates = [j for j in as_seen_by if j != i and mirror in as_seen_by[j]]
+            if len(candidates) != 1:
+                candidates = [j for j in range(len(names)) if j != i and all(g in gene_ids[names[j]] for g in others)]
+            if len(candidates) != 1:
+                n_unplaced += 1
+                continue
+            j = candidates[0]
+            if i < j:  # each relationship is in both species' files: keep it once
+                pairs.setdefault((i, j), []).append([og, list(genes), list(others)])
+            elif mirror not in as_seen_by.get(j, ()):  # only in this file: keep it from here
+                pairs.setdefault((j, i), []).append([og, list(others), list(genes)])
+    if n_unplaced:
+        print(f"WARNING: {n_unplaced} putative xenolog rows could not be matched to a species "
+              "and are not in Putative_Xenologs.orthoxml")
+    if not pairs:
+        return []
+    groups, views = [], []
+    for (i, j), prs in sorted(pairs.items()):
+        for og, genes_i, genes_j in prs:
+            genes = sorted([gene_ids[names[i]][g] for g in genes_i] + [gene_ids[names[j]][g] for g in genes_j])
+            groups.append((str(len(groups) + 1), genes, (("orthogroup", og), ("type", "putative xenolog"))))
+        views.append({"name": f"{names[i]} - {names[j]}",
+                      "columns": ["@Orthogroup", "*" + names[i], "*" + names[j]],
+                      "rows": prs})
+    out_xml = os.path.join(xenologs_dir, "Putative_Xenologs.orthoxml")
+    used = sorted({names[k] for pair in pairs for k in pair}, key=index.get)
+    write_orthoxml(out_xml, genes_of(species, gene_ids, groups, used), groups,
+                   notes="Putative xenologs: each group is one putative xenolog relationship of the "
+                         "Putative_Xenologs files, between the genes of two species. OrthoXML has no "
+                         "xenologs, so they are ortholog groups with the property type = putative xenolog.")
+    out_html = os.path.join(xenologs_dir, "Putative_Xenologs.html")
+    write_page(
+        out_html, title="Putative xenologs",
+        note="The putative xenologs of the Putative_Xenologs files, one species pair at a time "
+             "(also in Putative_Xenologs.orthoxml).",
+        stats=[(len(views), "species pairs"), (len(groups), "putative xenolog relationships")],
         views=views)
     return [out_xml, out_html]
 

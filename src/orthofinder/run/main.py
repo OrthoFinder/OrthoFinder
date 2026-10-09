@@ -1114,15 +1114,16 @@ def main(args=None):
                     orthoxml.write_hogs_and_orthologs(
                         orthogroups_orthoxml,
                         os.path.join(d_results, "Phylogenetic_Hierarchical_Orthogroups"),
-                        # the orthologs only with -pof: with many species they are very large
+                        # the orthologs and xenologs only with -pof: with many species they are very large
                         None if options.save_space else orthologs_dir,
+                        None if options.save_space else os.path.join(d_results, "Putative_Xenologs"),
                     )
                 except (OSError, KeyError, ValueError) as e:
                     print("WARNING: The HOGs and orthologs could not be written in OrthoXML format: "
                           + escape(repr(e)))
                 if options.save_space and os.path.isdir(orthologs_dir) and os.listdir(orthologs_dir):
-                    print("\nAdd -pof to also write the orthologs in OrthoXML format and as a web page "
-                          "(Orthologs/Orthologs.orthoxml, Orthologs.html).")
+                    print("\nAdd -pof to also write the orthologs and putative xenologs in OrthoXML format "
+                          "and as web pages (Orthologs/Orthologs.*, Putative_Xenologs/Putative_Xenologs.*).")
 
         # printer.print("\nResults:\n    %s" % d_results, style="path")
         if options.q_stop_after_mcl_groups:      # stopped after the orthogroups (-og)

@@ -147,3 +147,76 @@ def test_pages_script_is_valid_javascript(tmp_path):
         js.write_text(page.read_text().split("<script>")[1].split("</script>")[0])
         result = subprocess.run(["node", "--check", str(js)], capture_output=True, text=True, check=False)
         assert result.returncode == 0, (page, result.stderr)
+
+
+def write_xenologs(d, files):
+    d.mkdir(exist_ok=True)
+    for name, rows in files.items():
+        (d / f"{name}.tsv").write_text(f"Orthogroup\t{name}\tOther\n" + "".join("\t".join(r) + "\n" for r in rows))
+
+
+def test_xenologs(tmp_path, capsys):
+    og_xml, _, _ = make_results(tmp_path)
+    _, og_genes, _ = parse(og_xml)
+    xen_dir = tmp_path / "Putative_Xenologs"
+    write_xenologs(xen_dir, {  # each relationship is in both species' files, the other species not named
+        "Sp_A": [("OG0000000", "a0", "c0"), ("OG0000001", "a1", "b1, b2")],
+        "Sp_B": [("OG0000001", "b1, b2", "a1"), ("OG0000003", "b0", "zz")],  # zz: not a gene of any species
+        "Sp_C": [("OG0000000", "c0", "a0")],
+    })
+    written = orthoxml.write_hogs_and_orthologs(str(og_xml), None, None, str(xen_dir))
+    assert sorted(p.rsplit("/", 1)[1] for p in written) == ["Putative_Xenologs.html", "Putative_Xenologs.orthoxml"]
+    assert "1 putative xenolog rows could not be matched" in capsys.readouterr().out
+
+    _, genes, groups = parse(xen_dir / "Putative_Xenologs.orthoxml")
+    assert all(og_genes[i] == g for i, g in genes.items())
+    assert sorted((p["orthogroup"], p["type"], tuple(g)) for p, g in groups.values()) == [
+        ("OG0000000", "putative xenolog", (("Sp_A", "a0"), ("Sp_C", "c0"))),
+        ("OG0000001", "putative xenolog", (("Sp_A", "a1"), ("Sp_B", "b1"), ("Sp_B", "b2")))]
+    views = page_data(xen_dir / "Putative_Xenologs.html")["views"]
+    assert [(v["name"], v["rows"]) for v in views] == [
+        ("Sp_A - Sp_B", [["OG0000001", ["a1"], ["b1", "b2"]]]),
+        ("Sp_A - Sp_C", [["OG0000000", ["a0"], ["c0"]]])]
+
+
+def test_xenologs_species_from_the_mirror_row(tmp_path):
+    # two species with a gene of the same name: the row the other way round tells which one
+    species = [("X", "X.fa"), ("Y", "Y.fa"), ("Z", "Z.fa")]
+    ids = {"0_0": "x1", "1_0": "g1", "2_0": "g1"}
+    (tmp_path / "Orthogroups").mkdir()
+    orthoxml.write_results(species, [{"0_0", "1_0", "2_0"}], {0: 1, 1: 1, 2: 1}, ids, [0, 1, 2],
+                           str(tmp_path / "Orthogroups" / "Orthogroups"))
+    xen_dir = tmp_path / "Putative_Xenologs"
+    write_xenologs(xen_dir, {"X": [("OG0000000", "x1", "g1")], "Z": [("OG0000000", "g1", "x1")], "Y": []})
+    orthoxml.write_hogs_and_orthologs(str(tmp_path / "Orthogroups" / "Orthogroups.orthoxml"), None, None, str(xen_dir))
+    _, _, groups = parse(xen_dir / "Putative_Xenologs.orthoxml")
+    assert [g for _, g in groups.values()] == [[("X", "x1"), ("Z", "g1")]]
+
+
+def test_xenologs_in_one_file_only_kept_once(tmp_path):
+    og_xml, _, _ = make_results(tmp_path)
+    xen_dir = tmp_path / "Putative_Xenologs"
+    write_xenologs(xen_dir, {"Sp_B": [("OG0000000", "b0", "c0")], "Sp_A": [], "Sp_C": []})
+    orthoxml.write_hogs_and_orthologs(str(og_xml), None, None, str(xen_dir))
+    _, _, groups = parse(xen_dir / "Putative_Xenologs.orthoxml")
+    assert [g for _, g in groups.values()] == [[("Sp_B", "b0"), ("Sp_C", "c0")]]
+
+
+def test_no_xenologs_nothing_written(tmp_path):
+    og_xml, _, _ = make_results(tmp_path)
+    xen_dir = tmp_path / "Putative_Xenologs"
+    write_xenologs(xen_dir, {"Sp_A": [], "Sp_B": [], "Sp_C": []})  # as on ExampleData
+    assert orthoxml.write_hogs_and_orthologs(str(og_xml), None, None, str(xen_dir)) == []
+    assert sorted(p.name for p in xen_dir.iterdir()) == ["Sp_A.tsv", "Sp_B.tsv", "Sp_C.tsv"]
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="needs node to check the page's script")
+def test_xenologs_page_script_is_valid_javascript(tmp_path):
+    og_xml, _, _ = make_results(tmp_path)
+    xen_dir = tmp_path / "Putative_Xenologs"
+    write_xenologs(xen_dir, {"Sp_A": [("OG0000000", "a0", "c0")], "Sp_C": [("OG0000000", "c0", "a0")]})
+    orthoxml.write_hogs_and_orthologs(str(og_xml), None, None, str(xen_dir))
+    js = tmp_path / "page.js"
+    js.write_text((xen_dir / "Putative_Xenologs.html").read_text().split("<script>")[1].split("</script>")[0])
+    result = subprocess.run(["node", "--check", str(js)], capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stderr
