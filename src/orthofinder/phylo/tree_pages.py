@@ -31,6 +31,18 @@ class TreeViewUnavailable(Exception):
     pass
 
 
+def missing_pyqt6_message(results_dir):
+    """Why --tree-view did not draw the trees, and how to draw them for these results."""
+    return (
+        "--tree-view: the trees were not drawn. OrthoFinder draws them with ete4, whose drawing "
+        "uses the Qt graphics library (PyQt6). PyQt6 is not installed with OrthoFinder, as it is "
+        "large and only this option needs it. To draw the trees, install it:\n"
+        "    pip install PyQt6      (or: pip install \"orthofinder[trees]\")\n"
+        "and then draw the trees of these results, without running the analysis again:\n"
+        f"    python -m orthofinder.phylo.tree_pages {results_dir}"
+    )
+
+
 def load_treeview():
     """ete4's drawing classes; raises TreeViewUnavailable without PyQt6."""
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")  # draw to files, without a display
@@ -215,3 +227,31 @@ if (want) { const k = D.trees.findIndex(t => t[0] === want); if (k >= 0) i = k; 
 show();
 </script></body></html>
 """
+
+
+def main(args=None):
+    """python -m orthofinder.phylo.tree_pages <results directory>: draw its trees and write the page."""
+    import argparse
+    parser = argparse.ArgumentParser(
+        prog="python -m orthofinder.phylo.tree_pages",
+        description="Draw the species tree and the resolved gene trees of OrthoFinder results "
+                    "(ete4, which needs PyQt6) and write Resolved_Gene_Trees/Resolved_Gene_Trees.html.")
+    parser.add_argument("results_dir", help="an OrthoFinder results directory (Results_<name>)")
+    results_dir = parser.parse_args(args).results_dir
+    if not os.path.isdir(results_dir):
+        parser.error(f"not a directory: {results_dir}")
+    try:
+        n_trees = write_tree_pages(results_dir)
+    except TreeViewUnavailable:
+        print(missing_pyqt6_message(results_dir))
+        return 1
+    if not n_trees:
+        print(f"No resolved gene trees in {results_dir}")
+        return 1
+    print(f"Gene tree pictures ({n_trees}): "
+          f"{os.path.join(results_dir, 'Resolved_Gene_Trees', 'Resolved_Gene_Trees.html')}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1132,9 +1132,9 @@ def main(args=None):
                 if n_trees:
                     print("\nGene tree pictures (%d): %s" % (n_trees, escape(
                         os.path.join(d_results, "Resolved_Gene_Trees", "Resolved_Gene_Trees.html"))))
-            except tree_pages.TreeViewUnavailable as e:
-                print("WARNING: --tree-view needs PyQt6 for ete4 to draw the trees (pip install PyQt6): "
-                      + escape(str(e)))
+            except tree_pages.TreeViewUnavailable:
+                printer.print("\nWARNING: " + escape(tree_pages.missing_pyqt6_message(d_results.rstrip(os.sep))),
+                              style="warning", soft_wrap=True)
 
         # printer.print("\nResults:\n    %s" % d_results, style="path")
         if options.q_stop_after_mcl_groups:      # stopped after the orthogroups (-og)

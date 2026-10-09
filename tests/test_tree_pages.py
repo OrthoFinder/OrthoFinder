@@ -101,3 +101,25 @@ def test_empty_gene_trees_file_nothing_written(tmp_path):
     assert tree_pages.write_tree_pages(str(tmp_path)) == 0
     assert sorted(p.name for p in (tmp_path / "Resolved_Gene_Trees").iterdir()) == ["Resolved_Gene_Trees.txt"]
     assert not (tmp_path / "Species_Tree" / "SpeciesTree_rooted_node_labels.svg").exists()
+
+
+def test_missing_pyqt6_message_says_why_and_how():
+    msg = tree_pages.missing_pyqt6_message("/data/Results_Oct09")
+    assert "Qt graphics library (PyQt6)" in msg and "only this option needs it" in msg
+    assert "pip install PyQt6" in msg and 'pip install "orthofinder[trees]"' in msg
+    assert "python -m orthofinder.phylo.tree_pages /data/Results_Oct09" in msg
+
+
+def test_command_without_pyqt6(tmp_path, monkeypatch, capsys):
+    make_results(tmp_path)
+    monkeypatch.setitem(__import__("sys").modules, "ete4.treeview", None)
+    assert tree_pages.main([str(tmp_path)]) == 1
+    assert "pip install PyQt6" in capsys.readouterr().out
+
+
+@needs_treeview
+def test_command(tmp_path, capsys):
+    make_results(tmp_path)
+    assert tree_pages.main([str(tmp_path)]) == 0
+    assert "Gene tree pictures (2)" in capsys.readouterr().out
+    assert (tmp_path / "Resolved_Gene_Trees" / "Resolved_Gene_Trees.html").exists()

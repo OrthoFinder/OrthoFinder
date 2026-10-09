@@ -37,11 +37,12 @@ class OrthoPrinter:
             force_terminal=True,
         )
 
-    def print(self, *messages, style: str = "default", sep: str = " ", end: str = "\n"):
+    def print(self, *messages, style: str = "default", sep: str = " ", end: str = "\n", soft_wrap: bool = False):
+        """soft_wrap: do not break the lines (e.g. so that a command can be copied whole)"""
         message = sep.join(map(str, messages))
         if style in ("error", "warning"):
             run_logging.RunLogger.message(message, level=style.upper())
-        self.console.print(message, style=style, end=end)
+        self.console.print(message, style=style, end=end, soft_wrap=soft_wrap)
 
 
 printer = OrthoPrinter()
