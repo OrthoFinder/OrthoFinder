@@ -5,7 +5,7 @@ import os.path  # Y
 
 from rich.markup import escape
 
-from ..orthology import ortholog_writers
+from ..orthology import ortholog_writers, stats_page
 from ..phylo import tree_pages
 from ..utils import file_handler, orthoxml, paths, printing
 
@@ -79,10 +79,16 @@ def process_output_files(ctx, species_info_obj, species_names_dict):
 
         if options.tree_view:
             # --tree-view: a page to look at the species tree and the resolved gene trees
-            n_trees = tree_pages.write_tree_pages(d_results)
+            n_trees = tree_pages.write_tree_pages(d_results, link_stats_page=options.stats_view)
             if n_trees:
                 page = os.path.join(d_results, "Resolved_Gene_Trees", "Resolved_Gene_Trees.html")
                 print(f"\nGene tree page ({n_trees} trees): {escape(page)}")
+
+        if options.stats_view:
+            # --stats-view: a page of the statistics, with plots (after --tree-view: it links to the trees)
+            page = stats_page.write_stats_page(d_results)
+            if page:
+                print(f"\nStatistics page: {escape(page)}")
 
         # printer.print("\nResults:\n    %s" % d_results, style="path")
         if options.q_stop_after_mcl_groups:      # stopped after the orthogroups (-og)

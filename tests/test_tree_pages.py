@@ -154,3 +154,15 @@ def test_command(tmp_path, capsys):
     assert tree_pages.main([str(tmp_path)]) == 0
     assert "Gene tree page (2 trees)" in capsys.readouterr().out
     assert (tmp_path / "Resolved_Gene_Trees" / "Resolved_Gene_Trees.html").exists()
+
+
+def test_link_to_the_stats_page(tmp_path):
+    make_results(tmp_path)
+    tree_pages.write_tree_pages(str(tmp_path))
+    assert page_data(tmp_path)["stats_page"] is None  # no statistics page (--stats-view)
+    tree_pages.write_tree_pages(str(tmp_path), link_stats_page=True)  # as a run with --stats-view: written after this page
+    assert page_data(tmp_path)["stats_page"] == "../Comparative_Genomics_Statistics/Statistics.html"
+    (tmp_path / "Comparative_Genomics_Statistics").mkdir()
+    (tmp_path / "Comparative_Genomics_Statistics" / "Statistics.html").write_text("")
+    tree_pages.write_tree_pages(str(tmp_path))  # the command, for results with a statistics page
+    assert page_data(tmp_path)["stats_page"] == "../Comparative_Genomics_Statistics/Statistics.html"

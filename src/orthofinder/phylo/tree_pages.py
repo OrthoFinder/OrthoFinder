@@ -1,5 +1,5 @@
 """
---tree-view (a hidden option): a page to look at the species tree and the
+--tree-view: a page to look at the species tree and the
 resolved gene trees in a web browser, with each gene tree's alignment:
 
     Resolved_Gene_Trees/Resolved_Gene_Trees.html
@@ -143,11 +143,15 @@ def write_tree_data(filename, data):
         out.write(f"treeLoaded({json.dumps(data, separators=(',', ':'))});\n")
 
 
-def write_tree_pages(results_dir):
+STATS_PAGE = "../Comparative_Genomics_Statistics/Statistics.html"  # --stats-view, from Resolved_Gene_Trees
+
+
+def write_tree_pages(results_dir, link_stats_page=None):
     """
     Write the page of the trees of a results directory and the data of each
     gene tree. Returns the number of gene trees (0 if the directory has no
-    resolved gene trees).
+    resolved gene trees). link_stats_page: whether to link to the statistics
+    page (--stats-view); None: if it is there.
     """
     gene_trees_fn = os.path.join(results_dir, "Resolved_Gene_Trees", "Resolved_Gene_Trees.txt")
     species_tree_fn = os.path.join(results_dir, "Species_Tree", "SpeciesTree_rooted_node_labels.txt")
@@ -211,14 +215,16 @@ def write_tree_pages(results_dir):
             tree = Tree(infile.read().strip(), parser=1)
         nodes, names = flat_tree(tree)
         species_tree = {"genes": [[name, species_number.get(name, -1)] for name in names], "nodes": nodes}
+    if link_stats_page is None:
+        link_stats_page = os.path.exists(os.path.join(results_dir, "Resolved_Gene_Trees", STATS_PAGE))
     write_page(os.path.join(results_dir, "Resolved_Gene_Trees", "Resolved_Gene_Trees.html"),
-               species, colour, trees, species_tree)
+               species, colour, trees, species_tree, STATS_PAGE if link_stats_page else None)
     return len(trees)
 
 
-def write_page(filename, species, colour, trees, species_tree):
+def write_page(filename, species, colour, trees, species_tree, stats_page=None):
     data = {"version": __version__, "data": DATA_DIR, "species_tree": species_tree,
-            "species": [[sp, colour[sp]] for sp in species], "trees": trees}
+            "species": [[sp, colour[sp]] for sp in species], "trees": trees, "stats_page": stats_page}
     with open(filename, "w") as out:
         out.write(HTML.replace("__DATA__", json.dumps(data, separators=(",", ":")).replace("</", "<\\/")))
 
@@ -259,6 +265,7 @@ button:disabled { opacity:.4; cursor:default; }
 </style></head><body><main>
 <h1>Gene trees</h1>
 <div class="sub" id="sub"></div>
+<div class="sub" id="links" hidden></div>
 <div class="legend" id="legend"></div>
 <div id="species"></div>
 <h2>Resolved gene trees</h2>
@@ -267,6 +274,7 @@ button:disabled { opacity:.4; cursor:default; }
   <select id="og"></select>
   <button id="prev">Previous</button><button id="next">Next</button>
   <span class="muted" id="count"></span>
+  <a id="og-stats" hidden title="This orthogroup in the statistics page">in the statistics</a>
 </div>
 <dl class="stats" id="stats"></dl>
 <div class="tools">
@@ -296,6 +304,10 @@ const spColour = s => s >= 0 ? D.species[s][1] : MIXED;
 $("sub").textContent = "OrthoFinder " + D.version + ". The trees of Resolved_Gene_Trees.txt, genes coloured by species; "
   + "n0, n1, ... are the gene tree nodes (the HOG files' gene tree parent clade). "
   + "Below each tree, its alignment (MultipleSequenceAlignments).";
+if (D.stats_page) {
+  $("links").hidden = false;
+  $("links").innerHTML = `See also the <a href="${esc(D.stats_page)}">statistics of this run</a> (orthogroups, species, duplications, HOGs, with plots).`;
+}
 $("legend").innerHTML = D.species.map(([s, c]) => `<span style="--c:${c}">${esc(s)}</span>`).join("");
 $("key").innerHTML = "Click a node to collapse or expand its clade. A branch is in a species' colour when all its genes are of that species. "
   + `<svg width="10" height="10"><rect x="1" y="1" width="8" height="8" fill="${DUP}"/></svg> gene duplication (support &ge; 0.5), `
@@ -434,6 +446,8 @@ function show() {
   $("prev").disabled = i <= 0;
   $("next").disabled = i >= shown.length - 1;
   showStats(t);
+  $("og-stats").hidden = !(t && D.stats_page);
+  if (t && D.stats_page) $("og-stats").href = `${D.stats_page}#orthogroups/${encodeURIComponent(t[0])}`;
   if (!t) { wanted = null; G = null; $("treebox").innerHTML = ""; $("alnbox").hidden = true; return; }
   wanted = t[0];
   if (loaded[t[0]]) return setTree(loaded[t[0]]);

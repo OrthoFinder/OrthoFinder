@@ -184,6 +184,18 @@ def print_help(prog_caller):
         "With -pof, also the orthologs and putative xenologs: Orthologs/Orthologs.*, "
         "Putative_Xenologs/Putative_Xenologs.*",
     )
+    table_options.add_row(
+        "--tree-view",
+        "Also write a page to view the species tree and the resolved gene trees in a web "
+        "browser, with each gene tree's alignment; clades can be collapsed and a tree saved "
+        "as SVG: Resolved_Gene_Trees/Resolved_Gene_Trees.html",
+    )
+    table_options.add_row(
+        "--stats-view",
+        "Also write a page of the run's statistics with interactive plots (overall, per "
+        "species, orthogroups, duplications, HOGs): "
+        "Comparative_Genomics_Statistics/Statistics.html",
+    )
     # print(" -p <dir>                Write the temporary pickle files to <dir>")
     # table_options.add_row(
     #     "-p <[bright_magenta]dir[/bright_magenta]>",

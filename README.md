@@ -192,6 +192,8 @@ Command-line options for OrthoFinder
   | `-n <txt>`      | Name to append to the results directory.                                    |
   | `-o <txt>`      | Specify a non-default results directory.                                    |
   | `-pof`    | Save the pairwise ortholog files.                                           |
+  | `--tree-view` | Also write a page to view the species tree and the resolved gene trees in a web browser, with each gene tree's alignment (`Resolved_Gene_Trees/Resolved_Gene_Trees.html`). |
+  | `--stats-view` | Also write a page of the run's statistics with interactive plots (`Comparative_Genomics_Statistics/Statistics.html`). |
 
 - **Parallel processing options**<br>
   | Parameter | Description                                 | Default |

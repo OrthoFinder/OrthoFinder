@@ -118,7 +118,8 @@ class Options(object):  #
         self.q_split_para_clades = False
         self.q_phyldog = False
         self.orthoxml = False  # -x: also write the orthogroups as OrthoXML and as a web page
-        self.tree_view = False  # --tree-view (not in the help): a page to look at the trees
+        self.tree_view = False  # --tree-view: a page to look at the trees
+        self.stats_view = False  # --stats-view: a page of the statistics, with plots
         self.species_tree_fn = None
         self.mcl_inflation = g_mcl_inflation
         self.dna = False
@@ -713,8 +714,11 @@ def process_args(args):
         elif arg == "-x" or arg == "--orthoxml":
             options.orthoxml = True
 
-        elif arg == "--tree-view":  # not in the help
+        elif arg == "--tree-view":
             options.tree_view = True
+
+        elif arg == "--stats-view":
+            options.stats_view = True
 
         elif arg == "-n" or arg == "--name":
             if options.name:
