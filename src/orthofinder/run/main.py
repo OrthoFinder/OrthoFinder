@@ -71,6 +71,7 @@ from ..species_tree import astral
 from ..orthology import reconciliation
 from ..gene_tree import infer_trees
 from . import process_args, check_dependencies, previous_run
+from .context import RunContext
 from ..search import runner
 from .. import orphan_genes_version, __version__, __location__
 from ..orthology import workflow
@@ -449,7 +450,7 @@ def main(args=None):
     file_io.clear_caches()   # main() may run more than once in a process (e.g. tests)
     start = time.perf_counter()
     log = None
-    current_step = "Initialisation"
+    ctx = RunContext()  # ctx.current_step: "Initialisation"
     exit_code = 0
     try:
         if args is None:
@@ -525,6 +526,7 @@ def main(args=None):
             fmt="%(asctime)s : %(message)s",
         )
         run_logging.RunLogger.set_logger(log)
+        ctx.log = log
         log.info(
             "Starting OrthoFinder v%s\n"
             "%d thread(s) for highly parallel tasks (BLAST searches etc.)\n"
@@ -622,22 +624,16 @@ def main(args=None):
             printing.print_underline("Dividing up work for BLAST for parallel processing")
             runner.create_search_databases(species_info_obj, options, prog_caller)
             # 7.
-            current_step = "Sequence search"
-            log.step(current_step, "Started")
-            runner.run_search(options, species_info_obj, seqs_info, prog_caller)
-            log.step(current_step, "Completed")
-            current_step = "Workflow"
+            with ctx.step("Sequence search"):
+                runner.run_search(options, species_info_obj, seqs_info, prog_caller)
             # 8.
             species_names_dict = previous_run.species_name_dict(
                 file_handler.handler.get_species_ids_fn()
             )
-            current_step = "Infer orthogroups"
-            log.step(current_step, "Started")
-            infer_orthogroups.do_orthogroups(
-                options, species_info_obj, seqs_info, species_names_dict, species_xml
-            )
-            log.step(current_step, "Completed")
-            current_step = "Workflow"
+            with ctx.step("Infer orthogroups"):
+                infer_orthogroups.do_orthogroups(
+                    options, species_info_obj, seqs_info, species_names_dict, species_xml
+                )
             # 9.
             if options.fix_files and not options.q_stop_after_mcl_groups:
                 get_orthologs(
@@ -667,22 +663,16 @@ def main(args=None):
             printing.print_underline("Dividing up work for BLAST for parallel processing")
             runner.create_search_databases(species_info_obj, options, prog_caller)
             # 7.
-            current_step = "Sequence search"
-            log.step(current_step, "Started")
-            runner.run_search(options, species_info_obj, seqs_info, prog_caller)
-            log.step(current_step, "Completed")
-            current_step = "Workflow"
+            with ctx.step("Sequence search"):
+                runner.run_search(options, species_info_obj, seqs_info, prog_caller)
             # 8.
             species_names_dict = previous_run.species_name_dict(
                 file_handler.handler.get_species_ids_fn()
             )
-            current_step = "Infer orthogroups"
-            log.step(current_step, "Started")
-            infer_orthogroups.do_orthogroups(
-                options, species_info_obj, seqs_info, species_names_dict, species_xml
-            )
-            log.step(current_step, "Completed")
-            current_step = "Workflow"
+            with ctx.step("Infer orthogroups"):
+                infer_orthogroups.do_orthogroups(
+                    options, species_info_obj, seqs_info, species_names_dict, species_xml
+                )
             # 9.4
             if options.fix_files and not options.q_stop_after_mcl_groups:
                 get_orthologs(
@@ -719,11 +709,8 @@ def main(args=None):
                 species_info_obj.species_to_use, options.q_double_blast
             )
             if to_create:
-                current_step = "Sequence search"
-                log.step(current_step, "Started")
-                runner.recreate_search_results(to_create, working_dirs[0], options, prog_caller)
-                log.step(current_step, "Completed")
-                current_step = "Workflow"
+                with ctx.step("Sequence search"):
+                    runner.recreate_search_results(to_create, working_dirs[0], options, prog_caller)
                 species_info_obj, _ = previous_run.process_previous_files(
                     working_dirs, options.q_double_blast, check_blast=True
                 )
@@ -757,13 +744,10 @@ def main(args=None):
             species_names_dict = previous_run.species_name_dict(
                 file_handler.handler.get_species_ids_fn()
             )
-            current_step = "Infer orthogroups"
-            log.step(current_step, "Started")
-            infer_orthogroups.do_orthogroups(
-                options, species_info_obj, seqs_info, species_names_dict, species_xml
-            )
-            log.step(current_step, "Completed")
-            current_step = "Workflow"
+            with ctx.step("Infer orthogroups"):
+                infer_orthogroups.do_orthogroups(
+                    options, species_info_obj, seqs_info, species_names_dict, species_xml
+                )
             # 9
             if options.fix_files and not options.q_stop_after_mcl_groups:
                 get_orthologs(
@@ -943,20 +927,17 @@ def main(args=None):
             if not assign.check_for_assign(continuation_dir, species_info_obj):
                 util.fail()
             printing.print_underline("Creating orthogroup profiles")
-            current_step = "Create orthogroup profiles"
-            log.step(current_step, "Started")
-            fn_diamond_db, q_hogs = assign.prepare_assign_database(
-                options.min_seq,
-                continuation_dir,
-                wd_list,
-                species_info_obj.n_sp_all,
-                species_info_obj,
-                options,
-                prog_caller,
-                tree_program=options.tree_program,
-            )
-            log.step(current_step, "Completed")
-            current_step = "Workflow"
+            with ctx.step("Create orthogroup profiles"):
+                fn_diamond_db, q_hogs = assign.prepare_assign_database(
+                    options.min_seq,
+                    continuation_dir,
+                    wd_list,
+                    species_info_obj.n_sp_all,
+                    species_info_obj,
+                    options,
+                    prog_caller,
+                    tree_program=options.tree_program,
+                )
             # print(
             #     "\nAdding new species in %s to existing analysis in %s"
             #     % (fastaDir, continuationDir)
@@ -995,14 +976,11 @@ def main(args=None):
             )
             species_xml = orthoxml_species(options, species_info_obj)
             # Add genes to orthogroups
-            current_step = "Search orthogroup profiles"
-            log.step(current_step, "Started")
-            results_files, results_layout = runner.run_search_assign(
-                options, species_info_obj, fn_diamond_db, prog_caller,
-                reuse_complete=profile_search_done,
-            )
-            log.step(current_step, "Completed")
-            current_step = "Workflow"
+            with ctx.step("Search orthogroup profiles"):
+                results_files, results_layout = runner.run_search_assign(
+                    options, species_info_obj, fn_diamond_db, prog_caller,
+                    reuse_complete=profile_search_done,
+                )
             # Clade-specific genes
             species_names_dict = previous_run.species_name_dict(
                 file_handler.handler.get_species_ids_fn()
@@ -1016,22 +994,19 @@ def main(args=None):
             #     infer_orthogroups.post_clustering_orthogroups(clustersFilename_pairs, speciesInfoObj, seqsInfo, speciesNamesDict, options, speciesXML=None)
             if orphan_genes_version == 2:
                 # v2 - Infer rooted species tree from new rooted gene trees, identify new species-clades & search within these
-                current_step = "Infer clade-specific orthogroups"
-                log.step(current_step, "Started")
-                clusters_filename_pairs, i_og_restart = between_core_orthogroups_workflow(
-                    continuation_dir,
-                    species_info_obj,
-                    seqs_info,
-                    options,
-                    prog_caller,
-                    species_names_dict,
-                    results_files,
-                    q_hogs,
-                    results_layout=results_layout,
-                    only_missing=assign_resume,
-                )
-                log.step(current_step, "Completed")
-                current_step = "Workflow"
+                with ctx.step("Infer clade-specific orthogroups"):
+                    clusters_filename_pairs, i_og_restart = between_core_orthogroups_workflow(
+                        continuation_dir,
+                        species_info_obj,
+                        seqs_info,
+                        options,
+                        prog_caller,
+                        species_names_dict,
+                        results_files,
+                        q_hogs,
+                        results_layout=results_layout,
+                        only_missing=assign_resume,
+                    )
 
                 # Infer clade-specific orthogroup gene trees
                 infer_orthogroups.post_clustering_orthogroups(
@@ -1065,100 +1040,97 @@ def main(args=None):
             raise NotImplementedError
             # ptm = parallel_task_manager.ParallelTaskManagerSingleton()
             ptm.stop()
-        current_step = "Process output files"
-        log.step(current_step, "Started")
-        if not options.save_space:
-            # split up the orthologs into one file per species-pair
-            ortholog_writers.split_ortholog_files(file_handler.handler.get_orthologs_directory())
+        with ctx.step("Process output files"):
+            if not options.save_space:
+                # split up the orthologs into one file per species-pair
+                ortholog_writers.split_ortholog_files(file_handler.handler.get_orthologs_directory())
 
-        ### ------------- Compress the Gene_Trees --------------
-        gene_tree_dir = file_handler.handler.get_ogs_tree_dir(q_results=True)
-        # usr_gene_tree_fn = files.FileHandler.GetUserTreeFN()
-        # paths.compress_files(gene_tree_dir, usr_gene_tree_fn)
+            ### ------------- Compress the Gene_Trees --------------
+            gene_tree_dir = file_handler.handler.get_ogs_tree_dir(q_results=True)
+            # usr_gene_tree_fn = files.FileHandler.GetUserTreeFN()
+            # paths.compress_files(gene_tree_dir, usr_gene_tree_fn)
 
-        ### ------------- Comprees the Resolved_Gene_Trees ------------
-        resolved_gene_tree_dir = file_handler.handler.get_ogs_recon_tree_dir(q_results=True)
-        usr_resolved_gene_tree_fn = file_handler.handler.get_user_resolved_tree_fn()
-        paths.compress_files(resolved_gene_tree_dir, usr_resolved_gene_tree_fn)
+            ### ------------- Comprees the Resolved_Gene_Trees ------------
+            resolved_gene_tree_dir = file_handler.handler.get_ogs_recon_tree_dir(q_results=True)
+            usr_resolved_gene_tree_fn = file_handler.handler.get_user_resolved_tree_fn()
+            paths.compress_files(resolved_gene_tree_dir, usr_resolved_gene_tree_fn)
 
-        ### ---------- Clean up WorkingDirectory ---------------
-        if options.rm_gene_trees:
-            paths.cleanup_path(gene_tree_dir)
+            ### ---------- Clean up WorkingDirectory ---------------
+            if options.rm_gene_trees:
+                paths.cleanup_path(gene_tree_dir)
 
-        if options.rm_resolved_gene_trees:
-            paths.cleanup_path(resolved_gene_tree_dir)
+            if options.rm_resolved_gene_trees:
+                paths.cleanup_path(resolved_gene_tree_dir)
 
-        d_results = (
-            os.path.normpath(file_handler.handler.get_results_directory1()) + os.path.sep
-        )
+            d_results = (
+                os.path.normpath(file_handler.handler.get_results_directory1()) + os.path.sep
+            )
 
-        if options.fewer_open_files and options.save_space:
-            for i in range(len(species_info_obj.species_to_use)):
-                sp0 = species_info_obj.species_to_use[i]
-                sp0_name = species_names_dict[sp0]
-                sp_path = os.path.join(
-                    file_handler.handler.get_orthologs_directory(), f"{sp0_name}.tsv"
-                )
-                # the uncompressed file left from writing the .tsv.gz; only a
-                # regular file is removed, never e.g. a folder a user extracted to
-                if os.path.isfile(sp_path):
-                    os.remove(sp_path)
-
-        if options.orthoxml:
-            # -x: the HOGs and orthologs as OrthoXML and web pages, from the final
-            # results files (the directories are not made if a run removed them)
-            orthogroups_orthoxml = file_handler.handler.get_orthogroup_results_fn_base() + ".orthoxml"
-            orthologs_dir = os.path.join(d_results, "Orthologs")
-            if os.path.exists(orthogroups_orthoxml):
-                try:
-                    orthoxml.write_hogs_and_orthologs(
-                        orthogroups_orthoxml,
-                        os.path.join(d_results, "Phylogenetic_Hierarchical_Orthogroups"),
-                        # the orthologs and xenologs only with -pof: with many species they are very large
-                        None if options.save_space else orthologs_dir,
-                        None if options.save_space else os.path.join(d_results, "Putative_Xenologs"),
+            if options.fewer_open_files and options.save_space:
+                for i in range(len(species_info_obj.species_to_use)):
+                    sp0 = species_info_obj.species_to_use[i]
+                    sp0_name = species_names_dict[sp0]
+                    sp_path = os.path.join(
+                        file_handler.handler.get_orthologs_directory(), f"{sp0_name}.tsv"
                     )
-                except (OSError, KeyError, ValueError) as e:
-                    print("WARNING: The HOGs and orthologs could not be written in OrthoXML format: "
-                          + escape(repr(e)))
-                if options.save_space and os.path.isdir(orthologs_dir) and os.listdir(orthologs_dir):
-                    print("\nAdd -pof to also write the orthologs and putative xenologs in OrthoXML format "
-                          "and as web pages (Orthologs/Orthologs.*, Putative_Xenologs/Putative_Xenologs.*).")
+                    # the uncompressed file left from writing the .tsv.gz; only a
+                    # regular file is removed, never e.g. a folder a user extracted to
+                    if os.path.isfile(sp_path):
+                        os.remove(sp_path)
 
-        if options.tree_view:
-            # --tree-view: pictures of the species tree and the resolved gene trees, and a page for them
-            try:
-                n_trees = tree_pages.write_tree_pages(d_results)
-                if n_trees:
-                    print("\nGene tree pictures (%d): %s" % (n_trees, escape(
-                        os.path.join(d_results, "Resolved_Gene_Trees", "Resolved_Gene_Trees.html"))))
-            except tree_pages.TreeViewUnavailable:
-                printer.print("\nWARNING: " + escape(tree_pages.missing_pyqt6_message(d_results.rstrip(os.sep))),
-                              style="warning", soft_wrap=True)
+            if options.orthoxml:
+                # -x: the HOGs and orthologs as OrthoXML and web pages, from the final
+                # results files (the directories are not made if a run removed them)
+                orthogroups_orthoxml = file_handler.handler.get_orthogroup_results_fn_base() + ".orthoxml"
+                orthologs_dir = os.path.join(d_results, "Orthologs")
+                if os.path.exists(orthogroups_orthoxml):
+                    try:
+                        orthoxml.write_hogs_and_orthologs(
+                            orthogroups_orthoxml,
+                            os.path.join(d_results, "Phylogenetic_Hierarchical_Orthogroups"),
+                            # the orthologs and xenologs only with -pof: with many species they are very large
+                            None if options.save_space else orthologs_dir,
+                            None if options.save_space else os.path.join(d_results, "Putative_Xenologs"),
+                        )
+                    except (OSError, KeyError, ValueError) as e:
+                        print("WARNING: The HOGs and orthologs could not be written in OrthoXML format: "
+                              + escape(repr(e)))
+                    if options.save_space and os.path.isdir(orthologs_dir) and os.listdir(orthologs_dir):
+                        print("\nAdd -pof to also write the orthologs and putative xenologs in OrthoXML format "
+                              "and as web pages (Orthologs/Orthologs.*, Putative_Xenologs/Putative_Xenologs.*).")
 
-        # printer.print("\nResults:\n    %s" % d_results, style="path")
-        if options.q_stop_after_mcl_groups:      # stopped after the orthogroups (-og)
-            printing.print_run_end(d_results, "-fg", "its orthogroups")
-        else:
-            printing.print_run_end(d_results)
-        file_handler.handler.write_to_log("OrthoFinder run completed\n", True)
-        log.step(current_step, "Completed")
-        current_step = "Workflow"
+            if options.tree_view:
+                # --tree-view: pictures of the species tree and the resolved gene trees, and a page for them
+                try:
+                    n_trees = tree_pages.write_tree_pages(d_results)
+                    if n_trees:
+                        print("\nGene tree pictures (%d): %s" % (n_trees, escape(
+                            os.path.join(d_results, "Resolved_Gene_Trees", "Resolved_Gene_Trees.html"))))
+                except tree_pages.TreeViewUnavailable:
+                    printer.print("\nWARNING: " + escape(tree_pages.missing_pyqt6_message(d_results.rstrip(os.sep))),
+                                  style="warning", soft_wrap=True)
+
+            # printer.print("\nResults:\n    %s" % d_results, style="path")
+            if options.q_stop_after_mcl_groups:      # stopped after the orthogroups (-og)
+                printing.print_run_end(d_results, "-fg", "its orthogroups")
+            else:
+                printing.print_run_end(d_results)
+            file_handler.handler.write_to_log("OrthoFinder run completed\n", True)
         log.info("OrthoFinder run completed in %.2f seconds", time.perf_counter() - start)
 
     except Exception as e:
-        current_step = run_logging.RunLogger.failed_stage(current_step)
+        ctx.current_step = run_logging.RunLogger.failed_stage(ctx.current_step)
         exit_code = 1
         if log is not None:
             log.log("ERROR: Step failed",
-                    step=current_step, level="ERROR", exc_info=True)
+                    step=ctx.current_step, level="ERROR", exc_info=True)
             for stream in ("stdout", "stderr"):
                 output = getattr(e, stream, None)
                 if output:
                     if isinstance(output, bytes):
                         output = output.decode("utf-8", errors="replace")
                     log.log("%s:\n%s", stream, output,
-                            step=current_step, level="ERROR")
+                            step=ctx.current_step, level="ERROR")
                     printer.console.print(f"{stream}:\n{output}", markup=False, highlight=False)
         import traceback
         traceback.print_exception(type(e), e, e.__traceback__)
@@ -1167,22 +1139,22 @@ def main(args=None):
         sys.exit(1)
 
     except KeyboardInterrupt:
-        current_step = run_logging.RunLogger.failed_stage(current_step)
+        ctx.current_step = run_logging.RunLogger.failed_stage(ctx.current_step)
         exit_code = 1
         if log is not None:
-            log.step(current_step, "Interrupted by user", level="WARNING")
+            log.step(ctx.current_step, "Interrupted by user", level="WARNING")
         printer.print("\nProgram terminated by user.", style="error")
         sys.exit(1)
 
     except SystemExit as e:
-        current_step = run_logging.RunLogger.failed_stage(current_step)
+        ctx.current_step = run_logging.RunLogger.failed_stage(ctx.current_step)
         exit_code = e.code
         if log is not None:
             if e.code is None or e.code == 0:
-                log.step(current_step, "Workflow stopped normally before the full analysis finished")
+                log.step(ctx.current_step, "Workflow stopped normally before the full analysis finished")
             else:
                 log.log("ERROR: Workflow exited with status %s", e.code,
-                        step=current_step, level="ERROR", exc_info=True)
+                        step=ctx.current_step, level="ERROR", exc_info=True)
         raise
 
     finally:
