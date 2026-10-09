@@ -37,12 +37,12 @@ import subprocess
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, wait
 from .. import __location__
-from . import util
-from .util import printer
+from .printing import printer
 try:
     from rich import print
 except ImportError:
     ...
+from . import printing
     
 try:
     width = os.get_terminal_size().columns
@@ -108,7 +108,7 @@ def _reset_console_locks_in_child():
     """
     try:
         from rich import get_console
-        consoles = [get_console(), util.printer.console]
+        consoles = [get_console(), printing.printer.console]
     except Exception:
         return
     for console in consoles:
@@ -134,12 +134,12 @@ except RuntimeError as e:
 
 def print_time(message):
     run_logging.RunLogger.message(message)
-    util.printer.print((str(datetime.datetime.now()).rsplit(".", 1)[0] + " : " + message), style="default")
+    printing.printer.print((str(datetime.datetime.now()).rsplit(".", 1)[0] + " : " + message), style="default")
     sys.stdout.flush()
 
 
 def print_no_new_line(text):
-    util.printer.print(text, end="")
+    printing.printer.print(text, end="")
     sys.stdout.flush()
     # sys.stdout.write(text)
 
@@ -439,7 +439,7 @@ def run_command(command, q_print_on_error=False, q_print_stderr=True, raise_on_e
             print(("\nCommand: %s" % command))
             print(("\nstdout:\n%s" % stdout))
             print(("stderr:\n%s" % stderr))
-        elif q_print_stderr and len(stderr) > 0 and not util.stderr_exempt(stderr):
+        elif q_print_stderr and len(stderr) > 0 and not printing.stderr_exempt(stderr):
             print("\nWARNING: program called by OrthoFinder produced output to stderr")
             print(("\nCommand: %s" % command))
             print(("\nstdout:\n%s" % stdout))
@@ -474,13 +474,13 @@ def can_run_command(
         and return_code_check
     ):
         if q_print:
-            util.printer.print(" - [bold green]ok")
+            printing.printer.print(" - [bold green]ok")
         return True
     else:
         if q_print:
-            util.printer.print(" - [bold red]failed")
+            printing.printer.print(" - [bold red]failed")
         if not return_code_check:
-            util.printer.print("Returned a non-zero code: %d" % returncode, style="error")
+            printing.printer.print("Returned a non-zero code: %d" % returncode, style="error")
         print("\nstdout:")
         for l in stdout:
             print(l)
@@ -555,7 +555,7 @@ def manage_queue_new(
     # inherit the lock already held and could block on its first print.
     for proc in running_processes:
         proc.start()
-    progressbar, task = util.get_progressbar(total_tasks, visible=show_progress)
+    progressbar, task = printing.get_progressbar(total_tasks, visible=show_progress)
     update_cycle = 1
     if show_progress:
         progressbar.start()

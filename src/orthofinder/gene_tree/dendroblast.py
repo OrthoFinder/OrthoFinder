@@ -15,8 +15,11 @@ except ImportError:
 
 from ..phylo import tree
 from ..species_tree import stag
-from ..utils import util, file_handler, parallel_task_manager, program_caller
+from ..utils import util, file_handler, parallel_task_manager
 from ..utils import blast_file_processor as blast_file_processor
+from ..utils import printing
+from ..phylo import taxa as phylo_taxa
+from ..utils import command_runner
 
 
 class DendroBLASTTrees(object):
@@ -213,7 +216,7 @@ class DendroBLASTTrees(object):
         Args:
             qSpeciesTree - Bool: infer the species tree
         """
-        util.print_underline("Calculating gene distances")
+        printing.print_underline("Calculating gene distances")
         ogs, og_matrices_partial = self.get_og_matrices_full_parallel()
         og_matrices = self.complete_and_write_og_matrices(ogs, og_matrices_partial)
         del og_matrices_partial
@@ -234,8 +237,8 @@ class DendroBLASTTrees(object):
                 cmd_sp_tree, sp_tree_fn_ids = self.prepare_species_tree_command(D, sp_pairs)
                 cmds_trees = [[cmd_sp_tree]] + cmds_trees
         del og_matrices
-        util.print_underline("Inferring gene and species trees" if q_species_tree else "Inferring gene trees")
-        program_caller.run_parallel_commands(self.n_process_std, cmds_trees, q_list_of_list=True)
+        printing.print_underline("Inferring gene and species trees" if q_species_tree else "Inferring gene trees")
+        command_runner.run_parallel_commands(self.n_process_std, cmds_trees, q_list_of_list=True)
         if q_stag:
             # Trees must have been completed
             print("")
@@ -243,7 +246,7 @@ class DendroBLASTTrees(object):
             stag.run_for_ortho_finder(file_handler.handler.get_ogs_tree_dir(), file_handler.handler.get_working_directory_write(),
                                     self.og_set.seqs_info.species_to_use, sp_tree_fn_ids)
         if q_species_tree:
-            util.rename_tree_taxa(sp_tree_fn_ids, file_handler.handler.get_species_tree_unrooted_fn(True), self.og_set.species_dict(),
+            phylo_taxa.rename_tree_taxa(sp_tree_fn_ids, file_handler.handler.get_species_tree_unrooted_fn(True), self.og_set.species_dict(),
                                 q_support=False, q_fix_negatives=True)
             return sp_tree_fn_ids, q_stag
         else:      
@@ -263,7 +266,7 @@ class DendroBLASTTrees(object):
             cmd_sp_tree, sp_tree_fn_ids = self.prepare_species_tree_command(D, sp_pairs, True)
             parallel_task_manager.run_command(cmd_sp_tree, True, False, raise_on_error=True)
         sp_tree_unrooted_fn = file_handler.handler.get_species_tree_unrooted_fn(True) 
-        util.rename_tree_taxa(sp_tree_fn_ids, sp_tree_unrooted_fn, self.og_set.species_dict(), q_support=False, q_fix_negatives=True)  
+        phylo_taxa.rename_tree_taxa(sp_tree_fn_ids, sp_tree_unrooted_fn, self.og_set.species_dict(), q_support=False, q_fix_negatives=True)  
         return sp_tree_fn_ids
 
 # ==============================================================================================================================      

@@ -31,9 +31,15 @@ except ImportError:
 
 from .tree_analyser import TreeAnalyser, mrca_node, gene_to_species_dash, get_lines_for_ortholog_files
 from .hog_writer import HogWriter
-from .parallel_pipeline import run_orthologs_parallel_pipeline, ParentOutputWriter, sort_non_hog_output_files, validate_hog_writer_no_duplicate_ids, set_file_descriptor_limit, NonHogAppendWriter
+from .parallel_pipeline import run_orthologs_parallel_pipeline, set_file_descriptor_limit
+from .sort_outputs import sort_non_hog_output_files, validate_hog_writer_no_duplicate_ids
+from .ortholog_writers import ParentOutputWriter, NonHogAppendWriter
 from ..phylo import tree
 from ..utils import util, file_handler
+from ..utils import printing
+from ..utils import species_info
+from ..phylo import taxa
+from . import stats
 
 
 @run_logging.RunLogger.stage("Infer orthologues")
@@ -61,7 +67,7 @@ def reconciliation_and_orthologs(
     species_tree_ids_fn = file_handler.handler.get_species_tree_ids_rooted_fn()
     labeled_tree_fn = file_handler.handler.get_species_tree_results_node_labels_fn()
 
-    util.rename_tree_taxa(
+    taxa.rename_tree_taxa(
         species_tree_ids_fn,
         labeled_tree_fn,
         og_set.species_dict(),
@@ -183,7 +189,7 @@ def two_and_three_gene_hogs(og_set, st_rooted_labelled, hog_writer):
             st_node = mrca_node(st_rooted_labelled, sp_present)
             hogs_to_write = hogs_to_write + [st_node.name]
         # sorted so the row does not depend on the gene order of the orthogroup
-        genes = sorted((g.to_string() for g in og), key=util.seq_id_key)
+        genes = sorted((g.to_string() for g in og), key=species_info.seq_id_key)
         hog_writer.write_hog_genes(genes, hogs_to_write, og_name)
 
 
@@ -197,7 +203,7 @@ def two_and_three_gene_orthogroups(
     ):
 
     if write_hog_tree and fix_files:
-        return util.NOrthoSp(len(og_set.species_to_use))
+        return stats.NOrthoSp(len(og_set.species_to_use))
 
     species_dict = og_set.species_dict()
     sequence_dict = og_set.sequence_dict()
@@ -379,10 +385,10 @@ def do_orthologs_for_ortho_finder(
         total_tasks = len(iogs4)
 
         if n_parallel == 1:
-            progressbar, task = util.get_progressbar(total_tasks)
+            progressbar, task = printing.get_progressbar(total_tasks)
             progressbar.start()
 
-            n_orthologs_sp_pair = util.NOrthoSp(nspecies)
+            n_orthologs_sp_pair = stats.NOrthoSp(nspecies)
 
             try:
                 for completed_tasks, iog in enumerate(iogs4, start=1):
@@ -433,7 +439,7 @@ def do_orthologs_for_ortho_finder(
 
     except IOError as e:
         if str(e).startswith("[Errno 24] Too many open files"):
-            util.number_open_files_exception_advice(len(og_set.species_to_use), True)
+            printing.number_open_files_exception_advice(len(og_set.species_to_use), True)
             util.fail()
         else:
             raise

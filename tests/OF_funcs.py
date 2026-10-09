@@ -4,7 +4,7 @@ import re
 from collections import defaultdict
 
 import helper
-from orthofinder.utils import file_handler, util, fasta_processor
+from orthofinder.utils import file_handler, fasta_processor
 from orthofinder.run import process_args
 from orthofinder.phylo import tree
 from orthofinder.species_tree import stride
@@ -17,6 +17,10 @@ from orthofinder.orthology.reconciliation import get_species_neighbours, reconci
 
 from orthofinder.orthology.hog_writer import HogWriter
 from orthofinder.orthology.tree_analyser import get_lines_for_ortholog_files, check_and_root_tree, gene_to_species_dash, get_orthologs_from_tree
+from orthofinder.utils import species_info
+from orthofinder.utils import gene_ids
+from orthofinder.phylo import taxa
+from orthofinder.run import previous_run
 
 
 class OrthoFinderTestFuncs:
@@ -127,7 +131,7 @@ class OrthoFinderTestFuncs:
         ) = process_args.process_args(args)
 
         # ---------- Initialise FileHandler to the **current** WD ----------
-        file_handler.initialise_file_handler(
+        previous_run.initialise_file_handler(
             self.options,
             fasta_dir=self.projects,
             continuation_dir=continuation_dir,
@@ -220,7 +224,7 @@ class OrthoFinderTestFuncs:
 
     def get_sequence_info_obj(self):
         species_info_obj = self.get_species_info_obj()
-        return util.get_seqs_info(self.active_wd_list[::-1], species_info_obj.species_to_use, species_info_obj.n_sp_all)
+        return species_info.get_seqs_info(self.active_wd_list[::-1], species_info_obj.species_to_use, species_info_obj.n_sp_all)
 
     def get_og_obj(self):
         species_info_obj = self.get_species_info_obj()
@@ -231,7 +235,7 @@ class OrthoFinderTestFuncs:
             species_info_obj.n_sp_all,
             self.options.q_add_species_to_ids,
             self.options.tree_program,
-            id_extractor=util.FirstWordExtractor,
+            id_extractor=gene_ids.FirstWordExtractor,
             species_id_fn=self.species_id_fn,
             sequence_id_fn=self.sequence_id_fn,
             ogs_all_fn=self.ogs_all_fn,        # core get_ogs_all.tsv in assign mode
@@ -288,7 +292,7 @@ class OrthoFinderTestFuncs:
         og_set = self.get_og_obj()
         species_tree_ids_fn = os.path.join(self.current_working_dir, "SpeciesTree_rooted_ids.txt")
         labeled_tree_fn = os.path.join(self.current_results_dir, "Species_Tree", "SpeciesTree_rooted_node_labels.txt")
-        util.rename_tree_taxa(
+        taxa.rename_tree_taxa(
             species_tree_ids_fn, labeled_tree_fn,
             og_set.species_dict(), q_support=False, q_fix_negatives=True, label='N'
         )
@@ -377,7 +381,7 @@ class OrthoFinderTestFuncs:
         og_set = self.get_og_obj()
         species_tree_ids_fn = os.path.join(self.current_working_dir, "SpeciesTree_rooted_ids.txt")
         labeled_tree_fn = os.path.join(self.current_results_dir, "Species_Tree", "SpeciesTree_rooted_node_labels.txt")
-        util.rename_tree_taxa(
+        taxa.rename_tree_taxa(
             species_tree_ids_fn, labeled_tree_fn,
             og_set.species_dict(), q_support=False, q_fix_negatives=True, label='N'
         )
@@ -468,9 +472,9 @@ class OrthoFinderTestFuncs:
         new_ogs.extend(single_ogs_list)
         ids_filenames = [self.sequence_id_fn]
         try:
-            id_to_name_dict = id_full_dict(ids_filenames, func=util.FirstWordExtractor)
+            id_to_name_dict = id_full_dict(ids_filenames, func=gene_ids.FirstWordExtractor)
         except:
-            id_to_name_dict = id_full_dict(ids_filenames, func=util.FullAccession)
+            id_to_name_dict = id_full_dict(ids_filenames, func=gene_ids.FullAccession)
 
         n_species = len(species_names_dict)
         
@@ -505,7 +509,7 @@ class OrthoFinderTestFuncs:
         og_set = self.get_og_obj()
         species_tree_ids_fn = os.path.join(self.current_working_dir, "SpeciesTree_rooted_ids.txt")
         labeled_tree_fn = os.path.join(self.current_results_dir, "Species_Tree", "SpeciesTree_rooted_node_labels.txt")
-        util.rename_tree_taxa(
+        taxa.rename_tree_taxa(
             species_tree_ids_fn, labeled_tree_fn,
             og_set.species_dict(), q_support=False, q_fix_negatives=True, label='N'
         )

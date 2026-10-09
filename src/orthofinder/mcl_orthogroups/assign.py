@@ -18,6 +18,7 @@ from ..phylo import tree
 from ..utils import util, file_handler, parallel_task_manager, fasta_processor, file_io
 from ..search import runner
 from . import orthogroups_set
+from ..utils import printing
 
 
 class AssignConfig(object):
@@ -489,7 +490,7 @@ def create_profiles_database(
         )
         for start in range(0, len(ogs), chunk_size)
     ]
-    progressbar, task = util.get_progressbar(len(chunks))
+    progressbar, task = printing.get_progressbar(len(chunks))
 
     def progress(n_done):
         if n_done == 0:

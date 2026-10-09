@@ -21,7 +21,7 @@ try:
 except ImportError:
     ...
 
-from .parallel_pipeline import LazyFileCache
+from .ortholog_writers import LazyFileCache
 from ..utils import util, file_handler, file_io
 
 

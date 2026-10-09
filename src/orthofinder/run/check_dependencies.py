@@ -3,7 +3,8 @@ from ..gene_tree import msa_trees
 import os
 import subprocess
 from .. import __location__
-from ..utils.util import printer
+from ..utils.printing import printer
+from ..utils import printing
 
 def can_run_mcl():
     command = "mcl -h"
@@ -34,7 +35,7 @@ def can_run_astral():
 def check_dependencies(options, user_specified_m, prog_caller, dir_for_temp_files, q_assign=False):
     """q_assign: an --assign analysis (also when continued with -b)"""
     q_assign = q_assign or options.q_fast_add
-    util.print_underline("Checking required programs are installed", True)
+    printing.print_underline("Checking required programs are installed", True)
     if not user_specified_m:
         printer.print('Running with the recommended MSA tree inference by default. To revert to legacy method use "-M dendroblast".\n')
     if options.q_start_from_fasta or q_assign:

@@ -32,7 +32,9 @@ try:
 except ImportError:
     ...
 from . import mcl as MCL
-from ..utils import util, file_handler
+from ..utils import file_handler
+from ..utils import species_info
+from ..utils import gene_ids
 
 
 class Seq(object):
@@ -78,11 +80,11 @@ class OrthogroupSet(object):
         n_sp_all,
         q_add_species_to_ids,
         tree_program="fasttree",
-        id_extractor=util.FirstWordExtractor,
+        id_extractor=gene_ids.FirstWordExtractor,
         mcl_inflation=1.2,
     ):
 
-        self.species_ids_ex = util.FullAccession(file_handler.handler.get_species_ids_fn())
+        self.species_ids_ex = gene_ids.FullAccession(file_handler.handler.get_species_ids_fn())
         self._spec_seq_ids = None
         self._extractor = id_extractor
         self.seq_ids_ex = None
@@ -90,7 +92,7 @@ class OrthogroupSet(object):
         self.ogs_single = None
         self.i_ogs4 = None
         self.species_to_use = species_to_use  # list of ints
-        self.seqs_info = util.get_seqs_info(
+        self.seqs_info = species_info.get_seqs_info(
             orthofinder_working_dir_list, self.species_to_use, n_sp_all
         )
         self.id_to_og = None
@@ -118,7 +120,7 @@ class OrthogroupSet(object):
                     print(
                         "more concisely but these were not unique. The full accession line will be used instead.\n"
                     )
-                    self.seq_ids_ex = util.FullAccession(
+                    self.seq_ids_ex = gene_ids.FullAccession(
                         file_handler.handler.get_sequence_ids_fn()
                     )
         self.cached_seq_ids_dict = self.seq_ids_ex.get_id_to_name_dict()

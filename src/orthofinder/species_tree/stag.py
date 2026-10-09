@@ -254,7 +254,7 @@ def run_for_ortho_finder(dir_in, d_working, species_to_use, species_tree_ids_fn_
 #     dir_in = args.gene_trees
 #     astral_jar = None
 #     gene_to_species = GeneToSpecies(args.species_map)
-#     dir_out = util.create_new_working_directory(dir_in + "/../STAG_Results")
+#     dir_out = paths.create_new_working_directory(dir_in + "/../STAG_Results")
 #     CheckFastME(dir_out)
 #     dir_matrices = dir_out + "DistanceMatrices/"
 #     os.mkdir(dir_matrices)

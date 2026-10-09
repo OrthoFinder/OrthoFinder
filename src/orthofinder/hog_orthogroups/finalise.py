@@ -8,6 +8,8 @@ from collections import defaultdict
 
 from ..utils import file_handler, util, file_io
 from ..phylo import newick
+from ..utils import species_info
+from ..utils import paths
 
 def update_output_files(
         sp_ids,
@@ -42,7 +44,7 @@ def update_output_files(
     hogs_converter(file_handler.handler.get_working_directory_write() + "N0.ids.tsv", hog_n0_file, species_names)
 
     seq_dir = file_handler.handler.get_results_seqs_dir()
-    util.clear_dir(seq_dir)
+    paths.clear_dir(seq_dir)
 
     og_set, id_dict, name_dictionary, new_ogs = convert.post_hogs_processing(
         all_seq_ids,
@@ -158,7 +160,7 @@ def tree_name_to_id_dict(id_dict, hog_n0_rows=(), species_names=()):
         if len(seq_ids) == 1:
             name_to_id[name] = next(iter(seq_ids))
         else:
-            ambiguous[name] = sorted(seq_ids, key=util.seq_id_key)
+            ambiguous[name] = sorted(seq_ids, key=species_info.seq_id_key)
     for name, seq_id in others.items():
         if name not in by_name:
             name_to_id[name] = seq_id

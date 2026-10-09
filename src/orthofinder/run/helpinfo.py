@@ -1,7 +1,6 @@
 import os
-from ..utils import util
 from . import process_args
-from ..utils.util import printer
+from ..utils.printing import printer
 from .. import g_mcl_inflation, n_threads_default
 
 try:
@@ -12,6 +11,7 @@ except ImportError:
 from rich.table import Table
 from rich.console import Console
 from rich.text import Text
+from ..utils import printing
 
 # try:
 #     width = os.get_terminal_size().columns
@@ -321,4 +321,4 @@ def print_help(prog_caller):
     print(
         " Distributed under the [dodger_blue1]GNU General Public License (GPLv3)[/dodger_blue1]. See License.md"
     )
-    util.print_citation()
+    printing.print_citation()

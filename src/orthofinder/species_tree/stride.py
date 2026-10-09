@@ -815,7 +815,7 @@ def get_root(species_tree_fn, trees_dir, gene_to_species_map, n_processors, q_wr
 # #        roots, clusters_counter, _, nSupport, clades, species = get_root(args.Species_tree, args.gene_trees, GeneToSpecies, nProcs, treeFmt = 1, qWriteDupTrees=args.output)
 #         roots, clusters_counter, _, nSupport, clades, species, all_stride_dup_genes = get_root(args.Species_tree, args.gene_trees, GeneToSpecies, nProcs)
 #         PrintRootingSummary(roots, clusters_counter, nSupport)
-#         outputDir = util.create_new_working_directory(args.gene_trees + "/../STRIDE_Results")
+#         outputDir = paths.create_new_working_directory(args.gene_trees + "/../STRIDE_Results")
 # #        shelveFN = outputDir + "STRIDE_data.shv"
 # #        d = shelve.open(shelveFN)
 # #        d['roots'] = roots

@@ -33,6 +33,7 @@ import os
 import sys
 import glob
 import argparse
+from orthofinder.utils import gene_ids
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 repo_root = os.path.dirname(script_dir)
@@ -120,7 +121,7 @@ def replace_file_with_new_ids(ids_map, tree_filename, new_tree_filename):
 
 def get_species_sequence_ids_dict(sequence_ids_filename, species_ids_fn=None):
     try:
-        extract = util.FirstWordExtractor(sequence_ids_filename)
+        extract = gene_ids.FirstWordExtractor(sequence_ids_filename)
     except RuntimeError as error:
         msg = str(error)
         print(msg)
@@ -134,12 +135,12 @@ def get_species_sequence_ids_dict(sequence_ids_filename, species_ids_fn=None):
             "unique. The full accession line will be used instead.\n"
         )
 
-        extract = util.FullAccession(sequence_ids_filename)
+        extract = gene_ids.FullAccession(sequence_ids_filename)
 
     ids_dict = extract.get_id_to_name_dict()
 
     if species_ids_fn is not None:
-        species_dict = util.FullAccession(species_ids_fn).get_id_to_name_dict()
+        species_dict = gene_ids.FullAccession(species_ids_fn).get_id_to_name_dict()
         species_dict = {
             k: v.rsplit(".", 1)[0].replace(".", "_").replace(" ", "_")
             for k, v in species_dict.items()

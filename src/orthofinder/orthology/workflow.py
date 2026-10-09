@@ -43,6 +43,10 @@ from ..mcl_orthogroups import orthogroups_set, assign
 from . import stats
 
 from ..hog_orthogroups import finalise
+from ..utils import printing
+from ..utils import gene_ids
+from ..utils import paths
+from ..phylo import taxa
 # from ..mcl_orthogroups import assign
 
 # ==============================================================================================================================      
@@ -61,7 +65,7 @@ from ..hog_orthogroups import finalise
 
 # def write_orthologs_stats(ogSet, NOrthoSp):
 #     """
-#     NOrthoSp is a util.NOrthoSp object
+#     NOrthoSp is a stats.NOrthoSp object
 #     """
 #     speciesToUse = ogSet.speciesToUse
 #     speciesDict = ogSet.species_dict()
@@ -168,7 +172,7 @@ def orthologs_workflow(
         n_sp_all,
         q_add_species_to_ids, 
         tree_program=options.tree_program,
-        id_extractor = util.FirstWordExtractor,
+        id_extractor = gene_ids.FirstWordExtractor,
         mcl_inflation=options.mcl_inflation
     )
 
@@ -216,7 +220,7 @@ def orthologs_workflow(
         shutil.rmtree(file_handler.handler.get_results_align_dir())
         # shutil.rmtree(files.FileHandler.get_results_duplications_dir())
         
-        util.print_run_end(file_handler.handler.get_results_directory1(), "-fgt", "its gene trees")
+        printing.print_run_end(file_handler.handler.get_results_directory1(), "-fgt", "its gene trees")
         util.success()
     
     if return_obj is None:
@@ -248,7 +252,7 @@ def orthologs_workflow(
         shutil.rmtree(file_handler.handler.get_orthogroup_results_dir())
         shutil.rmtree(file_handler.handler.get_orthologs_directory())
         shutil.rmtree(file_handler.handler.get_results_align_dir())
-        util.print_run_end(file_handler.handler.get_results_directory1(), "-fst", "its species tree")
+        printing.print_run_end(file_handler.handler.get_results_directory1(), "-fst", "its species tree")
         util.success()
 
     if return_obj is None:
@@ -283,7 +287,7 @@ def infer_orthologs_and_write_results(
     if options.fix_files:
         # if options.qMSATrees:
         #     align_dir = files.FileHandler.get_results_align_dir()
-            # util.clear_dir(align_dir)
+            # paths.clear_dir(align_dir)
         write_hog_tree = True
         write_to_rd = False
     
@@ -348,11 +352,11 @@ def infer_orthologs_and_write_results(
             shutil.rmtree(file_handler.handler.get_orthologs_directory())
             shutil.rmtree(file_handler.handler.get_results_align_dir())
             shutil.rmtree(file_handler.handler.get_results_duplications_dir())
-            util.print_run_end(file_handler.handler.get_results_directory1())
+            printing.print_run_end(file_handler.handler.get_results_directory1())
             util.success()
             
         util.print_time("Done updating MSA/Trees")
-        util.clear_dir(file_handler.handler.get_ogs_recon_tree_dir(q_results=True))
+        paths.clear_dir(file_handler.handler.get_ogs_recon_tree_dir(q_results=True))
         infer_orthologs(
             og_set, 
             rooted_sp_tree, 
@@ -454,7 +458,7 @@ def root_species_tree(
         q_multiple = False
         stride_dups = None
     else:
-        util.print_underline("Best outgroup(s) for species tree") 
+        printing.print_underline("Best outgroup(s) for species tree") 
         util.print_time("Starting STRIDE")
         roots, clusters_counter, rooted_species_tree_fn, n_support, _, _, stride_dups = \
             stride.get_root(
@@ -492,23 +496,23 @@ def root_species_tree(
         results_species_trees = []
         for i, (r, species_tree_fn) in enumerate(zip(roots, rooted_species_tree_fn)):
             results_species_trees.append(file_handler.handler.get_species_tree_results_fn(i, not q_multiple))
-            util.rename_tree_taxa(species_tree_fn, results_species_trees[-1], og_set.species_dict(), q_support=q_species_tree_supports, q_fix_negatives=True)
+            taxa.rename_tree_taxa(species_tree_fn, results_species_trees[-1], og_set.species_dict(), q_support=q_species_tree_supports, q_fix_negatives=True)
             labeled_tree_fn = file_handler.handler.get_species_tree_results_node_labels_fn()
-            util.rename_tree_taxa(species_tree_fn, labeled_tree_fn, og_set.species_dict(), q_support=False, q_fix_negatives=True, label='N')
+            taxa.rename_tree_taxa(species_tree_fn, labeled_tree_fn, og_set.species_dict(), q_support=False, q_fix_negatives=True, label='N')
         id_dict = og_set.spec_seq_dict()
         q_have_support = None 
         for iog in og_set.get_i_ogs4():
             infn = file_handler.handler.get_ogs_tree_fn(iog)
             if os.path.exists(infn):
-                if q_have_support is None: q_have_support = util.have_support_values(infn)
-                util.rename_tree_taxa(infn, file_handler.handler.get_ogs_tree_fn(iog, True), id_dict, q_support=q_have_support, q_fix_negatives=True)       
+                if q_have_support is None: q_have_support = taxa.have_support_values(infn)
+                taxa.rename_tree_taxa(infn, file_handler.handler.get_ogs_tree_fn(iog, True), id_dict, q_support=q_have_support, q_fix_negatives=True)       
         file_handler.handler.clean_working_dir2()
         
     if q_multiple:
         print("\nWARNING: Multiple potential species tree roots were identified, only one will be analyed.")
         for i, (r, species_tree_fn) in enumerate(zip(roots, rooted_species_tree_fn)):
             unanalysed_species_tree = file_handler.handler.get_species_tree_results_fn(i, False)
-            util.rename_tree_taxa(species_tree_fn, unanalysed_species_tree, og_set.species_dict(),
+            taxa.rename_tree_taxa(species_tree_fn, unanalysed_species_tree, og_set.species_dict(),
                                 q_support=q_species_tree_supports, q_fix_negatives=True, label='N')
     return roots[0], rooted_species_tree_fn[0], q_multiple, stride_dups
 
@@ -544,12 +548,12 @@ def infer_orthologs(
     results_species_trees = []
     i_rooted_sp_tree = 0
     if print_info:
-        util.print_underline("Reconciling gene trees and species tree")         
+        printing.print_underline("Reconciling gene trees and species tree")         
     results_species_trees.append(file_handler.handler.get_species_tree_results_fn(0, True))
     if (not user_species_tree) and (not q_phyldog) and len(og_set.seqs_info.species_to_use) != 2:
         if print_info:
             print(("Outgroup: " + (", ".join([og_set.species_dict()[s] for s in rooted_sp_tree]))))
-    util.rename_tree_taxa(
+    taxa.rename_tree_taxa(
         species_tree_fn, 
         results_species_trees[-1], 
         og_set.species_dict(), 
@@ -586,7 +590,7 @@ def infer_orthologs(
 
     file_handler.handler.clean_working_dir2(working_dir=working_dir)
     if print_info:
-        util.print_underline("Writing results files", True)
+        printing.print_underline("Writing results files", True)
         # util.print_time("Start writing files")
         util.print_time("Start writing hierarchical orthogroups files")
 
@@ -630,7 +634,7 @@ def orthologs_from_gene_trees(
         n_sp_all,
         q_add_species_to_ids, 
         tree_program=options.tree_program,
-        id_extractor = util.FirstWordExtractor,
+        id_extractor = gene_ids.FirstWordExtractor,
         mcl_inflation=options.mcl_inflation
     )
 
@@ -642,7 +646,7 @@ def orthologs_from_gene_trees(
         infer_trees.convert_user_species_tree(user_species_tree, og_set.species_dict(), sp_tree_fn_ids)
     q_species_tree_supports = (
         False if (user_species_tree or q_msa or q_phyldog)
-        else util.have_support_values(sp_tree_fn_ids)
+        else taxa.have_support_values(sp_tree_fn_ids)
     )
 
     return_obj = root_species_tree(
@@ -704,7 +708,7 @@ def orthologs_from_gene_species_trees(
         n_sp_all,
         q_add_species_to_ids, 
         tree_program=options.tree_program,
-        id_extractor = util.FirstWordExtractor,
+        id_extractor = gene_ids.FirstWordExtractor,
         mcl_inflation=options.mcl_inflation
     )
     
@@ -716,7 +720,7 @@ def orthologs_from_gene_species_trees(
         infer_trees.convert_user_species_tree(user_species_tree_fn, og_set.species_dict(), sp_tree_fn_ids)
     q_species_tree_supports = (
         False if (user_species_tree_fn or options.q_msa_trees or options.q_phyldog)
-        else util.have_support_values(sp_tree_fn_ids)
+        else taxa.have_support_values(sp_tree_fn_ids)
     )
     return_obj = root_species_tree(
         og_set,

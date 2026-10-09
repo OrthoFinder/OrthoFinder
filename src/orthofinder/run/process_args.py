@@ -1,7 +1,7 @@
 import os
 import re
 from ..utils import util, file_handler, program_caller
-from ..utils.util import printer
+from ..utils.printing import printer
 from ..orthology import workflow
 from .. import __version__, g_mcl_inflation, n_threads_default, __location__
 from . import helpinfo, previous_run
@@ -16,6 +16,7 @@ try:
     from rich import print
 except ImportError:
     ...
+from ..utils import printing
 
 configfile_location = os.path.join(__location__, "run")
 
@@ -1216,7 +1217,7 @@ def check_options(options, species_to_use):
             delete_directory_tree(wd_files_test)
         except IOError as e:
             if str(e).startswith("[Errno 24] Too many open files"):
-                util.number_open_files_exception_advice(len(species_to_use), False)
+                printing.number_open_files_exception_advice(len(species_to_use), False)
                 for fhh in fh:
                     fhh.close()
                 delete_directory_tree(wd_files_test)

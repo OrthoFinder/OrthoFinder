@@ -23,7 +23,9 @@ except ImportError:
     ...
 from ..phylo import tree as tree_lib
 from . import resolve
-from ..utils import util, file_handler, file_io
+from ..utils import file_handler, file_io
+from ..phylo import taxa as phylo_taxa
+from . import stats
 
 
 debug = False   # HOGs
@@ -116,7 +118,7 @@ class TreeAnalyser(object):
 
         It returns a payload to the parent process.
 
-        If nOrtho_acc (a util.NOrthoSp) is given, this tree's ortholog
+        If nOrtho_acc (a stats.NOrthoSp) is given, this tree's ortholog
         counts are added to it once the whole tree has been analysed, and the
         payload's "n_orthologues" is None. Otherwise it holds a dense
         NOrthoSp for this tree.
@@ -175,7 +177,7 @@ class TreeAnalyser(object):
                 self.q_split_paralogous_clades,
             )
 
-            util.rename_tree_taxa(
+            phylo_taxa.rename_tree_taxa(
                 recon_tree,
                 self.recon_trees_renamed_dir + "OG%07d.txt" % iog,
                 self.spec_seq_dict,
@@ -205,7 +207,7 @@ class TreeAnalyser(object):
             return {
                 "iog": iog,
                 "n_orthologues": (
-                    util.NOrthoSp(n_species) if n_ortho_acc is None else None
+                    stats.NOrthoSp(n_species) if n_ortho_acc is None else None
                 ),
                 "olog_lines": empty_ortholog_lines(self.nspecies, self.fewer_open_files),
                 "olog_sus_lines": ["" for _ in range(self.nspecies)],
@@ -746,7 +748,7 @@ def get_lines_for_ortholog_files(
     which avoids allocating five nspecies x nspecies matrices per tree.
     """
     nsp = len(i_species_to_use)
-    n_ortho = util.NOrthoSp(nsp) if pair_counts is None else None
+    n_ortho = stats.NOrthoSp(nsp) if pair_counts is None else None
 
     # Rows are collected in lists and joined once at the end. Appending with
     # olog_lines[i][j] += row copies the whole accumulated string every time

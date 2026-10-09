@@ -9,6 +9,8 @@ from ..utils import util, file_handler, file_io
 
 from xml.etree.ElementTree import SubElement  # Y
 from .. import __version__
+from ..utils import species_info
+from ..utils import gene_ids
 
 
 def post_hogs_processing(
@@ -29,7 +31,7 @@ def post_hogs_processing(
         file_handler.handler.hierarchical_orthogroups_fn_n0()
     )
     results_base_filename = file_handler.handler.get_orthogroup_results_fn_base()
-    # util.print_underline("Writing orthogroups to file")
+    # printing.print_underline("Writing orthogroups to file")
     all_assigned = set([g for og in new_ogs for g in og])
     # Unassigned genes in sequence-ID order: iterating a set of strings gives a
     # different order (and so different OG numbers) in every run.
@@ -39,7 +41,7 @@ def post_hogs_processing(
 
     with open(file_handler.handler.ogs_all_id_fn(), "w") as outfile:
         for og in new_ogs:
-            outfile.write(", ".join(sorted(og, key=util.seq_id_key)) + "\n")
+            outfile.write(", ".join(sorted(og, key=species_info.seq_id_key)) + "\n")
 
     ids_dict = MCL.write_orthogroup_files(
         new_ogs, [file_handler.handler.get_sequence_ids_fn()], results_base_filename
@@ -62,7 +64,7 @@ def post_hogs_processing(
         species_info_obj.n_sp_all,
         options.q_add_species_to_ids,
         options.tree_program,
-        id_extractor=util.FirstWordExtractor,
+        id_extractor=gene_ids.FirstWordExtractor,
     )
 
     ## ------------------ Fix Orthogroup_Sequences and Sequences_ids --------------------
@@ -148,7 +150,7 @@ def read_hogs_to_matrix(input_path):
 #     return iSeq + offset
 
 
-def id_full_dict(ids_filenames, func=util.FirstWordExtractor):
+def id_full_dict(ids_filenames, func=gene_ids.FirstWordExtractor):
 
     full_dict = dict()
     for ids_filename in ids_filenames:
@@ -202,7 +204,7 @@ class OrthogroupSet(object):
         n_sp_all,
         q_add_species_to_ids,
         tree_prgram="fasttree",
-        id_extractor=util.FirstWordExtractor,
+        id_extractor=gene_ids.FirstWordExtractor,
         species_id_fn="",
         sequence_id_fn="",
         ogs_all_fn="",
@@ -223,14 +225,14 @@ class OrthogroupSet(object):
         else:
             self.ogs_all_fn = ogs_all_fn
 
-        self.species_ids_ex = util.FullAccession(self.species_id_fn)
+        self.species_ids_ex = gene_ids.FullAccession(self.species_id_fn)
         self._spec_seq_ids = None
         self._extractor = id_extractor
         self.seq_ids_ex = None
         self.ogs_all = None
         self.i_ogs4 = None
         self.species_to_use = species_to_use  # list of ints
-        self.seqs_info = util.get_seqs_info(
+        self.seqs_info = species_info.get_seqs_info(
             orthofinder_working_dir_list, self.species_to_use, n_sp_all
         )
         self.id_to_og = None
@@ -257,7 +259,7 @@ class OrthogroupSet(object):
                     print(
                         "more concisely but these were not unique. The full accession line will be used instead.\n"
                     )
-                    self.seq_ids_ex = util.FullAccession(self.sequence_id_fn)
+                    self.seq_ids_ex = gene_ids.FullAccession(self.sequence_id_fn)
         self.cached_seq_ids_dict = self.seq_ids_ex.get_id_to_name_dict()
         return self.cached_seq_ids_dict
 
@@ -400,11 +402,11 @@ class MCL:
         try:
             # fullDict = dict()
             # for idsFilename in idsFilenames:
-            #     idExtract = util.FirstWordExtractor(idsFilename)
+            #     idExtract = gene_ids.FirstWordExtractor(idsFilename)
             #     idDict = idExtract.get_id_to_name_dict()
             #     fullDict.update(idDict)
 
-            full_dict = id_full_dict(ids_filenames, func=util.FirstWordExtractor)
+            full_dict = id_full_dict(ids_filenames, func=gene_ids.FirstWordExtractor)
             MCL.create_ogs(ogs, output_fn, full_dict)
         except KeyError as e:
             sys.stderr.write("ERROR: Sequence ID not found in %s\n" % ids_filenames)
@@ -424,10 +426,10 @@ class MCL:
                 try:
                     # fullDict = dict()
                     # for idsFilename in idsFilenames:
-                    #     idExtract = util.FullAccession(idsFilename)
+                    #     idExtract = gene_ids.FullAccession(idsFilename)
                     #     idDict = idExtract.get_id_to_name_dict()
                     #     fullDict.update(idDict)
-                    full_dict = id_full_dict(ids_filenames, func=util.FullAccession)
+                    full_dict = id_full_dict(ids_filenames, func=gene_ids.FullAccession)
                     MCL.create_ogs(ogs, output_fn, full_dict)
                 except:
                     err_text = "ERROR: %s contains a duplicate ID. " % (ids_filenames)

@@ -18,7 +18,7 @@ from ..phylo import tree
 
 def write_orthologs_stats(og_set, NOrthoSp):
     """
-    NOrthoSp is a util.NOrthoSp object
+    NOrthoSp is a stats.NOrthoSp object
     """
     species_to_use = og_set.species_to_use
     species_dict = og_set.species_dict()
@@ -341,3 +341,46 @@ def add_unassigned_genes(ogs, all_seq_ids):
     ogs.extend([{g,} for g in unassigned])
     return ogs
 
+
+class NOrthoSp(object):
+    """matrix of number of genes in species i that have orthologues/an ortholog in species j"""
+
+    def __init__(self, n_sp):
+        self.n = np.zeros((n_sp, n_sp))
+        self.n_121 = np.zeros((n_sp, n_sp))  # genes in i that have one ortholog in j
+        self.n_12m = np.zeros((n_sp, n_sp))  # genes in i that have many orthologs in j
+        self.n_m21 = np.zeros(
+            (n_sp, n_sp)
+        )  # genes in i that are in a many-to-one orthology relationship with genes in j
+        self.n_m2m = np.zeros(
+            (n_sp, n_sp)
+        )  # genes in i that are in a many-to-many orthology relationship with genes in j
+
+    def __iadd__(self, other):
+        self.n += other.n
+        self.n_121 += other.n_121
+        self.n_12m += other.n_12m
+        self.n_m21 += other.n_m21
+        self.n_m2m += other.n_m2m
+        return self
+
+    def add_pair(self, i_l, i_r, n_l, n_r):
+        """Record one orthology relationship between nL genes in iL and nR genes in iR."""
+        self.n[i_l, i_r] += n_l
+        self.n[i_r, i_l] += n_r
+
+        if n_l == 1 and n_r == 1:
+            self.n_121[i_l, i_r] += 1
+            self.n_121[i_r, i_l] += 1
+
+        elif n_l == 1:
+            self.n_12m[i_l, i_r] += 1
+            self.n_m21[i_r, i_l] += n_r
+
+        elif n_r == 1:
+            self.n_m21[i_l, i_r] += n_l
+            self.n_12m[i_r, i_l] += 1
+
+        else:
+            self.n_m2m[i_l, i_r] += n_l
+            self.n_m2m[i_r, i_l] += n_r

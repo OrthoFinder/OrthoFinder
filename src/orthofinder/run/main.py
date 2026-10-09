@@ -31,6 +31,12 @@ from __future__ import absolute_import
 import multiprocessing as mp  # optional  (problems on OpenBSD)
 import platform  # Y
 import sys  # Y
+from ..utils import printing
+from ..utils import species_info
+from ..utils import gene_ids
+from ..utils import paths
+from ..phylo import taxa
+from ..orthology import ortholog_writers
 
 if __name__ == "__main__":
     if platform.system() == "Darwin":
@@ -67,7 +73,7 @@ from . import process_args, check_dependencies, previous_run
 from ..search import runner
 from .. import orphan_genes_version, __version__, __location__
 from ..orthology import workflow
-from ..utils.util import printer
+from ..utils.printing import printer
 from rich.markup import escape
 
 try:
@@ -118,7 +124,7 @@ def get_orthologs(
     i_og_restart=0,
     species_xml=None,
 ):
-    util.print_underline("Analysing Orthogroups", True)
+    printing.print_underline("Analysing Orthogroups", True)
     workflow.orthologs_workflow(
         seqs_info,
         species_names_dict,
@@ -216,7 +222,7 @@ def between_core_orthogroups_workflow(
         species_info_obj.n_sp_all,
         options.q_add_species_to_ids,
         options.tree_program,
-        id_extractor=util.FirstWordExtractor,
+        id_extractor=gene_ids.FirstWordExtractor,
         mcl_inflation=options.mcl_inflation,
     )
 
@@ -301,7 +307,7 @@ def between_core_orthogroups_workflow(
         rooted_species_tree_ids.write(outfile=rooted_species_tree_fn)
 
         sp_tree_unrooted_fn = file_handler.handler.get_species_tree_results_fn(None, True)
-        util.rename_tree_taxa(
+        taxa.rename_tree_taxa(
             rooted_species_tree_ids,
             sp_tree_unrooted_fn,
             og_set.species_dict(),
@@ -310,7 +316,7 @@ def between_core_orthogroups_workflow(
         )
 
         labeled_tree_fn = file_handler.handler.get_species_tree_results_node_labels_fn()
-        util.rename_tree_taxa(
+        taxa.rename_tree_taxa(
             rooted_species_tree_ids,
             labeled_tree_fn,
             og_set.species_dict(),
@@ -320,7 +326,7 @@ def between_core_orthogroups_workflow(
         )
         i_og_restart = len(ogs)  # Need to process the clade-specific orthogroups only
     else:
-        util.print_underline("Using user-supplied species tree")
+        printing.print_underline("Using user-supplied species tree")
         sp_tree_fn_ids = file_handler.handler.get_species_tree_unrooted_fn()
         infer_trees.convert_user_species_tree(
             options.species_tree_fn, og_set.species_dict(), sp_tree_fn_ids
@@ -330,7 +336,7 @@ def between_core_orthogroups_workflow(
     # Identify clades for clade-specific orthogroup inference
     i_species_core = set(species_info_obj.get_original_species())
     species_clades = assign.get_new_species_clades(rooted_species_tree_fn, i_species_core)
-    util.print_underline(
+    printing.print_underline(
         "Identifying clade-specific orthogroups for the following clades:", q_heavy=True
     )
     species_dict = og_set.species_dict()
@@ -378,14 +384,14 @@ def between_core_orthogroups_workflow(
     n_clades = len(species_clades)
     clusters_filename_pairs_unassigned_all = []
     for i_clade, clade in enumerate(species_clades):
-        util.print_underline(
+        printing.print_underline(
             "OrthoFinder clutering on new species clade %d of %d"
             % (i_clade + 1, n_clades)
         )
         print(str(i_clade) + ": " + ", ".join([species_dict[str(isp)] for isp in clade]))
         species_info_clade = copy.deepcopy(species_info_obj)
         species_info_clade.species_to_use = clade
-        seqs_info_clade = util.seqs_info_recompute(seqs_info, clade)
+        seqs_info_clade = species_info.seqs_info_recompute(seqs_info, clade)
         clusters_filename_pairs_unassigned = infer_orthogroups.do_orthogroups(
             options,
             species_info_clade,
@@ -471,7 +477,7 @@ def main(args=None):
             if not state:
                 # no run_state.json (older versions, or the file removed): what
                 # Log.txt records, read before this run rewrites it
-                state = file_handler.state_from_log(continuation_dir)
+                state = previous_run.state_from_log(continuation_dir)
             i_og_restart_state = state.get("assign", {}).get("i_og_restart", 0)
             changed = run_state.restore_settings(state, options, input_args)
             # the run's search program (restored above, or the same as the default)
@@ -482,7 +488,7 @@ def main(args=None):
         # up, as it logs the search program.
         options = process_args.resolve_search_program(options, prog_caller)
 
-        file_handler.initialise_file_handler(
+        previous_run.initialise_file_handler(
             options,
             fasta_dir,
             continuation_dir,
@@ -570,7 +576,7 @@ def main(args=None):
             q_assign=assign_resume,
         )
         if continuation_dir is not None:
-            util.print_restart_info(options, continuation_dir)
+            printing.print_restart_info(options, continuation_dir)
 
 
         # if using previous Trees etc., check these are all present - Job for orthologs
@@ -592,7 +598,7 @@ def main(args=None):
             file_handler.handler.log_species()
             options = process_args.check_options(options, species_info_obj.species_to_use)
             # 4.
-            seqs_info = util.get_seqs_info(
+            seqs_info = species_info.get_seqs_info(
                 file_handler.handler.get_working_directory1_read(),
                 species_info_obj.species_to_use,
                 species_info_obj.n_sp_all,
@@ -605,7 +611,7 @@ def main(args=None):
             # )
             species_xml = None
             # 6.
-            util.print_underline("Dividing up work for BLAST for parallel processing")
+            printing.print_underline("Dividing up work for BLAST for parallel processing")
             runner.create_search_databases(species_info_obj, options, prog_caller)
             # 7.
             current_step = "Sequence search"
@@ -642,7 +648,7 @@ def main(args=None):
             file_handler.handler.log_species()
             options = process_args.check_options(options, species_info_obj.species_to_use)
             # 4
-            seqs_info = util.get_seqs_info(
+            seqs_info = species_info.get_seqs_info(
                 file_handler.handler.get_working_directory1_read(),
                 species_info_obj.species_to_use,
                 species_info_obj.n_sp_all,
@@ -655,7 +661,7 @@ def main(args=None):
             # )
             species_xml = None
             # 6.
-            util.print_underline("Dividing up work for BLAST for parallel processing")
+            printing.print_underline("Dividing up work for BLAST for parallel processing")
             runner.create_search_databases(species_info_obj, options, prog_caller)
             # 7.
             current_step = "Sequence search"
@@ -737,7 +743,7 @@ def main(args=None):
             )
             options = process_args.check_options(options, species_info_obj.species_to_use)
             # 4.
-            seqs_info = util.get_seqs_info(
+            seqs_info = species_info.get_seqs_info(
                 file_handler.handler.get_working_directory1_read(),
                 species_info_obj.species_to_use,
                 species_info_obj.n_sp_all,
@@ -793,7 +799,7 @@ def main(args=None):
             species_names_dict = previous_run.species_name_dict(
                 file_handler.handler.get_species_ids_fn()
             )
-            seqs_info = util.get_seqs_info(
+            seqs_info = species_info.get_seqs_info(
                 file_handler.handler.get_working_directory1_read(),
                 species_info_obj.species_to_use,
                 species_info_obj.n_sp_all,
@@ -841,7 +847,7 @@ def main(args=None):
             species_names_dict = previous_run.species_name_dict(
                 file_handler.handler.get_species_ids_fn()
             )
-            seqs_info = util.get_seqs_info(
+            seqs_info = species_info.get_seqs_info(
                 file_handler.handler.get_working_directory1_read(),
                 species_info_obj.species_to_use,
                 species_info_obj.n_sp_all,
@@ -882,7 +888,7 @@ def main(args=None):
             species_names_dict = previous_run.species_name_dict(
                 file_handler.handler.get_species_ids_fn()
             )
-            seqs_info = util.get_seqs_info(
+            seqs_info = species_info.get_seqs_info(
                 file_handler.handler.get_working_directory1_read(),
                 species_info_obj.species_to_use,
                 species_info_obj.n_sp_all,
@@ -926,7 +932,7 @@ def main(args=None):
                 # The core species, as the run had them when it started (its
                 # working directory had the core's SpeciesIDs.txt, the new
                 # species were added after the profiles were made)
-                species_info_obj = util.SpeciesInfo()
+                species_info_obj = species_info.SpeciesInfo()
                 species_info_obj.species_to_use = list(range(first_new_species))
                 species_info_obj.n_sp_all = first_new_species
                 wd_list = file_handler.handler.get_working_directory1_read()[1:]   # the core's
@@ -942,7 +948,7 @@ def main(args=None):
             # Check previous directory has been done with MSA trees
             if not assign.check_for_assign(continuation_dir, species_info_obj):
                 util.fail()
-            util.print_underline("Creating orthogroup profiles")
+            printing.print_underline("Creating orthogroup profiles")
             current_step = "Create orthogroup profiles"
             log.step(current_step, "Started")
             fn_diamond_db, q_hogs = assign.prepare_assign_database(
@@ -988,7 +994,7 @@ def main(args=None):
                 )
 
             options = process_args.check_options(options, species_info_obj.species_to_use)
-            seqs_info = util.get_seqs_info(
+            seqs_info = species_info.get_seqs_info(
                 file_handler.handler.get_working_directory1_read(),
                 species_info_obj.species_to_use,
                 species_info_obj.n_sp_all,
@@ -1068,24 +1074,24 @@ def main(args=None):
         log.step(current_step, "Started")
         if not options.save_space:
             # split up the orthologs into one file per species-pair
-            util.split_ortholog_files(file_handler.handler.get_orthologs_directory())
+            ortholog_writers.split_ortholog_files(file_handler.handler.get_orthologs_directory())
 
         ### ------------- Compress the Gene_Trees --------------
         gene_tree_dir = file_handler.handler.get_ogs_tree_dir(q_results=True)
         # usr_gene_tree_fn = files.FileHandler.GetUserTreeFN()
-        # util.compress_files(gene_tree_dir, usr_gene_tree_fn)
+        # paths.compress_files(gene_tree_dir, usr_gene_tree_fn)
 
         ### ------------- Comprees the Resolved_Gene_Trees ------------
         resolved_gene_tree_dir = file_handler.handler.get_ogs_recon_tree_dir(q_results=True)
         usr_resolved_gene_tree_fn = file_handler.handler.get_user_resolved_tree_fn()
-        util.compress_files(resolved_gene_tree_dir, usr_resolved_gene_tree_fn)
+        paths.compress_files(resolved_gene_tree_dir, usr_resolved_gene_tree_fn)
 
         ### ---------- Clean up WorkingDirectory ---------------
         if options.rm_gene_trees:
-            util.cleanup_path(gene_tree_dir)
+            paths.cleanup_path(gene_tree_dir)
 
         if options.rm_resolved_gene_trees:
-            util.cleanup_path(resolved_gene_tree_dir)
+            paths.cleanup_path(resolved_gene_tree_dir)
 
         d_results = (
             os.path.normpath(file_handler.handler.get_results_directory1()) + os.path.sep
@@ -1105,9 +1111,9 @@ def main(args=None):
 
         # printer.print("\nResults:\n    %s" % d_results, style="path")
         if options.q_stop_after_mcl_groups:      # stopped after the orthogroups (-og)
-            util.print_run_end(d_results, "-fg", "its orthogroups")
+            printing.print_run_end(d_results, "-fg", "its orthogroups")
         else:
-            util.print_run_end(d_results)
+            printing.print_run_end(d_results)
         file_handler.handler.write_to_log("OrthoFinder run completed\n", True)
         log.step(current_step, "Completed")
         current_step = "Workflow"

@@ -8,6 +8,8 @@ from ..utils import util, file_handler
 from ..phylo import tree
 from . import dendroblast
 from . import msa_trees
+from ..utils import printing
+from ..phylo import taxa
 
 def convert_user_species_tree(species_tree_fn_in, species_dict, species_tree_fn_out):
     t = tree.Tree(species_tree_fn_in, format=1)  
@@ -74,7 +76,7 @@ def infer_gene_and_species_trees(
     """
     q_db_species_tree = False
     if user_species_tree:
-        if i_og_restart == 0: util.print_underline("Using user-supplied species tree")
+        if i_og_restart == 0: printing.print_underline("Using user-supplied species tree")
         sp_tree_fn_ids = file_handler.handler.get_species_tree_unrooted_fn()  # save it as 'unrooted' but is copied directly to 'rooted' filename
         convert_user_species_tree(user_species_tree, og_set.species_dict(), sp_tree_fn_ids)
     
@@ -85,7 +87,7 @@ def infer_gene_and_species_trees(
         if (not user_species_tree) and q_less_than_four_species:
             sp_tree_fn_ids = file_handler.handler.get_species_tree_unrooted_fn()
             dendroblast.write_species_tree_ids_two_three(og_set.seqs_info.species_to_use, sp_tree_fn_ids)
-            util.rename_tree_taxa(sp_tree_fn_ids, file_handler.handler.get_species_tree_unrooted_fn(True), og_set.species_dict(),
+            taxa.rename_tree_taxa(sp_tree_fn_ids, file_handler.handler.get_species_tree_unrooted_fn(True), og_set.species_dict(),
                                 q_support=False, q_fix_negatives=True)
         q_do_msa_species_tree = (not q_less_than_four_species) and (not user_species_tree) and (not root_from_previous)
         util.print_time("Starting MSA/Trees")
@@ -122,7 +124,7 @@ def infer_gene_and_species_trees(
             return
         if q_db_species_tree and not user_species_tree and not q_less_than_four_species and not root_from_previous:
             db = dendroblast.DendroBLASTTrees(og_set, n_low_parallel, n_high_parallel, q_double_blast)
-            util.print_underline("Inferring species tree (calculating gene distances)")
+            printing.print_underline("Inferring species tree (calculating gene distances)")
             print("Loading BLAST scores")
             sp_tree_fn_ids = db.species_tree_only()
 

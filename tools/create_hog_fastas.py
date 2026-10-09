@@ -28,6 +28,8 @@ import csv
 import glob
 import argparse
 from collections import Counter
+from orthofinder.utils import gene_ids
+from orthofinder.run import previous_run
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 repo_root = os.path.dirname(script_dir)
@@ -98,7 +100,7 @@ def process_log(log_fn):
     if earlier_wds:
         wd_base_prev = [wd_base_anchor] + earlier_wds
     else:
-        wd_base_prev = file_handler.PreviousFilesLocatorNew.get_wd_base_chain(wd_base_anchor)
+        wd_base_prev = previous_run.PreviousFilesLocatorNew.get_wd_base_chain(wd_base_anchor)
     return wd_base_prev, _species_ids(species_ids_lines)
 
 
@@ -229,9 +231,9 @@ def get_ids(wd_base_list, i_species):
     """
     n_sp_all = max(i_species) + 1
     try:
-        ids = util.FirstWordExtractor(wd_base_list[0] + "SequenceIDs.txt").get_id_to_name_dict()
+        ids = gene_ids.FirstWordExtractor(wd_base_list[0] + "SequenceIDs.txt").get_id_to_name_dict()
     except RuntimeError as error:
-        ids = util.FullAccession(wd_base_list[0] + "SequenceIDs.txt").get_id_to_name_dict()
+        ids = gene_ids.FullAccession(wd_base_list[0] + "SequenceIDs.txt").get_id_to_name_dict()
     species_start = ["%d_" % isp for isp in i_species]
     ids = {k:v for k, v in ids.items() if any(k.startswith(sp_start) for sp_start in species_start)}
     # replace any ambiguous sequences

@@ -1,5 +1,5 @@
-from ..utils import util, program_caller, file_handler, parallel_task_manager, file_io, fasta_processor
-from ..utils.util import printer
+from ..utils import util, file_handler, parallel_task_manager, file_io, fasta_processor
+from ..utils.printing import printer
 from ..utils import logging as run_logging
 import subprocess
 import glob
@@ -11,6 +11,8 @@ from ..run import previous_run
 import os
 import re
 import time
+from ..utils import printing
+from ..utils import command_runner
 
 
 def run_blast_db_command(command):
@@ -62,13 +64,13 @@ def run_search(
     """
     name_to_print = options.search_program
     if options.q_stop_after_prepare:
-        util.print_underline("%s commands that must be run" % name_to_print)
+        printing.print_underline("%s commands that must be run" % name_to_print)
     elif species_clades is not None:
-        util.print_underline(
+        printing.print_underline(
             "Running %s searches for new non-core species clades" % name_to_print
         )
     else:
-        util.print_underline("Running %s all-versus-all" % name_to_print, True)
+        printing.print_underline("Running %s all-versus-all" % name_to_print, True)
     tasksizes = None
     if species_clades is None:
         # print("running get_ordered_search_commands")
@@ -102,7 +104,7 @@ def run_search(
     if options.q_stop_after_prepare:
         # -op: the commands are run outside OrthoFinder, which would otherwise
         # fill in the thread count when running them
-        saved = [program_caller.fill_method_threads(c, options.method_threads)[1] for c in commands]
+        saved = [command_runner.fill_method_threads(c, options.method_threads)[1] for c in commands]
     else:
         saved = commands
     with open(commands_fn, "w") as writer:
@@ -116,7 +118,7 @@ def run_search(
         printer.print("    [dark_cyan]%s[/dark_cyan]" % escape(os.path.abspath(commands_fn)))
         printer.print("Run them yourself (e.g. on a cluster), or let OrthoFinder run them: a restart "
                       "with -b runs the commands of any search results that are missing or incomplete.")
-        util.print_run_end(file_handler.handler.get_results_directory1(), "-b", "the sequence search")
+        printing.print_run_end(file_handler.handler.get_results_directory1(), "-b", "the sequence search")
         util.success()
     if only_missing:
         # continuing a run (-b): only the searches whose results are missing
@@ -136,7 +138,7 @@ def run_search(
         run_logging.RunLogger.step("Sequence search", "Started")
     print("Using %d thread(s)" % options.n_blast)
     util.print_time("This may take some time...")
-    program_caller.run_parallel_commands(
+    command_runner.run_parallel_commands(
         options.n_blast,
         commands,
         method_threads=options.method_threads,
@@ -200,7 +202,7 @@ def create_search_databases(
                 f"ERROR: {options.search_program} makedb failed"
             )
     else:
-        progressbar, task = util.get_progressbar(len(i_species_to_do))
+        progressbar, task = printing.get_progressbar(len(i_species_to_do))
         progressbar.update(task, description="[yellow]Creating %s databases" % options.search_program)
         progressbar.start()
         update_cycle = 1  # 10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000
@@ -401,7 +403,7 @@ def recreate_search_results(to_create, working_dir, options, prog_caller):
     """
     from rich.markup import escape
     n_incomplete = sum(1 for _, path in to_create if path is not None)
-    util.print_underline("Creating missing search results")
+    printing.print_underline("Creating missing search results")
     printer.print("%d required search result(s) missing and %d incomplete (interrupted search) in:"
                   % (len(to_create) - n_incomplete, n_incomplete))
     printer.print("    [dark_cyan]%s[/dark_cyan]" % escape(working_dir))
@@ -417,7 +419,7 @@ def recreate_search_results(to_create, working_dir, options, prog_caller):
         commands, [fn for fn, _ in to_create], working_dir)
     # The saved thread counts (-op, or edited for a cluster) are not used here:
     # OrthoFinder runs many searches at once, each with its own count (1 by default).
-    selected = [program_caller.reset_search_threads(c) for c in selected]
+    selected = [command_runner.reset_search_threads(c) for c in selected]
     if no_command:
         file_handler.handler.log_fail_and_exit(
             "ERROR: %s has no command to create these search results:\n%s"
@@ -439,7 +441,7 @@ def recreate_search_results(to_create, working_dir, options, prog_caller):
                   % (len(selected), len(commands), escape(commands_fn)))
     printer.print("\nUsing %d thread(s)" % options.n_blast)
     util.print_time("This may take some time...")
-    program_caller.run_parallel_commands(
+    command_runner.run_parallel_commands(
         options.n_blast,
         selected,
         method_threads=options.method_threads,
@@ -480,7 +482,7 @@ def run_search_assign(
 ):
     """reuse_complete: the profile search of the run being continued finished (checkpoint.txt): its results are used if all present."""
     name_to_print = options.search_program
-    util.print_underline("Running %s profiles search" % name_to_print)
+    printing.print_underline("Running %s profiles search" % name_to_print)
     commands, tasksizes, results_files = run_info.get_ordered_search_commands_assign(
         speciess_info_obj,
         fn_diamond_db,
@@ -505,7 +507,7 @@ def run_search_assign(
         parallel_task_manager.run_command(commands[0], q_print_on_error=True, raise_on_error=True)
         util.print_time("Done profiles search\n")
         return results_files, layout
-    program_caller.run_parallel_commands(
+    command_runner.run_parallel_commands(
         options.n_blast,
         commands,
         method_threads=options.method_threads,

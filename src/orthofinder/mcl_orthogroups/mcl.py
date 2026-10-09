@@ -36,6 +36,7 @@ from ..utils import parallel_task_manager, util, file_handler, file_io
 from collections import defaultdict, Counter
 from xml.etree.ElementTree import SubElement    # Y
 from .. import __version__
+from ..utils import gene_ids
 
 def get_predicted_ogs(clusters_filename):
     """
@@ -133,7 +134,7 @@ def write_updated_clusters_file(ogs: List[Set[str]], clusters_filename_pairs):
         outfile.write(")\n")
 
 
-def id_full_dict(ids_filenames, func=util.FirstWordExtractor):
+def id_full_dict(ids_filenames, func=gene_ids.FirstWordExtractor):
 
     full_dict = dict()
     for ids_filename in ids_filenames:
@@ -233,10 +234,10 @@ class MCL:
         try:
             # fullDict = dict()
             # for idsFilename in idsFilenames:
-            #     idExtract = util.FirstWordExtractor(idsFilename)
+            #     idExtract = gene_ids.FirstWordExtractor(idsFilename)
             #     idDict = idExtract.get_id_to_name_dict()
             #     fullDict.update(idDict)
-            full_dict = id_full_dict(ids_filenames, func=util.FirstWordExtractor)
+            full_dict = id_full_dict(ids_filenames, func=gene_ids.FirstWordExtractor)
             MCL.create_ogs(ogs, output_fn, orthogroups_id_fn, full_dict)
         except KeyError as e:
             sys.stderr.write("ERROR: Sequence ID not found in %s\n" % ids_filenames)
@@ -252,10 +253,10 @@ class MCL:
                 try:
                     # fullDict = dict()
                     # for idsFilename in idsFilenames:
-                    #     idExtract = util.FullAccession(idsFilename)
+                    #     idExtract = gene_ids.FullAccession(idsFilename)
                     #     idDict = idExtract.get_id_to_name_dict()
                     #     fullDict.update(idDict)
-                    full_dict = id_full_dict(ids_filenames, func=util.FullAccession)
+                    full_dict = id_full_dict(ids_filenames, func=gene_ids.FullAccession)
                     MCL.create_ogs(ogs, output_fn, orthogroups_id_fn, full_dict)
                 except:
                     err_text = "ERROR: %s contains a duplicate ID. The IDs for the orthogroups in %s will not be replaced with the sequence accessions. This is probably because the same accession was used more than once in your input FASTA files. However, if %s was prepared manually then you may need to check that file instead." % (ids_filenames, clusters_filename_pairs, ids_filenames)

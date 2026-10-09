@@ -40,10 +40,13 @@ try:
 except ImportError:
     ...
 
-from ..utils import util, program_caller as pc, parallel_task_manager
+from ..utils import util, parallel_task_manager
 from ..utils import file_handler
 from . import trim
 from ..species_tree import astral as astral_pro
+from ..utils import printing
+from ..phylo import taxa
+from ..utils import command_runner
 
 
 class FastaWriter(object):
@@ -432,7 +435,7 @@ class TreesForOrthogroups(object):
             self.get_alignment_commands_and_new_filenames(
                 ogs, 
                 i_og_restart, 
-                method_threads=None  # filled in when run, which reserves that many cores (program_caller.fill_method_threads)
+                method_threads=None  # filled in when run, which reserves that many cores (command_runner.fill_method_threads)
             )
 
         align_commands_and_filenames = copy.deepcopy(orig_align_commands_and_filenames)
@@ -448,8 +451,8 @@ class TreesForOrthogroups(object):
                 for item in fn.split() if os.path.isfile(item) and os.path.exists(item)
             ]
         if q_stop_after_alignments:
-            util.print_underline("Inferring multiple sequence alignments")
-            pc.run_parallel_commands_and_move_results_file(
+            printing.print_underline("Inferring multiple sequence alignments")
+            command_runner.run_parallel_commands_and_move_results_file(
                 n_processes, 
                 orig_align_commands_and_filenames, 
                 False, 
@@ -500,7 +503,7 @@ class TreesForOrthogroups(object):
                 alignment_files_to_use, 
                 iogs_align, 
                 ogs,
-                method_threads=None  # filled in when run, which reserves that many cores (program_caller.fill_method_threads)
+                method_threads=None  # filled in when run, which reserves that many cores (command_runner.fill_method_threads)
         )
 
         tree_commands_and_filenames = copy.deepcopy(orig_tree_commands_and_filenames)
@@ -510,7 +513,7 @@ class TreesForOrthogroups(object):
         if q_do_species_tree:
             if not astral:
                 print(("Species tree: Using %d orthogroups with minimum of %0.1f%% of species having single-copy genes in any orthogroup" % (len(i_ogs_for_species_tree), 100.*f_single_copy)))
-            util.print_underline("Inferring multiple sequence alignments for species tree") 
+            printing.print_underline("Inferring multiple sequence alignments for species tree") 
             # util.print_time("This may take some time...")
             # Do required alignments and trees
             species_tree_fn_ids = file_handler.handler.get_species_tree_unrooted_fn()
@@ -534,7 +537,7 @@ class TreesForOrthogroups(object):
                         for item in cmd[0][0].split() if os.path.isfile(item) and os.path.exists(item)
                     ]
                 
-            pc.run_parallel_commands_and_move_results_file(
+            command_runner.run_parallel_commands_and_move_results_file(
                 n_processes, 
                 orig_commands_and_filenames, 
                 True, 
@@ -562,12 +565,12 @@ class TreesForOrthogroups(object):
                             [concatenated_algn_fn], 
                             [species_tree_fn_ids], 
                             ["SpeciesTree"],
-                            method_threads=None  # filled in when run, which reserves that many cores (program_caller.fill_method_threads)
+                            method_threads=None  # filled in when run, which reserves that many cores (command_runner.fill_method_threads)
                         )
                     ]
-            util.print_underline("Inferring remaining multiple sequence alignments and gene trees") 
+            printing.print_underline("Inferring remaining multiple sequence alignments and gene trees") 
         else:
-            util.print_underline("Inferring multiple sequence alignments and gene trees")
+            printing.print_underline("Inferring multiple sequence alignments and gene trees")
         # util.print_time("This may take some time...")
         # Now continue as before
         i_ogs_for_species_tree = set(i_ogs_for_species_tree)
@@ -594,7 +597,7 @@ class TreesForOrthogroups(object):
                         for cmd in orig_commands_and_filenames
                         for item in cmd[0][0].split() if os.path.isfile(item) and os.path.exists(item)
                     ]
-        pc.run_parallel_commands_and_move_results_file(n_processes, 
+        command_runner.run_parallel_commands_and_move_results_file(n_processes, 
                                                  commands_and_filenames, 
                                                  True, 
                                                  tasksize=tree_tasksize,
@@ -615,9 +618,9 @@ class TreesForOrthogroups(object):
         #     alignmentFilesToUse.append(concatenated_algn_fn)
         #     accessionAlignmentFNs.append(files.FileHandler.get_species_tree_concat_align_fn(True))
 
-        #     qHaveSupport = util.have_support_values(speciesTreeFN_ids)
+        #     qHaveSupport = taxa.have_support_values(speciesTreeFN_ids)
         #     if os.path.exists(speciesTreeFN_ids):
-        #         util.rename_tree_taxa(speciesTreeFN_ids, files.FileHandler.get_species_tree_unrooted_fn(True), idDict, qSupport=qHaveSupport, qFixNegatives=True)
+        #         taxa.rename_tree_taxa(speciesTreeFN_ids, files.FileHandler.get_species_tree_unrooted_fn(True), idDict, qSupport=qHaveSupport, qFixNegatives=True)
         #     else:
         #         text = "ERROR: Species tree inference failed"
         #         files.FileHandler.log_fail_and_exit(text)
@@ -626,7 +629,7 @@ class TreesForOrthogroups(object):
         # Add concatenated Alignment
         if q_do_species_tree:
             if astral:
-                util.print_underline("Inferring unrooted species tree using Astral-Pro.") 
+                printing.print_underline("Inferring unrooted species tree using Astral-Pro.") 
                 astral_fn = file_handler.handler.get_core_astral_filename()
                 astral_pro.create_input_file(file_handler.handler.get_ogs_tree_dir(), astral_fn, n_skip=n_skip)
                 species_tree_fn_ids = file_handler.handler.get_species_tree_unrooted_fn()
@@ -639,9 +642,9 @@ class TreesForOrthogroups(object):
                     raise_on_error=True,
                 )
 
-            q_have_support = util.have_support_values(species_tree_fn_ids)
+            q_have_support = taxa.have_support_values(species_tree_fn_ids)
             if os.path.exists(species_tree_fn_ids):
-                util.rename_tree_taxa(species_tree_fn_ids, file_handler.handler.get_species_tree_unrooted_fn(True), id_dict, q_support=q_have_support, q_fix_negatives=True)
+                taxa.rename_tree_taxa(species_tree_fn_ids, file_handler.handler.get_species_tree_unrooted_fn(True), id_dict, q_support=q_have_support, q_fix_negatives=True)
                 util.print_time("Done species tree inference")
             else:
                 text = "ERROR: Species tree inference failed"

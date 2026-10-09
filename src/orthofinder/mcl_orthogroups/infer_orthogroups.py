@@ -10,6 +10,8 @@ from . import mcl, score_normalisation
 from ..gene_tree import msa_trees
 from . import orthogroups_set
 from ..utils import util, file_handler, matrices, parallel_task_manager
+from ..utils import printing
+from ..utils import gene_ids
 
 
 def write_graph_per_species(args):
@@ -114,7 +116,7 @@ def get_sequence_lengths(seqs_info):
                             i_current_sequence
                         ] = current_sequence_length
                         current_sequence_length = 0
-                    _, i_current_sequence = util.get_id_pair_from_string(row[1:])
+                    _, i_current_sequence = gene_ids.get_id_pair_from_string(row[1:])
                 else:
                     current_sequence_length += len(row.rstrip())
         sequence_lengths[i_species][i_current_sequence] = current_sequence_length
@@ -136,7 +138,7 @@ def do_orthogroups(
     q_unassigned = i_unassigned is not None
 
     # Run Algorithm, cluster and output cluster files with original accessions
-    util.print_underline(
+    printing.print_underline(
         "Running OrthoFinder algorithm"
         + (" for clade-specific genes" if q_unassigned else "")
     )
@@ -164,7 +166,7 @@ def do_orthogroups(
         cmd_queue.put(None)
     
     total_tasks = seqs_info.n_species
-    # progressbar, task = util.get_progressbar(total_tasks)
+    # progressbar, task = printing.get_progressbar(total_tasks)
     # update_cycle = 1
     # progressbar.start()
     result_queue = mp.Queue()
@@ -294,7 +296,7 @@ def post_clustering_orthogroups(
 
     # if not options.fix_files:
     if not options.q_stop_after_trees:
-        util.print_underline("Writing orthogroups to file")
+        printing.print_underline("Writing orthogroups to file")
         ids_dict = mcl.MCL.write_orthogroup_files(
             ogs,
             [file_handler.handler.get_sequence_ids_fn()],
@@ -305,12 +307,12 @@ def post_clustering_orthogroups(
         try:
             ids_dict = mcl.id_full_dict(
                 [file_handler.handler.get_sequence_ids_fn()], 
-                func=util.FirstWordExtractor
+                func=gene_ids.FirstWordExtractor
             )
         except:
             ids_dict = mcl.id_full_dict(
                 [file_handler.handler.get_sequence_ids_fn()], 
-                func=util.FullAccession
+                func=gene_ids.FullAccession
             )
     
     ## --------- this doesn't need to run at this point with the new process --------
@@ -332,7 +334,7 @@ def post_clustering_orthogroups(
         species_info_obj.n_sp_all,
         options.q_add_species_to_ids,
         options.tree_program,
-        id_extractor=util.FirstWordExtractor,
+        id_extractor=gene_ids.FirstWordExtractor,
     )
 
 

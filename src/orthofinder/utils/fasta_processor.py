@@ -10,7 +10,9 @@ try:
 except ImportError:
     ...
 from . import util, file_handler as files
-from .util import printer
+from .printing import printer
+from . import species_info
+from . import gene_ids
 
 # count = 0 
 
@@ -213,7 +215,7 @@ def processes_new_fasta(
         util.fail()
 
     if species_info_obj_prev == None:
-        species_info_obj = util.SpeciesInfo()
+        species_info_obj = species_info.SpeciesInfo()
     else:
         species_info_obj = species_info_obj_prev
 
@@ -253,7 +255,7 @@ def processes_new_fasta(
             base_filename, extension = os.path.splitext(fasta_filename)
 
             species_seen_dict[fasta_filename] = {}
-            gene_names = util.GeneNames()     # the names the genes get (util.FullAccession)
+            gene_names = gene_ids.GeneNames()     # the names the genes get (gene_ids.FullAccession)
             # -d declares nucleotide input; without it the start of each file
             # is checked as it is read (it costs a few ms per proteome)
             sequence_sample = None if q_dna else SequenceTypeSample()
@@ -276,7 +278,7 @@ def processes_new_fasta(
                         else:
                             species_seen_dict[fasta_filename][assign] = 0
                             name = gene_names.add(assign)
-                            if name != util.clean_accession(assign):
+                            if name != gene_ids.clean_accession(assign):
                                 renamed.append((fasta_filename, assign, name))
                         # acc = f"{acc}_{seen[acc]}"
                         ids_file.write("%s: %s\n" % (new_id, assign))
