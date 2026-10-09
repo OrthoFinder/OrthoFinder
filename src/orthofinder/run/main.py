@@ -66,7 +66,7 @@ from orthofinder.utils import logging as run_logging
 
 
 from ..mcl_orthogroups import mcl
-from ..phylo import tree
+from ..phylo import tree, tree_pages
 from ..species_tree import astral
 from ..orthology import reconciliation
 from ..gene_tree import infer_trees
@@ -1124,6 +1124,17 @@ def main(args=None):
                 if options.save_space and os.path.isdir(orthologs_dir) and os.listdir(orthologs_dir):
                     print("\nAdd -pof to also write the orthologs and putative xenologs in OrthoXML format "
                           "and as web pages (Orthologs/Orthologs.*, Putative_Xenologs/Putative_Xenologs.*).")
+
+        if options.tree_view:
+            # --tree-view: pictures of the species tree and the resolved gene trees, and a page for them
+            try:
+                n_trees = tree_pages.write_tree_pages(d_results)
+                if n_trees:
+                    print("\nGene tree pictures (%d): %s" % (n_trees, escape(
+                        os.path.join(d_results, "Resolved_Gene_Trees", "Resolved_Gene_Trees.html"))))
+            except tree_pages.TreeViewUnavailable as e:
+                print("WARNING: --tree-view needs PyQt6 for ete4 to draw the trees (pip install PyQt6): "
+                      + escape(str(e)))
 
         # printer.print("\nResults:\n    %s" % d_results, style="path")
         if options.q_stop_after_mcl_groups:      # stopped after the orthogroups (-og)

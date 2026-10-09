@@ -118,6 +118,7 @@ class Options(object):  #
         self.q_split_para_clades = False
         self.q_phyldog = False
         self.orthoxml = False  # -x: also write the orthogroups as OrthoXML and as a web page
+        self.tree_view = False  # --tree-view (not in the help): pictures of the trees and a page for them
         self.species_tree_fn = None
         self.mcl_inflation = g_mcl_inflation
         self.dna = False
@@ -711,6 +712,9 @@ def process_args(args):
 
         elif arg == "-x" or arg == "--orthoxml":
             options.orthoxml = True
+
+        elif arg == "--tree-view":  # not in the help: needs PyQt6 for ete4 to draw the trees
+            options.tree_view = True
 
         elif arg == "-n" or arg == "--name":
             if options.name:
