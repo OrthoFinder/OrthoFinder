@@ -76,84 +76,55 @@ def get_orthologs(
 def add_species(ctx):
     """-f with -b: add the species in fasta_dir to the analysis being continued"""
     options = ctx.options
-    prog_caller = ctx.prog_caller
-    fasta_dir = ctx.fasta_dir
-    continuation_dir = ctx.continuation_dir
     species_info_obj, species_to_use_names = previous_run.process_previous_files(
         file_handler.handler.get_working_directory1_read(), options.q_double_blast
     )
-    # print(
-    #     "\nAdding new species in %s to existing analysis in %s"
-    #     % (fastaDir, continuationDir)
-    # )
-    printer.print(f"\nAdding new species in [dark_cyan]{fasta_dir}")
-    printer.print(f"to existing analysis in [dark_cyan]{continuation_dir}")
-    # 3.
+    printer.print(f"\nAdding new species in [dark_cyan]{ctx.fasta_dir}")
+    printer.print(f"to existing analysis in [dark_cyan]{ctx.continuation_dir}")
     species_info_obj = fasta_processor.processes_new_fasta(
-        fasta_dir, options.dna, species_info_obj, species_to_use_names
+        ctx.fasta_dir, options.dna, species_info_obj, species_to_use_names
     )
-    file_handler.handler.log_species()
-    options = process_args.check_options(options, species_info_obj.species_to_use)
-    # 4.
-    seqs_info = species_info.get_seqs_info(
-        file_handler.handler.get_working_directory1_read(),
-        species_info_obj.species_to_use,
-        species_info_obj.n_sp_all,
-    )
-    # 5.
-    species_xml = orthoxml_species(options, species_info_obj)
-    # 6.
-    printing.print_underline("Dividing up work for BLAST for parallel processing")
-    runner.create_search_databases(species_info_obj, options, prog_caller)
-    # 7.
-    with ctx.step("Sequence search"):
-        runner.run_search(options, species_info_obj, seqs_info, prog_caller)
-    # 8.
-    species_names_dict = previous_run.species_name_dict(
-        file_handler.handler.get_species_ids_fn()
-    )
-    with ctx.step("Infer orthogroups"):
-        infer_orthogroups.do_orthogroups(
-            options, species_info_obj, seqs_info, species_names_dict, species_xml
-        )
-    # 9.
-    if options.fix_files and not options.q_stop_after_mcl_groups:
-        get_orthologs(
-            seqs_info,
-            species_names_dict,
-            species_info_obj,
-            options,
-            prog_caller,
-            species_xml=species_xml,
-        )
-    ctx.options = options  # check_options may make new options
-    return species_info_obj, species_names_dict
+    return _from_new_fasta(ctx, species_info_obj)
 
 
 def from_fasta(ctx):
     """-f: a new analysis of the species in fasta_dir"""
-    options = ctx.options
-    prog_caller = ctx.prog_caller
-    fasta_dir = ctx.fasta_dir
-    species_info_obj = None
-    species_info_obj = fasta_processor.processes_new_fasta(fasta_dir, options.dna)
+    species_info_obj = fasta_processor.processes_new_fasta(ctx.fasta_dir, ctx.options.dna)
+    return _from_new_fasta(ctx, species_info_obj)
+
+
+def _from_new_fasta(ctx, species_info_obj):
+    """-f, -f -b: from the FASTA files of the species, now in the working directory"""
     file_handler.handler.log_species()
+    options, seqs_info, species_xml = _prepare(ctx.options, species_info_obj)
+    _search(ctx, options, species_info_obj, seqs_info)
+    species_names_dict = _orthogroups_and_orthologs(ctx, options, species_info_obj, seqs_info, species_xml)
+    ctx.options = options  # check_options may make new options
+    return species_info_obj, species_names_dict
+
+
+def _prepare(options, species_info_obj):
+    """The options for these species, their sequences, and their -x information."""
     options = process_args.check_options(options, species_info_obj.species_to_use)
-    # 4
     seqs_info = species_info.get_seqs_info(
         file_handler.handler.get_working_directory1_read(),
         species_info_obj.species_to_use,
         species_info_obj.n_sp_all,
     )
-    # 5.
     species_xml = orthoxml_species(options, species_info_obj)
-    # 6.
+    return options, seqs_info, species_xml
+
+
+def _search(ctx, options, species_info_obj, seqs_info):
+    """The sequence search databases and the searches."""
     printing.print_underline("Dividing up work for BLAST for parallel processing")
-    runner.create_search_databases(species_info_obj, options, prog_caller)
-    # 7.
+    runner.create_search_databases(species_info_obj, options, ctx.prog_caller)
     with ctx.step("Sequence search"):
-        runner.run_search(options, species_info_obj, seqs_info, prog_caller)
-    # 8.
+        runner.run_search(options, species_info_obj, seqs_info, ctx.prog_caller)
+
+
+def _orthogroups_and_orthologs(ctx, options, species_info_obj, seqs_info, species_xml):
+    """The orthogroups from the search results, then (unless -og, --no-fix-files) the orthologs."""
     species_names_dict = previous_run.species_name_dict(
         file_handler.handler.get_species_ids_fn()
     )
@@ -161,18 +132,16 @@ def from_fasta(ctx):
         infer_orthogroups.do_orthogroups(
             options, species_info_obj, seqs_info, species_names_dict, species_xml
         )
-    # 9.4
     if options.fix_files and not options.q_stop_after_mcl_groups:
         get_orthologs(
             seqs_info,
             species_names_dict,
             species_info_obj,
             options,
-            prog_caller,
+            ctx.prog_caller,
             species_xml=species_xml,
         )
-    ctx.options = options  # check_options may make new options
-    return species_info_obj, species_names_dict
+    return species_names_dict
 
 
 def from_blast(ctx):
@@ -225,33 +194,8 @@ def from_blast(ctx):
         "\nUsing the sequence search results in [dark_cyan]%s[/dark_cyan]"
         % escape(file_handler.handler.get_working_directory1_read()[0])
     )
-    options = process_args.check_options(options, species_info_obj.species_to_use)
-    # 4.
-    seqs_info = species_info.get_seqs_info(
-        file_handler.handler.get_working_directory1_read(),
-        species_info_obj.species_to_use,
-        species_info_obj.n_sp_all,
-    )
-    # 5.
-    species_xml = orthoxml_species(options, species_info_obj)
-    # 8
-    species_names_dict = previous_run.species_name_dict(
-        file_handler.handler.get_species_ids_fn()
-    )
-    with ctx.step("Infer orthogroups"):
-        infer_orthogroups.do_orthogroups(
-            options, species_info_obj, seqs_info, species_names_dict, species_xml
-        )
-    # 9
-    if options.fix_files and not options.q_stop_after_mcl_groups:
-        get_orthologs(
-            seqs_info,
-            species_names_dict,
-            species_info_obj,
-            options,
-            prog_caller,
-            species_xml=species_xml,
-        )
+    options, seqs_info, species_xml = _prepare(options, species_info_obj)
+    species_names_dict = _orthogroups_and_orthologs(ctx, options, species_info_obj, seqs_info, species_xml)
     ctx.options = options  # check_options may make new options
     return species_info_obj, species_names_dict
 
