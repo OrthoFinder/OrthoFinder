@@ -364,15 +364,8 @@ def post_clustering_orthogroups(
 
     if not q_incremental:
         # stats.Stats(ogs, speciesNamesDict, speciesInfoObj.speciesToUse, files.FileHandler.iResultsVersion)
-        if options.species_xml_info_fn:
-            mcl.MCL.WriteOrthoXML(
-                species_xml,
-                ogs,
-                seqs_info.n_seqs_per_species,
-                ids_dict,
-                results_base_filename + ".orthoxml",
-                species_info_obj.species_to_use,
-            )
+        # (OrthoXML output, -x, is switched off: the option is not parsed and
+        # MCL.WriteOrthoXML is commented out.)
         # print("")
         util.print_time("Done orthogroups")
         file_handler.handler.log_ogs()
