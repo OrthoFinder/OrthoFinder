@@ -77,31 +77,6 @@ def get_kmers(s, k):
     return kmers
 
 
-def kmers_in_seqs(accs, fw, k):
-    """
-    Args:
-        accs - list of accessions
-        fw - the FastaWriter object
-        k - kmer length
-        q_aligned - is this a MSA
-    Returns 
-        kmer_per_seq - list of sets of kmers in the seqs
-        d - dict kmer -> list of accessions the kmer is present in
-
-    """
-    kmer_per_seq = []
-    d = defaultdict(list)
-    for i, assign in enumerate(accs):
-        if i % 10000 == 0:
-            print(i)
-        s = fw.seq_lists[assign]
-        kmers = get_kmers(s, k)
-        kmer_per_seq.append(set(kmers))
-        for kmer in kmers:
-            d[kmer].append(assign)
-    return kmer_per_seq, d
-
-
 # def select_from_unaligned(infn, k, n, nmax=50000):
 #     """
 #     Identify the representative sequences
@@ -189,12 +164,6 @@ def msa_biopython_matrix(fn):
     for i, record in enumerate(msa):
         z[i, :] = np.frombuffer(str(record.seq).encode("latin-1"), dtype="S1")
     return z, accs
-
-def run_from_aligned(infn, n_sample):
-    selected = select_from_aligned(infn, n_sample)
-    outfn = infn + ".selected.txt"
-    with open(outfn, 'w') as outfile:
-        outfile.write("\n".join(selected))
 
 def select_from_aligned(infn, n_sample, q_trim=True, rng=None):
     """

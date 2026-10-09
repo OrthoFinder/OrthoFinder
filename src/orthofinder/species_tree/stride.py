@@ -191,11 +191,6 @@ class Node(object):
     def to_species(clades_of_clades, gene_map):
         return [[set(map(gene_map, [gene for gene in grandchild])) for grandchild in child] for child in clades_of_clades]
         
-    @staticmethod            
-    def flaten_species_set(clades_of_clades):
-        return set([sp for child in clades_of_clades for grandchild in child for sp in grandchild])
-
-               
 def get_partitions(tree):
      all_leaves = frozenset(tree.get_leaf_names())
      all_partitions = set([all_leaves])

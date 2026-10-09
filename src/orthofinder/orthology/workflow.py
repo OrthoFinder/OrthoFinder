@@ -27,8 +27,6 @@
 from ..utils import logging as run_logging
 import os
 import shutil
-from collections import Counter, defaultdict
-import multiprocessing as mp
 try:
     from rich import print
 except ImportError:
@@ -38,7 +36,7 @@ from ..gene_tree import dendroblast
 from ..species_tree import stride
 from ..gene_tree import msa_trees
 # from ..gene_tree_inference import trees2ologs_dlcpar
-from . import reconciliation, hog_writer as hog_processor, tree_analyser, parallel_pipeline
+from . import reconciliation, hog_writer as hog_processor, parallel_pipeline
 from ..gene_tree import infer_trees
 from ..utils import util, file_handler
 from ..mcl_orthogroups import orthogroups_set, assign
@@ -126,195 +124,6 @@ from ..hog_orthogroups import finalise
 #             for i in range(max_og + 1):
 #                 og = pat % i
 #                 writer.writerow([og, ogCount[og], ogCount_50[og]])
-
-def two_and_three_gene_hogs(og_set, st_rooted_labelled, hog_writer):
-    ogs = og_set.get_ogs_all()
-    for iog, og in enumerate(ogs):
-        n = len(og) 
-        if n < 2 or n > 3: continue
-        og_name = "OG%07d" % iog
-        sp_present = set([str(g.i_sp) for g in og])
-        st_node = tree_analyser.mrca_node(st_rooted_labelled, sp_present)
-        hogs_to_write = hog_writer.get_skipped_nodes(st_node, None)  
-        if len(sp_present) > 1:
-            # We don't create files for 'species specific HOGs'
-            st_node = tree_analyser.mrca_node(st_rooted_labelled, sp_present)
-            hogs_to_write = hogs_to_write + [st_node.name]
-        # og is a set: sort so the row order does not depend on hash randomisation.
-        genes = sorted(
-            (g.to_string() for g in og),
-            key=lambda s: tuple(int(x) for x in s.split("_")),
-        )
-        hog_writer.write_hog_genes(genes, hogs_to_write, og_name)
-
-def two_and_three_gene_orthogroups(
-        og_set, 
-        results_dir, 
-        save_space, 
-        fewer_open_files,
-        write_hog_tree=False,
-        fix_files=False
-    ):
-    species_dict = og_set.species_dict()
-    sequence_dict = og_set.sequence_dict()
-    # ogs = ogSet.get_ogs_all()
-    n_orthologs_sp_pair = util.NOrthoSp(len(og_set.species_to_use))
-
-    all_orthologs, nspecies, sp_to_index, ortholog_lines_tot, ortholog_sus_lines_tot = get_all_orthologs(og_set)
-
-    with reconciliation.OrthologsFiles(
-        results_dir, 
-        species_dict, 
-        og_set.species_to_use, 
-        nspecies,
-        sp_to_index, 
-        save_space, 
-        fewer_open_files
-    ) as (ortholog_files_handles, suspect_genes_file_handles):
-
-        n_orthologs_sp_pair += reconciliation.get_lines_for_ortholog_files(
-            all_orthologs, 
-            species_dict, 
-            og_set.species_to_use, 
-            sequence_dict, 
-            False, 
-            ortholog_lines_tot, 
-            ortholog_sus_lines_tot, 
-            fewer_open_files=fewer_open_files
-        )
-        # olog_sus_lines_tot will be empty
-        lock_dummy = mp.Lock()
-        for i in range(nspecies):
-            for j in range(nspecies):
-                reconciliation.WriteOlogLinesToFile(
-                    ortholog_files_handles[i][j], 
-                    ortholog_lines_tot[i][j], 
-                    lock_dummy,
-                    write_hog_tree=write_hog_tree,
-                    fix_files=fix_files
-                )
-    return n_orthologs_sp_pair
-
-
-def get_all_orthologs(og_set):
-    ogs = og_set.get_ogs_all()
-    all_orthologs = []
-    d_empty = defaultdict(list)
-    for iog, og in enumerate(ogs):
-        n = len(og) 
-        if n == 1: break
-        elif n == 2:
-            if og[0].i_sp == og[1].i_sp: continue
-            # orthologs is a list of tuples of dictionaries
-            # each dictionary is sp->list of genes in species
-            d0 = defaultdict(list)
-            d0[str(og[0].i_sp)].append(str(og[0].i_seq))
-            d1 = defaultdict(list)
-            d1[str(og[1].i_sp)].append(str(og[1].i_seq))
-            orthologs = [(d0, d1, d_empty, d_empty)]
-        elif n == 3:
-            sp = [g.i_sp for g in og]
-            c = Counter(sp) 
-            n_sp = len(c)
-            if n_sp == 3:
-                g = [(str(g.i_sp), str(g.i_seq)) for g in og]
-                d0 = defaultdict(list)
-                d0[g[0][0]].append(g[0][1])
-                d1 = defaultdict(list)
-                d1[g[1][0]].append(g[1][1])
-                d1[g[2][0]].append(g[2][1])
-                orthologs = [(d0, d1, d_empty, d_empty)]  
-                d0 = defaultdict(list)
-                d0[g[1][0]].append(g[1][1])
-                d1 = defaultdict(list)
-                d1[g[2][0]].append(g[2][1])
-                orthologs.append((d0,d1, d_empty, d_empty))
-            elif n_sp == 2:             
-                sp0, sp1 = list(c.keys())
-                d0 = defaultdict(list)
-                d0[str(sp0)] = [str(g.i_seq) for g in og if g.i_sp == sp0]
-                d1 = defaultdict(list)
-                d1[str(sp1)] = [str(g.i_seq) for g in og if g.i_sp == sp1]
-                orthologs = [(d0, d1, d_empty, d_empty)]
-            else: 
-                continue # no orthologs
-            
-        else:
-            continue
-        if orthologs:
-            all_orthologs.append((iog, orthologs))
-
-    nspecies = len(og_set.species_to_use)
-    sp_to_index = {str(sp):i for i, sp in enumerate(og_set.species_to_use)}
-    ortholog_lines_tot = [["" for j in range(nspecies)] for i in range(nspecies)]
-    ortholog_sus_lines_tot = ["" for i in range(nspecies)]
-    return all_orthologs, nspecies, sp_to_index, ortholog_lines_tot, ortholog_sus_lines_tot
-
-
-def orthologs_from_trees(
-        min_seq,
-        recon_method,
-        n_high_parallel,
-        n_low_parallel,
-        user_species_tree_fn,
-        q_add_species_to_ids,
-        q_split_para_clades,
-        fewer_open_files,
-        tree_program="fasttree",
-        exist_msa=True,
-        write_hog_tree=True,
-        fix_files=True,
-        fd_limit=None,
-        mcl_inflation=1.2
-    ):
-    """
-    userSpeciesTree_fn - None if not supplied otherwise rooted tree using user species names (not orthofinder IDs)
-    qUserSpTree - is the speciesTree_fn user-supplied
-    
-    Just infer orthologs from trees, don't do any of the preceeding steps.
-    """
-
-    species_to_use, n_sp_all, _ = util.get_species_to_use(file_handler.handler.get_species_ids_fn())    
-    og_set = orthogroups_set.OrthogroupSet(
-        min_seq,
-        file_handler.handler.get_working_directory1_read(), 
-        species_to_use, 
-        n_sp_all, 
-        q_add_species_to_ids,
-        tree_program=tree_program,
-        id_extractor = util.FirstWordExtractor,
-        mcl_inflation=mcl_inflation
-    )
-    
-    if user_species_tree_fn != None:
-        species_dict = file_handler.handler.get_species_dict()
-        # speciesToUseNames = [speciesDict[str(iSp)] for iSp in ogSet.speciesToUse]
-        # check_user_species_tree(userSpeciesTree_fn, speciesToUseNames)
-        species_tree_fn_ids = file_handler.handler.get_species_tree_ids_rooted_fn()
-        infer_trees.convert_user_species_tree(user_species_tree_fn, species_dict, species_tree_fn_ids)
-    util.print_underline("Running Orthologue Prediction", True)
-    util.print_underline("Reconciling gene and species trees") 
-    n_orthologs_sp_pair = reconciliation.reconciliation_and_orthologs(
-        recon_method, 
-        og_set, 
-        n_high_parallel, 
-        n_low_parallel, 
-        q_split_para_clades=q_split_para_clades,
-        fewer_open_files=fewer_open_files, 
-        exist_msa=exist_msa,
-        write_hog_tree=write_hog_tree,
-        fix_files=fix_files,
-        fd_limit=fd_limit
-    )
-
-    if not write_hog_tree or not fix_files:
-        # print("%fs for orthologs etc" % (stop-start))
-        stats.write_orthologs_stats(og_set, n_orthologs_sp_pair)
-
-    util.print_underline("Writing results files")
-    util.print_time("Writing results files")
-    file_handler.handler.clean_working_dir2()
-
 
 def orthologs_workflow(
         seqs_info, 

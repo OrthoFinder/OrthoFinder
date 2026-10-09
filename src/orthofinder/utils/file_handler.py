@@ -626,11 +626,6 @@ class _FileHandler(object):
         # return self.rd1 + "Gene_Trees/"
         return os.path.join(self.wd_trees, "Gene_Trees/")
 
-    def get_user_tree_dir(self):
-        d = self.rd1 + "Gene_Trees/"
-        if not os.path.exists(d): os.mkdir(d)
-        return d
-    
     def get_user_resolved_tree_dir(self):
         d = self.rd1 + "Resolved_Gene_Trees/"
         if not os.path.exists(d): os.mkdir(d)
@@ -815,11 +810,6 @@ class _FileHandler(object):
     #     if not os.path.exists(d): os.mkdir(d)
     #     return d
 
-    def get_ogs_recon_tree_fn(self, i_og):
-        # return self.rd1 + "Resolved_Gene_Trees/OG%07d_tree.txt" % iOG
-        # return self.wd_trees + "Resolved_Gene_Trees/OG%07d_tree.txt" % iOG
-        return self.wd_trees + "Resolved_Gene_Trees/OG%07d.txt" % i_og
-            
     # def GetPhyldogWorkingDirectory(self):
     #     d = self.wd_current + "phyldog/"
     #     if not os.path.exists(d): os.mkdir(d)

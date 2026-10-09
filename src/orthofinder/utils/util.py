@@ -36,7 +36,6 @@ from ..citation import citation
 from ..phylo import tree
 
 import shutil
-import traceback
 
 try:
     from rich import print, progress
@@ -85,13 +84,6 @@ class OrthoPrinter:
 printer = OrthoPrinter()
 
 from . import parallel_task_manager
-
-
-def print_traceback(e):
-    if PY2:
-        traceback.print_exc()
-    else:
-        traceback.print_tb(e.__traceback__)
 
 
 def stderr_exempt(stderr):
@@ -378,70 +370,6 @@ def create_new_working_directory(
 
 
 # Unused
-def create_new_paired_directories(
-    base_directory_name1,
-    base_directory_name2,
-    search_program=None,
-    msa_program=None,
-    tree_program=None,
-    scorematrix=None,
-    gapopen=None,
-    gapextend=None,
-    extended_filename=False,
-):
-    date_str = datetime.date.today().strftime("%b%d")
-    i_append = 0
-    new_directory_name1 = get_directory_name(
-        base_directory_name1 + date_str,
-        i_append,
-        search_program,
-        msa_program,
-        tree_program,
-        scorematrix,
-        gapopen,
-        gapextend,
-        extended_filename,
-    )
-    new_directory_name2 = get_directory_name(
-        base_directory_name2 + date_str,
-        i_append,
-        search_program,
-        msa_program,
-        tree_program,
-        scorematrix,
-        gapopen,
-        gapextend,
-        extended_filename,
-    )
-    while os.path.exists(new_directory_name1) or os.path.exists(new_directory_name2):
-        i_append += 1
-        new_directory_name1 = get_directory_name(
-            base_directory_name1 + date_str,
-            i_append,
-            search_program,
-            msa_program,
-            tree_program,
-            scorematrix,
-            gapopen,
-            gapextend,
-            extended_filename,
-        )
-        new_directory_name2 = get_directory_name(
-            base_directory_name2 + date_str,
-            i_append,
-            search_program,
-            msa_program,
-            tree_program,
-            scorematrix,
-            gapopen,
-            gapextend,
-            extended_filename,
-        )
-    os.mkdir(new_directory_name1)
-    os.mkdir(new_directory_name2)
-    return new_directory_name1, new_directory_name2
-
-
 def get_unused_filename(base_filename, ext, i_unassigned=None):
     i_append = 0
     new_filename = base_filename + ext
@@ -742,11 +670,6 @@ Find results of previous run
 """
 
 
-def get_species_directory():
-    # Confirms all required Sequence files and BLAST etc are present
-    pass
-
-
 def write_citation(d):
     with open(d + "Citation.txt", "w") as outfile:
         outfile.write(citation)
@@ -905,33 +828,6 @@ class NOrthoSp(object):
         else:
             self.n_m2m[i_l, i_r] += n_l
             self.n_m2m[i_r, i_l] += n_r
-
-
-class NOrthoCache(object):
-    """matrix of approx number of unwritten cached orthologs"""
-
-    def __init__(self, n_sp):
-        self.n = np.zeros((n_sp, n_sp))
-
-    def __iadd__(self, n_ortho_sp_obj):
-        self.n += n_ortho_sp_obj.n
-        return self
-
-    def get_i_j_to_write(self, n_max_cache, fewer_open_files=False):
-        if fewer_open_files:
-            # all genes for species i are collated
-            IJ = np.where(self.n.sum(axis=1) > n_max_cache)
-            I = list(IJ[0])
-            J = None
-            for i in I:
-                self.n[i, :] = 0
-        else:
-            IJ = np.where(self.n > n_max_cache)
-            I = list(IJ[0])
-            J = list(IJ[1])
-            for i, j in zip(I, J):
-                self.n[i, j] = 0
-        return I, J
 
 
 class Finalise(object):

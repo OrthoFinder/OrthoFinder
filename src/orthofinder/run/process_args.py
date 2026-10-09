@@ -319,18 +319,6 @@ def get_file_argument(arg: str) -> str:
 #         util.Fail()
 
 
-def get_program_caller():
-    config_file = os.path.join(configfile_location, "config.json")
-    pc = program_caller.ProgramCaller(
-        config_file if os.path.exists(config_file) else None
-    )
-    config_file_user = os.path.expanduser("~/config_orthofinder_user.json")
-    if os.path.exists(config_file_user):
-        pc_user = program_caller.ProgramCaller(config_file_user)
-        pc.add(pc_user)
-    return pc
-
-
 def process_args(args):
     """
     Workflow

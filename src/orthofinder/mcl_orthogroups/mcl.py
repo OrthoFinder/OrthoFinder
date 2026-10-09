@@ -34,9 +34,7 @@ except ImportError:
 from ..utils import parallel_task_manager, util, file_handler, file_io
 
 from collections import defaultdict, Counter
-import xml.etree.ElementTree as ET              # Y
 from xml.etree.ElementTree import SubElement    # Y
-from xml.dom import minidom
 from .. import __version__
 
 def get_predicted_ogs(clusters_filename):
@@ -157,14 +155,6 @@ class MCL:
                 outputid_file.write("OG%07d: " % i_og)
                 outputid_file.write(" ".join(sorted([seq for seq in og])))
                 outputid_file.write("\n")
-
-    @staticmethod
-    def prettify(elem):
-        """Return a pretty-printed XML string for the Element.
-        """
-        rough_string = ET.tostring(elem, 'utf-8')
-        reparsed = minidom.parseString(rough_string)
-        return reparsed.toprettyxml(indent="  ")
 
     # @staticmethod
     # def WriteOrthoXML(speciesInfo, predictedOGs, nSequencesDict, idDict, orthoxmlFilename, speciesToUse):

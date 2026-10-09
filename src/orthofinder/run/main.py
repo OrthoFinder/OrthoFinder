@@ -52,7 +52,7 @@ import copy  # Y
 import time  # Y
 import csv  # Y
 import os.path  # Y
-from ..utils import parallel_task_manager, file_handler, util, program_caller, fasta_processor, file_io, run_state
+from ..utils import parallel_task_manager, file_handler, util, fasta_processor, file_io, run_state
 from ..mcl_orthogroups import infer_orthogroups, orthogroups_set
 from ..mcl_orthogroups import assign as assign
 from orthofinder.utils import logging as run_logging
@@ -100,18 +100,6 @@ sys.setrecursionlimit(10**6)
 OrthoFinder
 -------------------------------------------------------------------------------
 """
-
-
-def get_program_caller():
-    config_file = os.path.join(configfile_location, "config.json")
-    pc = program_caller.ProgramCaller(
-        config_file if os.path.exists(config_file) else None
-    )
-    config_file_user = os.path.expanduser("~/config_orthofinder_user.json")
-    if os.path.exists(config_file_user):
-        pc_user = program_caller.ProgramCaller(config_file_user)
-        pc.add(pc_user)
-    return pc
 
 
 """

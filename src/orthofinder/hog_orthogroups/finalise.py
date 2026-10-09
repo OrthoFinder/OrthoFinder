@@ -266,22 +266,6 @@ def hog_file_over4genes(hog_n0, min_seq):
 
     return filtered_hog_n0    
 
-def update_filenames(file_dir, name_dictionary):
- 
-    for entry in os.scandir(file_dir):
-        filename, extension = entry.name.rsplit(".", 1)
-        if "_" not in filename:
-            continue
-        old_name, node_name = filename.split("_")
-        names = name_dictionary.get(old_name)
-        if names is None:
-            continue
-        for i in names:
-            if i[2] == node_name:
-                new_filename = i[0] + "." + extension
-                os.rename(entry.path, os.path.join(file_dir, new_filename))
-                break
-
 def copy_tiny_alignments(align_id_dir, align_dir, name_dictionary, id_dict):
     for entry in os.scandir(align_id_dir):
         if entry.is_file():

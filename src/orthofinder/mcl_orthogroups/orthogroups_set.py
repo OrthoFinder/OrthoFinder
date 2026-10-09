@@ -176,12 +176,6 @@ class OrthogroupSet(object):
 
     #     return self.ogs_single
 
-    def get_ogs_single(self):
-        if self.ogs_single is None:
-            ogs = MCL.get_predicted_ogs(file_handler.handler.get_clusters_fn())
-            self.ogs_single = [og for og in ogs if len(og) == 1]
-        return self.ogs_single
-
     # def OGs4AssumeOrdered(self):
     #     ogs_all = self.get_ogs_all()
     #     iogs4 = self.get_i_ogs4()
@@ -203,15 +197,6 @@ class OrthogroupSet(object):
             for gene in og:
                 og_matrix[i_og, species_index_dict[gene.i_sp]] += 1
         return og_matrix, iogs4
-
-    def id_to_og_dict(self):
-        if self.id_to_og != None:
-            return self.id_to_og
-        # Maybe shouldn't include unclustered genes:
-        self.id_to_og = {
-            g.to_string(): iog for iog, og in enumerate(self.get_ogs_all()) for g in og
-        }
-        return self.id_to_og
 
     def all_used_sequence_ids(self):
         ids_dict = self.sequence_dict()

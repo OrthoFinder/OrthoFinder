@@ -27,9 +27,6 @@ class DendroBLASTTrees(object):
         self.q_double_blast = q_double_blast
         # Check files exist
     
-    def tree_filename_ids(self, iog):
-        return file_handler.handler.get_ogs_tree_fn(iog)
-        
     def get_og_matrices_full_parallel(self):
         """
         read the blast files as well, remove need for intermediate pickle and unpickle
@@ -349,18 +346,6 @@ def csr_minmax(M):
         starts = M.indptr[:-1][has]
         mins[has, 0] = np.minimum.reduceat(M.data, starts)
         maxes[has, 0] = np.maximum.reduceat(M.data, starts)
-    return mins, maxes
-
-def lil_minmax(M):
-    n = M.shape[0]
-    mins = np.ones((n, 1), dtype = np.float64) * 9e99
-    maxes = np.zeros((n, 1), dtype = np.float64)
-    for k_row in range(n):
-        values=M.getrowview(k_row)
-        if values.nnz == 0:
-            continue
-        mins[k_row] = min(values.data[0])
-        maxes[k_row] = max(values.data[0])
     return mins, maxes
 
 # ==============================================================================================================================    

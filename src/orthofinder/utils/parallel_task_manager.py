@@ -250,10 +250,6 @@ def parallel_map(function, args_list, n_processes, progress=None):
 
 
 # not used
-def run_command_simple(command):
-    subprocess.call(command, env=my_env, shell=True)
-
-
 # How often to report an external program that is still running (seconds).
 # There is deliberately no time limit: a program that is still running is
 # never stopped for being slow (a large alignment or tree can take hours).

@@ -133,39 +133,6 @@ class FastaWriter(object):
                 else:
                     sys.stderr.write("ERROR: %s not found\n" % seq)
     
-    def append_to_stockholm(self, msa_id, out_filename, seqs=None):
-        """
-        Append the msa to a stockholm format file. File must already be aligned
-        Args:
-            msa_id - the ID to use for the accession line, "#=GF AC" 
-            outFilename - the file to write to
-            seqs - Only write selected sequences o/w write all
-        """
-        l = [len(s) for s in self.seq_lists.values()]
-        if min(l) != max(l):
-            raise Exception("Sequences must be aligned")
-        with open(out_filename, 'a') as out_file:
-            out_file.write("# STOCKHOLM 1.0\n#=GF AC %s\n" % msa_id)
-            seqs = self.seq_lists.keys() if seqs is None else seqs
-            for seq in seqs:
-                if seq in self.seq_lists:
-                    out_file.write("%s " % seq)
-                    out_file.write(self.seq_lists[seq].replace("\n", "") + "\n")
-                else:
-                    sys.stderr("ERROR: %s not found\n" % seq)
-            out_file.write("//\n")
-            
-    def print_seqs(self, seqs):
-        if type(seqs[0]) is not str:
-            seqs = [s.to_string() for s in seqs]
-        for seq in seqs:
-            if seq in self.seq_lists:
-                sys.stdout.write(">%s\n" % seq)
-                sys.stdout.write(self.seq_lists[seq])
-            else:
-                sys.stderr.write("ERROR: %s not found\n" % seq)
-
-                    
     def write_seqs_to_fasta_with_new_accessions(self, seqs, out_filename, id_dict):
         with open(out_filename, 'w') as out_file:
             for seq in seqs:

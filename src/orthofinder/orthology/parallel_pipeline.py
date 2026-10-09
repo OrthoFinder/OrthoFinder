@@ -587,19 +587,6 @@ def initialise_suspect_genes_dirs(nspecies, species_ids, species_dict):
             writer1 = file_io.writer(outfile)
             writer1.writerow(("Orthogroup", species_dict[str(species_ids[index1])], "Other"))
 
-def write_suspect_genes(nspecies, species_to_use, suspect_genes, species_dict, sequence_dict):
-    species = list(map(str, species_to_use))
-    d_suspect_genes = file_handler.handler.get_suspect_genes_dir()
-    for index0 in range(nspecies):
-        strsp0 = species[index0]
-        strsp0_ = strsp0+"_"
-        these_genes = [g for g in suspect_genes if g.startswith(strsp0_)]
-        if len(these_genes) > 0:
-            with open(d_suspect_genes + species_dict[strsp0] + ".txt", util.csv_append_mode) as outfile:
-                # not a CSV file so \n line endings are fine
-                outfile.write("\n".join([sequence_dict[g] for g in these_genes]) + "\n")
-
-
 def duplication_rows(og_name, duplications, sp_ids, seq_ids, stride_dups):
     """
     Convert duplication records into rows.
@@ -635,24 +622,6 @@ def duplication_rows(og_name, duplications, sp_ids, seq_ids, stride_dups):
         ])
 
     return rows
-
-
-def write_duplications(dups_file_handle, og_name, duplications, sp_ids, seq_ids, stride_dups):
-    """
-    Args:
-        duplications - list of (sp_node_id, gene_node_name, fraction, genes0, genes1)
-    """
-    for sp_node_id, gene_node_name, frac, genes0, genes1 in duplications:
-        q_terminal = not sp_node_id.startswith("N")
-        if stride_dups is None:
-            is_stride = "Terminal" if q_terminal else "Non-Terminal"
-        else:
-            is_stride = "Terminal" if q_terminal else "Non-Terminal: STRIDE" if frozenset(genes0 + genes1) in stride_dups else "Non-Terminal"
-        gene_list0 = ", ".join([seq_ids[g] for g in genes0])   # line can read ">1234 genes" for example, but this has been added to dict
-        gene_list1 = ", ".join([seq_ids[g] for g in genes1])
-        file_io.write_unquoted(dups_file_handle, [og_name, sp_ids[sp_node_id] if q_terminal else sp_node_id, gene_node_name, str(frac), is_stride, gene_list0, gene_list1]) 
-
-
 
 
 def get_n_writer_processes(

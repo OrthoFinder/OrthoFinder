@@ -7,9 +7,7 @@ from ..gene_tree import msa_trees
 from ..mcl_orthogroups import mcl as MCL
 from ..utils import util, file_handler, file_io
 
-import xml.etree.ElementTree as ET  # Y
 from xml.etree.ElementTree import SubElement  # Y
-from xml.dom import minidom
 from .. import __version__
 
 
@@ -316,15 +314,6 @@ class OrthogroupSet(object):
             all_ogs = [[g for g in og] for og in ogs]
         return all_ogs
 
-    def id_to_og_dict(self):
-        if self.id_to_og != None:
-            return self.id_to_og
-        # Maybe shouldn't include unclustered genes:
-        self.id_to_og = {
-            g.to_string(): iog for iog, og in enumerate(self.get_ogs_all()) for g in og
-        }
-        return self.id_to_og
-
     def all_used_sequence_ids(self):
         ids_dict = self.sequence_dict()
         species_to_use_strings = list(map(str, self.species_to_use))
@@ -345,13 +334,6 @@ class MCL:
                 )
                 output_file.write(" ".join(accessions))
                 output_file.write("\n")
-
-    @staticmethod
-    def prettify(elem):
-        """Return a pretty-printed XML string for the Element."""
-        rough_string = ET.tostring(elem, "utf-8")
-        reparsed = minidom.parseString(rough_string)
-        return reparsed.toprettyxml(indent="  ")
 
     # @staticmethod
     # def WriteOrthoXML(speciesInfo, predictedOGs, nSequencesDict, idDict, orthoxmlFilename, speciesToUse):

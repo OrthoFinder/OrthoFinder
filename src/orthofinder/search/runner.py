@@ -239,47 +239,6 @@ def create_search_databases(
         progressbar.stop()
 
 
-def create_search_databases_assign(species_info_obj, options, prog_caller):
-
-    i_species_new = list(range(species_info_obj.i_first_new_species, species_info_obj.n_sp_all))
-
-    progressbar, task = util.get_progressbar(len(i_species_new))
-    progressbar.update(task, description="[yellow]Creating %s databases" % options.search_program)
-    progressbar.start()
-    update_cycle = (
-        1  # 10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000
-    )
-
-    for i, i_sp in enumerate(i_species_new):
-        fn_fasta = file_handler.handler.get_species_fasta_fn(i_sp, q_for_creation=True)
-        if os.stat(fn_fasta).st_size == 0:
-            if (i + 1) % update_cycle == 0:
-                progressbar.update(task, advance=update_cycle)
-            continue
-
-        command = prog_caller.get_search_method_command_db(
-            options.search_program,
-            fn_fasta,
-            file_handler.handler.get_species_database_n(i_sp, options.search_program),
-            options.score_matrix,
-            options.gapopen,
-            options.gapextend,
-            options.method_threads,
-            nucleotide=options.dna,
-        )
-        # util.print_time("Creating %s database %d of %d" % (options.search_program, iSp + 1, len(iSpeciesToDo)))
-        ret_code = parallel_task_manager.run_command(
-            command, q_print_on_error=True, q_print_stderr=False
-        )
-        if ret_code != 0:
-            file_handler.handler.log_fail_and_exit("ERROR: %s database creation failed" % options.search_program)
-
-        if (i + 1) % update_cycle == 0:
-            progressbar.update(task, advance=update_cycle)
-
-    progressbar.stop()
-
-
 # A results file written by a search command: ".../Blast<i>_<j>.txt" (not, e.g.,
 # MMseqs2's temporary "/tmp/tmpBlast<i>_<j>.txt").
 _RESULTS_IN_COMMAND = re.compile(r"""([^\s'"=<>|;]*?)\bBlast(\d+)_(-?\d+)\.txt""")

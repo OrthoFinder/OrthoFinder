@@ -558,17 +558,6 @@ class HogWriter(object):
             if lock_hogs is not None:
                 lock_hogs.release()
 
-    @staticmethod
-    def is_hog_boundary(n):
-        return bool(
-            getattr(n, "dup", False) or
-            getattr(n, "polytomy_boundary", False)
-        )
-
-    @staticmethod
-    def scl_fn(n):
-        return n.is_leaf() or getattr(n, "dup", False)
-
     def _index_species_tree(self, sp_tree):
         """
         Species-tree ancestry without a set of descendants per node.

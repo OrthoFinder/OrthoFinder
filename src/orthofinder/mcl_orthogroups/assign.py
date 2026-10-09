@@ -580,18 +580,6 @@ def write_unassigned_fasta(ogs_orig_list, ogs_new_genes, species_info_obj):
     return n_unassigned
 
 
-def sample_random(og, n_max):
-    """
-    Sample min(n_max, |og|) genes randomly from clade
-    Args:
-        og - set of strings
-        n_max - max number of genes to sample
-    Returns:
-        genes - list of genes
-    """
-    return random.sample(sorted(og), min(n_max, len(og)))
-
-
 # A new-species clade at least this large gets a warning at run time.
 LARGE_CLADE_SPECIES = 50
 
