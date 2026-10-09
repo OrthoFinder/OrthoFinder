@@ -1,10 +1,11 @@
-"""--tree-view: pictures of the trees (ete4, which needs PyQt6) and a page for them."""
+"""--tree-view: a page that draws the trees (in the browser) and each gene tree's alignment."""
 import json
 import re
 import shutil
 import subprocess
 
 import pytest
+from ete4 import Tree
 
 from orthofinder.phylo import tree_pages
 
@@ -16,6 +17,20 @@ def test_leaf_species():
     assert tree_pages.leaf_species("Sp_A_g2", species, genes) == ("Sp_A", "g2")
     assert tree_pages.leaf_species("g7", species, genes) == ("Sp_B", "g7")  # -X: no species in the names
     assert tree_pages.leaf_species("unknown", species, genes) == (None, "unknown")
+
+
+def test_flat_tree():
+    nodes, leaves = tree_pages.flat_tree(Tree("((a:0.1,b:0.2)n1:0.3,c:0.4)n0;", parser=1))
+    # preorder, a parent before its children: [parent, branch length, leaf number or node name]
+    assert nodes == [[-1, 0, "n0"], [0, 0.3, "n1"], [1, 0.1, 0], [1, 0.2, 1], [0, 0.4, 2]]
+    assert leaves == ["a", "b", "c"]
+
+
+def test_flat_tree_deep():
+    newick = "(" * 3000 + "a" + ",b)" * 3000 + ";"  # deeper than Python's recursion limit
+    nodes, leaves = tree_pages.flat_tree(Tree(newick))
+    assert len(leaves) == 3001 and len(nodes) == 6001
+    json.dumps(nodes)  # a flat list: no recursion to write it
 
 
 def make_results(d):
@@ -30,51 +45,92 @@ def make_results(d):
         "OG0000000: ((Sp_A_a1:0.1,Sp_A_a2:0.2)n1:0.3,Sp_B_b1:0.4)n0;\n"
         "OG0000001: (Sp_A_a3:0.1,(Sp_B_b2:0.2,Sp_B_b3:0.2)n1:0.1)n0;\n"
         "OG0000009: ((not a tree;\n")
+    (d / "Gene_Duplication_Events").mkdir()
+    (d / "Gene_Duplication_Events" / "Duplications.tsv").write_text(
+        "Orthogroup\tSpecies Tree Node\tGene Tree Node\tSupport\tType\tGenes 1\tGenes 2\n"
+        "OG0000000\tSp_A\tn1\t1.0\tTerminal\tSp_A_a1\tSp_A_a2\n"
+        "OG0000000\tN0\tn0\t0.4\tNon-Terminal\tSp_A_a1, Sp_A_a2\tSp_B_b1\n")
+    (d / "MultipleSequenceAlignments").mkdir()  # OG0000001 has none
+    (d / "MultipleSequenceAlignments" / "OG0000000.fa").write_text(
+        ">Sp_B_b1\nMK-L\nV\n>Sp_A_a2\nMKAL-\n>Sp_A_a1\nM--LV\n")
 
 
-def treeview_available():
-    try:
-        tree_pages.load_treeview()
-        return True
-    except tree_pages.TreeViewUnavailable:
-        return False
+def page_data(d):
+    page = (d / "Resolved_Gene_Trees" / "Resolved_Gene_Trees.html").read_text()
+    return json.loads(re.search(r"const D = (.*);\n", page).group(1))
 
 
-needs_treeview = pytest.mark.skipif(not treeview_available(), reason="needs PyQt6 for ete4 to draw trees")
+def tree_data(d, og):
+    text = (d / "Resolved_Gene_Trees" / "Tree_Data" / f"{og}.js").read_text()
+    assert text.startswith("treeLoaded(") and text.endswith(");\n")
+    return json.loads(text[len("treeLoaded("):-len(");\n")])
 
 
-@needs_treeview
 def test_write_tree_pages(tmp_path, capsys):
     make_results(tmp_path)
     assert tree_pages.write_tree_pages(str(tmp_path)) == 2
-    assert "1 gene trees could not be drawn" in capsys.readouterr().out
+    assert "1 gene trees could not be read" in capsys.readouterr().out
+    assert sorted(p.name for p in (tmp_path / "Resolved_Gene_Trees" / "Tree_Data").iterdir()) == \
+        ["OG0000000.js", "OG0000001.js"]
     colour = dict(zip(["Sp_A", "Sp_B"], tree_pages.PALETTE))
 
-    svg = (tmp_path / "Resolved_Gene_Trees" / "Tree_Images" / "OG0000000.svg").read_text()
-    for gene in ("a1", "a2", "b1"):
-        assert gene in svg
-    assert "Sp_A_a1" not in svg  # the gene name, the species is its colour
-    assert colour["Sp_A"].lower() in svg.lower() and colour["Sp_B"].lower() in svg.lower()
-    assert "n1" in svg  # the gene tree node labels
-    assert not (tmp_path / "Resolved_Gene_Trees" / "Tree_Images" / "OG0000009.svg").exists()
-    species_svg = (tmp_path / "Species_Tree" / "SpeciesTree_rooted_node_labels.svg").read_text()
-    assert "Sp_A" in species_svg and "N0" in species_svg
-
-    page = (tmp_path / "Resolved_Gene_Trees" / "Resolved_Gene_Trees.html").read_text()
-    data = json.loads(re.search(r"const D = (.*);\n", page).group(1))
-    assert data["trees"] == [["OG0000000", ["a1", "a2", "b1"]], ["OG0000001", ["a3", "b2", "b3"]]]
+    data = page_data(tmp_path)
+    assert [t[:2] for t in data["trees"]] == [["OG0000000", ["a1", "a2", "b1"]], ["OG0000001", ["a3", "b2", "b3"]]]
     assert data["species"] == [["Sp_A", colour["Sp_A"]], ["Sp_B", colour["Sp_B"]]]
-    assert data["species_tree"] == "../Species_Tree/SpeciesTree_rooted_node_labels.svg"
+    assert data["data"] == "Tree_Data"
+    assert data["species_tree"] == {"genes": [["Sp_A", 0], ["Sp_B", 1]],
+                                    "nodes": [[-1, 0, "N0"], [0, 0.5, 0], [0, 0.5, 1]]}
+    # MK-LV, MKAL-, M--LV: 4 of 15 positions are gaps; columns 1 (M) and 4 (L) are identical in all;
+    # branch lengths 0.1 + 0.2 + 0.3 + 0.4; the duplication with support 0.4 is not counted as supported
+    assert data["trees"][0][2] == {"species": [[0, 2], [1, 1]], "length": 1.0, "duplications": [2, 1],
+                                   "alignment": {"columns": 5, "gaps": 26.7, "lengths": [3, 4, 4], "identical": 40.0}}
+    assert data["trees"][1][2] == {"species": [[0, 1], [1, 2]], "length": 0.6, "duplications": [0, 0]}
 
 
-@needs_treeview
+def test_tree_data(tmp_path):
+    make_results(tmp_path)
+    tree_pages.write_tree_pages(str(tmp_path))
+    og0 = tree_data(tmp_path, "OG0000000")
+    # the genes in the tree's order, each with its label and species number; the sequences
+    # in the same order (not the file's); the duplications on their gene tree nodes
+    assert og0 == {"og": "OG0000000",
+                   "genes": [["Sp_A: a1", 0], ["Sp_A: a2", 0], ["Sp_B: b1", 1]],
+                   "nodes": [[-1, 0, "n0"], [0, 0.3, "n1"], [1, 0.1, 0], [1, 0.2, 1], [0, 0.4, 2]],
+                   "dups": [["n1", 1.0], ["n0", 0.4]],
+                   "seqs": ["M--LV", "MKAL-", "MK-LV"]}
+    og1 = tree_data(tmp_path, "OG0000001")
+    assert "seqs" not in og1 and og1["dups"] == []
+
+
+def test_alignment_sequences_not_in_the_tree(tmp_path):
+    make_results(tmp_path)
+    (tmp_path / "MultipleSequenceAlignments" / "OG0000000.fa").write_text(">Sp_A_a1\nMK\n>Sp_B_extra\nMV\n")
+    tree_pages.write_tree_pages(str(tmp_path))
+    og0 = tree_data(tmp_path, "OG0000000")
+    # a gene of the tree without a sequence has None; a sequence not in the tree comes after the tree's genes
+    assert og0["genes"] == [["Sp_A: a1", 0], ["Sp_A: a2", 0], ["Sp_B: b1", 1], ["Sp_B: extra", 1]]
+    assert og0["seqs"] == ["MK", None, None, "MV"]
+
+
+def test_read_alignment(tmp_path):
+    fn = tmp_path / "a.fa"
+    fn.write_text(">x y\nAC-\nGT\n\n>z\nAC\n")
+    assert tree_pages.read_alignment(str(fn)) == {"x y": "AC-GT", "z": "AC"}
+
+
 def test_no_gene_trees_nothing_written(tmp_path):
     (tmp_path / "Orthogroups").mkdir()  # e.g. -og: no gene trees
     assert tree_pages.write_tree_pages(str(tmp_path)) == 0
     assert [p.name for p in tmp_path.iterdir()] == ["Orthogroups"]
 
 
-@needs_treeview
+def test_empty_gene_trees_file_nothing_written(tmp_path):
+    make_results(tmp_path)
+    (tmp_path / "Resolved_Gene_Trees" / "Resolved_Gene_Trees.txt").write_text("")  # as after -og
+    assert tree_pages.write_tree_pages(str(tmp_path)) == 0
+    assert sorted(p.name for p in (tmp_path / "Resolved_Gene_Trees").iterdir()) == ["Resolved_Gene_Trees.txt"]
+
+
 @pytest.mark.skipif(shutil.which("node") is None, reason="needs node to check the page's script")
 def test_page_script_is_valid_javascript(tmp_path):
     make_results(tmp_path)
@@ -86,40 +142,15 @@ def test_page_script_is_valid_javascript(tmp_path):
     assert result.returncode == 0, result.stderr
 
 
-def test_without_pyqt6(tmp_path, monkeypatch):
+def test_needs_no_pyqt6(tmp_path, monkeypatch):
     make_results(tmp_path)
-    monkeypatch.setitem(__import__("sys").modules, "ete4.treeview", None)  # as if PyQt6 were not installed
-    with pytest.raises(tree_pages.TreeViewUnavailable):
-        tree_pages.write_tree_pages(str(tmp_path))
-    assert not (tmp_path / "Resolved_Gene_Trees" / "Tree_Images").exists()
-
-
-@needs_treeview
-def test_empty_gene_trees_file_nothing_written(tmp_path):
-    make_results(tmp_path)
-    (tmp_path / "Resolved_Gene_Trees" / "Resolved_Gene_Trees.txt").write_text("")  # as after -og
-    assert tree_pages.write_tree_pages(str(tmp_path)) == 0
-    assert sorted(p.name for p in (tmp_path / "Resolved_Gene_Trees").iterdir()) == ["Resolved_Gene_Trees.txt"]
-    assert not (tmp_path / "Species_Tree" / "SpeciesTree_rooted_node_labels.svg").exists()
-
-
-def test_missing_pyqt6_message_says_why_and_how():
-    msg = tree_pages.missing_pyqt6_message("/data/Results_Oct09")
-    assert "Qt graphics library (PyQt6)" in msg and "only this option needs it" in msg
-    assert "pip install PyQt6" in msg and 'pip install "orthofinder[trees]"' in msg
-    assert "python -m orthofinder.phylo.tree_pages /data/Results_Oct09" in msg
-
-
-def test_command_without_pyqt6(tmp_path, monkeypatch, capsys):
-    make_results(tmp_path)
+    monkeypatch.setitem(__import__("sys").modules, "PyQt6", None)  # as if PyQt6 were not installed
     monkeypatch.setitem(__import__("sys").modules, "ete4.treeview", None)
-    assert tree_pages.main([str(tmp_path)]) == 1
-    assert "pip install PyQt6" in capsys.readouterr().out
+    assert tree_pages.write_tree_pages(str(tmp_path)) == 2
 
 
-@needs_treeview
 def test_command(tmp_path, capsys):
     make_results(tmp_path)
     assert tree_pages.main([str(tmp_path)]) == 0
-    assert "Gene tree pictures (2)" in capsys.readouterr().out
+    assert "Gene tree page (2 trees)" in capsys.readouterr().out
     assert (tmp_path / "Resolved_Gene_Trees" / "Resolved_Gene_Trees.html").exists()

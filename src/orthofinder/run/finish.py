@@ -8,7 +8,6 @@ from rich.markup import escape
 from ..orthology import ortholog_writers
 from ..phylo import tree_pages
 from ..utils import file_handler, orthoxml, paths, printing
-from ..utils.printing import printer
 
 try:
     from rich import print
@@ -79,15 +78,11 @@ def process_output_files(ctx, species_info_obj, species_names_dict):
                           "and as web pages (Orthologs/Orthologs.*, Putative_Xenologs/Putative_Xenologs.*).")
 
         if options.tree_view:
-            # --tree-view: pictures of the species tree and the resolved gene trees, and a page for them
-            try:
-                n_trees = tree_pages.write_tree_pages(d_results)
-                if n_trees:
-                    print("\nGene tree pictures (%d): %s" % (n_trees, escape(
-                        os.path.join(d_results, "Resolved_Gene_Trees", "Resolved_Gene_Trees.html"))))
-            except tree_pages.TreeViewUnavailable:
-                printer.print("\nWARNING: " + escape(tree_pages.missing_pyqt6_message(d_results.rstrip(os.sep))),
-                              style="warning", soft_wrap=True)
+            # --tree-view: a page to look at the species tree and the resolved gene trees
+            n_trees = tree_pages.write_tree_pages(d_results)
+            if n_trees:
+                page = os.path.join(d_results, "Resolved_Gene_Trees", "Resolved_Gene_Trees.html")
+                print(f"\nGene tree page ({n_trees} trees): {escape(page)}")
 
         # printer.print("\nResults:\n    %s" % d_results, style="path")
         if options.q_stop_after_mcl_groups:      # stopped after the orthogroups (-og)

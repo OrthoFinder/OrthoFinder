@@ -51,8 +51,6 @@ repository = "https://github.com/OrthoFinder/OrthoFinder"
 [project.optional-dependencies]
 build = ["build", "twine", "wheel"]
 docs = ["directory_tree", "PyQt6", "tabulate"]
-# --tree-view: ete4 draws the trees with the Qt graphics library
-trees = ["PyQt6"]
 dev = [
     "python-semantic-release",
     "pytest",
@@ -64,7 +62,6 @@ dev = [
     "setuptools-scm>=8",
     "packaging>=24.2",
     "build",
-    "PyQt6",
 ]
 
 [project.scripts]
