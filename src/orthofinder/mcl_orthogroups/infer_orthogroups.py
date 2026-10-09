@@ -277,6 +277,27 @@ def do_orthogroups(
     return clusters_filename_pairs
 
 
+def add_unclustered_genes(ogs, species_to_use, n_seqs_per_species):
+    """
+    Add each gene of the analysis that is in no orthogroup to ogs as a
+    single-gene orthogroup, at the end in sequence-ID order (so the other
+    orthogroups keep their numbers), as the final orthogroups from the HOGs do.
+    With --assign the clustering of the new species' unassigned genes does not
+    keep its single-gene clusters (mcl.convert_single_ids_to_id_pair), so
+    without this their genes would be in no results file. Returns the number
+    of genes added.
+    """
+    clustered = {gene for og in ogs for gene in og}
+    missing = [
+        f"{i_species}_{i_seq}"
+        for i_species in species_to_use
+        for i_seq in range(n_seqs_per_species[i_species])
+        if f"{i_species}_{i_seq}" not in clustered
+    ]
+    ogs.extend({gene} for gene in missing)
+    return len(missing)
+
+
 def post_clustering_orthogroups(
         clusters_filename_pairs,
         species_info_obj,
@@ -293,6 +314,10 @@ def post_clustering_orthogroups(
     """
     ogs = mcl.get_predicted_ogs(clusters_filename_pairs)
     results_base_filename = file_handler.handler.get_orthogroup_results_fn_base()
+    if (not options.fix_files or options.q_stop_after_mcl_groups) and not q_incremental:
+        # these are the final orthogroups (-og, --no-fix-files): every gene must be
+        # in Orthogroups.tsv or Orthogroups_UnassignedGenes.tsv
+        add_unclustered_genes(ogs, species_info_obj.species_to_use, seqs_info.n_seqs_per_species)
 
     # if not options.fix_files:
     if not options.q_stop_after_trees:
