@@ -85,23 +85,23 @@ def is_fasta_file(fn):
     return os.path.splitext(fn)[1].lower() in FASTA_EXTENSIONS
 
 def process_fasta_file(fn, dout, gene_name_function_name=None):
-    if not CheckFile(fn):
+    if not check_file(fn):
         return
 
     if gene_name_function_name is not None:
         q_use_original_accession_line = True
-        ScanTags_with_fn(fn, gene_name_function_name)
+        scan_tags_with_fn(fn, gene_name_function_name)
     else:
-        if IsNCBI(fn):
+        if is_ncbi(fn):
             print("Identified as NCBI file")
-            gene_name_function_name = GetGeneName_NCBI
+            gene_name_function_name = get_gene_name_ncbi
             q_use_original_accession_line = True
         else:
-            gene_name_function_name = GetGeneName_Ensembl
+            gene_name_function_name = get_gene_name_ensembl
             q_use_original_accession_line = False
             print('Looking for "gene=" or "gene:" to identify isoforms of same gene')
 
-    CreatePrimaryTranscriptsFile(
+    create_primary_transcripts_file(
         fn,
         dout,
         gene_name_function_name,
@@ -126,7 +126,7 @@ def process_archive(fn, dout, gene_name_function=None):
 
         process_input(tmpdir, dout, gene_name_function)
 
-def CheckFile(fn):
+def check_file(fn):
     """
     Checks for:
     - Duplicated accession lines
@@ -143,7 +143,7 @@ def CheckFile(fn):
                 accs.add(a)
     return True
 
-def ScanTags(fn):
+def scan_tags(fn):
     """
     For ensembl genomes, look for tag:id and count repeated ids
     :param fn:
@@ -159,11 +159,11 @@ def ScanTags(fn):
     for this_tag in tags:
         print(this_tag)
         # print(tokens[-1])
-        c = Counter([idd for acc in tokens for t, idd in acc if t == this_tag])
+        c = Counter([idd for assign in tokens for t, idd in assign if t == this_tag])
         print(c.most_common(5))
         print("")
 
-def ScanTags_NCBI(fn):
+def scan_tags_ncbi(fn):
     genes = []
     with open(fn, 'r') as infile:
         for line in infile:
@@ -171,7 +171,7 @@ def ScanTags_NCBI(fn):
             genes.append(line[1:].split(".", 1)[0])
     print("%d sequences, %d genes" % (len(genes), len(set(genes))))
 
-def ScanTags_with_fn(fn, gene_name_fn):
+def scan_tags_with_fn(fn, gene_name_fn):
     genes = []
     with open(fn, 'r') as infile:
         for line in infile:
@@ -181,12 +181,12 @@ def ScanTags_with_fn(fn, gene_name_fn):
     # print(genes[0])
     # print(sorted(genes)[:10])
 
-def GetGeneName_Ensembl(acc_line):
+def get_gene_name_ensembl(acc_line):
     tokens = [(t.split("=") if "=" in t else t.split(":"))[1] for t in acc_line.rstrip().split() if ("gene:" in t or "gene=" in t or "locus:" in t or "locus=" in t)]
     if len(tokens) != 1: return None
     return tokens[0]
 
-def IsNCBI(fn):
+def is_ncbi(fn):
     with open(fn, 'r') as infile:
         for l in infile:
             if l.startswith(">"):
@@ -198,7 +198,7 @@ def IsNCBI(fn):
                 return False
     return False
 
-def GetGeneName_NCBI(acc_line):
+def get_gene_name_ncbi(acc_line):
     acc_line = acc_line[1:]
     original = acc_line
     # look for "isoform X[:d]+" or "isoform [:d]+"
@@ -222,71 +222,71 @@ def GetGeneName_NCBI(acc_line):
         acc_line = acc_line.split(None, 1)[-1]
     return acc_line
 
-def CreatePrimaryTranscriptsFile(fn, dout, gene_name_fn, q_use_original_accession_line):
+def create_primary_transcripts_file(fn, dout, gene_name_fn, q_use_original_accession_line):
     # Get genes and lengths
     max_gene_lens = defaultdict(int)
     with open(fn, 'r') as infile:
         lines = [l.rstrip() for l in infile]
     N = len(lines) - 1
-    nAcc = 0
-    nGeneUnidentified = 0
+    n_acc = 0
+    n_gene_unidentified = 0
     acc_to_use = defaultdict(str)
-    iLine = -1
-    while iLine < N:
-        iLine += 1
-        line = lines[iLine]
+    i_line = -1
+    while i_line < N:
+        i_line += 1
+        line = lines[i_line]
         if not line.startswith(">"): continue
-        nAcc += 1
-        iLineAcc = iLine
+        n_acc += 1
+        i_line_acc = i_line
         gene = gene_name_fn(line)
         if gene is None:
-            nGeneUnidentified += 1
+            n_gene_unidentified += 1
             continue
         # get length
         l = 0
-        while iLine < N:
-            iLine += 1
-            line = lines[iLine]
+        while i_line < N:
+            i_line += 1
+            line = lines[i_line]
             if line.startswith(">"):
-                iLine -= 1
+                i_line -= 1
                 break
             l += len(line.rstrip())
         if l > max_gene_lens[gene]:
             max_gene_lens[gene] = l
-            acc_to_use[gene] = iLineAcc
-    print("Found %d accessions, %d genes, %d unidentified transcripts" % (nAcc, len(max_gene_lens), nGeneUnidentified))
+            acc_to_use[gene] = i_line_acc
+    print("Found %d accessions, %d genes, %d unidentified transcripts" % (n_acc, len(max_gene_lens), n_gene_unidentified))
     # print(gene)
     # print(sorted(max_gene_lens.keys())[:10])
     # print(len(set(max_gene_lens.keys())))
 
     # Get longest version for each gene
     # Parse file second time and only write out sequences that are longest variant
-    nGenesWritten = 0
+    n_genes_written = 0
     outfn = os.path.join(dout, os.path.basename(fn))
     with open(outfn, 'w') as outfile:
-        iLine = -1
-        while iLine < N:
-            iLine += 1
-            line = lines[iLine]
+        i_line = -1
+        while i_line < N:
+            i_line += 1
+            line = lines[i_line]
             if not line.startswith(">"): continue
             gene = gene_name_fn(line)
             # transcripts not identifying the gene should be written
-            if gene != None and iLine != acc_to_use[gene]: continue
+            if gene != None and i_line != acc_to_use[gene]: continue
             if q_use_original_accession_line or gene == None:
                 acc_line_out = line + "\n"
             else:
                  acc_line_out = ">%s\n" % gene
-            nGenesWritten += 1
+            n_genes_written += 1
             outfile.write(acc_line_out)
-            while iLine < N:
-                iLine += 1
-                line = lines[iLine]
+            while i_line < N:
+                i_line += 1
+                line = lines[i_line]
                 if line.startswith(">"):
-                    iLine -= 1
+                    i_line -= 1
                     break
                 outfile.write(line + "\n")
-    print("Wrote %d genes" % nGenesWritten)
-    if nGenesWritten != len(max_gene_lens) + nGeneUnidentified:
+    print("Wrote %d genes" % n_genes_written)
+    if n_genes_written != len(max_gene_lens) + n_gene_unidentified:
         print("ERROR")
         raise Exception
     print(outfn)

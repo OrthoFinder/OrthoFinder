@@ -13,7 +13,7 @@ import re
 import time
 
 
-def RunBlastDBCommand(command):
+def run_blast_db_command(command):
     capture = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
@@ -30,8 +30,8 @@ def RunBlastDBCommand(command):
         stderr = stderr.encode()
     n_stdout_lines = stdout.count("\n")
     n_stderr_lines = stderr.count("\n")
-    nLines_success = 12
-    if n_stdout_lines > nLines_success or n_stderr_lines > 0 or capture.returncode != 0:
+    n_lines_success = 12
+    if n_stdout_lines > n_lines_success or n_stderr_lines > 0 or capture.returncode != 0:
         print("\nWARNING: Likely problem with input FASTA files")
         if capture.returncode != 0:
             print("makeblastdb returned an error code: %d" % capture.returncode)
@@ -46,10 +46,10 @@ def RunBlastDBCommand(command):
 
 
 # 7
-def RunSearch(
+def run_search(
     options,
-    speciessInfoObj,
-    seqsInfo,
+    speciess_info_obj,
+    seqs_info,
     prog_caller,
     q_new_species_unassigned_genes=False,
     n_genes_per_species=None,
@@ -61,20 +61,20 @@ def RunSearch(
     only_missing: run only the searches whose results are missing or incomplete (continuing a run)
     """
     name_to_print = options.search_program
-    if options.qStopAfterPrepare:
-        util.PrintUnderline("%s commands that must be run" % name_to_print)
+    if options.q_stop_after_prepare:
+        util.print_underline("%s commands that must be run" % name_to_print)
     elif species_clades is not None:
-        util.PrintUnderline(
+        util.print_underline(
             "Running %s searches for new non-core species clades" % name_to_print
         )
     else:
-        util.PrintUnderline("Running %s all-versus-all" % name_to_print, True)
+        util.print_underline("Running %s all-versus-all" % name_to_print, True)
     tasksizes = None
     if species_clades is None:
-        # print("running GetOrderedSearchCommands")
-        commands, tasksizes = run_info.GetOrderedSearchCommands(
-            seqsInfo,
-            speciessInfoObj,
+        # print("running get_ordered_search_commands")
+        commands, tasksizes = run_info.get_ordered_search_commands(
+            seqs_info,
+            speciess_info_obj,
             options,
             prog_caller,
             n_genes_per_species,
@@ -82,10 +82,10 @@ def RunSearch(
         )
 
     else:
-        # print("running GetOrderedSearchCommands_clades")
-        commands, tasksizes = run_info.GetOrderedSearchCommands_clades(
-            seqsInfo,
-            speciessInfoObj,
+        # print("running get_ordered_search_commands_clades")
+        commands, tasksizes = run_info.get_ordered_search_commands_clades(
+            seqs_info,
+            speciess_info_obj,
             options,
             prog_caller,
             n_genes_per_species,
@@ -98,17 +98,17 @@ def RunSearch(
     # check now that OrthoFinder can read them. They are read later from the
     # commands, which are kept next to the results in blast_commands.txt.
     fmt = check_search_output_format(commands[0], options.search_program, prog_caller) if commands else None
-    commands_fn = file_handler.FileHandler.GetBALSATCommandFN()
-    if options.qStopAfterPrepare:
+    commands_fn = file_handler.handler.get_balsat_command_fn()
+    if options.q_stop_after_prepare:
         # -op: the commands are run outside OrthoFinder, which would otherwise
         # fill in the thread count when running them
-        saved = [program_caller.FillMethodThreads(c, options.method_threads)[1] for c in commands]
+        saved = [program_caller.fill_method_threads(c, options.method_threads)[1] for c in commands]
     else:
         saved = commands
     with open(commands_fn, "w") as writer:
         for line in file_io.commands_file_lines(saved, fmt):
             writer.write(line + "\n")
-    if options.qStopAfterPrepare:
+    if options.q_stop_after_prepare:
         # -op: stop here; the searches are run later (e.g. on a cluster), or
         # by restarting with -b, which runs the commands of missing results
         from rich.markup import escape
@@ -116,12 +116,12 @@ def RunSearch(
         printer.print("    [dark_cyan]%s[/dark_cyan]" % escape(os.path.abspath(commands_fn)))
         printer.print("Run them yourself (e.g. on a cluster), or let OrthoFinder run them: a restart "
                       "with -b runs the commands of any search results that are missing or incomplete.")
-        util.PrintRunEnd(file_handler.FileHandler.GetResultsDirectory1(), "-b", "the sequence search")
-        util.Success()
+        util.print_run_end(file_handler.handler.get_results_directory1(), "-b", "the sequence search")
+        util.success()
     if only_missing:
         # continuing a run (-b): only the searches whose results are missing
         # or incomplete (checkpoint.txt), e.g. not those run on a cluster
-        to_create = dict(previous_run.ResultsToCreate([results_written_by(c) for c in commands]))
+        to_create = dict(previous_run.results_to_create([results_written_by(c) for c in commands]))
         for fn, path in to_create.items():
             if path is not None:
                 os.replace(path, path + ".incomplete")
@@ -134,10 +134,10 @@ def RunSearch(
     log_step = species_clades is not None and len(commands) > 0     # nothing to record if none are run
     if log_step:
         run_logging.RunLogger.step("Sequence search", "Started")
-    print("Using %d thread(s)" % options.nBlast)
-    util.PrintTime("This may take some time...")
-    program_caller.RunParallelCommands(
-        options.nBlast,
+    print("Using %d thread(s)" % options.n_blast)
+    util.print_time("This may take some time...")
+    program_caller.run_parallel_commands(
+        options.n_blast,
         commands,
         method_threads=options.method_threads,
         method_threads_large=options.method_threads_large,
@@ -145,27 +145,27 @@ def RunSearch(
         threshold=options.threshold,
         cmd_order=options.cmd_order,
         tasksize=tasksizes,
-        qListOfList=False,
+        q_list_of_list=False,
         q_print_on_error=True,
         q_always_print_stderr=False,
         dynamic_threads=options.dynamic_threads,
         on_success=record_finished_search,
     )
 
-    util.PrintTime("Done all-versus-all sequence search")
+    util.print_time("Done all-versus-all sequence search")
     if log_step:
         run_logging.RunLogger.step("Sequence search", "Completed")
     remove_search_only_files(
-        [(options.search_program, file_handler.FileHandler.GetSpeciesDatabaseN(i, options.search_program))
-         for i in range(speciessInfoObj.nSpAll)],
+        [(options.search_program, file_handler.handler.get_species_database_n(i, options.search_program))
+         for i in range(speciess_info_obj.n_sp_all)],
         prog_caller,
     )
     remove_search_tmp_dirs(commands)     # MMseqs2's temporary folders
 
 
 # 6
-def CreateSearchDatabases(
-    speciesInfoObj,
+def create_search_databases(
+    species_info_obj,
     options,
     prog_caller,
     q_unassigned_genes=False,
@@ -174,15 +174,15 @@ def CreateSearchDatabases(
     new_species=False,
 ):
     if new_species:
-        iSpeciesToDo = list(
-            range(speciesInfoObj.iFirstNewSpecies, speciesInfoObj.nSpAll)
+        i_species_to_do = list(
+            range(species_info_obj.i_first_new_species, species_info_obj.n_sp_all)
         )
-        qForCreation = True
+        q_for_creation = True
     else:
-        iSpeciesToDo = range(max(speciesInfoObj.speciesToUse) + 1)
-        qForCreation = False
+        i_species_to_do = range(max(species_info_obj.species_to_use) + 1)
+        q_for_creation = False
     if core_infile is not None and core_outfile is not None:
-        command = prog_caller.GetSearchMethodCommand_DB(
+        command = prog_caller.get_search_method_command_db(
             options.search_program,
             core_infile,
             core_outfile,
@@ -192,46 +192,46 @@ def CreateSearchDatabases(
             options.method_threads,
             nucleotide=options.dna,
         )
-        ret_code = parallel_task_manager.RunCommand(
-            command, qPrintOnError=True, qPrintStderr=False
+        ret_code = parallel_task_manager.run_command(
+            command, q_print_on_error=True, q_print_stderr=False
         )
         if ret_code != 0:
-            file_handler.FileHandler.LogFailAndExit(
+            file_handler.handler.log_fail_and_exit(
                 f"ERROR: {options.search_program} makedb failed"
             )
     else:
-        progressbar, task = util.get_progressbar(len(iSpeciesToDo))
+        progressbar, task = util.get_progressbar(len(i_species_to_do))
         progressbar.update(task, description="[yellow]Creating %s databases" % options.search_program)
         progressbar.start()
         update_cycle = 1  # 10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000
 
-        for i, iSp in enumerate(iSpeciesToDo):
+        for i, i_sp in enumerate(i_species_to_do):
             fn_fasta = (
-                file_handler.FileHandler.GetSpeciesUnassignedFastaFN(iSp)
+                file_handler.handler.get_species_unassigned_fasta_fn(i_sp)
                 if q_unassigned_genes
-                else file_handler.FileHandler.GetSpeciesFastaFN(iSp, qForCreation=qForCreation)
+                else file_handler.handler.get_species_fasta_fn(i_sp, q_for_creation=q_for_creation)
             )
             if os.stat(fn_fasta).st_size == 0:
                 if (i + 1) % update_cycle == 0:
                     progressbar.update(task, advance=update_cycle)
                 continue
 
-            command = prog_caller.GetSearchMethodCommand_DB(
+            command = prog_caller.get_search_method_command_db(
                 options.search_program,
                 fn_fasta,
-                file_handler.FileHandler.GetSpeciesDatabaseN(iSp, options.search_program),
+                file_handler.handler.get_species_database_n(i_sp, options.search_program),
                 options.score_matrix,
                 options.gapopen,
                 options.gapextend,
                 options.method_threads,
                 nucleotide=options.dna,
             )
-            # util.PrintTime("Creating %s database %d of %d" % (options.search_program, iSp + 1, len(iSpeciesToDo)))
-            ret_code = parallel_task_manager.RunCommand(
-                command, qPrintOnError=True, qPrintStderr=False
+            # util.print_time("Creating %s database %d of %d" % (options.search_program, iSp + 1, len(iSpeciesToDo)))
+            ret_code = parallel_task_manager.run_command(
+                command, q_print_on_error=True, q_print_stderr=False
             )
             if ret_code != 0:
-                file_handler.FileHandler.LogFailAndExit("ERROR: %s database creation failed" % options.search_program)
+                file_handler.handler.log_fail_and_exit("ERROR: %s database creation failed" % options.search_program)
 
             if (i + 1) % update_cycle == 0:
                 progressbar.update(task, advance=update_cycle)
@@ -239,40 +239,40 @@ def CreateSearchDatabases(
         progressbar.stop()
 
 
-def CreateSearchDatabases_accelerate(speciesInfoObj, options, prog_caller):
+def create_search_databases_assign(species_info_obj, options, prog_caller):
 
-    iSpeciesNew = list(range(speciesInfoObj.iFirstNewSpecies, speciesInfoObj.nSpAll))
+    i_species_new = list(range(species_info_obj.i_first_new_species, species_info_obj.n_sp_all))
 
-    progressbar, task = util.get_progressbar(len(iSpeciesNew))
+    progressbar, task = util.get_progressbar(len(i_species_new))
     progressbar.update(task, description="[yellow]Creating %s databases" % options.search_program)
     progressbar.start()
     update_cycle = (
         1  # 10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000
     )
 
-    for i, iSp in enumerate(iSpeciesNew):
-        fn_fasta = file_handler.FileHandler.GetSpeciesFastaFN(iSp, qForCreation=True)
+    for i, i_sp in enumerate(i_species_new):
+        fn_fasta = file_handler.handler.get_species_fasta_fn(i_sp, q_for_creation=True)
         if os.stat(fn_fasta).st_size == 0:
             if (i + 1) % update_cycle == 0:
                 progressbar.update(task, advance=update_cycle)
             continue
 
-        command = prog_caller.GetSearchMethodCommand_DB(
+        command = prog_caller.get_search_method_command_db(
             options.search_program,
             fn_fasta,
-            file_handler.FileHandler.GetSpeciesDatabaseN(iSp, options.search_program),
+            file_handler.handler.get_species_database_n(i_sp, options.search_program),
             options.score_matrix,
             options.gapopen,
             options.gapextend,
             options.method_threads,
             nucleotide=options.dna,
         )
-        # util.PrintTime("Creating %s database %d of %d" % (options.search_program, iSp + 1, len(iSpeciesToDo)))
-        ret_code = parallel_task_manager.RunCommand(
-            command, qPrintOnError=True, qPrintStderr=False
+        # util.print_time("Creating %s database %d of %d" % (options.search_program, iSp + 1, len(iSpeciesToDo)))
+        ret_code = parallel_task_manager.run_command(
+            command, q_print_on_error=True, q_print_stderr=False
         )
         if ret_code != 0:
-            file_handler.FileHandler.LogFailAndExit("ERROR: %s database creation failed" % options.search_program)
+            file_handler.handler.log_fail_and_exit("ERROR: %s database creation failed" % options.search_program)
 
         if (i + 1) % update_cycle == 0:
             progressbar.update(task, advance=update_cycle)
@@ -362,38 +362,38 @@ def recreate_missing_databases(commands, working_dir, prog_caller, options):
     used = set()
     for command in commands:
         for m in _DATABASE_IN_COMMAND.finditer(command):
-            directory, program, iSp = m.group(1), m.group(2), int(m.group(3))
+            directory, program, i_sp = m.group(1), m.group(2), int(m.group(3))
             if directory and not directory.endswith(("/", os.sep)):
                 continue
-            db = directory + "%sDBSpecies%d" % (program, iSp)
+            db = directory + "%sDBSpecies%d" % (program, i_sp)
             used.add((program, db))
             # the database itself or its files (db.dmnd, db.pin, ...), not
             # those of another species (DBSpecies1 is not DBSpecies10)
             if not (os.path.exists(db) or glob.glob(glob.escape(db) + ".*")):
-                needed[db] = (program, iSp)
-    for db, (program, iSp) in sorted(needed.items()):
+                needed[db] = (program, i_sp)
+    for db, (program, i_sp) in sorted(needed.items()):
         # The species' FASTA may be in an earlier working directory (species
         # added to a previous analysis): look in all of them.
         try:
-            fn_fasta = file_handler.FileHandler.GetSpeciesFastaFN(iSp)
+            fn_fasta = file_handler.handler.get_species_fasta_fn(i_sp)
         except Exception:
-            fn_fasta = os.path.join(working_dir, "Species%d.fa" % iSp)
+            fn_fasta = os.path.join(working_dir, "Species%d.fa" % i_sp)
         if not os.path.exists(fn_fasta):
-            file_handler.FileHandler.LogFailAndExit(
+            file_handler.handler.log_fail_and_exit(
                 "ERROR: Cannot create the search database %s: %s does not exist" % (db, fn_fasta))
         if program == "Blast":
             command = " ".join(["makeblastdb", "-dbtype", "prot", "-in", fn_fasta, "-out", db])
-            printer.print("Creating the BLAST database for species %d (deleted after the searches)" % iSp)
-            RunBlastDBCommand(command)
+            printer.print("Creating the BLAST database for species %d (deleted after the searches)" % i_sp)
+            run_blast_db_command(command)
         else:
             # A restart (-b) is not given -d: the sequences tell the type
             nucleotide = options.dna or fasta_processor.sequence_type(fn_fasta) == "dna"
-            command = prog_caller.GetSearchMethodCommand_DB(
+            command = prog_caller.get_search_method_command_db(
                 program, fn_fasta, db, options.score_matrix, options.gapopen,
                 options.gapextend, options.method_threads, nucleotide=nucleotide)
-            printer.print("Creating the %s database for species %d" % (program, iSp))
-            if parallel_task_manager.RunCommand(command, qPrintOnError=True, qPrintStderr=False) != 0:
-                file_handler.FileHandler.LogFailAndExit("ERROR: could not create the %s database %s" % (program, db))
+            printer.print("Creating the %s database for species %d" % (program, i_sp))
+            if parallel_task_manager.run_command(command, q_print_on_error=True, q_print_stderr=False) != 0:
+                file_handler.handler.log_fail_and_exit("ERROR: could not create the %s database %s" % (program, db))
     return sorted(used)
 
 
@@ -421,9 +421,9 @@ def remove_search_only_files(databases, prog_caller):
     restart, or species added) creates what it needs again.
     """
     for program, db in databases:
-        if program == "Blast" or prog_caller.UsesMakeBlastDB(program):
+        if program == "Blast" or prog_caller.uses_make_blast_db(program):
             remove = glob.glob(glob.escape(db) + ".*")      # not DBSpecies10.* for DBSpecies1
-        elif prog_caller.UsesMMseqs(program):
+        elif prog_caller.uses_mmseqs(program):
             remove = glob.glob(glob.escape(db) + ".*idx*")
         else:
             continue
@@ -437,18 +437,18 @@ def recreate_search_results(to_create, working_dir, options, prog_caller):
     Create the missing or incomplete search results of a restarted run (-b)
     by running their commands from blast_commands.txt in the working
     directory, writing to that directory. to_create: (fn, incomplete file or
-    None) from previous_run.GetBlastResultsToCreate. Exits with an
+    None) from previous_run.get_blast_results_to_create. Exits with an
     explanation if a result cannot be created.
     """
     from rich.markup import escape
     n_incomplete = sum(1 for _, path in to_create if path is not None)
-    util.PrintUnderline("Creating missing search results")
+    util.print_underline("Creating missing search results")
     printer.print("%d required search result(s) missing and %d incomplete (interrupted search) in:"
                   % (len(to_create) - n_incomplete, n_incomplete))
     printer.print("    [dark_cyan]%s[/dark_cyan]" % escape(working_dir))
     commands_fn = os.path.join(working_dir, "blast_commands.txt")
     if not os.path.exists(commands_fn):
-        file_handler.FileHandler.LogFailAndExit(
+        file_handler.handler.log_fail_and_exit(
             "ERROR: The search results below are missing or incomplete, and there is no %s "
             "with the commands to create them:\n%s"
             % (commands_fn, "\n".join(path or fn for fn, path in to_create)))
@@ -458,9 +458,9 @@ def recreate_search_results(to_create, working_dir, options, prog_caller):
         commands, [fn for fn, _ in to_create], working_dir)
     # The saved thread counts (-op, or edited for a cluster) are not used here:
     # OrthoFinder runs many searches at once, each with its own count (1 by default).
-    selected = [program_caller.ResetSearchThreads(c) for c in selected]
+    selected = [program_caller.reset_search_threads(c) for c in selected]
     if no_command:
-        file_handler.FileHandler.LogFailAndExit(
+        file_handler.handler.log_fail_and_exit(
             "ERROR: %s has no command to create these search results:\n%s"
             % (commands_fn, "\n".join(no_command)))
     if moved_from:
@@ -478,10 +478,10 @@ def recreate_search_results(to_create, working_dir, options, prog_caller):
                           % escape(path))
     printer.print("Running [bold]%d[/bold] of the %d commands in [dark_cyan]%s[/dark_cyan]"
                   % (len(selected), len(commands), escape(commands_fn)))
-    printer.print("\nUsing %d thread(s)" % options.nBlast)
-    util.PrintTime("This may take some time...")
-    program_caller.RunParallelCommands(
-        options.nBlast,
+    printer.print("\nUsing %d thread(s)" % options.n_blast)
+    util.print_time("This may take some time...")
+    program_caller.run_parallel_commands(
+        options.n_blast,
         selected,
         method_threads=options.method_threads,
         method_threads_large=options.method_threads_large,
@@ -489,7 +489,7 @@ def recreate_search_results(to_create, working_dir, options, prog_caller):
         threshold=options.threshold,
         cmd_order=options.cmd_order,
         tasksize=None,
-        qListOfList=False,
+        q_list_of_list=False,
         q_print_on_error=True,
         q_always_print_stderr=False,
         dynamic_threads=options.dynamic_threads,
@@ -504,31 +504,31 @@ def check_search_output_format(command, search_program, prog_caller,
     """The columns a search command writes (exits with an explanation if OrthoFinder cannot use them)."""
     try:
         fmt = file_io.search_hit_format(
-            command, prog_caller.GetSearchOutputFields(search_program), required=required)
+            command, prog_caller.get_search_output_fields(search_program), required=required)
     except ValueError as e:
         print("\nERROR: OrthoFinder cannot read the output of the '%s' search: %s" % (search_program, e))
         print("Use a tab-separated output format with these columns, or declare the columns with "
               "\"output_fields\" in the config file entry for '%s'." % search_program)
-        util.Fail()
+        util.fail()
     if fmt.assumed:
         print("Search program '%s': its output columns are assumed to be the standard BLAST "
               "tabular ones (%s)." % (search_program, " ".join(fmt.fields)))
     return fmt
 
 
-def RunSearch_accelerate(
-    options, speciessInfoObj, fn_diamond_db, prog_caller, q_one_query=False, reuse_complete=False
+def run_search_assign(
+    options, speciess_info_obj, fn_diamond_db, prog_caller, q_one_query=False, reuse_complete=False
 ):
     """reuse_complete: the profile search of the run being continued finished (checkpoint.txt): its results are used if all present."""
     name_to_print = options.search_program
-    util.PrintUnderline("Running %s profiles search" % name_to_print)
-    commands, tasksizes, results_files = run_info.GetOrderedSearchCommands_accelerate(
-        speciessInfoObj,
+    util.print_underline("Running %s profiles search" % name_to_print)
+    commands, tasksizes, results_files = run_info.get_ordered_search_commands_assign(
+        speciess_info_obj,
         fn_diamond_db,
         options,
         prog_caller,
         q_one_query=q_one_query,
-        threads=options.nBlast,
+        threads=options.n_blast,
     )
     if not commands:
         return [], file_io.STANDARD_HIT_FORMAT       # no new species to search
@@ -539,15 +539,15 @@ def RunSearch_accelerate(
     )
     if reuse_complete and all(os.path.exists(fn) for fn in results_files):
         # continuing an --assign run (-b) whose profile search finished
-        util.PrintTime("Using the profile search results of the run being continued")
+        util.print_time("Using the profile search results of the run being continued")
         return results_files, layout
     if q_one_query:
         # Raises with the command's output (recorded in checkpoint.txt) on failure.
-        parallel_task_manager.RunCommand(commands[0], qPrintOnError=True, raise_on_error=True)
-        util.PrintTime("Done profiles search\n")
+        parallel_task_manager.run_command(commands[0], q_print_on_error=True, raise_on_error=True)
+        util.print_time("Done profiles search\n")
         return results_files, layout
-    program_caller.RunParallelCommands(
-        options.nBlast,
+    program_caller.run_parallel_commands(
+        options.n_blast,
         commands,
         method_threads=options.method_threads,
         method_threads_large=options.method_threads_large,
@@ -555,13 +555,13 @@ def RunSearch_accelerate(
         threshold=options.threshold,
         cmd_order=options.cmd_order,
         tasksize=tasksizes,
-        qListOfList=False,
+        q_list_of_list=False,
         q_print_on_error=True,
         q_always_print_stderr=False,
         dynamic_threads=options.dynamic_threads,
     )
 
-    util.PrintTime("Done profiles search")
+    util.print_time("Done profiles search")
     # the profiles database is only searched here (BLAST+ files, MMseqs2 index)
     remove_search_only_files([(options.search_program, fn_diamond_db)], prog_caller)
     remove_search_tmp_dirs(commands)

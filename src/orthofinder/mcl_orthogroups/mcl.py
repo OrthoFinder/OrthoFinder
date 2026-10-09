@@ -39,18 +39,18 @@ from xml.etree.ElementTree import SubElement    # Y
 from xml.dom import minidom
 from .. import __version__
 
-def GetPredictedOGs(clustersFilename):
+def get_predicted_ogs(clusters_filename):
     """
     Returns:
         ogs: List[Set[str]] - List of sets of genes ids (as strings)
     """
-    predictedOGs = []
-    nOGsString = ""
-    qContainsProfiles = False
-    with open(clustersFilename, 'r') as clusterFile:
+    predicted_ogs = []
+    n_ogs_string = ""
+    q_contains_profiles = False
+    with open(clusters_filename, 'r') as cluster_file:
         header = True
         og = set()
-        for line in clusterFile:
+        for line in cluster_file:
             if header:
                 if line.count("begin"):
                     header = False
@@ -67,16 +67,16 @@ def GetPredictedOGs(clustersFilename):
                 else:
                     # new OG
                     if len(og) != 0:
-                        predictedOGs.append(og)
-                    nOGsString, line = line.split(" ", 1)
+                        predicted_ogs.append(og)
+                    n_ogs_string, line = line.split(" ", 1)
                     x = line.split()
                     y = [x_ for x_ in x if not x_.startswith('Prof')]
                     if len(x) != len(y):
-                        qContainsProfiles = True
+                        q_contains_profiles = True
                     og = set(y)
         if len(og) > 0:
-            predictedOGs.append(og)
-    return predictedOGs
+            predicted_ogs.append(og)
+    return predicted_ogs
     
 # def GetSingleID(speciesStartingIndices, seq, speciesToUse): 
 #     a, b = seq.split("_")
@@ -85,19 +85,19 @@ def GetPredictedOGs(clustersFilename):
 #     offset = speciesStartingIndices[speciesToUse.index(iSpecies)]
 #     return iSeq + offset  
 
-def GetIDPair(speciesStartingIndices, singleID, speciesToUse):   
-    for i, startingIndex in enumerate(speciesStartingIndices):
-        if startingIndex > singleID:
-            return "%d_%d" % (speciesToUse[i-1], singleID - speciesStartingIndices[i-1])
-    return "%d_%d" % (speciesToUse[-1], singleID - speciesStartingIndices[len(speciesStartingIndices)-1]) 
+def get_id_pair(species_starting_indices, single_id, species_to_use):   
+    for i, starting_index in enumerate(species_starting_indices):
+        if starting_index > single_id:
+            return "%d_%d" % (species_to_use[i-1], single_id - species_starting_indices[i-1])
+    return "%d_%d" % (species_to_use[-1], single_id - species_starting_indices[len(species_starting_indices)-1]) 
 
-def ConvertSingleIDsToIDPair(seqsInfo, clustersFilename, newFilename, q_unassigned=False):
-    with open(clustersFilename, 'r') as clusterFile, open(newFilename, "w") as output:
+def convert_single_ids_to_id_pair(seqs_info, clusters_filename, new_filename, q_unassigned=False):
+    with open(clusters_filename, 'r') as cluster_file, open(new_filename, "w") as output:
         header = True
-        for line in clusterFile:
-            appendDollar = False
-            initialText = ""
-            idsString = ""
+        for line in cluster_file:
+            append_dollar = False
+            initial_text = ""
+            ids_string = ""
             ids = []
             if header:
                 output.write(line)
@@ -112,22 +112,22 @@ def ConvertSingleIDsToIDPair(seqsInfo, clustersFilename, newFilename, q_unassign
                     continue
                 if line[-2] == "$":
                     line = line[:-3]
-                    appendDollar = True
+                    append_dollar = True
                 if line[0] != " ":
-                    initialText, line = line.split(None, 1)
+                    initial_text, line = line.split(None, 1)
                 # continuation of group
                 ids = line.split()
                 for id in ids:
-                    idsString += GetIDPair(seqsInfo.seqStartingIndices, int(id), seqsInfo.speciesToUse) + " "
-                output.write(initialText + "      " + idsString)
-                if appendDollar:
+                    ids_string += get_id_pair(seqs_info.seq_starting_indices, int(id), seqs_info.species_to_use) + " "
+                output.write(initial_text + "      " + ids_string)
+                if append_dollar:
                     output.write("$\n")
                 else:
                     output.write("\n")
 
 
-def write_updated_clusters_file(ogs: List[Set[str]], clustersFilename_pairs):
-    with open(clustersFilename_pairs, 'w') as outfile:
+def write_updated_clusters_file(ogs: List[Set[str]], clusters_filename_pairs):
+    with open(clusters_filename_pairs, 'w') as outfile:
         outfile.write("(mclmatrix")
         outfile.write("begin\n")
         for iog, og in enumerate(ogs):
@@ -135,28 +135,28 @@ def write_updated_clusters_file(ogs: List[Set[str]], clustersFilename_pairs):
         outfile.write(")\n")
 
 
-def IDFullDict(idsFilenames, func=util.FirstWordExtractor):
+def id_full_dict(ids_filenames, func=util.FirstWordExtractor):
 
-    fullDict = dict()
-    for idsFilename in idsFilenames:
-        idExtract = func(idsFilename)
-        idDict = idExtract.GetIDToNameDict()
-        fullDict.update(idDict)
+    full_dict = dict()
+    for ids_filename in ids_filenames:
+        id_extract = func(ids_filename)
+        id_dict = id_extract.get_id_to_name_dict()
+        full_dict.update(id_dict)
 
-    return fullDict
+    return full_dict
 
 class MCL:
     @staticmethod
-    def CreateOGs(predictedOGs, outputFilename, orthogroups_id_fn, idDict):
-        with open(outputFilename, 'w') as outputFile, open(orthogroups_id_fn, "w") as outputidFile:
-            for iOg, og in enumerate(predictedOGs):
-                outputFile.write("OG%07d: " % iOg)
-                accessions = sorted([idDict[seq] for seq in og])
-                outputFile.write(" ".join(accessions))
-                outputFile.write("\n")
-                outputidFile.write("OG%07d: " % iOg)
-                outputidFile.write(" ".join(sorted([seq for seq in og])))
-                outputidFile.write("\n")
+    def create_ogs(predicted_ogs, output_filename, orthogroups_id_fn, id_dict):
+        with open(output_filename, 'w') as output_file, open(orthogroups_id_fn, "w") as outputid_file:
+            for i_og, og in enumerate(predicted_ogs):
+                output_file.write("OG%07d: " % i_og)
+                accessions = sorted([id_dict[seq] for seq in og])
+                output_file.write(" ".join(accessions))
+                output_file.write("\n")
+                outputid_file.write("OG%07d: " % i_og)
+                outputid_file.write(" ".join(sorted([seq for seq in og])))
+                outputid_file.write("\n")
 
     @staticmethod
     def prettify(elem):
@@ -226,108 +226,108 @@ class MCL:
     #     print("Orthogroups have been written to orthoxml file:\n   %s" % orthoxmlFilename)
 
     @staticmethod
-    def RunMCL(graphFilename, clustersFilename, nProcesses, inflation):
-        command = " ".join(["mcl", graphFilename, "-I", str(inflation), "-o", clustersFilename, "-te", str(nProcesses), "-V", "all"])
-        parallel_task_manager.RunCommand(command, qPrintOnError=True, raise_on_error=True)
-        util.PrintTime("Ran MCL")
+    def run_mcl(graph_filename, clusters_filename, n_processes, inflation):
+        command = " ".join(["mcl", graph_filename, "-I", str(inflation), "-o", clusters_filename, "-te", str(n_processes), "-V", "all"])
+        parallel_task_manager.run_command(command, q_print_on_error=True, raise_on_error=True)
+        util.print_time("Ran MCL")
 
     @staticmethod
-    def WriteOrthogroupFiles(
+    def write_orthogroup_files(
             ogs, 
-            idsFilenames, 
-            resultsBaseFilename, 
-            clustersFilename_pairs
+            ids_filenames, 
+            results_base_filename, 
+            clusters_filename_pairs
         ):
-        outputFN = resultsBaseFilename + ".txt"
-        orthogroups_id_fn = file_handler.FileHandler.OGsIDFN(extension=".txt")
+        output_fn = results_base_filename + ".txt"
+        orthogroups_id_fn = file_handler.handler.ogs_id_fn(extension=".txt")
         try:
             # fullDict = dict()
             # for idsFilename in idsFilenames:
             #     idExtract = util.FirstWordExtractor(idsFilename)
-            #     idDict = idExtract.GetIDToNameDict()
+            #     idDict = idExtract.get_id_to_name_dict()
             #     fullDict.update(idDict)
-            fullDict = IDFullDict(idsFilenames, func=util.FirstWordExtractor)
-            MCL.CreateOGs(ogs, outputFN, orthogroups_id_fn, fullDict)
+            full_dict = id_full_dict(ids_filenames, func=util.FirstWordExtractor)
+            MCL.create_ogs(ogs, output_fn, orthogroups_id_fn, full_dict)
         except KeyError as e:
-            sys.stderr.write("ERROR: Sequence ID not found in %s\n" % idsFilenames)
+            sys.stderr.write("ERROR: Sequence ID not found in %s\n" % ids_filenames)
             sys.stderr.write(str(e) + "\n")
-            file_handler.FileHandler.LogFailAndExit(("ERROR: Sequence ID not found in %s\n" % idsFilenames) + str(e) + "\n")
+            file_handler.handler.log_fail_and_exit(("ERROR: Sequence ID not found in %s\n" % ids_filenames) + str(e) + "\n")
         except RuntimeError as error:
             print(str(error))
             if str(error).startswith("ERROR"):
-                err_text = "ERROR: %s contains a duplicate ID. The IDs for the orthogroups in %s will not be replaced with the sequence accessions. If %s was prepared manually then please check the IDs are correct. " % (idsFilenames, clustersFilename_pairs, idsFilenames)
-                file_handler.FileHandler.LogFailAndExit(err_text)
+                err_text = "ERROR: %s contains a duplicate ID. The IDs for the orthogroups in %s will not be replaced with the sequence accessions. If %s was prepared manually then please check the IDs are correct. " % (ids_filenames, clusters_filename_pairs, ids_filenames)
+                file_handler.handler.log_fail_and_exit(err_text)
             else:
                 print("Tried to use only the first part of the accession in order to list the sequences in each orthogroup\nmore concisely but these were not unique. The full accession line will be used instead.\n")
                 try:
                     # fullDict = dict()
                     # for idsFilename in idsFilenames:
                     #     idExtract = util.FullAccession(idsFilename)
-                    #     idDict = idExtract.GetIDToNameDict()
+                    #     idDict = idExtract.get_id_to_name_dict()
                     #     fullDict.update(idDict)
-                    fullDict = IDFullDict(idsFilenames, func=util.FullAccession)
-                    MCL.CreateOGs(ogs, outputFN, orthogroups_id_fn, fullDict)
+                    full_dict = id_full_dict(ids_filenames, func=util.FullAccession)
+                    MCL.create_ogs(ogs, output_fn, orthogroups_id_fn, full_dict)
                 except:
-                    err_text = "ERROR: %s contains a duplicate ID. The IDs for the orthogroups in %s will not be replaced with the sequence accessions. This is probably because the same accession was used more than once in your input FASTA files. However, if %s was prepared manually then you may need to check that file instead." % (idsFilenames, clustersFilename_pairs, idsFilenames)
-                    file_handler.FileHandler.LogFailAndExit(err_text)
-        return fullDict
+                    err_text = "ERROR: %s contains a duplicate ID. The IDs for the orthogroups in %s will not be replaced with the sequence accessions. This is probably because the same accession was used more than once in your input FASTA files. However, if %s was prepared manually then you may need to check that file instead." % (ids_filenames, clusters_filename_pairs, ids_filenames)
+                    file_handler.handler.log_fail_and_exit(err_text)
+        return full_dict
 
 
     @staticmethod
-    def CreateOrthogroupTable(
+    def create_orthogroup_table(
         ogs,
-        idToNameDict,
-        speciesNamesDict,
-        speciesToUse,
-        resultsBaseFilename
+        id_to_name_dict,
+        species_names_dict,
+        species_to_use,
+        results_base_filename
     ):
 
-        nSpecies = len(speciesNamesDict)
+        n_species = len(species_names_dict)
         
         ogs_ids = [[seq for seq in og] for og in ogs]
-        ogs_names = [[idToNameDict[seq] for seq in og] for og in ogs]
+        ogs_names = [[id_to_name_dict[seq] for seq in og] for og in ogs]
         ogs_ints = [[list(map(int, sequence.split("_"))) for sequence in og] for og in ogs]
 
         # write out
-        orthogroups_id_fn = file_handler.FileHandler.OGsIDFN()
-        outputFilename = resultsBaseFilename + ".tsv"
-        outputFilename_counts = resultsBaseFilename + ".GeneCount.tsv"
-        singleGeneFilename = resultsBaseFilename + "_UnassignedGenes.tsv"
-        with open(outputFilename, util.csv_write_mode) as outputFile, \
+        orthogroups_id_fn = file_handler.handler.ogs_id_fn()
+        output_filename = results_base_filename + ".tsv"
+        output_filename_counts = results_base_filename + ".GeneCount.tsv"
+        single_gene_filename = results_base_filename + "_UnassignedGenes.tsv"
+        with open(output_filename, util.csv_write_mode) as output_file, \
             open(orthogroups_id_fn, util.csv_write_mode) as ogidfile, \
-            open(singleGeneFilename, util.csv_write_mode) as singleGeneFile, \
-            open(outputFilename_counts, util.csv_write_mode) as outFile_counts:
+            open(single_gene_filename, util.csv_write_mode) as single_gene_file, \
+            open(output_filename_counts, util.csv_write_mode) as out_file_counts:
             
             ogid_filewriter = file_io.writer(ogidfile)
-            fileWriter = file_io.writer(outputFile)
+            file_writer = file_io.writer(output_file)
             
-            fileWriter_counts = file_io.writer(outFile_counts)
-            singleGeneWriter = file_io.writer(singleGeneFile)
-            for writer in [ogid_filewriter, fileWriter, singleGeneWriter]:
-                row = ["Orthogroup"] + [speciesNamesDict[index] for index in speciesToUse]
+            file_writer_counts = file_io.writer(out_file_counts)
+            single_gene_writer = file_io.writer(single_gene_file)
+            for writer in [ogid_filewriter, file_writer, single_gene_writer]:
+                row = ["Orthogroup"] + [species_names_dict[index] for index in species_to_use]
                 writer.writerow(row)
-            fileWriter_counts.writerow(row + ['Total'])
+            file_writer_counts.writerow(row + ['Total'])
 
-            for iOg, (og, og_names, og_ids) in enumerate(zip(ogs_ints, ogs_names, ogs_ids)):
-                ogDict = defaultdict(list)
-                ogIDDict = defaultdict(list)
-                row = ["OG%07d" % iOg]
-                id_row = ["OG%07d" % iOg]
-                thisOutputWriter = fileWriter
+            for i_og, (og, og_names, og_ids) in enumerate(zip(ogs_ints, ogs_names, ogs_ids)):
+                og_dict = defaultdict(list)
+                og_id_dict = defaultdict(list)
+                row = ["OG%07d" % i_og]
+                id_row = ["OG%07d" % i_og]
+                this_output_writer = file_writer
                 # separate it into sequences from each species
                 if len(og) == 1:
-                    row.extend(['' for x in range(nSpecies)])
-                    row[speciesToUse.index(og[0][0]) + 1] = og_names[0]
-                    thisOutputWriter = singleGeneWriter
+                    row.extend(['' for x in range(n_species)])
+                    row[species_to_use.index(og[0][0]) + 1] = og_names[0]
+                    this_output_writer = single_gene_writer
                 else:
-                    for (iSpecies, iSequence), name, ids in zip(og, og_names, og_ids):
-                        ogDict[speciesToUse.index(iSpecies)].append(name)
-                        ogIDDict[speciesToUse.index(iSpecies)].append(ids)
-                    for iSpecies in range(nSpecies):
-                        row.append(", ".join(sorted(ogDict[iSpecies])))
-                        id_row.append(", ".join(sorted(ogIDDict[iSpecies])))
+                    for (i_species, i_sequence), name, ids in zip(og, og_names, og_ids):
+                        og_dict[species_to_use.index(i_species)].append(name)
+                        og_id_dict[species_to_use.index(i_species)].append(ids)
+                    for i_species in range(n_species):
+                        row.append(", ".join(sorted(og_dict[i_species])))
+                        id_row.append(", ".join(sorted(og_id_dict[i_species])))
                     ogid_filewriter.writerow(id_row)
-                    counts = Counter([iSpecies for iSpecies, _ in og])
-                    counts_row = [counts[iSpecies] for iSpecies in speciesToUse]
-                    fileWriter_counts.writerow(row[:1] + counts_row + [sum(counts_row)])
-                thisOutputWriter.writerow(row)
+                    counts = Counter([i_species for i_species, _ in og])
+                    counts_row = [counts[i_species] for i_species in species_to_use]
+                    file_writer_counts.writerow(row[:1] + counts_row + [sum(counts_row)])
+                this_output_writer.writerow(row)

@@ -20,19 +20,19 @@ from ..search import runner
 from . import orthogroups_set
 
 
-class XcelerateConfig(object):
+class AssignConfig(object):
     def __init__(self):
         self.n_for_profiles: Optional[int] = (
             10  # 10 is a good value if using this option
         )
 
 
-xcelerate_config = XcelerateConfig()
+assign_config = AssignConfig()
 
 
-def check_for_orthoxcelerate(input_dir, speciesInfoObj):
+def check_for_assign(input_dir, species_info_obj):
     # Add any specific checks required here
-    if speciesInfoObj.speciesToUse != list(range(speciesInfoObj.nSpAll)):
+    if species_info_obj.species_to_use != list(range(species_info_obj.n_sp_all)):
         print(
             "ERROR: Removing species from 'core' results directory is not supported for an --assign analysis."
         )
@@ -40,24 +40,24 @@ def check_for_orthoxcelerate(input_dir, speciesInfoObj):
     return True
 
 
-def prepare_accelerate_database(
+def prepare_assign_database(
     min_seq,
     input_dir,
     wd_list,
-    nSpAll,
-    speciesInfoObj,
+    n_sp_all,
+    species_info_obj,
     options,
     prog_caller,
     tree_program="fasttree",
 ):
-    if xcelerate_config.n_for_profiles is None:
+    if assign_config.n_for_profiles is None:
         # create_shoot_db.create_full_database(input_dir, q_ids=True, subtrees_dir="")
         fn_diamond_db, q_hogs = create_profiles_database(
             min_seq,
             input_dir,
             wd_list,
-            nSpAll,
-            speciesInfoObj,
+            n_sp_all,
+            species_info_obj,
             options,
             prog_caller,
             selection="all",
@@ -70,13 +70,13 @@ def prepare_accelerate_database(
             min_seq,
             input_dir,
             wd_list,
-            nSpAll,
-            speciesInfoObj,
+            n_sp_all,
+            species_info_obj,
             options,
             prog_caller,
             selection="kmeans",
             q_ids=True,
-            n_for_profile=xcelerate_config.n_for_profiles,
+            n_for_profile=assign_config.n_for_profiles,
             subtrees_dir="",
             tree_program=tree_program,
         )
@@ -206,14 +206,14 @@ def ogs_from_diamond_results(fn_og_results_out, q_ignore_sub=False, layout=None)
     for gene in all_genes:
         ogs_sp = ogs_sp_hits[gene]
         scores = scores_all_genes[gene]
-        sortedTuples = sorted(zip(scores, ogs_sp))
+        sorted_tuples = sorted(zip(scores, ogs_sp))
         # Only the best-scoring orthogroup is used below. (The previous code
         # also de-duplicated the orthogroup list with a quadratic scan and
         # computed log-scores that were never used.)
-        if len(sortedTuples) > 0:
-            og_assignments[gene] = sortedTuples[0][1][0]
+        if len(sorted_tuples) > 0:
+            og_assignments[gene] = sorted_tuples[0][1][0]
             # print(sortedTuplesples)
-            sp_hit = sortedTuples[0][1][1]
+            sp_hit = sorted_tuples[0][1][1]
             # sys.exit()
             search_sp = gene.split("_")[0]
             species_closest_hits[search_sp][sp_hit] += 1
@@ -222,17 +222,17 @@ def ogs_from_diamond_results(fn_og_results_out, q_ignore_sub=False, layout=None)
 
 
 def get_original_orthogroups():
-    wd_input_clusters = file_handler.FileHandler.GetWorkingDirectory1_Read()[
+    wd_input_clusters = file_handler.handler.get_working_directory1_read()[
         1
     ]  # first is the current working directory, second is the most recent of the input directories
     fn_clusters = glob.glob(wd_input_clusters + "clusters*_id_pairs.txt")
     if len(fn_clusters) == 0:
         print("ERROR: Couldn't find previous orthogroups in %s" % wd_input_clusters)
-        util.Fail()
+        util.fail()
     elif len(fn_clusters) > 1:
         print("WARNING: Found multiple orthogroup files: %s" % fn_clusters)
     fn_clusters = fn_clusters[0]
-    ogs = mcl.GetPredictedOGs(fn_clusters)
+    ogs = mcl.get_predicted_ogs(fn_clusters)
     return ogs
 
 
@@ -254,7 +254,7 @@ def assign_genes(results_files, n_processes=1, layout=None):
     ogs = defaultdict(set)
     species_closest_hits_totals = defaultdict(lambda: defaultdict(int))
     if n_processes > 1 and len(results_files) > 1:
-        per_file = parallel_task_manager.ParallelMap(
+        per_file = parallel_task_manager.parallel_map(
             _ogs_from_diamond_results_plain, [(fn, layout) for fn in results_files], n_processes
         )
     else:
@@ -298,11 +298,11 @@ def write_all_orthogroups(ogs, ogs_new_species, ogs_clade_specific_lists, restar
         restart_index = sum(keep[:restart_index])
     ogs[:] = [og for og, k in zip(ogs, keep) if k]
 
-    _, clustersFilename_pairs = file_handler.FileHandler.CreateUnusedClustersFN()
-    mcl.write_updated_clusters_file(ogs, clustersFilename_pairs)
+    _, clusters_filename_pairs = file_handler.handler.create_unused_clusters_fn()
+    mcl.write_updated_clusters_file(ogs, clusters_filename_pairs)
     if restart_index is None:
-        return clustersFilename_pairs
-    return clustersFilename_pairs, restart_index
+        return clusters_filename_pairs
+    return clusters_filename_pairs, restart_index
 
 
 def _profile_genes_for_chunk(args):
@@ -332,10 +332,10 @@ def _profile_genes_for_chunk(args):
                 continue
             i_part = os.path.basename(fn).rsplit(".", 2)[1] if q_subtrees else None
             fw_temp = fasta_processor.FastaWriter(fn)
-            n_in_og = len(fw_temp.SeqLists)
+            n_in_og = len(fw_temp.seq_lists)
             # Per orthogroup: must not lower the number used for later orthogroups.
             n_for_profile = min(n_in_og, n_for_profile_max)
-            if selection == "kmeans" and len(fw_temp.SeqLists) > n_for_profile:
+            if selection == "kmeans" and len(fw_temp.seq_lists) > n_for_profile:
                 fn_temp = None
                 if q_subtrees:
                     # MSA needs to be modified
@@ -345,10 +345,10 @@ def _profile_genes_for_chunk(args):
                         + "".join(random.choice(letters) for i in range(6))
                         + os.path.basename(fn)
                     )
-                    fw_temp.WriteSeqsToFasta(
+                    fw_temp.write_seqs_to_fasta(
                         [
                             g
-                            for g in fw_temp.SeqLists
+                            for g in fw_temp.seq_lists
                             if not g.startswith("SHOOTOUTGROUP_")
                         ],
                         fn_temp,
@@ -363,7 +363,7 @@ def _profile_genes_for_chunk(args):
                 if q_subtrees:
                     genes = [
                         g
-                        for g in fasta_processor.FastaWriter(fn).SeqLists
+                        for g in fasta_processor.FastaWriter(fn).seq_lists
                         if not g.startswith("SHOOTOUTGROUP_")
                     ]
                 s = sorted(genes)
@@ -371,7 +371,7 @@ def _profile_genes_for_chunk(args):
             else:
                 s = [
                     g
-                    for g in fasta_processor.FastaWriter(fn).SeqLists.keys()
+                    for g in fasta_processor.FastaWriter(fn).seq_lists.keys()
                     if not g.startswith("SHOOTOUTGROUP_")
                 ]
             og_id_full = og_id + "." + i_part if q_subtrees else og_id
@@ -383,8 +383,8 @@ def create_profiles_database(
     min_seq,
     din,
     wd_list,
-    nSpAll,
-    speciesInfoObj,
+    n_sp_all,
+    species_info_obj,
     options,
     prog_caller,
     selection="kmeans",
@@ -446,14 +446,14 @@ def create_profiles_database(
         print(f"[dark_cyan]{fn_diamond_db}[dark_cyan]")
         return fn_diamond_db, q_hogs
 
-    og_set = orthogroups_set.OrthoGroupsSet(
-        min_seq, wd_list, list(range(nSpAll)), nSpAll, True, tree_program=tree_program
+    og_set = orthogroups_set.OrthogroupSet(
+        min_seq, wd_list, list(range(n_sp_all)), n_sp_all, True, tree_program=tree_program
     )
-    ids = og_set.Spec_SeqDict()
+    ids = og_set.spec_seq_dict()
     ids_rev = {v: k for k, v in ids.items()}
     if q_hogs:
         try:
-            ids_simple = og_set.SequenceDict()
+            ids_simple = og_set.sequence_dict()
             ids_simple_rev = {v: k for k, v in ids_simple.items()}
             ogs = read_hogs(din, "N0", ids_simple_rev)
         except RuntimeError:
@@ -467,9 +467,9 @@ def create_profiles_database(
         clusters_filename = list(glob.glob(wd + "clusters_OrthoFinder*id_pairs.txt"))
         if len(clusters_filename) == 0:
             print("ERROR: Can't find %s" % wd + "clusters_OrthoFinder*id_pairs.txt")
-        ogs = mcl.GetPredictedOGs(clusters_filename[0])
+        ogs = mcl.get_predicted_ogs(clusters_filename[0])
         fn_fasta = fn_fasta[:-7] + ".fa"
-    fw = fasta_processor.FastaWriter(wd + "Species*fa", qGlob=True)
+    fw = fasta_processor.FastaWriter(wd + "Species*fa", q_glob=True)
     seq_write = []
     seq_convert = dict()
     # print("WARNING: Check all gene names, can't start with '__'")
@@ -479,7 +479,7 @@ def create_profiles_database(
     # Each orthogroup is independent, so they are processed in chunks in a
     # process pool; the results are joined in orthogroup order, so the profile
     # file is the same as with a single process.
-    n_chunks_target = max(1, 8 * max(1, options.nProcessAlg))
+    n_chunks_target = max(1, 8 * max(1, options.n_process_alg))
     chunk_size = max(1, min(200, -(-len(ogs) // n_chunks_target)))
     chunks = [
         (
@@ -498,8 +498,8 @@ def create_profiles_database(
             progressbar.update(task, completed=n_done)
 
     try:
-        chunk_results = parallel_task_manager.ParallelMap(
-            _profile_genes_for_chunk, chunks, options.nProcessAlg, progress=progress
+        chunk_results = parallel_task_manager.parallel_map(
+            _profile_genes_for_chunk, chunks, options.n_process_alg, progress=progress
         )
     finally:
         progressbar.stop()
@@ -511,10 +511,10 @@ def create_profiles_database(
             seq_write.extend(s)
             for ss in s:
                 seq_convert[ss] = og_id_full + "_" + ss
-    fw.WriteSeqsToFasta_withNewAccessions(seq_write, fn_fasta, seq_convert)
-    # parallel_task_manager.RunCommand(" ".join(["diamond", "makedb", "--in", fn_fasta, "-d", fn_diamond_db]), qPrintOnError=True, qPrintStderr=False)
-    runner.CreateSearchDatabases(
-        speciesInfoObj,
+    fw.write_seqs_to_fasta_with_new_accessions(seq_write, fn_fasta, seq_convert)
+    # parallel_task_manager.run_command(" ".join(["diamond", "makedb", "--in", fn_fasta, "-d", fn_diamond_db]), qPrintOnError=True, qPrintStderr=False)
+    runner.create_search_databases(
+        species_info_obj,
         options,
         prog_caller,
         core_infile=fn_fasta,
@@ -557,7 +557,7 @@ def read_hogs(din, hog_name, ids_rev=None):
     return ogs
 
 
-def write_unassigned_fasta(ogs_orig_list, ogs_new_genes, speciesInfoObj):
+def write_unassigned_fasta(ogs_orig_list, ogs_new_genes, species_info_obj):
     if ogs_new_genes is not None:
         assigned_genes = set.union(*ogs_new_genes.values())
         assigned_genes.update(set.union(*[og for og in ogs_orig_list if len(og) > 1]))
@@ -567,15 +567,15 @@ def write_unassigned_fasta(ogs_orig_list, ogs_new_genes, speciesInfoObj):
     # iSpeciesNew = list(range(speciesInfoObj.iFirstNewSpecies, speciesInfoObj.nSpAll))
     # for iSp in iSpeciesNew:
     n_unassigned = []
-    for iSp in range(speciesInfoObj.nSpAll):
-        fw = fasta_processor.FastaWriter(file_handler.FileHandler.GetSpeciesFastaFN(iSp))
+    for i_sp in range(species_info_obj.n_sp_all):
+        fw = fasta_processor.FastaWriter(file_handler.handler.get_species_fasta_fn(i_sp))
         # in the order of the species' FASTA file (set order differs between runs,
         # and the order of the genes changes the searches and clustering that follow)
-        unassigned = [g for g in fw.SeqLists if g not in assigned_genes]
+        unassigned = [g for g in fw.seq_lists if g not in assigned_genes]
         n_unassigned.append(len(unassigned))
-        fw.WriteSeqsToFasta(
+        fw.write_seqs_to_fasta(
             unassigned,
-            file_handler.FileHandler.GetSpeciesUnassignedFastaFN(iSp, qForCreation=True),
+            file_handler.handler.get_species_unassigned_fasta_fn(i_sp, q_for_creation=True),
         )
     return n_unassigned
 

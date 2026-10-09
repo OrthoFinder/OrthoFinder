@@ -12,8 +12,8 @@ EXPECTED_RESULTS = Path(__file__).parent / "data" / "proteome_expected_results"
 
 
 def prepare_compressed_results(expected_dir, results_dir):
-    orthologues_dir = results_dir / "Orthologues"
-    orthologues_dir.mkdir(parents=True)
+    orthologs_dir = results_dir / "Orthologues"
+    orthologs_dir.mkdir(parents=True)
 
     expected_rows = {}
     for expected_file in sorted(expected_dir.glob("*.tsv")):
@@ -23,12 +23,12 @@ def prepare_compressed_results(expected_dir, results_dir):
         source_species = rows[0][2]
         expected_rows[source_species] = rows
 
-        compressed_file = orthologues_dir / f"{source_species}.tsv.gz"
+        compressed_file = orthologs_dir / f"{source_species}.tsv.gz"
         with gzip.open(compressed_file, "wt", newline="") as outfile:
             writer = csv.writer(outfile, delimiter="\t", lineterminator="\n")
             writer.writerows(rows)
 
-    return orthologues_dir, expected_rows
+    return orthologs_dir, expected_rows
 
 
 def read_tsv(path):
@@ -95,9 +95,9 @@ def test_existing_outputs_are_skipped_unless_forced(tmp_path):
 def test_uncompressed_input_is_preferred_when_both_exist(tmp_path):
     expected_dir = EXPECTED_RESULTS / "Core" / "orthologues"
     results_dir = tmp_path / "Results_Core"
-    orthologues_dir, _ = prepare_compressed_results(expected_dir, results_dir)
+    orthologs_dir, _ = prepare_compressed_results(expected_dir, results_dir)
 
-    compressed_file = next(orthologues_dir.glob("*.tsv.gz"))
+    compressed_file = next(orthologs_dir.glob("*.tsv.gz"))
     uncompressed_file = compressed_file.with_suffix("")
     with gzip.open(compressed_file, "rt") as infile:
         uncompressed_file.write_text(infile.read())

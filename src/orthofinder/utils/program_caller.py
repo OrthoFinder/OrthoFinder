@@ -225,7 +225,7 @@ _SEARCH_TYPE_RE = re.compile(r"--search-type[\s=]+(\S+)")
 MMSEQS_NUCLEOTIDE_KMER = 13
 
 
-def AddNucleotideSearchType(command):
+def add_nucleotide_search_type(command):
     """
     command for nucleotide sequences: "--search-type 3" and
     "-k MMSEQS_NUCLEOTIDE_KMER" are added to each MMseqs2 search step that
@@ -259,7 +259,7 @@ def AddNucleotideSearchType(command):
     return "".join([kept[0][1].lstrip()] + [sep + part for sep, part in kept[1:]]).rstrip()
 
 
-def FillMethodThreads(command, method_threads):
+def fill_method_threads(command, method_threads):
     """
     (threads, command with its METHODTHREAD placeholder filled in): the
     threads one command is run with, -mt capped at the number of cores;
@@ -293,13 +293,13 @@ _SEARCH_THREAD_OPTIONS = (
 )
 
 
-def ResetSearchThreads(command):
+def reset_search_threads(command):
     """
     A saved search command with its thread counts set back to METHODTHREAD.
 
     Commands saved by -op get the -mt thread count (or more, when edited to
     run on a cluster); when OrthoFinder runs them itself (a -b restart) the
-    count is filled in again when each command runs (FillMethodThreads): 1
+    count is filled in again when each command runs (fill_method_threads): 1
     by default, as many commands run at once (-t). Only the known thread
     options of DIAMOND, MMseqs2 and BLAST+ are changed.
     """
@@ -317,7 +317,7 @@ def ResetSearchThreads(command):
     return "".join(parts)
 
 
-def _NucleotideTestSequences():
+def _nucleotide_test_sequences():
     """longer_sequence back-translated (header lines kept)."""
     return "\n".join(
         line if line.startswith(">") else "".join(_TEST_CODONS.get(c, "NNN") for c in line.strip())
@@ -325,7 +325,7 @@ def _NucleotideTestSequences():
     )
 
 
-def _HasHitLines(path):
+def _has_hit_lines(path):
     """Whether a (gzipped) search-results file has a hit line (not empty or only "#" comments)."""
     from . import file_io
     try:
@@ -441,7 +441,7 @@ class ProgramCaller(object):
                 except InvalidEntryException:
                     pass
 
-    def Add(self, other):
+    def add(self, other):
         self.msa.update(other.msa)
         self.tree.update(other.tree)
         self.search_db.update(other.search_db)
@@ -450,58 +450,58 @@ class ProgramCaller(object):
         )  # search_db & search_search are only added together
         self.search_output_fields.update(other.search_output_fields)
 
-    def ListMSAMethods(self):
+    def list_msa_methods(self):
         return [key for key in self.msa]
 
-    def ListTreeMethods(self):
+    def list_tree_methods(self):
         return [key for key in self.tree]
 
-    def GetSearchOutputFields(self, method_name):
+    def get_search_output_fields(self, method_name):
         """The columns declared with "output_fields" for a search method, or None."""
         return self.search_output_fields.get(method_name)
 
-    def ListSearchMethods(self):
+    def list_search_methods(self):
         return [key for key in self.search_db]
 
-    def GetMSAMethodCommand(
+    def get_msa_method_command(
         self,
         method_name,
         infilename,
         outfilename_proposed,
         identifier,
-        nSeqs=None,
+        n_seqs=None,
         method_threads=None,
     ):
-        return self._GetCommand(
+        return self._get_command(
             "msa",
             method_name,
             infilename,
             outfilename_proposed,
             identifier,
-            nSeqs=nSeqs,
+            n_seqs=n_seqs,
             method_threads=method_threads,
         )
 
-    def GetTreeMethodCommand(
+    def get_tree_method_command(
         self,
         method_name,
         infilename,
         outfilename_proposed,
         identifier,
-        nSeqs=None,
+        n_seqs=None,
         method_threads=None,
     ):
-        return self._GetCommand(
+        return self._get_command(
             "tree",
             method_name,
             infilename,
             outfilename_proposed,
             identifier,
-            nSeqs=nSeqs,
+            n_seqs=n_seqs,
             method_threads=method_threads,
         )
 
-    def GetSearchMethodCommand_DB(
+    def get_search_method_command_db(
         self,
         method_name,
         infilename,
@@ -512,8 +512,8 @@ class ProgramCaller(object):
         method_threads=None,
         nucleotide=False,
     ):
-        """nucleotide: the sequences are DNA (see AddNucleotideSearchType)."""
-        command = self._GetCommand(
+        """nucleotide: the sequences are DNA (see add_nucleotide_search_type)."""
+        command = self._get_command(
             "search_db",
             method_name,
             infilename,
@@ -525,9 +525,9 @@ class ProgramCaller(object):
         )[
             0
         ]  # output filename isn't returned
-        return AddNucleotideSearchType(command) if nucleotide else command
+        return add_nucleotide_search_type(command) if nucleotide else command
 
-    def GetSearchMethodCommand_Search(
+    def get_search_method_command_search(
         self,
         method_name,
         queryfilename,
@@ -539,8 +539,8 @@ class ProgramCaller(object):
         method_threads=None,
         nucleotide=False,
     ):
-        """nucleotide: the sequences are DNA (see AddNucleotideSearchType)."""
-        command = self._GetCommand(
+        """nucleotide: the sequences are DNA (see add_nucleotide_search_type)."""
+        command = self._get_command(
             "search_search",
             method_name,
             queryfilename,
@@ -554,73 +554,73 @@ class ProgramCaller(object):
         )[
             0
         ]  # output filename isn't returned
-        return AddNucleotideSearchType(command) if nucleotide else command
+        return add_nucleotide_search_type(command) if nucleotide else command
 
-    def UsesDiamond(self, method_name):
+    def uses_diamond(self, method_name):
         """Whether a configured search method runs DIAMOND (which compares protein sequences only)."""
         if method_name not in self.search_search:
             return False
         return re.search(r"(^|[\s;&|/])diamond\s", self.search_search[method_name].cmd) is not None
 
-    def UsesMakeBlastDB(self, method_name):
+    def uses_make_blast_db(self, method_name):
         """Whether a configured search method builds BLAST+ databases (makeblastdb)."""
         if method_name not in self.search_db:
             return False
         return re.search(r"(^|[\s;&|/])makeblastdb\s", self.search_db[method_name].cmd) is not None
 
-    def UsesMMseqs(self, method_name):
+    def uses_mmseqs(self, method_name):
         """Whether a configured search method runs MMseqs2."""
         if method_name not in self.search_db:
             return False
         return any(MMSEQS_SEARCH_TYPE_RE.search(m.cmd)
                    for m in (self.search_db[method_name], self.search_search[method_name]))
 
-    def GetMSACommands(
+    def get_msa_commands(
         self,
         method_name,
         infn_list,
         outfn_list,
         id_list,
-        nSeqs=None,
+        n_seqs=None,
         method_threads=None,
     ):
-        if nSeqs == None:
+        if n_seqs == None:
             return [
-                self.GetMSAMethodCommand(
+                self.get_msa_method_command(
                     method_name, infn, outfn, ident, method_threads=method_threads
                 )
                 for infn, outfn, ident in zip(infn_list, outfn_list, id_list)
             ]
         else:
             return [
-                self.GetMSAMethodCommand(
+                self.get_msa_method_command(
                     method_name, infn, outfn, ident, n, method_threads=method_threads
                 )
-                for infn, outfn, ident, n in zip(infn_list, outfn_list, id_list, nSeqs)
+                for infn, outfn, ident, n in zip(infn_list, outfn_list, id_list, n_seqs)
             ]
 
-    def GetTreeCommands(
+    def get_tree_commands(
         self,
         method_name,
         infn_list,
         outfn_list,
         id_list,
-        nSeqs=None,
+        n_seqs=None,
         method_threads=None,
     ):
-        if nSeqs == None:
+        if n_seqs == None:
             return [
-                self.GetTreeMethodCommand(
+                self.get_tree_method_command(
                     method_name, infn, outfn, ident, method_threads=method_threads
                 )
                 for infn, outfn, ident in zip(infn_list, outfn_list, id_list)
             ]
         else:
             return [
-                self.GetTreeMethodCommand(
+                self.get_tree_method_command(
                     method_name, infn, outfn, ident, n, method_threads=method_threads
                 )
-                for infn, outfn, ident, n in zip(infn_list, outfn_list, id_list, nSeqs)
+                for infn, outfn, ident, n in zip(infn_list, outfn_list, id_list, n_seqs)
             ]
 
     # # not used
@@ -635,7 +635,7 @@ class ProgramCaller(object):
     #     method_threads=None,
     # ):
     #     return [
-    #         self.GetSearchMethodCommand_DB(
+    #         self.get_search_method_command_db(
     #             method_name,
     #             infn,
     #             outfn,
@@ -660,7 +660,7 @@ class ProgramCaller(object):
     #     method_threads=None,
     # ):
     #     return [
-    #         self.GetSearchMethodCommand_Search(
+    #         self.get_search_method_command_search(
     #             method_name,
     #             querryfn,
     #             dbname,
@@ -683,7 +683,7 @@ class ProgramCaller(object):
     #     nSeqs=None,
     #     method_threads=None,
     # ):
-    #     return self._CallMethod(
+    #     return self._call_method(
     #         "msa",
     #         method_name,
     #         infilename,
@@ -703,7 +703,7 @@ class ProgramCaller(object):
     #     nSeqs=None,
     #     method_threads=None,
     # ):
-    #     return self._CallMethod(
+    #     return self._call_method(
     #         "tree",
     #         method_name,
     #         infilename,
@@ -713,7 +713,7 @@ class ProgramCaller(object):
     #         method_threads=method_threads,
     #     )
 
-    def CallSearchMethod_DB(
+    def call_search_method_db(
         self,
         method_name,
         infilename,
@@ -723,7 +723,7 @@ class ProgramCaller(object):
         gapextend=None,
         method_threads=None,
     ):
-        return self._CallMethod(
+        return self._call_method(
             "search_db",
             method_name,
             infilename,
@@ -734,7 +734,7 @@ class ProgramCaller(object):
             method_threads=method_threads,
         )
 
-    def CallSearchMethod_Search(
+    def call_search_method_search(
         self,
         method_name,
         queryfilename,
@@ -745,7 +745,7 @@ class ProgramCaller(object):
         gapextend=None,
         method_threads=None,
     ):
-        return self._CallMethod(
+        return self._call_method(
             "search_search",
             method_name,
             queryfilename,
@@ -757,17 +757,17 @@ class ProgramCaller(object):
             method_threads=method_threads,
         )
 
-    def TestMSAMethod(self, method_name, d_test, method_threads="1"):
-        return self._TestMethod(
+    def test_msa_method(self, method_name, d_test, method_threads="1"):
+        return self._test_method(
             "msa", method_name, d_test, method_threads=method_threads
         )
 
-    def TestTreeMethod(self, method_name, d_test, method_threads="1"):
-        return self._TestMethod(
+    def test_tree_method(self, method_name, d_test, method_threads="1"):
+        return self._test_method(
             "tree", method_name, d_test, method_threads=method_threads
         )
 
-    def TestSearchMethod(
+    def test_search_method(
         self,
         method_name,
         d_deps_check,
@@ -783,10 +783,10 @@ class ProgramCaller(object):
         works if either search finds hits.
         """
         stdout_all, stderr_all = [], []
-        for fasta_text in (longer_sequence, _NucleotideTestSequences()):
-            fasta = self._WriteTestSequence_Longer(d_deps_check, fasta_text)
+        for fasta_text in (longer_sequence, _nucleotide_test_sequences()):
+            fasta = self._write_test_sequence_longer(d_deps_check, fasta_text)
             dbname = d_deps_check + method_name + "DBSpecies0"
-            stdout_db, stderr_db, cmd_db = self.CallSearchMethod_DB(
+            stdout_db, stderr_db, cmd_db = self.call_search_method_db(
                 method_name,
                 fasta,
                 dbname,
@@ -800,7 +800,7 @@ class ProgramCaller(object):
             for fn in (resultsfn, resultsfn + ".gz"):
                 if os.path.exists(fn):
                     os.remove(fn)        # from the previous test sequences
-            stdout_s, stderr_s, cmd_s = self.CallSearchMethod_Search(
+            stdout_s, stderr_s, cmd_s = self.call_search_method_search(
                 method_name,
                 fasta,
                 dbname,
@@ -815,7 +815,7 @@ class ProgramCaller(object):
             # A results file alone is not enough: with "... | gzip > OUTPUT.gz"
             # the shell creates it even if the program is not installed.
             success = any(
-                os.path.exists(fn) and _HasHitLines(fn) for fn in (resultsfn, resultsfn + ".gz")
+                os.path.exists(fn) and _has_hit_lines(fn) for fn in (resultsfn, resultsfn + ".gz")
             )
             if success:
                 break
@@ -833,7 +833,7 @@ class ProgramCaller(object):
         cmd = cmd_db + "\n" + cmd_s
         return success, stdout_all, stderr_all, cmd
 
-    def _CallMethod(
+    def _call_method(
         self,
         method_type,
         method_name,
@@ -841,21 +841,21 @@ class ProgramCaller(object):
         outfilename,
         identifier=None,
         dbname=None,
-        nSeqs=None,
+        n_seqs=None,
         scorematrix=None,
         gapopen=None,
         gapextend=None,
         method_threads=None,
     ):
 
-        cmd, actual_target_fns = self._GetCommand(
+        cmd, actual_target_fns = self._get_command(
             method_type,
             method_name,
             infilename,
             outfilename,
             identifier,
             dbname,
-            nSeqs,
+            n_seqs,
             scorematrix=scorematrix,
             gapopen=gapopen,
             gapextend=gapextend,
@@ -863,7 +863,7 @@ class ProgramCaller(object):
         )
         # Read stdout and stderr together: reading one to the end first can
         # deadlock if the program fills the other pipe's buffer.
-        _, out, err = parallel_task_manager.RunMonitoredCommand(
+        _, out, err = parallel_task_manager.run_monitored_command(
             cmd,
             parallel_task_manager.my_env,
             stdout=subprocess.PIPE,
@@ -883,7 +883,7 @@ class ProgramCaller(object):
                 os.rename(actual, target)
         return stdout, stderr, cmd
 
-    def _ShouldSkipTest(self, method_type, method_name):
+    def _should_skip_test(self, method_type, method_name):
         if method_type == "msa":
             dictionary = self.msa
         elif method_type == "tree":
@@ -897,20 +897,20 @@ class ProgramCaller(object):
         if method_name not in dictionary:
             raise Exception(
                 "No %s method called '%s'"
-                % (self._GetMethodTypeName(method_type), method_name)
+                % (self._get_method_type_name(method_type), method_name)
             )
         method_parameters = dictionary[method_name]
         return method_parameters.skip_check
 
-    def _TestMethod(self, method_type, method_name, d_test, method_threads=None):
-        util.PrintNoNewLine(f'Test can run "[orange3]{method_name.split()[0]}[/orange3]"')
-        # util.PrintNoNewLine('Test can run "%s"' % method_name)
-        if self._ShouldSkipTest(method_type, method_name):
+    def _test_method(self, method_type, method_name, d_test, method_threads=None):
+        util.print_no_new_line(f'Test can run "[orange3]{method_name.split()[0]}[/orange3]"')
+        # util.print_no_new_line('Test can run "%s"' % method_name)
+        if self._should_skip_test(method_type, method_name):
             printer.print(" - test has been manually over-ridden", style="warning")
             return True
-        infn = self._WriteTestSequence(d_test)
+        infn = self._write_test_sequence(d_test)
         propossed_outfn = infn + f".{method_type}.{method_name}.output.txt"
-        stdout, stderr, cmd = self._CallMethod(
+        stdout, stderr, cmd = self._call_method(
             method_type,
             method_name,
             infn,
@@ -929,7 +929,7 @@ class ProgramCaller(object):
             print("".join(stderr))
         return success, stdout, stderr, cmd
 
-    def _ReplaceVariables(
+    def _replace_variables(
         self,
         instring,
         infilename,
@@ -974,7 +974,7 @@ class ProgramCaller(object):
 
         return outstring
 
-    def _GetMethodTypeName(self, method_type):
+    def _get_method_type_name(self, method_type):
         if method_type == "msa":
             return "multiple sequence alignment"
         elif method_type == "tree":
@@ -984,7 +984,7 @@ class ProgramCaller(object):
         else:
             raise NotImplementedError
 
-    def _GetCommand(
+    def _get_command(
         self,
         method_type,
         method_name,
@@ -992,7 +992,7 @@ class ProgramCaller(object):
         outfilename_proposed,
         identifier=None,
         dbname=None,
-        nSeqs=None,
+        n_seqs=None,
         scorematrix=None,
         gapopen=None,
         gapextend=None,
@@ -1020,16 +1020,16 @@ class ProgramCaller(object):
         if method_name not in dictionary:
             raise Exception(
                 "No %s method called '%s'"
-                % (self._GetMethodTypeName(method_type), method_name)
+                % (self._get_method_type_name(method_type), method_name)
             )
         method_parameters = dictionary[method_name]
 
         if (
-            nSeqs != None
+            n_seqs != None
             and method_parameters.cmd_fast != None
-            and nSeqs >= method_parameters.n_seqs_use_fast
+            and n_seqs >= method_parameters.n_seqs_use_fast
         ):
-            cmd = self._ReplaceVariables(
+            cmd = self._replace_variables(
                 method_parameters.cmd_fast,
                 infilename,
                 outfilename_proposed,
@@ -1041,7 +1041,7 @@ class ProgramCaller(object):
                 method_threads=method_threads,
             )
         else:
-            cmd = self._ReplaceVariables(
+            cmd = self._replace_variables(
                 method_parameters.cmd,
                 infilename,
                 outfilename_proposed,
@@ -1054,7 +1054,7 @@ class ProgramCaller(object):
             )
         actual_target_fn = None
         if method_parameters.non_default_outfn:
-            actual_fn = self._ReplaceVariables(
+            actual_fn = self._replace_variables(
                 method_parameters.non_default_outfn,
                 infilename,
                 outfilename_proposed,
@@ -1069,20 +1069,20 @@ class ProgramCaller(object):
         # print((cmd, actual_target_fn))
         return cmd, actual_target_fn
 
-    def _WriteTestSequence(self, working_dir):
+    def _write_test_sequence(self, working_dir):
         fn = working_dir + "Species0.fa"
         with open(fn, "w") as outfile:
             outfile.write(shorter_sequence)
         return fn
 
-    def _WriteTestSequence_Longer(self, working_dir, fasta_text=None):
+    def _write_test_sequence_longer(self, working_dir, fasta_text=None):
         fn = working_dir + "Species0.fa"
         with open(fn, "w") as outfile:
             outfile.write(longer_sequence if fasta_text is None else fasta_text)
         return fn
 
     @staticmethod
-    def PrintDependencyCheckFailure(cmd):
+    def print_dependency_check_failure(cmd):
         """Error message including environment & PATH if a dependency check fails"""
         print("\nEnvironment:")
         print(
@@ -1102,17 +1102,17 @@ class ProgramCaller(object):
 # ========================================================================================================================
 
 
-def RunParallelCommands(
-    nProcesses,
+def run_parallel_commands(
+    n_processes,
     commands,
-    qListOfList,
+    q_list_of_list,
     method_threads=None,
     method_threads_large=None,
     method_threads_small=None,
     threshold=None,
     cmd_order="descending",
     tasksize=None,
-    qTrim=False,
+    q_trim=False,
     q_print_on_error=False,
     q_always_print_stderr=False,
     dynamic_threads=False,
@@ -1122,23 +1122,23 @@ def RunParallelCommands(
     on_success: called in this process with each command that succeeds (exit 0),
     e.g. to record finished searches; an error in it is reported, not raised.
     """
-    if qListOfList:
+    if q_list_of_list:
         commands_and_no_filenames = [
             [(cmd, None) for cmd in cmd_list] for cmd_list in commands
         ]
     else:
         commands_and_no_filenames = [(cmd, None) for cmd in commands]
-    RunParallelCommandsAndMoveResultsFile(
-        nProcesses,
+    run_parallel_commands_and_move_results_file(
+        n_processes,
         commands_and_no_filenames,
-        qListOfList,
+        q_list_of_list,
         method_threads,
         method_threads_large,
         method_threads_small,
         threshold,
         cmd_order,
         tasksize,
-        qTrim,
+        q_trim,
         q_print_on_error,
         q_always_print_stderr,
         dynamic_threads,
@@ -1146,7 +1146,7 @@ def RunParallelCommands(
     )
 
 
-# def RunParallelCommandsAndMoveResultsFile(nProcesses, commands_and_filenames, qListOfList, q_print_on_error=False,
+# def run_parallel_commands_and_move_results_file(nProcesses, commands_and_filenames, qListOfList, q_print_on_error=False,
 #                                           q_always_print_stderr=False):
 #     """
 #     Calls the commands in parallel and if required moves the results file to the required new filename
@@ -1168,7 +1168,7 @@ def RunParallelCommands(
 #         cmd_queue.put((i, cmd))
 
 #     with concurrent.futures.ThreadPoolExecutor() as executor:
-#         futures = [executor.submit(parallel_task_manager.Worker_RunCommands_And_Move,
+#         futures = [executor.submit(parallel_task_manager.worker_run_commands_and_move,
 #                                    cmd_queue,
 #                                    nProcesses,
 #                                    i+1,
@@ -1179,17 +1179,17 @@ def RunParallelCommands(
 #     concurrent.futures.wait(futures)
 
 
-def _RunParallelCommandsAndMoveResultsFile(
-    nProcesses,
+def _run_parallel_commands_and_move_results_file(
+    n_processes,
     commands_and_filenames,
-    qListOfList,
+    q_list_of_list,
     method_threads=None,
     method_threads_large=None,
     method_threads_small=None,
     threshold=None,
     cmd_order="descending",
     tasksize=None,
-    qTrim=False,
+    q_trim=False,
     q_print_on_error=False,
     q_always_print_stderr=False,
     dynamic_threads=False,
@@ -1214,22 +1214,22 @@ def _RunParallelCommandsAndMoveResultsFile(
         method_threads = "1"
 
 
-    nProcesses = max(1, min((nProcesses, len(commands_and_filenames), TOTAL_CORES * 4)))
+    n_processes = max(1, min((n_processes, len(commands_and_filenames), TOTAL_CORES * 4)))
 
     progressbar, task = util.get_progressbar(total_commands)
     progressbar.start()
     update_cycle = 1 #10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=nProcesses) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=n_processes) as executor:
         futures = {}
         for cmd_unit in commands_and_filenames:
             if cmd_unit is None:
                 continue
             fut = executor.submit(
-                Worker_RunCommands_And_Move,
+                worker_run_commands_and_move,
                 cmd_unit,
                 method_threads,
-                qListOfList,
+                q_list_of_list,
                 q_print_on_error,
                 q_always_print_stderr,
                 dynamic_threads=dynamic_threads
@@ -1245,7 +1245,7 @@ def _RunParallelCommandsAndMoveResultsFile(
                     print(f"ERROR occurred with command: {futures[future]}")
                 if result == 0 and on_success is not None:
                     try:
-                        on_success(futures[future][0] if not qListOfList else futures[future])
+                        on_success(futures[future][0] if not q_list_of_list else futures[future])
                     except Exception as e:      # recording must not stop the run
                         print("WARNING: could not record a finished command: %s" % e)
                 if (i + 1) % update_cycle == 0:
@@ -1256,34 +1256,34 @@ def _RunParallelCommandsAndMoveResultsFile(
             # would wait for all of them to finish.
             for fut in futures:
                 fut.cancel()
-            parallel_task_manager.KillRunningCommands()
+            parallel_task_manager.kill_running_commands()
             progressbar.stop()
             raise
     progressbar.stop()
 
 
 
-def RunParallelCommandsAndMoveResultsFile(*args, **kwargs):
+def run_parallel_commands_and_move_results_file(*args, **kwargs):
     """
-    See _RunParallelCommandsAndMoveResultsFile. If a command fails, the other
+    See _run_parallel_commands_and_move_results_file. If a command fails, the other
     commands of the batch are stopped and the failure is raised. The abort
     flag that stops them is cleared once the whole batch has finished, so it
     never affects later commands.
     """
-    parallel_task_manager.ResetCommandAbort()
+    parallel_task_manager.reset_command_abort()
     try:
-        return _RunParallelCommandsAndMoveResultsFile(*args, **kwargs)
+        return _run_parallel_commands_and_move_results_file(*args, **kwargs)
     finally:
-        parallel_task_manager.ResetCommandAbort()
+        parallel_task_manager.reset_command_abort()
 
 
 q_print_first_traceback_0 = False
 
 
-def Worker_RunCommands_And_Move(
+def worker_run_commands_and_move(
     command_fns_list, 
     method_threads, 
-    qListOfLists, 
+    q_list_of_lists, 
     q_print_on_error, 
     q_always_print_stderr, 
     dynamic_threads,
@@ -1310,8 +1310,8 @@ def Worker_RunCommands_And_Move(
 
         # nDone = i - nProcesses + 1
         # if nDone >= 0 and divmod(nDone, 10 if nToDo <= 200 else 100 if nToDo <= 2000 else 1000)[1] == 0:
-        #     util.PrintTime("Done %d of %d" % (nDone, nToDo))
-        if not qListOfLists:
+        #     util.print_time("Done %d of %d" % (nDone, nToDo))
+        if not q_list_of_lists:
             command_fns_list = [command_fns_list]
 
         return_code = 1
@@ -1325,11 +1325,11 @@ def Worker_RunCommands_And_Move(
                 if not isinstance(command, str):
                     raise TypeError(f"Cannot run command: {command!r}")
                 else:
-                    return_code = RunCommand(
+                    return_code = run_command(
                         command,
                         method_threads,
-                        qPrintOnError=q_print_on_error,
-                        qPrintStderr=q_always_print_stderr,
+                        q_print_on_error=q_print_on_error,
+                        q_print_stderr=q_always_print_stderr,
                         raise_on_error=True,
                     )
                     if fns != None:
@@ -1343,7 +1343,7 @@ def Worker_RunCommands_And_Move(
         raise
 
 
-def RunCommand(command, method_threads, dynamic_threads=False, qPrintOnError=False, qPrintStderr=True, raise_on_error=False):
+def run_command(command, method_threads, dynamic_threads=False, q_print_on_error=False, q_print_stderr=True, raise_on_error=False):
     """Run a single command with token gating."""
     
     # threads_needed = threads_from_cmd(command, method_threads)
@@ -1355,7 +1355,7 @@ def RunCommand(command, method_threads, dynamic_threads=False, qPrintOnError=Fal
     # if threads_needed < 1:
     #     threads_needed = 1
 
-    threads_needed, command = FillMethodThreads(command, method_threads)
+    threads_needed, command = fill_method_threads(command, method_threads)
 
     acquired = 0
     try:
@@ -1368,14 +1368,14 @@ def RunCommand(command, method_threads, dynamic_threads=False, qPrintOnError=Fal
         env.setdefault("MKL_NUM_THREADS", "1")
         env.setdefault("OMP_NESTED", "0")
 
-        out = subprocess.PIPE if qPrintOnError or raise_on_error else subprocess.DEVNULL
-        err = subprocess.PIPE if (qPrintOnError and qPrintStderr) or raise_on_error else subprocess.DEVNULL
+        out = subprocess.PIPE if q_print_on_error or raise_on_error else subprocess.DEVNULL
+        err = subprocess.PIPE if (q_print_on_error and q_print_stderr) or raise_on_error else subprocess.DEVNULL
 
-        returncode, stdout, stderr = parallel_task_manager.RunMonitoredCommand(
+        returncode, stdout, stderr = parallel_task_manager.run_monitored_command(
             command, env, stdout=out, stderr=err
         )
 
-        if qPrintOnError or raise_on_error:
+        if q_print_on_error or raise_on_error:
             if raise_on_error and returncode != 0:
                 raise subprocess.CalledProcessError(returncode, command, output=stdout, stderr=stderr)
             if returncode != 0:
@@ -1383,7 +1383,7 @@ def RunCommand(command, method_threads, dynamic_threads=False, qPrintOnError=Fal
                 print(f"\nCommand: {command}")
                 print(f"\nstdout:\n{stdout}")
                 print(f"stderr:\n{stderr}")
-            elif qPrintStderr and len(stderr) > 0 and not util.stderr_exempt(stderr):
+            elif q_print_stderr and len(stderr) > 0 and not util.stderr_exempt(stderr):
                 print("\nWARNING: program produced output to stderr")
                 print(f"\nCommand: {command}")
                 print(f"\nstdout:\n{stdout}")

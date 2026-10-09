@@ -90,50 +90,50 @@ def sequence_type(fn):
 
 
 class FastaWriter(object):
-    def __init__(self, sourceFastaFilename, qUseOnlySecondPart=False, qGlob=False, qFirstWord=False, qWholeLine=False):
-        self.SeqLists = dict()
-        qFirst = True
+    def __init__(self, source_fasta_filename, q_use_only_second_part=False, q_glob=False, q_first_word=False, q_whole_line=False):
+        self.seq_lists = dict()
+        q_first = True
         accession = ""
         sequence = ""
-        files = glob.glob(sourceFastaFilename) if qGlob else [sourceFastaFilename]
+        files = glob.glob(source_fasta_filename) if q_glob else [source_fasta_filename]
         for fn in files:
-            with (gzip.open(fn, 'rt') if fn.endswith('.gz') else open(fn, 'r')) as fastaFile:
-                for line in fastaFile:
+            with (gzip.open(fn, 'rt') if fn.endswith('.gz') else open(fn, 'r')) as fasta_file:
+                for line in fasta_file:
                     if line[0] == ">":
                         # deal with old sequence
-                        if not qFirst:
-                            self.SeqLists[accession] = sequence
+                        if not q_first:
+                            self.seq_lists[accession] = sequence
                             sequence = ""
-                        qFirst = False
+                        q_first = False
                         # get id for new sequence
-                        if qWholeLine:
+                        if q_whole_line:
                             accession = line[1:].rstrip()
                         else:
                             accession = line[1:].rstrip().split()[0]
-                        if qUseOnlySecondPart:
+                        if q_use_only_second_part:
                             try:
                                 accession = accession.split("|")[1]
                             except:
                                 sys.stderr(line + "\n")
-                        elif qFirstWord:
+                        elif q_first_word:
                             accession = accession.split()[0]
                     else:
                         sequence += line
             try:
-                self.SeqLists[accession] = sequence
+                self.seq_lists[accession] = sequence
             except:
                 sys.stderr(accession + "\n")
     
-    def WriteSeqsToFasta(self, seqs, outFilename):
-        with open(outFilename, 'w') as outFile:
+    def write_seqs_to_fasta(self, seqs, out_filename):
+        with open(out_filename, 'w') as out_file:
             for seq in seqs:
-                if seq in self.SeqLists:
-                    outFile.write(">%s\n" % seq)
-                    outFile.write(self.SeqLists[seq])
+                if seq in self.seq_lists:
+                    out_file.write(">%s\n" % seq)
+                    out_file.write(self.seq_lists[seq])
                 else:
                     sys.stderr.write("ERROR: %s not found\n" % seq)
     
-    def AppendToStockholm(self, msa_id, outFilename, seqs=None):
+    def append_to_stockholm(self, msa_id, out_filename, seqs=None):
         """
         Append the msa to a stockholm format file. File must already be aligned
         Args:
@@ -141,46 +141,46 @@ class FastaWriter(object):
             outFilename - the file to write to
             seqs - Only write selected sequences o/w write all
         """
-        l = [len(s) for s in self.SeqLists.values()]
+        l = [len(s) for s in self.seq_lists.values()]
         if min(l) != max(l):
             raise Exception("Sequences must be aligned")
-        with open(outFilename, 'a') as outFile:
-            outFile.write("# STOCKHOLM 1.0\n#=GF AC %s\n" % msa_id)
-            seqs = self.SeqLists.keys() if seqs is None else seqs
+        with open(out_filename, 'a') as out_file:
+            out_file.write("# STOCKHOLM 1.0\n#=GF AC %s\n" % msa_id)
+            seqs = self.seq_lists.keys() if seqs is None else seqs
             for seq in seqs:
-                if seq in self.SeqLists:
-                    outFile.write("%s " % seq)
-                    outFile.write(self.SeqLists[seq].replace("\n", "") + "\n")
+                if seq in self.seq_lists:
+                    out_file.write("%s " % seq)
+                    out_file.write(self.seq_lists[seq].replace("\n", "") + "\n")
                 else:
                     sys.stderr("ERROR: %s not found\n" % seq)
-            outFile.write("//\n")
+            out_file.write("//\n")
             
-    def Print(self, seqs):
+    def print_seqs(self, seqs):
         if type(seqs[0]) is not str:
-            seqs = [s.ToString() for s in seqs]
+            seqs = [s.to_string() for s in seqs]
         for seq in seqs:
-            if seq in self.SeqLists:
+            if seq in self.seq_lists:
                 sys.stdout.write(">%s\n" % seq)
-                sys.stdout.write(self.SeqLists[seq])
+                sys.stdout.write(self.seq_lists[seq])
             else:
                 sys.stderr.write("ERROR: %s not found\n" % seq)
 
                     
-    def WriteSeqsToFasta_withNewAccessions(self, seqs, outFilename, idDict):
-        with open(outFilename, 'w') as outFile:
+    def write_seqs_to_fasta_with_new_accessions(self, seqs, out_filename, id_dict):
+        with open(out_filename, 'w') as out_file:
             for seq in seqs:
-                if seq in self.SeqLists:
-                    outFile.write(">%s\n" % idDict[seq])
-                    outFile.write(self.SeqLists[seq])
+                if seq in self.seq_lists:
+                    out_file.write(">%s\n" % id_dict[seq])
+                    out_file.write(self.seq_lists[seq])
                 else:
                     sys.stderr.write(seq + "\n")
 
 
-def ProcessesNewFasta(
-        fastaDir, 
+def processes_new_fasta(
+        fasta_dir, 
         q_dna, 
-        speciesInfoObj_prev = None, 
-        speciesToUse_prev_names=[],
+        species_info_obj_prev = None, 
+        species_to_use_prev_names=[],
         species_id_fn="",
         sequence_id_fn="",
     ):
@@ -188,44 +188,44 @@ def ProcessesNewFasta(
     Process fasta files and return a Directory object with all paths completed.
     """
 
-    fastaExtensions = FASTA_EXTENSIONS
+    fasta_extensions = FASTA_EXTENSIONS
     # Check files present
-    qOk = True
-    if not os.path.exists(fastaDir):
-        print("\nDirectory does not exist: %s" % fastaDir)
-        util.Fail()
-    files_in_directory = sorted([f for f in os.listdir(fastaDir) if os.path.isfile(os.path.join(fastaDir,f))])
-    originalFastaFilenames = []
-    excludedFiles = []
+    q_ok = True
+    if not os.path.exists(fasta_dir):
+        print("\nDirectory does not exist: %s" % fasta_dir)
+        util.fail()
+    files_in_directory = sorted([f for f in os.listdir(fasta_dir) if os.path.isfile(os.path.join(fasta_dir,f))])
+    original_fasta_filenames = []
+    excluded_files = []
 
     for f in files_in_directory:
         if is_input_fasta_name(f):
-            originalFastaFilenames.append(f)
+            original_fasta_filenames.append(f)
         else:
-            excludedFiles.append(f)
+            excluded_files.append(f)
 
-    if len(excludedFiles) != 0:
+    if len(excluded_files) != 0:
         print("\nWARNING: Files have been ignored as they don't appear to be FASTA files:")
-        for f in excludedFiles:
+        for f in excluded_files:
             print(f)
-        print("OrthoFinder expects FASTA files to have one of the following extensions: %s" % (", ".join(fastaExtensions)))
+        print("OrthoFinder expects FASTA files to have one of the following extensions: %s" % (", ".join(fasta_extensions)))
     
-    speciesToUse_prev_names = set(speciesToUse_prev_names)
-    if len(originalFastaFilenames) + len(speciesToUse_prev_names) < 2:
+    species_to_use_prev_names = set(species_to_use_prev_names)
+    if len(original_fasta_filenames) + len(species_to_use_prev_names) < 2:
         print("ERROR: At least two species are required")
-        util.Fail()
+        util.fail()
 
-    if any([fn in speciesToUse_prev_names for fn in originalFastaFilenames]):
+    if any([fn in species_to_use_prev_names for fn in original_fasta_filenames]):
         print("ERROR: Attempted to add a second copy of a previously included species:")
-        for fn in originalFastaFilenames:
-            if fn in speciesToUse_prev_names: print(fn)
+        for fn in original_fasta_filenames:
+            if fn in species_to_use_prev_names: print(fn)
         print("")
-        util.Fail()
+        util.fail()
 
     # A species is named by its file name without the extension (as in the
     # species tree and the results): "A.fa" and "A.fna" would both be "A".
     files_of_name = {}
-    for fn in sorted(speciesToUse_prev_names) + sorted(originalFastaFilenames):
+    for fn in sorted(species_to_use_prev_names) + sorted(original_fasta_filenames):
         files_of_name.setdefault(fn.rsplit(".", 1)[0], []).append(fn)
     same_name = {name: fns for name, fns in files_of_name.items() if len(fns) > 1}
     if same_name:
@@ -233,126 +233,126 @@ def ProcessesNewFasta(
               "(the file name without its extension):")
         for name, fns in sorted(same_name.items()):
             print("  %s: %s" % (name, ", ".join(fns)))
-        if speciesToUse_prev_names:
+        if species_to_use_prev_names:
             print("(including the species already in the analysis)")
         print("")
-        util.Fail()
+        util.fail()
 
-    speciesToUse_prev_names = sorted([*speciesToUse_prev_names])
-    originalFastaFilenames = sorted([*originalFastaFilenames])
+    species_to_use_prev_names = sorted([*species_to_use_prev_names])
+    original_fasta_filenames = sorted([*original_fasta_filenames])
 
-    if len(originalFastaFilenames) == 0:
-        print("\nNo fasta files found in supplied directory: %s" % fastaDir)
-        util.Fail()
+    if len(original_fasta_filenames) == 0:
+        print("\nNo fasta files found in supplied directory: %s" % fasta_dir)
+        util.fail()
 
-    if speciesInfoObj_prev == None:
-        speciesInfoObj = util.SpeciesInfo()
+    if species_info_obj_prev == None:
+        species_info_obj = util.SpeciesInfo()
     else:
-        speciesInfoObj = speciesInfoObj_prev
+        species_info_obj = species_info_obj_prev
 
     if not species_id_fn:
-        if files.FileHandler.wd_current:
-            species_id_fn = os.path.join(files.FileHandler.wd_current, "SpeciesIDs.txt")
+        if files.handler.wd_current:
+            species_id_fn = os.path.join(files.handler.wd_current, "SpeciesIDs.txt")
         else:
-            species_id_fn = files.FileHandler.GetSpeciesIDsFN()
+            species_id_fn = files.handler.get_species_ids_fn()
 
     if not sequence_id_fn:
-        if files.FileHandler.wd_current:
-            sequence_id_fn = os.path.join(files.FileHandler.wd_current, "SequenceIDs.txt")
+        if files.handler.wd_current:
+            sequence_id_fn = os.path.join(files.handler.wd_current, "SequenceIDs.txt")
         else:
-            sequence_id_fn = files.FileHandler.GetSequenceIDsFN()
+            sequence_id_fn = files.handler.get_sequence_ids_fn()
 
-    iSeq = 0
-    iSpecies = 0
+    i_seq = 0
+    i_species = 0
     # If it's a previous analysis:
-    if len(speciesToUse_prev_names) != 0:
+    if len(species_to_use_prev_names) != 0:
         with open(species_id_fn, 'r') as infile:
             for line in infile: pass
         if line.startswith("#"): line = line[1:]
-        iSpecies = int(line.split(":")[0]) + 1
-    speciesInfoObj.iFirstNewSpecies = iSpecies
-    newSpeciesIDs = []
+        i_species = int(line.split(":")[0]) + 1
+    species_info_obj.i_first_new_species = i_species
+    new_species_ids = []
     duplicated = False
 
     species_seen_dict = {}
     renamed = []      # (file, header, name): headers that clean to a name already used
 
-    with open(sequence_id_fn, 'a') as idsFile, open(species_id_fn, 'a') as speciesFile:
-        for fastaFilename in originalFastaFilenames:
-            newSpeciesIDs.append(iSpecies)
-            outputFasta = open(files.FileHandler.GetSpeciesFastaFN(iSpecies, qForCreation=True), 'w')
-            fastaFilename = fastaFilename.rstrip()
-            speciesFile.write("%d: %s\n" % (iSpecies, fastaFilename))
-            baseFilename, extension = os.path.splitext(fastaFilename)
+    with open(sequence_id_fn, 'a') as ids_file, open(species_id_fn, 'a') as species_file:
+        for fasta_filename in original_fasta_filenames:
+            new_species_ids.append(i_species)
+            output_fasta = open(files.handler.get_species_fasta_fn(i_species, q_for_creation=True), 'w')
+            fasta_filename = fasta_filename.rstrip()
+            species_file.write("%d: %s\n" % (i_species, fasta_filename))
+            base_filename, extension = os.path.splitext(fasta_filename)
 
-            species_seen_dict[fastaFilename] = {}
+            species_seen_dict[fasta_filename] = {}
             gene_names = util.GeneNames()     # the names the genes get (util.FullAccession)
             # -d declares nucleotide input; without it the start of each file
             # is checked as it is read (it costs a few ms per proteome)
             sequence_sample = None if q_dna else SequenceTypeSample()
 
-            with open(fastaDir + os.sep + fastaFilename, 'r') as fastaFile:
-                for iLine, line in enumerate(fastaFile):
+            with open(fasta_dir + os.sep + fasta_filename, 'r') as fasta_file:
+                for i_line, line in enumerate(fasta_file):
                     
                     if line.isspace(): continue
                     if len(line) > 0 and line[0] == ">":
-                        newID = "%d_%d" % (iSpecies, iSeq)
-                        acc = line[1:].rstrip()
-                        if len(acc) == 0:
-                            print("ERROR: %s contains a blank accession line on line %d" % (fastaDir + os.sep + fastaFilename, iLine+1))
-                            util.Fail()
-                        if acc in species_seen_dict[fastaFilename]:
-                            species_seen_dict[fastaFilename][acc] += 1
+                        new_id = "%d_%d" % (i_species, i_seq)
+                        assign = line[1:].rstrip()
+                        if len(assign) == 0:
+                            print("ERROR: %s contains a blank accession line on line %d" % (fasta_dir + os.sep + fasta_filename, i_line+1))
+                            util.fail()
+                        if assign in species_seen_dict[fasta_filename]:
+                            species_seen_dict[fasta_filename][assign] += 1
                             # if species_seen_dict[fastaFilename][acc] < 10:
                             #     printer.print(f"ERROR: Duplicated gene names found in '{fastaFilename}' - <{acc}>", style="error")
                             duplicated = True
                         else:
-                            species_seen_dict[fastaFilename][acc] = 0
-                            name = gene_names.add(acc)
-                            if name != util.CleanAccession(acc):
-                                renamed.append((fastaFilename, acc, name))
+                            species_seen_dict[fasta_filename][assign] = 0
+                            name = gene_names.add(assign)
+                            if name != util.clean_accession(assign):
+                                renamed.append((fasta_filename, assign, name))
                         # acc = f"{acc}_{seen[acc]}"
-                        idsFile.write("%s: %s\n" % (newID, acc))
-                        outputFasta.write(">%s\n" % newID)    
-                        iSeq += 1
+                        ids_file.write("%s: %s\n" % (new_id, assign))
+                        output_fasta.write(">%s\n" % new_id)    
+                        i_seq += 1
                     else:
                         line = line.upper()    # allow lowercase letters in sequences
                         if sequence_sample is not None:
                             sequence_sample.add(line)
-                        outputFasta.write(line)
-                outputFasta.write("\n")
-            outputFasta.close()
+                        output_fasta.write(line)
+                output_fasta.write("\n")
+            output_fasta.close()
             # Nucleotide input needs -d: the search programs (DIAMOND by
             # default) would otherwise compare it as protein, without error
             if sequence_sample is not None and sequence_sample.type() == "dna":
-                qOk = False
-                print("ERROR: %s appears to contain nucleotide sequences instead of amino acid sequences. Use '-d' option" % fastaFilename)
-            iSpecies += 1
-            iSeq = 0
-        if not qOk:
-            util.Fail()
+                q_ok = False
+                print("ERROR: %s appears to contain nucleotide sequences instead of amino acid sequences. Use '-d' option" % fasta_filename)
+            i_species += 1
+            i_seq = 0
+        if not q_ok:
+            util.fail()
 
     if duplicated:
         print()
         printer.print("ERROR: Duplicated gene names found.", style="error")
         for filename in species_seen_dict:
-            for acc, acc_count in species_seen_dict[filename].items():
+            for assign, acc_count in species_seen_dict[filename].items():
                 if acc_count > 0:
-                    printer.print(f"{acc_count+1}: {acc} - [orange3]{filename}[/orange3]")
+                    printer.print(f"{acc_count+1}: {assign} - [orange3]{filename}[/orange3]")
         printer.print("Please check the input file and make sure the gene names are unique.\n", style="error")
-        util.Fail()
+        util.fail()
 
     if renamed:
         printer.print("\nWARNING: Some gene names would be the same once the characters that output "
                       "files cannot hold (: , ( ) ; [ ] =) are replaced by _. These genes have been "
                       "given distinct names:", style="warning")
-        for fastaFilename, acc, name in renamed:
-            printer.print(f"    {escape(acc)} -> {escape(name)}  [orange3]{escape(fastaFilename)}[/orange3]")
+        for fasta_filename, assign, name in renamed:
+            printer.print(f"    {escape(assign)} -> {escape(name)}  [orange3]{escape(fasta_filename)}[/orange3]")
         print()
 
-    if len(originalFastaFilenames) > 0: outputFasta.close()
-    speciesInfoObj.speciesToUse = speciesInfoObj.speciesToUse + newSpeciesIDs
-    speciesInfoObj.nSpAll = max(speciesInfoObj.speciesToUse) + 1      # will be one of the new species
+    if len(original_fasta_filenames) > 0: output_fasta.close()
+    species_info_obj.species_to_use = species_info_obj.species_to_use + new_species_ids
+    species_info_obj.n_sp_all = max(species_info_obj.species_to_use) + 1      # will be one of the new species
     
-    return speciesInfoObj
+    return species_info_obj
 

@@ -91,14 +91,14 @@ def kmers_in_seqs(accs, fw, k):
     """
     kmer_per_seq = []
     d = defaultdict(list)
-    for i, acc in enumerate(accs):
+    for i, assign in enumerate(accs):
         if i % 10000 == 0:
             print(i)
-        s = fw.SeqLists[acc]
+        s = fw.seq_lists[assign]
         kmers = get_kmers(s, k)
         kmer_per_seq.append(set(kmers))
         for kmer in kmers:
-            d[kmer].append(acc)
+            d[kmer].append(assign)
     return kmer_per_seq, d
 
 
@@ -295,7 +295,7 @@ def select_from_aligned(infn, n_sample, q_trim=True, rng=None):
 #     else:
 #         rep_seqs, fw = select_from_unaligned(infn, k, n)
 #         outfn = infn + ".selected.fa"
-#         fw.WriteSeqsToFasta(rep_seqs, outfn)
+#         fw.write_seqs_to_fasta(rep_seqs, outfn)
 
 
 # if __name__ == "__main__":

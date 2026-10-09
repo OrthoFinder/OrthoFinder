@@ -53,7 +53,7 @@ class MSA(object):
         data = [1 for _ in range(self.n_non_gaps)]
         self.M = scipy.sparse.csr_matrix((data, (row_ind, col_ind)), shape=(self.n, self.length))
     
-    def write_msa(self, i_cols, outfn, nChar = 80):
+    def write_msa(self, i_cols, outfn, n_char = 80):
         with open(outfn, 'w') as outfile:
             for name, posn, chars in zip(self.names, self.non_gap_pos, self.non_gaps):
                 outfile.write(">" + name + "\n")
@@ -62,8 +62,8 @@ class MSA(object):
                     seq += "-" * (ipos - ipos_m1 - 1) + c
                 seq += "-" * (self.length - posn[-1] -1)
                 seq = "".join([seq[i] for i in i_cols])
-                for i in range(0, len(seq), nChar):
-                    outfile.write(seq[i:i+nChar] + "\n")
+                for i in range(0, len(seq), n_char):
+                    outfile.write(seq[i:i+n_char] + "\n")
 
 def main(infn, outfn, msa_min_seq=10, f=0.1, n_min=500, c=0.75, exe=False):
     # if exe:
@@ -119,12 +119,12 @@ def run_in_process(infn, outfn, msa_min_seq, f, n_min, c):
     # drop msa at this point
 
     length = msa.length
-    maxGap = (1.-f)*n
+    max_gap = (1.-f)*n
     aa_counts = msa.M.sum(axis=0)[0]   # per column
     aa_counts = np.squeeze(np.asarray(aa_counts))
     gap_counts = n- aa_counts
     aa_before = msa.M.nnz
-    i_keep = np.where(gap_counts <= maxGap)
+    i_keep = np.where(gap_counts <= max_gap)
     n_keep = i_keep[0].size     # it's an I, J tuple
     aa_after = sum(aa_counts[i_keep])
     # Check we have kept enough columns and characters

@@ -6,7 +6,7 @@ import json
 from collections import defaultdict
 import pytest
 from orthofinder.run.main import main
-from orthofinder.run.process_args import GetFileArgument
+from orthofinder.run.process_args import get_file_argument
 
 
 
@@ -258,7 +258,7 @@ def read_config_file(configure_file, user_config_file=None):
         configure_file = user_config_file
     
     of_config_dict = {}
-    configure_file = GetFileArgument(configure_file)    
+    configure_file = get_file_argument(configure_file)    
     with open(configure_file, "r") as infile:
         try:
             d = json.load(infile)
@@ -339,11 +339,11 @@ def _latest_output_dir(results_dir, fileno=-1) -> str:
         return results_dir
 
 
-def _index_of_orthologues(of_orthologues):
+def _index_of_orthologs(of_orthologs):
     per_species_triplets = defaultdict(set)
     per_species_locations = defaultdict(lambda: defaultdict(set))
 
-    for species, og_map in of_orthologues.items():
+    for species, og_map in of_orthologs.items():
         for og_id, entries in og_map.items():
             for e in entries:
                 per_species_triplets[species].add(e)

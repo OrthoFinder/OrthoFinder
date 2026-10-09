@@ -14,11 +14,11 @@ def update_output_files(
         id_sequence_dict,
         species_to_use,
         all_seq_ids,
-        speciesInfoObj,
-        seqsInfo,
-        speciesNamesDict,
+        species_info_obj,
+        seqs_info,
+        species_names_dict,
         options,
-        speciesXML,
+        species_xml,
         nprocess,
         q_incremental=False,
         i_og_restart=0,
@@ -26,43 +26,43 @@ def update_output_files(
         prev_wd=None,
     ):
      
-    iSps = list(map(str, sorted(species_to_use)))   # list of strings
-    species_names = [sp_ids[i] for i in iSps]
+    i_sps = list(map(str, sorted(species_to_use)))   # list of strings
+    species_names = [sp_ids[i] for i in i_sps]
 
     ## ------------------------ Fix OGs and OG Sequences -------------------------
-    old_hog_n0_file = file_handler.FileHandler.WDHierarchicalOrthogroupsFNN0()
-    hog_n0_file = file_handler.FileHandler.HierarchicalOrthogroupsFNN0()
-    for file in os.listdir(file_handler.FileHandler.GetResultHOGDir()):
+    old_hog_n0_file = file_handler.handler.wd_hierarchical_orthogroups_fn_n0()
+    hog_n0_file = file_handler.handler.hierarchical_orthogroups_fn_n0()
+    for file in os.listdir(file_handler.handler.get_result_hog_dir()):
         if file.startswith("N"):
             shutil.copy2(
-                os.path.join(file_handler.FileHandler.GetResultHOGDir(), file),  
-                file_handler.FileHandler.GetLegacyHOGDir()
+                os.path.join(file_handler.handler.get_result_hog_dir(), file),  
+                file_handler.handler.get_legacy_hog_dir()
             )
 
-    hogs_converter(file_handler.FileHandler.GetWorkingDirectory_Write() + "N0.ids.tsv", hog_n0_file, species_names)
+    hogs_converter(file_handler.handler.get_working_directory_write() + "N0.ids.tsv", hog_n0_file, species_names)
 
-    seq_dir = file_handler.FileHandler.GetResultsSeqsDir()
+    seq_dir = file_handler.handler.get_results_seqs_dir()
     util.clear_dir(seq_dir)
 
-    ogSet, idDict, name_dictionary, new_ogs = convert.post_hogs_processing(
+    og_set, id_dict, name_dictionary, new_ogs = convert.post_hogs_processing(
         all_seq_ids,
-        speciesInfoObj,
-        seqsInfo,
-        speciesNamesDict,
+        species_info_obj,
+        seqs_info,
+        species_names_dict,
         options,
-        speciesXML,
+        species_xml,
         q_incremental=q_incremental,
     )
 
 
-    util.PrintTime("Updating MSA/Trees")
+    util.print_time("Updating MSA/Trees")
 
     # ## -------------------------- Fix Resolved Gene Trees and Gene Trees -------------------------
-    resolved_trees_working_dir = file_handler.FileHandler.GetOGsReconTreeDir(qResults=True)
-    resolved_trees_id_dir = file_handler.FileHandler.GetResolvedTreeIDDir()
+    resolved_trees_working_dir = file_handler.handler.get_ogs_recon_tree_dir(q_results=True)
+    resolved_trees_id_dir = file_handler.handler.get_resolved_tree_id_dir()
     if exist_msa:
-        align_dir = file_handler.FileHandler.GetResultsAlignDir()
-        align_id_dir = file_handler.FileHandler.GetAlignIDDir()
+        align_dir = file_handler.handler.get_results_align_dir()
+        align_id_dir = file_handler.handler.get_align_id_dir()
     else:
         align_dir = None
         align_id_dir = None
@@ -71,7 +71,7 @@ def update_output_files(
         align_id_dir = os.path.join(prev_wd, "Alignments_ids")
     old_hog_n0 = read_hog_file(hog_n0_file)
     # gene names of the trees -> IDs (a name of several genes: per orthogroup)
-    spec_seq_id_dict = tree_name_to_id_dict(idDict, old_hog_n0, species_names)
+    spec_seq_id_dict = tree_name_to_id_dict(id_dict, old_hog_n0, species_names)
     hog_n0_over4genes = hog_file_over4genes(old_hog_n0, 2)
 
     del old_hog_n0
@@ -103,7 +103,7 @@ def update_output_files(
         resolved_trees_id_dir,
         hog_index, 
         simplified_name_dict, 
-        idDict,
+        id_dict,
         spec_seq_id_dict,
         species_names, 
         nprocess,
@@ -127,14 +127,14 @@ def update_output_files(
     ## ----------------------- Fix MSA Alignments --------------------------
 
     if exist_msa:
-        CopyTinyAlignments(align_id_dir, align_dir, name_dictionary, idDict)
+        copy_tiny_alignments(align_id_dir, align_dir, name_dictionary, id_dict)
 
-    return ogSet, new_ogs
+    return og_set, new_ogs
 
 _NEWICK_UNSAFE = re.compile("[" + newick._ILEGAL_NEWICK_CHARS + "]")
 
 
-def tree_name_to_id_dict(idDict, hog_n0_rows=(), species_names=()):
+def tree_name_to_id_dict(id_dict, hog_n0_rows=(), species_names=()):
     """
     The sequence IDs of the gene names on the gene trees' leaves
     (trees.TreeLeafNames), as names appear in the trees.
@@ -147,7 +147,7 @@ def tree_name_to_id_dict(idDict, hog_n0_rows=(), species_names=()):
     """
     by_name = defaultdict(set)
     others = {}                      # entries that are not genes ("0" -> species name)
-    for seq_id, name in idDict.items():
+    for seq_id, name in id_dict.items():
         if "_" not in seq_id:
             others[name] = seq_id
             continue
@@ -282,7 +282,7 @@ def update_filenames(file_dir, name_dictionary):
                 os.rename(entry.path, os.path.join(file_dir, new_filename))
                 break
 
-def CopyTinyAlignments(align_id_dir, align_dir, name_dictionary, idDict):
+def copy_tiny_alignments(align_id_dir, align_dir, name_dictionary, id_dict):
     for entry in os.scandir(align_id_dir):
         if entry.is_file():
             if '.' not in entry.name:
@@ -296,7 +296,7 @@ def CopyTinyAlignments(align_id_dir, align_dir, name_dictionary, idDict):
             for row in entries:
                 if len(row) >= 3 and row[2].strip() == '-':
                     genes_dict = update_trees.read_fasta(entry.path)
-                    update_trees.write_fasta(align_dir, row[0], genes_dict, idDict)
+                    update_trees.write_fasta(align_dir, row[0], genes_dict, id_dict)
                     break
 
 def index_files(id_dir, extension=".fa"):
@@ -346,4 +346,4 @@ def check_missing_ogs(ogs_list, index_dict, resolved_trees_dir):
         print(f"ERROR: {len(missing)} ID trees missing in {resolved_trees_dir}")
         for og in missing:
             print("Missing IDs:", og)
-        util.Fail()
+        util.fail()

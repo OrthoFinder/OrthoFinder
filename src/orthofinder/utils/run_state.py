@@ -200,19 +200,19 @@ def assign_info(results_dir, state):
 SETTINGS = (
     ("search_program", ("-S", "--search")),
     ("dna", ("-d", "--dna")),
-    ("qDoubleBlast", ("-1",)),
+    ("q_double_blast", ("-1",)),
     ("v2_scores", ("--scores-v2",)),
-    ("mclInflation", ("-I", "--inflation")),
-    ("qMSATrees", ("-M", "--method")),
+    ("mcl_inflation", ("-I", "--inflation")),
+    ("q_msa_trees", ("-M", "--method")),
     ("msa_program", ("-A", "--msa-program")),
     ("tree_program", ("-T", "--tree-program")),
     ("min_seq", ("-ms", "--min-seq")),
     ("msa_min_seq", ("--msa-min-seq",)),
-    ("qTrim", ("-z",)),
+    ("q_trim", ("-z",)),
     ("astral", ("-ST", "--species-tree-program")),
     ("n_skip", ("-nk",)),
-    ("qSplitParaClades", ("-y",)),
-    ("qAddSpeciesToIDs", ("-X",)),
+    ("q_split_para_clades", ("-y",)),
+    ("q_add_species_to_ids", ("-X",)),
 )
 
 

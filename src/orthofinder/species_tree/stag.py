@@ -41,7 +41,7 @@ from . import consensus_tree as cons
 # import tree, newick, util, parallel_task_manager
 # import consensus_tree as cons
         
-# def CanRunCommand(command, qAllowStderr = False, qPrint = True):
+# def can_run_command(command, qAllowStderr = False, qPrint = True):
 #     if qPrint: sys.stdout.write("Test can run \"%s\"" % command)      
 #     capture = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 #     stdout = [x for x in capture.stdout]
@@ -61,7 +61,7 @@ from . import consensus_tree as cons
 #     outFN = workingDir + "SimpleTest.tre"
 #     if os.path.exists(outFN): os.remove(outFN)  
 #     print("")      
-#     if not CanRunCommand("fastme -i %s -o %s" % (testFN, outFN), qAllowStderr=False):
+#     if not can_run_command("fastme -i %s -o %s" % (testFN, outFN), qAllowStderr=False):
 #         print("ERROR: Cannot run fastme")
 #         print('Please check "fastme" is installed and that the executable is in the system path.\n')
 #         return False
@@ -70,12 +70,12 @@ from . import consensus_tree as cons
 #     fastme_stat_fn = workingDir + "SimpleTest.phy_fastme_stat.txt"
 #     if os.path.exists(fastme_stat_fn): os.remove(fastme_stat_fn)
 
-def WritePhylipMatrix(m, names, outFN, max_og=1e6):
+def write_phylip_matrix(m, names, out_fn, max_og=1e6):
     """
     m - list of mp.Array  (so that each represents an nSeq x nSeq matrix
     """
     sliver = 1e-6
-    with open(outFN, 'w') as outfile:
+    with open(out_fn, 'w') as outfile:
         n = len(m)
         outfile.write("%d\n" % n)
         for i in range(n):
@@ -122,7 +122,7 @@ class GeneToSpecies(object):
         print("\nSTAG will infer a species tree from each gene tree with all species present") 
         self.sp_to_i = {s:i for i,s in enumerate(self.species)}
                 
-    def ToSpecies(self, gene):
+    def to_species(self, gene):
         if gene in self.exact: return self.exact[gene]
         else:
             for k, v in self.startswith.items():
@@ -130,22 +130,22 @@ class GeneToSpecies(object):
             # if not found then raise an Exceptions
             raise UnrecognisedGene(gene)
                 
-    def SpeciesToIndexDict(self):
+    def species_to_index_dict(self):
         return self.sp_to_i
     
-    def NumberOfSpecies(self):
+    def number_of_species(self):
         return len(self.species)
 
-class GeneToSpecies_OrthoFinder(GeneToSpecies):
-    def __init__(self, speciesToUse):
+class GeneToSpeciesOrthoFinder(GeneToSpecies):
+    def __init__(self, species_to_use):
         # no exact conversions
         self.exact = dict()
-        self.startswith = {("%d_" % sp):str(sp) for sp in speciesToUse}
-        self.species = list(map(str,speciesToUse))
+        self.startswith = {("%d_" % sp):str(sp) for sp in species_to_use}
+        self.species = list(map(str,species_to_use))
         self.sp_to_i = {s:i for i,s in enumerate(self.species)}
 
-def GetDistances_fast(t, nSp, g_to_i):
-    D = np.ones((nSp, nSp)) * 9e99
+def get_distances_fast(t, n_sp, g_to_i):
+    D = np.ones((n_sp, n_sp)) * 9e99
     for n in t.traverse('postorder'):
         if n.is_leaf():
             n.add_feature('d', {g_to_i[n.name]:max(0.0, n.dist)})
@@ -161,112 +161,112 @@ def GetDistances_fast(t, nSp, g_to_i):
                 spp = {k for ch in children for k in ch.d.keys()}
                 d = {k:(min([ch.d[k] for ch in children if k in ch.d])+max(0.0, n.dist)) for k in spp}
                 n.add_feature('d', d)
-    for i in range(nSp):
+    for i in range(n_sp):
         for j in range(i):
             D[i,j] = D[j, i]
         D[i,i]=0.
     return D
 
-def ProcessTrees(dir_in, dir_matrices, dir_trees_out, GeneToSpecies, qVerbose=True, qSkipSingleCopy=False, qForOF=False):
-    nSp = GeneToSpecies.NumberOfSpecies()
-    s_to_i = GeneToSpecies.SpeciesToIndexDict()
-    nSuccess = 0
-    nNotAllPresent = 0
-    nFail = 0
-    if qVerbose: print("\nProcessing gene trees:")
+def process_trees(dir_in, dir_matrices, dir_trees_out, GeneToSpecies, q_verbose=True, q_skip_single_copy=False, q_for_of=False):
+    n_sp = GeneToSpecies.number_of_species()
+    s_to_i = GeneToSpecies.species_to_index_dict()
+    n_success = 0
+    n_not_all_present = 0
+    n_fail = 0
+    if q_verbose: print("\nProcessing gene trees:")
     for fn in glob.glob(dir_in + "/*"):
         try:
             t = tree.Tree(fn)
         except newick.NewickError:
             print((os.path.split(fn)[1] + " - WARNING: ETE could not interpret tree file, it will be ignored"))
-            nFail += 1
+            n_fail += 1
             continue
         try:
             genes = t.get_leaf_names()
-            species = list(map(GeneToSpecies.ToSpecies, genes))
+            species = list(map(GeneToSpecies.to_species, genes))
         except UnrecognisedGene as e:
             print((os.path.split(fn)[1] + " - WARNING: unrecognised gene, %s" % str(e)))
-            nFail += 1
+            n_fail += 1
             continue
-        nThis = len(set(species))
-        if nThis != nSp:
+        n_this = len(set(species))
+        if n_this != n_sp:
 #            print(os.path.split(fn)[1] + " - Only %d species, skipping" % nThis)
-            nNotAllPresent += 1
+            n_not_all_present += 1
             continue
-        if qSkipSingleCopy and nThis == len(genes):
+        if q_skip_single_copy and n_this == len(genes):
             # Single copy - don't recalculate the tree
-            treeOutFN = dir_trees_out + os.path.split(fn)[1] + ".tre"
+            tree_out_fn = dir_trees_out + os.path.split(fn)[1] + ".tre"
             for n in t:
-                n.name = s_to_i[GeneToSpecies.ToSpecies(n.name)]
-            t.write(outfile = treeOutFN, format=5)
-            if qVerbose: print((os.path.split(fn)[1] + " - Processed"))
+                n.name = s_to_i[GeneToSpecies.to_species(n.name)]
+            t.write(outfile = tree_out_fn, format=5)
+            if q_verbose: print((os.path.split(fn)[1] + " - Processed"))
             continue
         g_to_i = {g:s_to_i[s] for g,s in zip(genes, species)}
-        D = GetDistances_fast(t, nSp, g_to_i)
-        species_names_fastme = list(map(str,range(nSp)))
-        matrixFN = dir_matrices + os.path.split(fn)[1] + ".dist.phylip"
-        treeOutFN = dir_trees_out + os.path.split(fn)[1] + ".tre"
-        WritePhylipMatrix(D, species_names_fastme, matrixFN, max_og=1e6)
-        command = "fastme -i %s -o %s -w O -s -n" % (matrixFN, treeOutFN)
-        if qForOF:
-            parallel_task_manager.RunCommand(command, qPrintOnError=True, qPrintStderr=True, raise_on_error=True)
+        D = get_distances_fast(t, n_sp, g_to_i)
+        species_names_fastme = list(map(str,range(n_sp)))
+        matrix_fn = dir_matrices + os.path.split(fn)[1] + ".dist.phylip"
+        tree_out_fn = dir_trees_out + os.path.split(fn)[1] + ".tre"
+        write_phylip_matrix(D, species_names_fastme, matrix_fn, max_og=1e6)
+        command = "fastme -i %s -o %s -w O -s -n" % (matrix_fn, tree_out_fn)
+        if q_for_of:
+            parallel_task_manager.run_command(command, q_print_on_error=True, q_print_stderr=True, raise_on_error=True)
         else:
             popen = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             popen.communicate()
-        nSuccess += 1
-        if qVerbose: print((os.path.split(fn)[1] + " - Processed"))
-    if qVerbose: print(("\nExamined %d trees" % (nSuccess + nNotAllPresent + nFail)))
-    print(("%d trees had all species present and will be used by STAG to infer the species tree" % nSuccess))
+        n_success += 1
+        if q_verbose: print((os.path.split(fn)[1] + " - Processed"))
+    if q_verbose: print(("\nExamined %d trees" % (n_success + n_not_all_present + n_fail)))
+    print(("%d trees had all species present and will be used by STAG to infer the species tree" % n_success))
       
-def Astral(tree_dir, astral_jar_file, qForOF=False):
-    treesFN = tree_dir + "../TreesFile.txt"
-    with open(treesFN, 'w') as outfile:
+def astral(tree_dir, astral_jar_file, q_for_of=False):
+    trees_fn = tree_dir + "../TreesFile.txt"
+    with open(trees_fn, 'w') as outfile:
         for fn in glob.glob(tree_dir + "/*"):
             t = tree.Tree(fn)    
             outfile.write(t.write(format=9) + "\n")
-    speciesTreeFN = tree_dir + "../SpeciesTree_ids.txt"
-    command = " ".join(["java", "-Xmx6000M", "-jar", astral_jar_file, "-i", treesFN, "-o", speciesTreeFN])
-    if qForOF:
-        parallel_task_manager.RunCommand(command, qPrintOnError=True, qPrintStderr=True, raise_on_error=True)
+    species_tree_fn = tree_dir + "../SpeciesTree_ids.txt"
+    command = " ".join(["java", "-Xmx6000M", "-jar", astral_jar_file, "-i", trees_fn, "-o", species_tree_fn])
+    if q_for_of:
+        parallel_task_manager.run_command(command, q_print_on_error=True, q_print_stderr=True, raise_on_error=True)
     else:
         subprocess.call(command, shell=True)
-    return tree.Tree(speciesTreeFN)     
+    return tree.Tree(species_tree_fn)     
       
-def InferSpeciesTree(tree_dir, species, outputFN, astral_jar=None):
+def infer_species_tree(tree_dir, species, output_fn, astral_jar=None):
     if astral_jar == None:
-        t = cons.ConsensusTree(tree_dir)
+        t = cons.consensus_tree(tree_dir)
     else:
-        t = Astral(tree_dir, astral_jar)
+        t = astral(tree_dir, astral_jar)
     for n in t:
         n.name = species[int(n.name)]
-    t.write(outfile=outputFN)
+    t.write(outfile=output_fn)
 
-def Run_ForOrthoFinder(dir_in, d_working, speciesToUse, speciesTreeIds_FN_out):
+def run_for_ortho_finder(dir_in, d_working, species_to_use, species_tree_ids_fn_out):
     dir_matrices = d_working + "Distances_SpeciesTree/"
     os.mkdir(dir_matrices)
     dir_trees_out = d_working + "SpeciesTrees_ids/"
     os.mkdir(dir_trees_out)
-    gene_to_species = GeneToSpecies_OrthoFinder(speciesToUse)
-    ProcessTrees(dir_in, dir_matrices, dir_trees_out, gene_to_species, qVerbose=False, qForOF=True)
-    InferSpeciesTree(dir_trees_out, gene_to_species.species, speciesTreeIds_FN_out)
+    gene_to_species = GeneToSpeciesOrthoFinder(species_to_use)
+    process_trees(dir_in, dir_matrices, dir_trees_out, gene_to_species, q_verbose=False, q_for_of=True)
+    infer_species_tree(dir_trees_out, gene_to_species.species, species_tree_ids_fn_out)
     
 # def main(args):
 #     dir_in = args.gene_trees
 #     astral_jar = None
 #     gene_to_species = GeneToSpecies(args.species_map)
-#     dir_out = util.CreateNewWorkingDirectory(dir_in + "/../STAG_Results")
+#     dir_out = util.create_new_working_directory(dir_in + "/../STAG_Results")
 #     CheckFastME(dir_out)
 #     dir_matrices = dir_out + "DistanceMatrices/"
 #     os.mkdir(dir_matrices)
 #     dir_trees_out = dir_out + "Trees/"
 #     os.mkdir(dir_trees_out)
-#     ProcessTrees(dir_in, dir_matrices, dir_trees_out, gene_to_species, qVerbose=(not args.quiet))
+#     process_trees(dir_in, dir_matrices, dir_trees_out, gene_to_species, qVerbose=(not args.quiet))
 #     outputFN = dir_out + "SpeciesTree.tre"
 # #    if args.astral_jar == None:
 #     if astral_jar == None:
-#         InferSpeciesTree(dir_trees_out, gene_to_species.species, outputFN)
+#         infer_species_tree(dir_trees_out, gene_to_species.species, outputFN)
 #     else:
-#         InferSpeciesTree(dir_trees_out, gene_to_species.species, outputFN, astral_jar=astral_jar)
+#         infer_species_tree(dir_trees_out, gene_to_species.species, outputFN, astral_jar=astral_jar)
 #     print(("STAG species tree: " + os.path.abspath(outputFN) + "\n"))
 
 # if __name__ == "__main__":

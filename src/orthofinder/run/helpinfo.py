@@ -2,7 +2,7 @@ import os
 from ..utils import util
 from . import process_args
 from ..utils.util import printer
-from .. import g_mclInflation, nThreadsDefault
+from .. import g_mcl_inflation, n_threads_default
 
 try:
     from rich import print
@@ -22,7 +22,7 @@ width = 22
 
 
 # width = 16
-def PrintHelp(prog_caller):
+def print_help(prog_caller):
 
     console = Console()
     table_options = Table(show_header=False, box=None, expand=False)
@@ -56,11 +56,11 @@ def PrintHelp(prog_caller):
     # table.add_column("", justify="left", no_wrap=True)
     # table.add_column("", justify="left", overflow="fold")
 
-    msa_ops = prog_caller.ListMSAMethods()
+    msa_ops = prog_caller.list_msa_methods()
     msa_ops.remove("mafft_memsave")
-    tree_ops = prog_caller.ListTreeMethods()
+    tree_ops = prog_caller.list_tree_methods()
     tree_ops.remove("raxml-ng")
-    search_ops = prog_caller.ListSearchMethods()
+    search_ops = prog_caller.list_search_methods()
     search_ops.remove("diamond_custom")
     search_ops.remove("diamond_ultra_sens_custom")
 
@@ -87,7 +87,7 @@ def PrintHelp(prog_caller):
     # )
     table_options.add_row(
         "-t <[bright_magenta]int[/bright_magenta]>",
-        f"Number of parallel sequence search threads [Default = [deep_sky_blue2]{nThreadsDefault}[/deep_sky_blue2]]",
+        f"Number of parallel sequence search threads [Default = [deep_sky_blue2]{n_threads_default}[/deep_sky_blue2]]",
     )
     table_options.add_row(
         "-a <[bright_magenta]int[/bright_magenta]>",
@@ -147,7 +147,7 @@ def PrintHelp(prog_caller):
     # )
     table_options.add_row(
         "-I <[bright_magenta]int[/bright_magenta]>",
-        f"MCL inflation parameter [Default = [deep_sky_blue2]{g_mclInflation:0.1f}[/deep_sky_blue2]]",
+        f"MCL inflation parameter [Default = [deep_sky_blue2]{g_mcl_inflation:0.1f}[/deep_sky_blue2]]",
     )
 
     # print(" --matrix <txt>          Scoring matrix allowed by DIAMOND")
@@ -321,4 +321,4 @@ def PrintHelp(prog_caller):
     print(
         " Distributed under the [dodger_blue1]GNU General Public License (GPLv3)[/dodger_blue1]. See License.md"
     )
-    util.PrintCitation()
+    util.print_citation()

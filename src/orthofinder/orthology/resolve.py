@@ -23,29 +23,29 @@ except ImportError:
 from ..phylo import tree as tree_lib
 from ..utils import parallel_task_manager
     
-def DetachAndCleanup(top, n):
+def detach_and_cleanup(top, n):
     """
     top - the node that all the nodes in the current analysis will be below
     nUp - the node above n originally, from here to nTop needs the cached data updated
     """
-    nUp = n.up
+    n_up = n.up
     n = n.detach()
-    ch = nUp.get_children()
+    ch = n_up.get_children()
     if len(ch) == 1:
-        if nUp.is_root():
+        if n_up.is_root():
             # can't delete the root, need to detach the child nodes and reattach them to the root
             for c in ch[0].get_children():
-                nUp.add_child(c.detach())
+                n_up.add_child(c.detach())
             ch[0].delete()
-            return n, nUp, top
+            return n, n_up, top
         else:
-            if top == nUp: top = nUp.up 
-            nUpNew = nUp.up
-            nUp.delete()
-            return n, nUpNew, top
-    return n, nUp, top
+            if top == n_up: top = n_up.up 
+            n_up_new = n_up.up
+            n_up.delete()
+            return n, n_up_new, top
+    return n, n_up, top
 
-def GraftAndUpdate(top, n, s):
+def graft_and_update(top, n, s):
     """
     Remove n from its location in the tree and make it sister to s. Update only the sp_down data. NOT the sp_up data.
     Args:
@@ -57,7 +57,7 @@ def GraftAndUpdate(top, n, s):
     Implementation:
         n and s could be anywhere in relation to one another, need to change all the species sets that could be affected
     """
-    n, nUp, top = DetachAndCleanup(top, n)
+    n, n_up, top = detach_and_cleanup(top, n)
     parent = s.up
     if parent == None:
         new = tree_lib.TreeNode()
@@ -88,7 +88,7 @@ def GraftAndUpdate(top, n, s):
             r.sp_down = set.union(*[ch.sp_down for ch in r.get_children()])
             r = r.up
     # all nodes on path from nTop to n need sp_down updating
-    r = nUp
+    r = n_up
     if r != None:
         while r != top:
             r.sp_down = set.union(*[ch.sp_down for ch in r.get_children()])
@@ -103,9 +103,9 @@ def GraftAndUpdate(top, n, s):
 #         p - node to hang (s1,s2) from
 #     """
 #     d1 = s1.up.dist
-#     s1, s1Parent , nTop = DetachAndCleanup(nTop, s1)   
+#     s1, s1Parent , nTop = detach_and_cleanup(nTop, s1)   
 #     d2 = s2.up.dist
-#     s2, s2Parent, nTop = DetachAndCleanup(nTop, s2)   
+#     s2, s2Parent, nTop = detach_and_cleanup(nTop, s2)   
 #     new = p.add_child()
 #     new.dist = 0.5*(d1+d2)
 #     new.add_child(s1)
@@ -122,7 +122,7 @@ def GraftAndUpdate(top, n, s):
 #     nTop.sp_down = set.union(*[ch.sp_down for ch in nTop.get_children()])
 #     return new.get_tree_root()
         
-def ContainsMonophyletic(e, O, i, I):
+def contains_monophyletic(e, O, i, I):
     """
     Check if set of species O is found only in a clade below e. If so, returns (True, n) where n is the clade otherwise (False, None)
     Args:
@@ -143,9 +143,9 @@ def ContainsMonophyletic(e, O, i, I):
     i+=1
     if i == I or e.is_leaf(): return False, e, i-1
     ch = e.get_children()
-    inChild = [bool(O & c.sp_down) for c in ch]
-    if sum(inChild) > 1: return False, e, i-1         # bipart : cheange to if sum(inChild) == len(ch): return False, None 
-    return ContainsMonophyletic(ch[inChild.index(True)], O, i, I)  # bipart need to check more than one potentially
+    in_child = [bool(O & c.sp_down) for c in ch]
+    if sum(in_child) > 1: return False, e, i-1         # bipart : cheange to if sum(inChild) == len(ch): return False, None 
+    return contains_monophyletic(ch[in_child.index(True)], O, i, I)  # bipart need to check more than one potentially
 
 def check_monophyly(node, taxa):
     """ This should be used as a wrapper of the ete method since that method returns false for a single node. It should return true
@@ -196,7 +196,7 @@ def resolve(n, M):
         if check_monophyly(n, sis[0]) and check_monophyly(n, sis[1]):
             s0 = n.get_common_ancestor(sis[0]) if len(sis[0]) > 1 else (n&sis[0][0])
             s1 = n.get_common_ancestor(sis[1]) if len(sis[1]) > 1 else (n&sis[1][0])
-            return GraftAndUpdate(n, s0, s1)
+            return graft_and_update(n, s0, s1)
     elif "recon_2" in n.features:
         """ (dest, target, move_out)
         move target to be sister to destination, move move_out to where target was
@@ -223,12 +223,12 @@ def resolve(n, M):
             s0 = n.get_common_ancestor(dest) if len(dest) > 1 else (n&dest[0])
             s1 = n.get_common_ancestor(target) if len(target) > 1 else (n&target[0])
             d = s1.get_sisters()[0].dist
-            tree = GraftAndUpdate(n, s1, s0)
+            tree = graft_and_update(n, s1, s0)
             tree.dist = d
             s3 = tree.get_common_ancestor(dest + target)
             sister = s3.up.up
             top = sister.up if sister.up != None else sister
-            return GraftAndUpdate(top, sm_new, sister)
+            return graft_and_update(top, sm_new, sister)
         
     ch = n.get_children()
     if len(ch) != 2: return n.get_tree_root()    #bipart
@@ -240,45 +240,45 @@ def resolve(n, M):
     s = sis[0] if len(sis) == 1 else None
     S = set() if (n.is_root() or len(n.get_sisters()) > 1) else set.union(*[nother.sp_down for nother in n.up.get_children() if nother != n]) # works for non-binary too
     
-    successA, nA, dA = ContainsMonophyletic(ch[0], O, 0, 3)   
-    successB, nB, dB = ContainsMonophyletic(ch[1], O, 0, 3)   
-    if dA+dB > 2:
-        if dA == 2:
-            successA, nA, dA = ContainsMonophyletic(ch[0], O, 0, 2)   
-        if dB == 2:
-            successB, nB, dB = ContainsMonophyletic(ch[1], O, 0, 2)                  
+    success_a, n_a, d_a = contains_monophyletic(ch[0], O, 0, 3)   
+    success_b, n_b, d_b = contains_monophyletic(ch[1], O, 0, 3)   
+    if d_a+d_b > 2:
+        if d_a == 2:
+            success_a, n_a, d_a = contains_monophyletic(ch[0], O, 0, 2)   
+        if d_b == 2:
+            success_b, n_b, d_b = contains_monophyletic(ch[1], O, 0, 2)                  
         
-    if (dA==0 and dB==1) or (dA==1 and dB==0): 
+    if (d_a==0 and d_b==1) or (d_a==1 and d_b==0): 
         # Case A
         # a is the one that branches
         # v is the child of A that overlaps with O
-        if dA == 1:
+        if d_a == 1:
             a, b = ch
-            v = nA
+            v = n_a
         else:
             b, a = ch
-            v = nB
+            v = n_b
         U = set.union(*[c.sp_down for c in a.get_children() if c != v]) # allows for non-binary
         case = (bool(S&O), bool(S&U))  
         if case in c10_a:
-            return GraftAndUpdate(n, b, v)
+            return graft_and_update(n, b, v)
         elif case in c10_b:
             n.up.add_feature("recon", (b.get_leaf_names(),s.get_leaf_names())) 
             return n.get_tree_root()
         return n.get_tree_root()
-    elif (dA==1 and dB==1): 
+    elif (d_a==1 and d_b==1): 
         # Case B
         # v is the child of A that overlaps with O (ws are the others)
         # x is the child of B that overlaps with O
-        v = nA
-        x = nB
+        v = n_a
+        x = n_b
         cha = ch[0].get_children()
         chb = ch[1].get_children()
         U = set.union(*[c.sp_down for c in cha if c != v]) # allows for non-binary
         W = set.union(*[c.sp_down for c in chb if c != x]) # allows for non-binary
         case = (bool(S&O), bool(S&W), bool(S&U))
         if case in c11_a:
-            return GraftAndUpdate(n, x, v)
+            return graft_and_update(n, x, v)
         elif case in c11_b:
             if W&S:
                 # switch, so that ws, x are below a
@@ -296,9 +296,9 @@ def resolve(n, M):
             n.up.add_feature("recon", (s.get_leaf_names(), w_leaves))  
             return n.get_tree_root()
         return n.get_tree_root()
-    elif (dA==2 and dB==0) or (dA==0 and dB==2): 
+    elif (d_a==2 and d_b==0) or (d_a==0 and d_b==2): 
         # Case C
-        if dA == 2:
+        if d_a == 2:
             a,b = ch
         else:
             b,a = ch
@@ -314,7 +314,7 @@ def resolve(n, M):
         Y = set.union(*[c.sp_down for c in ys])
         case = (bool(S&V), bool(S&Y), bool(S&O), bool(V&Y))
         if case in c20_a:
-            return GraftAndUpdate(n, b, z)
+            return graft_and_update(n, b, z)
         elif case in c20_b:
             # need to make v a single node
             if len(vs) == 1:
@@ -329,7 +329,7 @@ def resolve(n, M):
                     v = v.detach()
                     vs_new.add_child(v)
                 vs_new.add_feature("sp_down", vs_new_sp_down)        
-            return GraftAndUpdate(n, vs_new, b)
+            return graft_and_update(n, vs_new, b)
         elif case in c20_c:
             n.up.add_feature("recon", (b.get_leaf_names(), s.get_leaf_names()))     
             return n.get_tree_root()
@@ -365,7 +365,7 @@ def resolve(n, M):
 #     genes = tree.get_leaf_names()
 #     gDict = {gene:i for i,gene in enumerate(genes)}
 #     sDict = {sp:i for i,sp in enumerate(species)}
-#     orthologues = np.zeros((len(genes), len(species)))
+#     orthologs = np.zeros((len(genes), len(species)))
 #     nOrtho = 0
 #     for n in tree.traverse('postorder'):
 #         if n.is_leaf(): continue
@@ -379,10 +379,10 @@ def resolve(n, M):
 #             nOrtho += len(l0)*len(l1)
 #             for g0 in l0:
 #                 for s in s1:
-#                     orthologues[gDict[g0], sDict[s]] = 1
+#                     orthologs[gDict[g0], sDict[s]] = 1
 #             for g1 in l1:
 #                 for s in s0:
-#                     orthologues[gDict[g1], sDict[s]] = 1
+#                     orthologs[gDict[g1], sDict[s]] = 1
 #         elif len(ch) > 2:
 #             for ch0, ch1 in itertools.combinations(ch, 2):
 #                 l0 = ch0.get_leaf_names()
@@ -393,24 +393,24 @@ def resolve(n, M):
 #                 nOrtho += len(l0)*len(l1)
 #                 for g0 in l0:
 #                     for s in s1:
-#                         orthologues[gDict[g0], sDict[s]] = 1
+#                         orthologs[gDict[g0], sDict[s]] = 1
 #                 for g1 in l1:
 #                     for s in s0:
-#                         orthologues[gDict[g1], sDict[s]] = 1
+#                         orthologs[gDict[g1], sDict[s]] = 1
                 
 #    print(nOrtho)
 #    N = (len(species)-1)*len(genes)
-#    print((sum(sum(orthologues)),float(N)))
-#    print(sum(sum(orthologues)))
+#    print((sum(sum(orthologs)),float(N)))
+#    print(sum(sum(orthologs)))
 
 # class Finalise(object):
 #     def __enter__(self):
 #         pass
 #     def __exit__(self, type, value, traceback):
-#         ptm = parallel_task_manager.ParallelTaskManager_singleton()
+#         ptm = parallel_task_manager.ParallelTaskManagerSingleton()
 #         ptm.Stop()
 
-# def DoTrees(trees_queue, GeneToSpecies, out_dir, species_tree_rooted, qResolve):
+# def do_trees(trees_queue, GeneToSpecies, out_dir, species_tree_rooted, qResolve):
 #     # Root using species tree if provided, otherwise tree should have been rooted already
 #     while True:
 #         try:
@@ -421,7 +421,7 @@ def resolve(n, M):
 #             if len(tree) == 1: continue
 #             if species_tree_rooted != None:
 #                 tree.prune(tree.get_leaf_names())
-#                 roots = om1.GetRoots(tree, species_tree_rooted, GeneToSpecies)
+#                 roots = om1.get_roots(tree, species_tree_rooted, GeneToSpecies)
 #                 if len(roots) == 0: continue
 #                 # Pick the first root for now
 #                 root = roots[0]
@@ -429,7 +429,7 @@ def resolve(n, M):
 #                     tree.set_outgroup(root)
 #                 tree.write(outfile=(out_dir + "/" + os.path.basename(trees_fn) + "_rooted.tre"))
 #             if qResolve:
-#                 om1.StoreSpeciesSets(tree, GeneToSpecies)
+#                 om1.store_species_sets(tree, GeneToSpecies)
 #                 # Perform full reconciliation
 #                 for n in tree.traverse("postorder"):
 #                     tree = resolve(n, GeneToSpecies)
@@ -470,7 +470,7 @@ def resolve(n, M):
 #     for t in trees:
 #         queue.put(t)
 #     # DoTree(trees_fn, GeneToSpecies, out_dir, species_tree_rooted, qTest)
-#     runningProcesses = [mp.Process(target=DoTrees, args=(queue, GeneToSpecies, out_dir, species_tree_rooted, qResolve)) for i_ in range(nThreads)]
+#     runningProcesses = [mp.Process(target=do_trees, args=(queue, GeneToSpecies, out_dir, species_tree_rooted, qResolve)) for i_ in range(nThreads)]
 #     for proc in runningProcesses:
 #         proc.start()
 #     for proc in runningProcesses:

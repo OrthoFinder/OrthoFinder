@@ -6,7 +6,7 @@ from collections import deque
 import helper
 from typing import Optional, Union, List, Any
 import multiprocessing as mp
-# from orthofinder.utils.util import CreateNewWorkingDirectory
+# from orthofinder.utils.util import create_new_working_directory
 from orthofinder.utils import file_handler
 from OF_funcs import OrthoFinderTestFuncs
 
@@ -45,7 +45,7 @@ if ORTHOFINDER[-1] != os.sep:
 
 # exampledata_baseDirectoryName = os.path.join(ROOT, "ExampleData", "OrthoFinder", "Results_")
 
-# DEFAULT_PROJECTS_RESULTS = CreateNewWorkingDirectory(
+# DEFAULT_PROJECTS_RESULTS = create_new_working_directory(
 #     exampledata_baseDirectoryName,
 #     qDate=True,
 #     search_program=None,
@@ -429,12 +429,12 @@ def reset_orthofinder_state():
     """
     attrs_to_clear = ("wd_base_prev", "home_for_results", "wd_base", "wd_current", "wd_trees", "wd1", "wd2", "rd1", "base_dir")
     for attr in attrs_to_clear:
-        if hasattr(file_handler.FileHandler, attr):
-            setattr(file_handler.FileHandler, attr, "")
+        if hasattr(file_handler.handler, attr):
+            setattr(file_handler.handler, attr, "")
     yield 
     for attr in attrs_to_clear:
-        if hasattr(file_handler.FileHandler, attr):
-            setattr(file_handler.FileHandler, attr, "")
+        if hasattr(file_handler.handler, attr):
+            setattr(file_handler.handler, attr, "")
 
 @pytest.fixture(scope="session")
 def of_obj(projects, baseline_arg_dict, baseline_options, species_tree):

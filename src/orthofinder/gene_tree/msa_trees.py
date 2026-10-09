@@ -47,61 +47,61 @@ from ..species_tree import astral as astral_pro
 
 
 class FastaWriter(object):
-    def __init__(self, fastaFileDir_list, speciesToUse):
+    def __init__(self, fasta_file_dir_list, species_to_use):
         """
         The list of previous directories could include species that are no longer used,
         but not ones that are conflicting
         """
-        self.SeqLists = dict()
-        qFirst = True
+        self.seq_lists = dict()
+        q_first = True
         accession = ""
         sequence = ""
-        required_files = set(["Species%d.fa" % i for i in speciesToUse])
-        for d in fastaFileDir_list:
+        required_files = set(["Species%d.fa" % i for i in species_to_use])
+        for d in fasta_file_dir_list:
             for fn in glob.glob(d + "Species*.fa"):
                 if os.path.basename(fn) not in required_files: continue
-                with open(fn, 'r') as fastaFile:
-                    for line in fastaFile:
+                with open(fn, 'r') as fasta_file:
+                    for line in fasta_file:
                         if line[0] == ">":
                             # deal with old sequence
-                            if not qFirst:
-                                self.SeqLists[accession] = sequence
+                            if not q_first:
+                                self.seq_lists[accession] = sequence
                                 sequence = ""
-                            qFirst = False
+                            q_first = False
                             # get id for new sequence
                             accession = line[1:].rstrip()
                         else:
                             sequence += line
-                    self.SeqLists[accession] = sequence
+                    self.seq_lists[accession] = sequence
     
-    def WriteSeqsToFasta(self, seqs, outFilename):
-        with open(outFilename, 'w') as outFile:
-            for seq in self.SortSeqs([s.ToString() for s in seqs]):
-                if seq in self.SeqLists:
-                    outFile.write(">%s\n" % seq)
-                    outFile.write(self.SeqLists[seq])
+    def write_seqs_to_fasta(self, seqs, out_filename):
+        with open(out_filename, 'w') as out_file:
+            for seq in self.sort_seqs([s.to_string() for s in seqs]):
+                if seq in self.seq_lists:
+                    out_file.write(">%s\n" % seq)
+                    out_file.write(self.seq_lists[seq])
                 else:
                     print(("ERROR: %s not found" % seq))
                                 
-    def WriteSeqsToFasta_withNewAccessions(self, seqs, outFilename, idDict):
+    def write_seqs_to_fasta_with_new_accessions(self, seqs, out_filename, id_dict):
         try:
-            seqs = [s.ToString() for s in seqs]
+            seqs = [s.to_string() for s in seqs]
         except:
             pass
-        with open(outFilename, 'w') as outFile:
-            for seq in self.SortSeqs(seqs):
-                if seq in self.SeqLists:
-                    outFile.write(">%s\n" % idDict[seq])
-                    outFile.write(self.SeqLists[seq])
+        with open(out_filename, 'w') as out_file:
+            for seq in self.sort_seqs(seqs):
+                if seq in self.seq_lists:
+                    out_file.write(">%s\n" % id_dict[seq])
+                    out_file.write(self.seq_lists[seq])
                     
-    def SortSeqs(self, seqs):
+    def sort_seqs(self, seqs):
         return sorted(seqs, key=lambda x: list(map(int, x.split("_"))))
 
-def WriteTestFile(d):
-    testFN = d + "SimpleTest.fa"
-    with open(testFN, 'w') as outfile:
+def write_test_file(d):
+    test_fn = d + "SimpleTest.fa"
+    with open(test_fn, 'w') as outfile:
         outfile.write(">a\nA\n>b\nA")
-    return testFN
+    return test_fn
  
 """ 
 -----------------------------------------------------------------------------
@@ -109,7 +109,7 @@ def WriteTestFile(d):
 -----------------------------------------------------------------------------
 """
 
-def GetMulticopyCutoff(nSpecies, factor = 0.25, pMax = 0.25):
+def get_multicopy_cutoff(n_species, factor = 0.25, p_max = 0.25):
     """ Get the maximum number of species with multicopy genes for each number of non-single copy genes. A species is non-single
     copy if it is absent or if it is multicopy
     Args:
@@ -120,33 +120,33 @@ def GetMulticopyCutoff(nSpecies, factor = 0.25, pMax = 0.25):
         maxMulticopy - array, i-th element is maximum number of allowed multicopy species if ispecies are non-single copy
     """        
     allowed_multicopy = []
-    for iNonSingle in range(nSpecies):
-        nSingle = nSpecies - iNonSingle
-        qFoundMax = False
-        for nMultiple in range(iNonSingle+1):
-            pFalse = factor*nMultiple/float(nSpecies)
-            pAnyFalse = 1.-(1-pFalse)**nSingle
-            if pAnyFalse > pMax:
-                allowed_multicopy.append(nMultiple - 1)
-                qFoundMax = True
+    for i_non_single in range(n_species):
+        n_single = n_species - i_non_single
+        q_found_max = False
+        for n_multiple in range(i_non_single+1):
+            p_false = factor*n_multiple/float(n_species)
+            p_any_false = 1.-(1-p_false)**n_single
+            if p_any_false > p_max:
+                allowed_multicopy.append(n_multiple - 1)
+                q_found_max = True
                 break
-        if not qFoundMax:
-            allowed_multicopy.append(iNonSingle)
+        if not q_found_max:
+            allowed_multicopy.append(i_non_single)
     return allowed_multicopy  
   
-def SingleCopy_WithProbabilityTest(fraction, ogMatrix):
+def single_copy_with_probability_test(fraction, og_matrix):
     """ X fraction of species have a single copy of the gene, all other species can have whatever number of copies including 0"""
-    nSpecies = ogMatrix.shape[1]
-    allowed_multicopy = GetMulticopyCutoff(nSpecies)
-    multi = (ogMatrix > 1 * np.ones((1, nSpecies))).sum(1) # multicopy
-    excluded = nSpecies - (ogMatrix == 1 * np.ones((1, nSpecies))).sum(1) # single-copy
-    temp2 = (ogMatrix == np.ones((1, nSpecies))).sum(1) / float(nSpecies)   # proportion of species with gene present
+    n_species = og_matrix.shape[1]
+    allowed_multicopy = get_multicopy_cutoff(n_species)
+    multi = (og_matrix > 1 * np.ones((1, n_species))).sum(1) # multicopy
+    excluded = n_species - (og_matrix == 1 * np.ones((1, n_species))).sum(1) # single-copy
+    temp2 = (og_matrix == np.ones((1, n_species))).sum(1) / float(n_species)   # proportion of species with gene present
     c2 = temp2 > fraction 
-    passFracOGs = c2.nonzero()[0] 
-    ok_ogs = [iog for iog in passFracOGs if multi[iog] <= allowed_multicopy[excluded[iog]]]
+    pass_frac_ogs = c2.nonzero()[0] 
+    ok_ogs = [iog for iog in pass_frac_ogs if multi[iog] <= allowed_multicopy[excluded[iog]]]
     return ok_ogs 
     
-def GetOrthogroupOccupancyInfo(m):
+def get_orthogroup_occupancy_info(m):
     """
     Args:
         m - orthogroup matrix
@@ -158,10 +158,10 @@ def GetOrthogroupOccupancyInfo(m):
         raise ValueError("Matrix has zero columns; cannot compute occupancy.")
     eps = 1e-5
     fractions = [1.0 - n / N for n in range(N)]              # length N
-    nOrtho = [float(len(SingleCopy_WithProbabilityTest(F - eps, m)))
+    n_ortho = [float(len(single_copy_with_probability_test(F - eps, m)))
               for F in fractions]
 
-    return fractions, nOrtho
+    return fractions, n_ortho
 
     # N = m.shape[1]
     # f = 1./N
@@ -170,11 +170,11 @@ def GetOrthogroupOccupancyInfo(m):
     # for n in range(N):
     #     F = 1.-n*f
     #     fractions.append(F)
-    #     nOrtho.append(len(SingleCopy_WithProbabilityTest(F-1e-5, m)))
+    #     nOrtho.append(len(single_copy_with_probability_test(F-1e-5, m)))
     # nOrtho = list(map(float, nOrtho))
     # return fractions, nOrtho
     
-def DetermineOrthogroupsForSpeciesTree(m, iogs4, nOGsMin=100, nSufficient=1000, increase_required=2.):
+def determine_orthogroups_for_species_tree(m, iogs4, n_ogs_min=100, n_sufficient=1000, increase_required=2.):
     """Orthogroups can be used if at least a fraction f of the species in the orthogroup are single copy, f is determined as described 
     below. Species that aren't single copy are allowed in the orthogroup as long as there aren't too many (criterion is quite strict). 
     The presence of species with multiple copies suggests that the single copy species might actually have arisen from duplication 
@@ -186,31 +186,31 @@ def DetermineOrthogroupsForSpeciesTree(m, iogs4, nOGsMin=100, nSufficient=1000, 
         p - proportionalIncreaseMin: Each decrease in the proportion of single copy species should bring about a relative increase 
         in the number of orthogroups that will be used of 'p', otherwise it is not worth lowering the bar
     """
-    fractions, nOrtho = GetOrthogroupOccupancyInfo(m)
-    if nOrtho[0] > nSufficient:
-        ogsToUse = SingleCopy_WithProbabilityTest(1.0-1e-5, m)
-        return ogsToUse, 1.0
-    nSpecies = m.shape[1]
-    for i in range(1, nSpecies):
-        if nOrtho[i-1] < nOGsMin: continue
-        if nOrtho[i-1] > nSufficient: break
-        p = ((nOrtho[i] - nOrtho[i-1])/nOrtho[i-1]) / (-(fractions[i] - fractions[i-1])/fractions[i-1])
+    fractions, n_ortho = get_orthogroup_occupancy_info(m)
+    if n_ortho[0] > n_sufficient:
+        ogs_to_use = single_copy_with_probability_test(1.0-1e-5, m)
+        return ogs_to_use, 1.0
+    n_species = m.shape[1]
+    for i in range(1, n_species):
+        if n_ortho[i-1] < n_ogs_min: continue
+        if n_ortho[i-1] > n_sufficient: break
+        p = ((n_ortho[i] - n_ortho[i-1])/n_ortho[i-1]) / (-(fractions[i] - fractions[i-1])/fractions[i-1])
         if fractions[i] > 0.5:
             if p < increase_required: break
         else:
             # if fewer than half the species are in any orthogroup then set higher bar for reducing fraction further
             if p < 2*increase_required: break
     f = fractions[i-1]
-    ogsToUse = SingleCopy_WithProbabilityTest(f-1e-5, m)
-    ogsToUse = [iogs4[i_] for i_ in ogsToUse]
-    return ogsToUse, f   
+    ogs_to_use = single_copy_with_probability_test(f-1e-5, m)
+    ogs_to_use = [iogs4[i_] for i_ in ogs_to_use]
+    return ogs_to_use, f   
 
 class MSA(object):
     def __init__(self, msa_dict):
         self.seqs = msa_dict
         self.length = len(list(msa_dict.values())[0])
 
-def ReadAlignment(fn):
+def read_alignment(fn):
     msa = dict()
     accession = None
     length = None
@@ -222,7 +222,7 @@ def ReadAlignment(fn):
                 if accession != None:
                     if length != None and len(seq) != length:
                         text  = "ERROR: Sequence length mismatch in MSA: %s & %d" % (length, len(seq))
-                        file_handler.FileHandler.LogFailAndExit(text)
+                        file_handler.handler.log_fail_and_exit(text)
                     msa[accession] = seq
                 accession = line[1:]
                 seq = ""
@@ -231,80 +231,80 @@ def ReadAlignment(fn):
         if accession != None:
             if length != None and len(seq) != length:
                 text = "Error: Sequence length mismatch in MSA: %s & %d" % (length, len(seq))
-                file_handler.FileHandler.LogFailAndExit(text)
+                file_handler.handler.log_fail_and_exit(text)
             msa[accession] = seq
     return MSA(msa)
 
-def CreateConcatenatedAlignment(ogsToUse_ids, ogs, alignment_filename_function, output_filename, fSingleCopy, fMaxGap=0.5):
-    allSpecies = {str(gene.iSp) for og in ogs for gene in og}
+def create_concatenated_alignment(ogs_to_use_ids, ogs, alignment_filename_function, output_filename, f_single_copy, f_max_gap=0.5):
+    all_species = {str(gene.i_sp) for og in ogs for gene in og}
     # Each species' alignment is collected as a list of pieces and joined once:
     # appending to a growing string copies it every time.
-    concatentaedAlignments = defaultdict(list)
-    for iOg in ogsToUse_ids:
+    concatentaed_alignments = defaultdict(list)
+    for i_og in ogs_to_use_ids:
         try:
-            speciesCounts = Counter([gene.iSp for gene in ogs[iOg]])
-            selectedSeqs = {gene.ToString() for gene in ogs[iOg] if speciesCounts[gene.iSp] == 1}
-            alignment = ReadAlignment(alignment_filename_function(iOg))
+            species_counts = Counter([gene.i_sp for gene in ogs[i_og]])
+            selected_seqs = {gene.to_string() for gene in ogs[i_og] if species_counts[gene.i_sp] == 1}
+            alignment = read_alignment(alignment_filename_function(i_og))
             # This orthogroup's piece of each species' row, added only once the
             # whole alignment is known to be usable, so the rows stay in step.
             pieces = {}
             for name, al in alignment.seqs.items():
-                if name.split()[0] in selectedSeqs:
-                    iSp = name.split("_")[0]
-                    pieces[iSp] = al.replace('*', '-')  # this allows for the MSA method to have failed to put the sequence in the MSA
+                if name.split()[0] in selected_seqs:
+                    i_sp = name.split("_")[0]
+                    pieces[i_sp] = al.replace('*', '-')  # this allows for the MSA method to have failed to put the sequence in the MSA
             if any(len(al) != alignment.length for al in pieces.values()):
                 # A malformed MSA (rows of different lengths) would shift the
                 # columns of every species after it.
                 print("WARNING: The sequences of an MSA have different lengths, it is not used for the species tree: %s"
-                      % alignment_filename_function(iOg))
+                      % alignment_filename_function(i_og))
                 continue
             # now put blanks for the missing species, in a fixed order (set
             # order differs between runs, and sets the rows' order)
-            for iSp in sorted(allSpecies.difference(pieces), key=int):
-                pieces[iSp] = "-"*(alignment.length)
-            for iSp, al in pieces.items():
-                concatentaedAlignments[iSp].append(al)
+            for i_sp in sorted(all_species.difference(pieces), key=int):
+                pieces[i_sp] = "-"*(alignment.length)
+            for i_sp, al in pieces.items():
+                concatentaed_alignments[i_sp].append(al)
         except IndexError:
             # allow empty MSA (could fail for unknown reason)
-            print("WARNING: An MSA failed for an unknown reason: %s" % alignment_filename_function(iOg))
+            print("WARNING: An MSA failed for an unknown reason: %s" % alignment_filename_function(i_og))
             print("No tree or orthologs will be inferred for this orthogroup. To correct the issue, identify & correct the problematic gene sequence and rerun.")
             pass
-    concatentaedAlignments = {iSp: "".join(parts) for iSp, parts in concatentaedAlignments.items()}
+    concatentaed_alignments = {i_sp: "".join(parts) for i_sp, parts in concatentaed_alignments.items()}
     # Trim the completed alignment: to 50% of fraction of species present
-    maxGap = (1.-fMaxGap*fSingleCopy)*len(allSpecies)
-    if len(concatentaedAlignments) == 0 or len(list(concatentaedAlignments.values())[0]) == 0:
+    max_gap = (1.-f_max_gap*f_single_copy)*len(all_species)
+    if len(concatentaed_alignments) == 0 or len(list(concatentaed_alignments.values())[0]) == 0:
         print("All MSAs for the concatenated multiple sequence alignment were empty.")
         print("Please correct the error and re-run.")
-        util.Fail()
-    names = list(concatentaedAlignments.keys())
-    nChar = 80
+        util.fail()
+    names = list(concatentaed_alignments.keys())
+    n_char = 80
     try:
         # one byte per position (a character array takes 4, and building it
         # from lists of characters 8 more): species x columns can be large
-        length = len(concatentaedAlignments[names[0]])
-        M = np.frombuffer("".join(concatentaedAlignments[name] for name in names).encode("latin-1"),
+        length = len(concatentaed_alignments[names[0]])
+        M = np.frombuffer("".join(concatentaed_alignments[name] for name in names).encode("latin-1"),
                           dtype=np.uint8).reshape(len(names), length)
     except (UnicodeEncodeError, ValueError):
         M = None      # unusual letters (rows all have the same length, see above): as before, below
     if M is not None:
-        M = M[:, (M == ord("-")).sum(axis=0) <= maxGap]
+        M = M[:, (M == ord("-")).sum(axis=0) <= max_gap]
         with open(output_filename, 'w') as outfile:
-            for iSeq, name in enumerate(names):
+            for i_seq, name in enumerate(names):
                 outfile.write(">%s\n" % name)
-                seq = M[iSeq].tobytes().decode("latin-1")
-                for i in range(0, len(seq), nChar):
-                    outfile.write(seq[i:i+nChar] + "\n")
+                seq = M[i_seq].tobytes().decode("latin-1")
+                for i in range(0, len(seq), n_char):
+                    outfile.write(seq[i:i+n_char] + "\n")
         return
-    M = np.array([list(concatentaedAlignments[name]) for name in names])
+    M = np.array([list(concatentaed_alignments[name]) for name in names])
     gap_counts = sum(M == "-")
-    i_keep = np.where(gap_counts <= maxGap)
+    i_keep = np.where(gap_counts <= max_gap)
     M = M[:, i_keep]
     with open(output_filename, 'w') as outfile:
-        for iSeq, name in enumerate(names):
+        for i_seq, name in enumerate(names):
             outfile.write(">%s\n" % name)
-            seq = M[iSeq,:].tolist()[0]
-            for i in range(0, len(seq), nChar):
-                outfile.write("".join(seq[i:i+nChar]) + "\n")
+            seq = M[i_seq,:].tolist()[0]
+            for i in range(0, len(seq), n_char):
+                outfile.write("".join(seq[i:i+n_char]) + "\n")
             
 def trim_fn(fn, msa_min_seq):
     trim.main(fn, fn, msa_min_seq, 0.1, 500, 0.75, False)
@@ -321,74 +321,74 @@ class TreesForOrthogroups(object):
         self.msa_program = msa_program
         self.tree_program = tree_program
     
-    def GetFastaFilename(self, iOG, qResults=False):
-        return file_handler.FileHandler.GetOGsSeqFN(iOG, qResults)
+    def get_fasta_filename(self, i_og, q_results=False):
+        return file_handler.handler.get_ogs_seq_fn(i_og, q_results)
             
-    def GetAlignmentFilename(self, iOG, qResults=False):
-        return file_handler.FileHandler.GetOGsAlignFN(iOG, qResults)
+    def get_alignment_filename(self, i_og, q_results=False):
+        return file_handler.handler.get_ogs_align_fn(i_og, q_results)
             
-    def GetTreeFilename(self, iOG, qResults=False):
-        return file_handler.FileHandler.GetOGsTreeFN(iOG, qResults)
+    def get_tree_filename(self, i_og, q_results=False):
+        return file_handler.handler.get_ogs_tree_fn(i_og, q_results)
         
-    # def WriteFastaFiles(self, fastaWriter, ogs, idDict, qBoth):
+    # def write_fasta_files(self, fastaWriter, ogs, idDict, qBoth):
     #     # The results ones are now written by default after orthogroups, check they're not already there
     #     for iOg, og in enumerate(ogs):
-    #         if not os.path.exists(self.GetFastaFilename(iOg, True)):
-    #             fastaWriter.WriteSeqsToFasta_withNewAccessions(og, self.GetFastaFilename(iOg, True), idDict)
+    #         if not os.path.exists(self.get_fasta_filename(iOg, True)):
+    #             fastaWriter.write_seqs_to_fasta_with_new_accessions(og, self.get_fasta_filename(iOg, True), idDict)
     #     if qBoth: 
     #         for iOg, og in enumerate(ogs):
-    #             if not os.path.exists(self.GetFastaFilename(iOg)):
-    #                 fastaWriter.WriteSeqsToFasta(og, self.GetFastaFilename(iOg))
+    #             if not os.path.exists(self.get_fasta_filename(iOg)):
+    #                 fastaWriter.write_seqs_to_fasta(og, self.get_fasta_filename(iOg))
 
-    def WriteFastaFiles(self, fastaWriter, ogs, idDict, qID=True, qResults=False):
+    def write_fasta_files(self, fasta_writer, ogs, id_dict, q_id=True, q_results=False):
         # The results ones are now written by default after orthogroups, check they're not already there
-        if qResults:
-            for iOg, og in enumerate(ogs):
-                if not os.path.exists(self.GetFastaFilename(iOg, True)):
-                    fastaWriter.WriteSeqsToFasta_withNewAccessions(og, self.GetFastaFilename(iOg, True), idDict)
-        if qID: 
-            for iOg, og in enumerate(ogs):
-                if not os.path.exists(self.GetFastaFilename(iOg)):
-                    fastaWriter.WriteSeqsToFasta(og, self.GetFastaFilename(iOg))
+        if q_results:
+            for i_og, og in enumerate(ogs):
+                if not os.path.exists(self.get_fasta_filename(i_og, True)):
+                    fasta_writer.write_seqs_to_fasta_with_new_accessions(og, self.get_fasta_filename(i_og, True), id_dict)
+        if q_id: 
+            for i_og, og in enumerate(ogs):
+                if not os.path.exists(self.get_fasta_filename(i_og)):
+                    fasta_writer.write_seqs_to_fasta(og, self.get_fasta_filename(i_og))
 
-    def GetAlignmentCommandsAndNewFilenames(self, ogs, i_og_restart=0, method_threads=None):
+    def get_alignment_commands_and_new_filenames(self, ogs, i_og_restart=0, method_threads=None):
         iogs_align = [i for i, og in enumerate(ogs) if len(og) >= 2 and i >= i_og_restart]
-        infn_list = [self.GetFastaFilename(i) for i in iogs_align]
-        outfn_list = [self.GetAlignmentFilename(i) for i in iogs_align]
+        infn_list = [self.get_fasta_filename(i) for i in iogs_align]
+        outfn_list = [self.get_alignment_filename(i) for i in iogs_align]
         id_list = ["OG%07d" % i for i in iogs_align]
-        nSeqs = [len(ogs[i]) for i in iogs_align]
-        return self.program_caller.GetMSACommands(self.msa_program, infn_list, outfn_list, id_list, nSeqs, method_threads=method_threads), iogs_align
+        n_seqs = [len(ogs[i]) for i in iogs_align]
+        return self.program_caller.get_msa_commands(self.msa_program, infn_list, outfn_list, id_list, n_seqs, method_threads=method_threads), iogs_align
         
-    def GetTreeCommands(self, alignmentsForTree, iogs_align, ogs, method_threads=None):
+    def get_tree_commands(self, alignments_for_tree, iogs_align, ogs, method_threads=None):
         iogs_tree = [i for i in iogs_align if len(ogs[i]) >= 3]
-        alignmentsForTree = [alignmentsForTree[i] for i, iog in enumerate(iogs_align) if len(ogs[iog]) >= 3]  # Remove those to align with tree filenames
-        outfn_list = [self.GetTreeFilename(i) for i in iogs_tree]
+        alignments_for_tree = [alignments_for_tree[i] for i, iog in enumerate(iogs_align) if len(ogs[iog]) >= 3]  # Remove those to align with tree filenames
+        outfn_list = [self.get_tree_filename(i) for i in iogs_tree]
         id_list = ["OG%07d" % i for i in iogs_tree]
-        nSeqs = [len(ogs[i]) for i in iogs_tree]
-        return self.program_caller.GetTreeCommands(self.tree_program, alignmentsForTree, outfn_list, id_list, nSeqs, method_threads=method_threads), iogs_tree
+        n_seqs = [len(ogs[i]) for i in iogs_tree]
+        return self.program_caller.get_tree_commands(self.tree_program, alignments_for_tree, outfn_list, id_list, n_seqs, method_threads=method_threads), iogs_tree
      
-    def RenameAlignmentTaxa(self, idsAlignFNS, accAlignFNs, idsDict):
-        for i, (alignFN, outAlignFN) in enumerate(zip(idsAlignFNS, accAlignFNs)):
-            if not os.path.exists(alignFN): continue
-            with open(alignFN, 'r') as infile, open(outAlignFN, 'w') as outfile:
+    def rename_alignment_taxa(self, ids_align_fns, acc_align_fns, ids_dict):
+        for i, (align_fn, out_align_fn) in enumerate(zip(ids_align_fns, acc_align_fns)):
+            if not os.path.exists(align_fn): continue
+            with open(align_fn, 'r') as infile, open(out_align_fn, 'w') as outfile:
                 for line in infile:
                     if line.startswith(">"):
-                        outfile.write(">" + idsDict[line[1:].rstrip()] + "\n")
+                        outfile.write(">" + ids_dict[line[1:].rstrip()] + "\n")
                     else:
                         outfile.write(line)
 
           
-    def DoTrees(
+    def do_trees(
             self, 
-            ogSet, 
-            idDict, 
-            speciesIdDict, 
-            speciesToUse, 
-            nProcesses, 
-            qStopAfterSeqs, 
-            qStopAfterAlignments, 
-            qDoSpeciesTree, 
-            qTrim, 
+            og_set, 
+            id_dict, 
+            species_id_dict, 
+            species_to_use, 
+            n_processes, 
+            q_stop_after_seqs, 
+            q_stop_after_alignments, 
+            q_do_species_tree, 
+            q_trim, 
             i_og_restart=0, 
             cmd_order="descending",
             method_threads=None,
@@ -403,55 +403,55 @@ class TreesForOrthogroups(object):
         ):
 
         print_on_error = True
-        idDict.update(speciesIdDict) # same code will then also convert concatenated alignment for species tree
+        id_dict.update(species_id_dict) # same code will then also convert concatenated alignment for species tree
         # 0       
-        resultsDirsFullPath = [
-            file_handler.FileHandler.GetResultsSeqsDir(), 
-            file_handler.FileHandler.GetResultsAlignDir(), 
-            file_handler.FileHandler.GetResultsTreesDir()
+        results_dirs_full_path = [
+            file_handler.handler.get_results_seqs_dir(), 
+            file_handler.handler.get_results_align_dir(), 
+            file_handler.handler.get_results_trees_dir()
         ]
         
         # 1.
-        fastaWriter = FastaWriter(file_handler.FileHandler.GetSpeciesSeqsDir(), speciesToUse)
-        ogs = ogSet.OGsAll()
+        fasta_writer = FastaWriter(file_handler.handler.get_species_seqs_dir(), species_to_use)
+        ogs = og_set.get_ogs_all()
         
         ## -------- Writing to WD/Sequence_ids is not is mcl_orthogroups/infer_orthogroups.py ---------------
-        # self.WriteFastaFiles(fastaWriter, ogs, idDict, True)
+        # self.write_fasta_files(fastaWriter, ogs, idDict, True)
 
-        if qStopAfterSeqs: return resultsDirsFullPath
+        if q_stop_after_seqs: return results_dirs_full_path
 
         # 3
         # Get OGs to use for species tree
-        if qDoSpeciesTree:
-            ogMatrix, iogs4 = ogSet.OrthogroupMatrix()
-            iOgsForSpeciesTree, fSingleCopy = DetermineOrthogroupsForSpeciesTree(ogMatrix, iogs4)
-            concatenated_algn_fn = file_handler.FileHandler.GetSpeciesTreeConcatAlignFN()
+        if q_do_species_tree:
+            og_matrix, iogs4 = og_set.orthogroup_matrix()
+            i_ogs_for_species_tree, f_single_copy = determine_orthogroups_for_species_tree(og_matrix, iogs4)
+            concatenated_algn_fn = file_handler.handler.get_species_tree_concat_align_fn()
         else:
-            iOgsForSpeciesTree = []
-        orig_alignCommands_and_filenames, orig_iogs_align = \
-            self.GetAlignmentCommandsAndNewFilenames(
+            i_ogs_for_species_tree = []
+        orig_align_commands_and_filenames, orig_iogs_align = \
+            self.get_alignment_commands_and_new_filenames(
                 ogs, 
                 i_og_restart, 
-                method_threads=None  # filled in when run, which reserves that many cores (program_caller.FillMethodThreads)
+                method_threads=None  # filled in when run, which reserves that many cores (program_caller.fill_method_threads)
             )
 
-        alignCommands_and_filenames = copy.deepcopy(orig_alignCommands_and_filenames)
+        align_commands_and_filenames = copy.deepcopy(orig_align_commands_and_filenames)
         iogs_align = copy.deepcopy(orig_iogs_align)
         aln_tasksize = None
         if cmd_order == "ascending":
             # aln_tasksize = [len(og) for og in aln_filtered_ogs[::-1]]
-            orig_alignCommands_and_filenames = orig_alignCommands_and_filenames[::-1]
+            orig_align_commands_and_filenames = orig_align_commands_and_filenames[::-1]
             orig_iogs_align = orig_iogs_align[::-1]
             aln_tasksize = [
                 os.stat(item).st_size
-                for fn, _ in orig_alignCommands_and_filenames
+                for fn, _ in orig_align_commands_and_filenames
                 for item in fn.split() if os.path.isfile(item) and os.path.exists(item)
             ]
-        if qStopAfterAlignments:
-            util.PrintUnderline("Inferring multiple sequence alignments")
-            pc.RunParallelCommandsAndMoveResultsFile(
-                nProcesses, 
-                orig_alignCommands_and_filenames, 
+        if q_stop_after_alignments:
+            util.print_underline("Inferring multiple sequence alignments")
+            pc.run_parallel_commands_and_move_results_file(
+                n_processes, 
+                orig_align_commands_and_filenames, 
                 False, 
                 tasksize=aln_tasksize,
                 method_threads=method_threads,
@@ -459,71 +459,71 @@ class TreesForOrthogroups(object):
                 method_threads_small=method_threads_small, 
                 threshold=threshold,
                 cmd_order=cmd_order,
-                qTrim=qTrim,
+                q_trim=q_trim,
                 q_print_on_error=print_on_error,
                 dynamic_threads=dynamic_threads
             )
-            if qDoSpeciesTree:
+            if q_do_species_tree:
                 if not astral:
-                    CreateConcatenatedAlignment(
-                        iOgsForSpeciesTree, 
+                    create_concatenated_alignment(
+                        i_ogs_for_species_tree, 
                         ogs, 
-                        self.GetAlignmentFilename, 
+                        self.get_alignment_filename, 
                         concatenated_algn_fn, 
-                        fSingleCopy
+                        f_single_copy
                     )
                     # write OGs used to file
-                    dSpeciesTree = os.path.split(file_handler.FileHandler.GetSpeciesTreeResultsFN(0, True))[0] + "/"
-                    with open(dSpeciesTree + "Orthogroups_for_concatenated_alignment.txt", 'w') as outfile:
-                        for iog in iOgsForSpeciesTree: outfile.write("OG%07d\n" % iog)
+                    d_species_tree = os.path.split(file_handler.handler.get_species_tree_results_fn(0, True))[0] + "/"
+                    with open(d_species_tree + "Orthogroups_for_concatenated_alignment.txt", 'w') as outfile:
+                        for iog in i_ogs_for_species_tree: outfile.write("OG%07d\n" % iog)
             
             # ------------------ this section is not needed at this stage for the new procedure -------------
             # ids -> accessions
-            alignmentFilesToUse = [self.GetAlignmentFilename(i) for i, in orig_iogs_align]
-            accessionAlignmentFNs = [self.GetAlignmentFilename(i, True) for i, in orig_iogs_align]
-            if qDoSpeciesTree: 
-                alignmentFilesToUse.append(concatenated_algn_fn)
-                accessionAlignmentFNs.append(file_handler.FileHandler.GetSpeciesTreeConcatAlignFN(True))
-            self.RenameAlignmentTaxa(alignmentFilesToUse, accessionAlignmentFNs, idDict)
+            alignment_files_to_use = [self.get_alignment_filename(i) for i, in orig_iogs_align]
+            accession_alignment_fns = [self.get_alignment_filename(i, True) for i, in orig_iogs_align]
+            if q_do_species_tree: 
+                alignment_files_to_use.append(concatenated_algn_fn)
+                accession_alignment_fns.append(file_handler.handler.get_species_tree_concat_align_fn(True))
+            self.rename_alignment_taxa(alignment_files_to_use, accession_alignment_fns, id_dict)
             
-            return resultsDirsFullPath[:2]
+            return results_dirs_full_path[:2]
         
         # Otherwise, alignments and trees
         # Strategy is
         # 1. Do alignments (and trees) require for species tree
         # 2. Create concatenated alignment
         # 3. Create second list of commands [speciestree] + [remaining alignments and trees]
-        alignmentFilesToUse = [self.GetAlignmentFilename(i) for i in iogs_align]
+        alignment_files_to_use = [self.get_alignment_filename(i) for i in iogs_align]
 
-        orig_treeCommands_and_filenames, orig_iogs_tree = \
-            self.GetTreeCommands(
-                alignmentFilesToUse, 
+        orig_tree_commands_and_filenames, orig_iogs_tree = \
+            self.get_tree_commands(
+                alignment_files_to_use, 
                 iogs_align, 
                 ogs,
-                method_threads=None  # filled in when run, which reserves that many cores (program_caller.FillMethodThreads)
+                method_threads=None  # filled in when run, which reserves that many cores (program_caller.fill_method_threads)
         )
 
-        treeCommands_and_filenames = copy.deepcopy(orig_treeCommands_and_filenames)
+        tree_commands_and_filenames = copy.deepcopy(orig_tree_commands_and_filenames)
         iogs_tree = copy.deepcopy(orig_iogs_tree)
         commands_and_filenames = []
         tree_tasksize = None
-        if qDoSpeciesTree:
+        if q_do_species_tree:
             if not astral:
-                print(("Species tree: Using %d orthogroups with minimum of %0.1f%% of species having single-copy genes in any orthogroup" % (len(iOgsForSpeciesTree), 100.*fSingleCopy)))
-            util.PrintUnderline("Inferring multiple sequence alignments for species tree") 
-            # util.PrintTime("This may take some time...")
+                print(("Species tree: Using %d orthogroups with minimum of %0.1f%% of species having single-copy genes in any orthogroup" % (len(i_ogs_for_species_tree), 100.*f_single_copy)))
+            util.print_underline("Inferring multiple sequence alignments for species tree") 
+            # util.print_time("This may take some time...")
             # Do required alignments and trees
-            speciesTreeFN_ids = file_handler.FileHandler.GetSpeciesTreeUnrootedFN()
+            species_tree_fn_ids = file_handler.handler.get_species_tree_unrooted_fn()
             orig_commands_and_filenames = []
-            if qTrim:
-                for i in iOgsForSpeciesTree:
-                    orig_commands_and_filenames.append([alignCommands_and_filenames[i], 
-                                                (trim_fn, (alignmentFilesToUse[i], msa_min_seq)), 
-                                                treeCommands_and_filenames[i]])
+            if q_trim:
+                for i in i_ogs_for_species_tree:
+                    orig_commands_and_filenames.append([align_commands_and_filenames[i], 
+                                                (trim_fn, (alignment_files_to_use[i], msa_min_seq)), 
+                                                tree_commands_and_filenames[i]])
             else:
-                for i in iOgsForSpeciesTree:
-                    orig_commands_and_filenames.append([alignCommands_and_filenames[i],
-                                                   treeCommands_and_filenames[i]])
+                for i in i_ogs_for_species_tree:
+                    orig_commands_and_filenames.append([align_commands_and_filenames[i],
+                                                   tree_commands_and_filenames[i]])
             commands_and_filenames = copy.deepcopy(orig_commands_and_filenames)        
             if cmd_order == "ascending":
                 # tree_tasksize = [len(og) for og in tree_filtered_ogs[::-1]]
@@ -534,8 +534,8 @@ class TreesForOrthogroups(object):
                         for item in cmd[0][0].split() if os.path.isfile(item) and os.path.exists(item)
                     ]
                 
-            pc.RunParallelCommandsAndMoveResultsFile(
-                nProcesses, 
+            pc.run_parallel_commands_and_move_results_file(
+                n_processes, 
                 orig_commands_and_filenames, 
                 True, 
                 tasksize=tree_tasksize,
@@ -544,48 +544,48 @@ class TreesForOrthogroups(object):
                 method_threads_small=method_threads_small, 
                 threshold=threshold,
                 cmd_order=cmd_order,
-                qTrim=qTrim,
+                q_trim=q_trim,
                 q_print_on_error=print_on_error,
                 dynamic_threads=dynamic_threads
             )
-            CreateConcatenatedAlignment(iOgsForSpeciesTree, ogs, self.GetAlignmentFilename, concatenated_algn_fn, fSingleCopy)
+            create_concatenated_alignment(i_ogs_for_species_tree, ogs, self.get_alignment_filename, concatenated_algn_fn, f_single_copy)
             # write OGs used to file
-            dSpeciesTree = os.path.split(file_handler.FileHandler.GetSpeciesTreeResultsFN(0, True))[0] + "/"
-            with open(dSpeciesTree + "Orthogroups_for_concatenated_alignment.txt", 'w') as outfile:
-                for iog in iOgsForSpeciesTree: outfile.write("OG%07d\n" % iog)
+            d_species_tree = os.path.split(file_handler.handler.get_species_tree_results_fn(0, True))[0] + "/"
+            with open(d_species_tree + "Orthogroups_for_concatenated_alignment.txt", 'w') as outfile:
+                for iog in i_ogs_for_species_tree: outfile.write("OG%07d\n" % iog)
             # Add species tree to list of commands to run
             if not astral:
-                util.PrintTime("Scheduling species tree inference from concatenated alignment")
+                util.print_time("Scheduling species tree inference from concatenated alignment")
                 commands_and_filenames = [
-                    self.program_caller.GetTreeCommands(
+                    self.program_caller.get_tree_commands(
                             self.tree_program, 
                             [concatenated_algn_fn], 
-                            [speciesTreeFN_ids], 
+                            [species_tree_fn_ids], 
                             ["SpeciesTree"],
-                            method_threads=None  # filled in when run, which reserves that many cores (program_caller.FillMethodThreads)
+                            method_threads=None  # filled in when run, which reserves that many cores (program_caller.fill_method_threads)
                         )
                     ]
-            util.PrintUnderline("Inferring remaining multiple sequence alignments and gene trees") 
+            util.print_underline("Inferring remaining multiple sequence alignments and gene trees") 
         else:
-            util.PrintUnderline("Inferring multiple sequence alignments and gene trees")
-        # util.PrintTime("This may take some time...")
+            util.print_underline("Inferring multiple sequence alignments and gene trees")
+        # util.print_time("This may take some time...")
         # Now continue as before
-        iOgsForSpeciesTree = set(iOgsForSpeciesTree)
+        i_ogs_for_species_tree = set(i_ogs_for_species_tree)
         iog_to_align_index = {iog: index for index, iog in enumerate(iogs_align)}
         for i, iog in enumerate(iogs_tree):
-            if iog in iOgsForSpeciesTree: 
+            if iog in i_ogs_for_species_tree: 
                 continue
-            if qTrim:
-                commands_and_filenames.append([alignCommands_and_filenames[iog_to_align_index[iog]],
-                                              (trim_fn, (alignmentFilesToUse[iog_to_align_index[iog]], msa_min_seq)),
-                                              treeCommands_and_filenames[i]])
+            if q_trim:
+                commands_and_filenames.append([align_commands_and_filenames[iog_to_align_index[iog]],
+                                              (trim_fn, (alignment_files_to_use[iog_to_align_index[iog]], msa_min_seq)),
+                                              tree_commands_and_filenames[i]])
             else:
-                commands_and_filenames.append([alignCommands_and_filenames[iog_to_align_index[iog]],
-                                              treeCommands_and_filenames[i]])
+                commands_and_filenames.append([align_commands_and_filenames[iog_to_align_index[iog]],
+                                              tree_commands_and_filenames[i]])
         for iog in set(iogs_align).difference(iogs_tree):
-            if iog in iOgsForSpeciesTree: 
+            if iog in i_ogs_for_species_tree: 
                 continue
-            commands_and_filenames.append([alignCommands_and_filenames[iog_to_align_index[iog]]])
+            commands_and_filenames.append([align_commands_and_filenames[iog_to_align_index[iog]]])
         
         if cmd_order == "ascending":
             commands_and_filenames = commands_and_filenames[::-1]
@@ -594,7 +594,7 @@ class TreesForOrthogroups(object):
                         for cmd in orig_commands_and_filenames
                         for item in cmd[0][0].split() if os.path.isfile(item) and os.path.exists(item)
                     ]
-        pc.RunParallelCommandsAndMoveResultsFile(nProcesses, 
+        pc.run_parallel_commands_and_move_results_file(n_processes, 
                                                  commands_and_filenames, 
                                                  True, 
                                                  tasksize=tree_tasksize,
@@ -603,60 +603,60 @@ class TreesForOrthogroups(object):
                                                  method_threads_small=method_threads_small, 
                                                  threshold=threshold,
                                                  cmd_order=cmd_order,
-                                                 qTrim=qTrim,
+                                                 q_trim=q_trim,
                                                  q_print_on_error=print_on_error,
                                                  dynamic_threads=dynamic_threads
                                                  )
         
         # # Convert ids to accessions for MSA
-        # accessionAlignmentFNs = [self.GetAlignmentFilename(i, True) for i in iogs_align]
+        # accessionAlignmentFNs = [self.get_alignment_filename(i, True) for i in iogs_align]
         # # Add concatenated Alignment
         # if qDoSpeciesTree:
         #     alignmentFilesToUse.append(concatenated_algn_fn)
-        #     accessionAlignmentFNs.append(files.FileHandler.GetSpeciesTreeConcatAlignFN(True))
+        #     accessionAlignmentFNs.append(files.FileHandler.get_species_tree_concat_align_fn(True))
 
-        #     qHaveSupport = util.HaveSupportValues(speciesTreeFN_ids)
+        #     qHaveSupport = util.have_support_values(speciesTreeFN_ids)
         #     if os.path.exists(speciesTreeFN_ids):
-        #         util.RenameTreeTaxa(speciesTreeFN_ids, files.FileHandler.GetSpeciesTreeUnrootedFN(True), idDict, qSupport=qHaveSupport, qFixNegatives=True)
+        #         util.rename_tree_taxa(speciesTreeFN_ids, files.FileHandler.get_species_tree_unrooted_fn(True), idDict, qSupport=qHaveSupport, qFixNegatives=True)
         #     else:
         #         text = "ERROR: Species tree inference failed"
-        #         files.FileHandler.LogFailAndExit(text)
+        #         files.FileHandler.log_fail_and_exit(text)
 
 
         # Add concatenated Alignment
-        if qDoSpeciesTree:
+        if q_do_species_tree:
             if astral:
-                util.PrintUnderline("Inferring unrooted species tree using Astral-Pro.") 
-                astral_fn = file_handler.FileHandler.GetCoreAstralFilename()
-                astral_pro.create_input_file(file_handler.FileHandler.GetOGsTreeDir(), astral_fn, n_skip=n_skip)
-                speciesTreeFN_ids = file_handler.FileHandler.GetSpeciesTreeUnrootedFN()
-                parallel_task_manager.RunCommand(
+                util.print_underline("Inferring unrooted species tree using Astral-Pro.") 
+                astral_fn = file_handler.handler.get_core_astral_filename()
+                astral_pro.create_input_file(file_handler.handler.get_ogs_tree_dir(), astral_fn, n_skip=n_skip)
+                species_tree_fn_ids = file_handler.handler.get_species_tree_unrooted_fn()
+                parallel_task_manager.run_command(
                     astral_pro.get_astral_command(
-                        astral_fn, speciesTreeFN_ids, nProcesses
+                        astral_fn, species_tree_fn_ids, n_processes
                     ),
                     # ASTRAL-Pro writes its progress log to stderr: only show it if it fails.
-                    qPrintStderr=False,
+                    q_print_stderr=False,
                     raise_on_error=True,
                 )
 
-            qHaveSupport = util.HaveSupportValues(speciesTreeFN_ids)
-            if os.path.exists(speciesTreeFN_ids):
-                util.RenameTreeTaxa(speciesTreeFN_ids, file_handler.FileHandler.GetSpeciesTreeUnrootedFN(True), idDict, qSupport=qHaveSupport, qFixNegatives=True)
-                util.PrintTime("Done species tree inference")
+            q_have_support = util.have_support_values(species_tree_fn_ids)
+            if os.path.exists(species_tree_fn_ids):
+                util.rename_tree_taxa(species_tree_fn_ids, file_handler.handler.get_species_tree_unrooted_fn(True), id_dict, q_support=q_have_support, q_fix_negatives=True)
+                util.print_time("Done species tree inference")
             else:
                 text = "ERROR: Species tree inference failed"
-                file_handler.FileHandler.LogFailAndExit(text)
+                file_handler.handler.log_fail_and_exit(text)
 
 
          # ------------------ this section is not needed at this stage for the new procedure -------------
         if not fix_files:
             # Convert ids to accessions for MSA
-            accessionAlignmentFNs = [self.GetAlignmentFilename(i, True) for i in iogs_align]
+            accession_alignment_fns = [self.get_alignment_filename(i, True) for i in iogs_align]
             # Add concatenated Alignment
-            if qDoSpeciesTree:
-                alignmentFilesToUse.append(concatenated_algn_fn)
-                accessionAlignmentFNs.append(file_handler.FileHandler.GetSpeciesTreeConcatAlignFN(True))
+            if q_do_species_tree:
+                alignment_files_to_use.append(concatenated_algn_fn)
+                accession_alignment_fns.append(file_handler.handler.get_species_tree_concat_align_fn(True))
 
-            self.RenameAlignmentTaxa(alignmentFilesToUse, accessionAlignmentFNs, idDict)
+            self.rename_alignment_taxa(alignment_files_to_use, accession_alignment_fns, id_dict)
         
-        return resultsDirsFullPath[:2]
+        return results_dirs_full_path[:2]

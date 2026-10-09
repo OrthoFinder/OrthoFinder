@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Convert compact OrthoFinder orthologue results into pairwise species files.
+Convert compact OrthoFinder ortholog results into pairwise species files.
 
 OrthoFinder runs without ``-pof`` write one compressed file per species in the
 ``Orthologues`` directory. This utility recreates the pairwise layout produced
@@ -51,10 +51,10 @@ def find_orthologues_directory(input_dir):
     return input_dir
 
 
-def compact_orthologue_files(orthologues_dir):
+def compact_orthologue_files(orthologs_dir):
     files_by_species = {}
 
-    for filename in sorted(os.listdir(orthologues_dir)):
+    for filename in sorted(os.listdir(orthologs_dir)):
         if filename.endswith(".tsv.gz"):
             species = filename[:-7]
         elif filename.endswith(".tsv"):
@@ -62,7 +62,7 @@ def compact_orthologue_files(orthologues_dir):
         else:
             continue
 
-        path = os.path.join(orthologues_dir, filename)
+        path = os.path.join(orthologs_dir, filename)
         if not os.path.isfile(path):
             continue
 
@@ -78,7 +78,7 @@ def compact_orthologue_files(orthologues_dir):
     if len(files_by_species) < 2:
         raise ValueError(
             "expected at least two compact .tsv or .tsv.gz orthologue files in: "
-            f"{orthologues_dir}"
+            f"{orthologs_dir}"
         )
 
     return files_by_species
@@ -163,12 +163,12 @@ def split_ortholog_files(
     force=False,
     processes=None,
 ):
-    orthologues_dir = find_orthologues_directory(input_dir)
-    files_by_species = compact_orthologue_files(orthologues_dir)
+    orthologs_dir = find_orthologues_directory(input_dir)
+    files_by_species = compact_orthologue_files(orthologs_dir)
     species_names = sorted(files_by_species)
 
     if output_dir is None:
-        output_dir = orthologues_dir
+        output_dir = orthologs_dir
     else:
         output_dir = os.path.abspath(output_dir)
     os.makedirs(output_dir, exist_ok=True)

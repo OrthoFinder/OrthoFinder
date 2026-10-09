@@ -118,43 +118,43 @@ def format_node(node, node_type, format):
     if node_type == "leaf":
         container1 = NW_FORMAT[format][0][0]
         container2 = NW_FORMAT[format][1][0]
-        converterFn1 = NW_FORMAT[format][0][1]
-        converterFn2 = NW_FORMAT[format][1][1]
+        converter_fn1 = NW_FORMAT[format][0][1]
+        converter_fn2 = NW_FORMAT[format][1][1]
     else:
         container1 = NW_FORMAT[format][2][0]
         container2 = NW_FORMAT[format][3][0]
-        converterFn1 = NW_FORMAT[format][2][1]
-        converterFn2 = NW_FORMAT[format][3][1]
+        converter_fn1 = NW_FORMAT[format][2][1]
+        converter_fn2 = NW_FORMAT[format][3][1]
 
-    if converterFn1 == str:
+    if converter_fn1 == str:
         try:
             FIRST_PART = re.sub("["+_ILEGAL_NEWICK_CHARS+"]", "_", \
                                   str(getattr(node, container1)))
         except (AttributeError, TypeError):
             FIRST_PART = "?"
 
-    elif converterFn1 is None:
+    elif converter_fn1 is None:
         FIRST_PART = ""
     else:
         try:
             #FIRST_PART =  "%0.6f" %(converterFn2(getattr(node, container1)))
-            FIRST_PART =  "%g" %(converterFn2(getattr(node, container1)))
+            FIRST_PART =  "%g" %(converter_fn2(getattr(node, container1)))
         except (ValueError, TypeError):
             FIRST_PART = "?"
 
 
-    if converterFn2 == str:
+    if converter_fn2 == str:
         try:
             SECOND_PART = ":"+re.sub("["+_ILEGAL_NEWICK_CHARS+"]", "_", \
                                   str(getattr(node, container2)))
         except (ValueError, TypeError):
             SECOND_PART = ":?"
-    elif converterFn2 is None:
+    elif converter_fn2 is None:
         SECOND_PART = ""
     else:
         try:
             #SECOND_PART = ":%0.6f" %(converterFn2(getattr(node, container2)))
-            SECOND_PART = ":%g" %(converterFn2(getattr(node, container2)))
+            SECOND_PART = ":%g" %(converter_fn2(getattr(node, container2)))
         except (ValueError, TypeError):
             SECOND_PART = ":?"
 
@@ -282,16 +282,16 @@ def _read_newick_from_string(nw, root_node, format):
                     current_parent = current_parent.up
     return root_node
 
-def _parse_extra_features(node, NHX_string):
+def _parse_extra_features(node, nhx_string):
     """ Reads node's extra data form its NHX string. NHX uses this
     format:  [&&NHX:prop1=value1:prop2=value2] """
-    NHX_string = NHX_string.replace("[&&NHX:", "")
-    NHX_string = NHX_string.replace("]", "")
-    for field in NHX_string.split(":"):
+    nhx_string = nhx_string.replace("[&&NHX:", "")
+    nhx_string = nhx_string.replace("]", "")
+    for field in nhx_string.split(":"):
         try:
             pname, pvalue = field.split("=")
         except ValueError as e:
-            print(NHX_string, field.split("="))
+            print(nhx_string, field.split("="))
             raise ValueError(e)
         node.add_feature(pname, pvalue)
 
@@ -306,31 +306,31 @@ def _read_node_data(subnw, current_node, node_type, format):
             node = current_node
         container1 = NW_FORMAT[format][0][0]
         container2 = NW_FORMAT[format][1][0]
-        converterFn1 = NW_FORMAT[format][0][1]
-        converterFn2 = NW_FORMAT[format][1][1]
+        converter_fn1 = NW_FORMAT[format][0][1]
+        converter_fn2 = NW_FORMAT[format][1][1]
         flexible1 = NW_FORMAT[format][0][2]
         flexible2 = NW_FORMAT[format][1][2]
     else:
         node = current_node
         container1 = NW_FORMAT[format][2][0]
         container2 = NW_FORMAT[format][3][0]
-        converterFn1 = NW_FORMAT[format][2][1]
-        converterFn2 = NW_FORMAT[format][3][1]
+        converter_fn1 = NW_FORMAT[format][2][1]
+        converter_fn2 = NW_FORMAT[format][3][1]
         flexible1 = NW_FORMAT[format][2][2]
         flexible2 = NW_FORMAT[format][3][2]
 
-    if converterFn1 == str:
+    if converter_fn1 == str:
         FIRST_MATCH = "("+_NAME_RE+")"
-    elif converterFn1 == float:
+    elif converter_fn1 == float:
         FIRST_MATCH = "("+_FLOAT_RE+")"
-    elif converterFn1 is None:
+    elif converter_fn1 is None:
         FIRST_MATCH = '()'
 
-    if converterFn2 == str:
+    if converter_fn2 == str:
         SECOND_MATCH = "(:"+_NAME_RE+")"
-    elif converterFn2 == float:
+    elif converter_fn2 == float:
         SECOND_MATCH = "(:"+_FLOAT_RE+")"
-    elif converterFn2 is None:
+    elif converter_fn2 is None:
         SECOND_MATCH = '()'
 
     if flexible1:
@@ -343,10 +343,10 @@ def _read_node_data(subnw, current_node, node_type, format):
     if data:
         data = data.groups()
         if data[0] is not None and data[0] != '':
-            node.add_feature(container1, converterFn1(data[0].strip()))
+            node.add_feature(container1, converter_fn1(data[0].strip()))
 
         if data[1] is not None and data[1] != '':
-            node.add_feature(container2, converterFn2(data[1][1:].strip()))
+            node.add_feature(container2, converter_fn2(data[1][1:].strip()))
 
         if data[2] is not None \
                 and data[2].startswith("[&&NHX"):

@@ -6,10 +6,10 @@ from ._version import __version__
 
 
 # Find the total number of threads on the host machine
-nThreadsDefault = mp.cpu_count()
+n_threads_default = mp.cpu_count()
 
 # MCL inflation parameter
-g_mclInflation = 1.2
+g_mcl_inflation = 1.2
 
 # Clade-specific genes
 orphan_genes_version = 2
@@ -17,7 +17,7 @@ orphan_genes_version = 2
 # Protocol vesion for pickling
 # Updated to version 5, since the new OrthoFinder works on py38 and above
 # version 5 add support for out-of-band data and speedup for in-band data.
-picProtocol = 5
+pic_protocol = 5
 
 # Get directory containing script/bundle
 if getattr(sys, "frozen", False):

@@ -132,13 +132,13 @@ except RuntimeError as e:
 
 
 
-def PrintTime(message):
+def print_time(message):
     run_logging.RunLogger.message(message)
     util.printer.print((str(datetime.datetime.now()).rsplit(".", 1)[0] + " : " + message), style="default")
     sys.stdout.flush()
 
 
-def PrintNoNewLine(text):
+def print_no_new_line(text):
     util.printer.print(text, end="")
     sys.stdout.flush()
     # sys.stdout.write(text)
@@ -154,7 +154,7 @@ class WorkerError(RuntimeError):
     """
 
 
-def TerminateProcesses(processes, grace=5.0):
+def terminate_processes(processes, grace=5.0):
     """Stop all still-running child processes: terminate, then kill if needed."""
     processes = [p for p in processes if p is not None]
     for proc in processes:
@@ -169,7 +169,7 @@ def TerminateProcesses(processes, grace=5.0):
             proc.join()
 
 
-def WaitForExit(processes, what="child processes", warn_after=10.0, warn_interval=600.0):
+def wait_for_exit(processes, what="child processes", warn_after=10.0, warn_interval=600.0):
     """
     Wait for processes that have finished their work to exit.
 
@@ -202,7 +202,7 @@ def WaitForExit(processes, what="child processes", warn_after=10.0, warn_interva
             next_warning = now + warn_interval
 
 
-def ParallelMap(function, args_list, nProcesses, progress=None):
+def parallel_map(function, args_list, n_processes, progress=None):
     """
     Run function(args) for each element of args_list in a process pool and
     return the results (in args_list order).
@@ -220,7 +220,7 @@ def ParallelMap(function, args_list, nProcesses, progress=None):
     args_list = list(args_list)
     if not args_list:
         return []
-    pool = ProcessPoolExecutor(max_workers=max(1, min(nProcesses, len(args_list))))
+    pool = ProcessPoolExecutor(max_workers=max(1, min(n_processes, len(args_list))))
     futures = {pool.submit(function, args): i for i, args in enumerate(args_list)}
     results = [None] * len(args_list)
     try:
@@ -242,7 +242,7 @@ def ParallelMap(function, args_list, nProcesses, progress=None):
         for future in futures:
             future.cancel()
         # ProcessPoolExecutor has no public way to stop running workers.
-        TerminateProcesses(list(getattr(pool, "_processes", {}).values()))
+        terminate_processes(list(getattr(pool, "_processes", {}).values()))
         pool.shutdown(wait=False, cancel_futures=True)
         raise
     pool.shutdown(wait=True)
@@ -250,7 +250,7 @@ def ParallelMap(function, args_list, nProcesses, progress=None):
 
 
 # not used
-def RunCommand_Simple(command):
+def run_command_simple(command):
     subprocess.call(command, env=my_env, shell=True)
 
 
@@ -314,7 +314,7 @@ def _wait_for_group_exit(popen, grace):
 
 
 def _kill_command(popen, grace=5.0):
-    """Stop a command started by RunMonitoredCommand, including its child processes."""
+    """Stop a command started by run_monitored_command, including its child processes."""
     if hasattr(os, "killpg"):
         # The command runs in its own process group (start_new_session), so this
         # reaches the real program, not just the shell that launched it.
@@ -336,10 +336,10 @@ def _kill_command(popen, grace=5.0):
         pass
 
 
-def KillRunningCommands():
+def kill_running_commands():
     """
     Stop every external command that is still running, and refuse to start
-    new ones until ResetCommandAbort() (used when a command fails or on abort).
+    new ones until reset_command_abort() (used when a command fails or on abort).
     """
     with _live_commands_lock:
         _commands_aborted.set()
@@ -348,12 +348,12 @@ def KillRunningCommands():
         _kill_command(popen)
 
 
-def ResetCommandAbort():
+def reset_command_abort():
     """Allow commands to start again (call before starting a new batch)."""
     _commands_aborted.clear()
 
 
-def RunMonitoredCommand(command, env, stdout=None, stderr=None,
+def run_monitored_command(command, env, stdout=None, stderr=None,
                         warn_interval=None):
     """
     Run a shell command and return (returncode, stdout, stderr).
@@ -362,13 +362,13 @@ def RunMonitoredCommand(command, env, stdout=None, stderr=None,
     elapsed time and the CPU time the command used in that interval, so a
     slow program (using CPU) can be told apart from a stuck one (not using
     CPU). The command is never stopped for taking long; only if another
-    command fails or OrthoFinder itself is stopped (KillRunningCommands).
+    command fails or OrthoFinder itself is stopped (kill_running_commands).
     """
     if warn_interval is None:
         warn_interval = COMMAND_WARN_INTERVAL
     use_group = hasattr(os, "killpg")
 
-    # Start and register under the lock, so KillRunningCommands() cannot miss
+    # Start and register under the lock, so kill_running_commands() cannot miss
     # a command that is starting at the same moment.
     with _live_commands_lock:
         if _commands_aborted.is_set():
@@ -419,10 +419,10 @@ def RunMonitoredCommand(command, env, stdout=None, stderr=None,
             _live_commands.discard(popen)
 
 
-def RunCommand(command, qPrintOnError=False, qPrintStderr=True, raise_on_error=False):
+def run_command(command, q_print_on_error=False, q_print_stderr=True, raise_on_error=False):
     """Run a single command"""
-    capture = qPrintOnError or raise_on_error
-    returncode, stdout, stderr = RunMonitoredCommand(
+    capture = q_print_on_error or raise_on_error
+    returncode, stdout, stderr = run_monitored_command(
         command,
         my_env,
         stdout=subprocess.PIPE if capture else subprocess.DEVNULL,
@@ -443,7 +443,7 @@ def RunCommand(command, qPrintOnError=False, qPrintStderr=True, raise_on_error=F
             print(("\nCommand: %s" % command))
             print(("\nstdout:\n%s" % stdout))
             print(("stderr:\n%s" % stderr))
-        elif qPrintStderr and len(stderr) > 0 and not util.stderr_exempt(stderr):
+        elif q_print_stderr and len(stderr) > 0 and not util.stderr_exempt(stderr):
             print("\nWARNING: program called by OrthoFinder produced output to stderr")
             print(("\nCommand: %s" % command))
             print(("\nstdout:\n%s" % stdout))
@@ -451,37 +451,37 @@ def RunCommand(command, qPrintOnError=False, qPrintStderr=True, raise_on_error=F
     return returncode
 
 
-def CanRunCommand(
+def can_run_command(
     command,
-    qAllowStderr=False,
-    qPrint=True,
-    qRequireStdout=True,
-    qCheckReturnCode=False,
+    q_allow_stderr=False,
+    q_print=True,
+    q_require_stdout=True,
+    q_check_return_code=False,
 ):
-    if qPrint:
-        PrintNoNewLine(f'Test can run "[orange3]{command.split()[0]}[/orange3]"')  # print without newline
+    if q_print:
+        print_no_new_line(f'Test can run "[orange3]{command.split()[0]}[/orange3]"')  # print without newline
     # communicate() rather than wait(): a program that prints more than the
     # pipe buffer would otherwise block forever.
-    returncode, out, err = RunMonitoredCommand(
+    returncode, out, err = run_monitored_command(
         command, my_env,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     )
     stdout = out.splitlines(True)
     stderr = err.splitlines(True)
-    if qCheckReturnCode:
+    if q_check_return_code:
         return_code_check = returncode == 0
     else:
         return_code_check = True
     if (
-        (len(stdout) > 0 or not qRequireStdout)
-        and (qAllowStderr or len(stderr) == 0)
+        (len(stdout) > 0 or not q_require_stdout)
+        and (q_allow_stderr or len(stderr) == 0)
         and return_code_check
     ):
-        if qPrint:
+        if q_print:
             util.printer.print(" - [bold green]ok")
         return True
     else:
-        if qPrint:
+        if q_print:
             util.printer.print(" - [bold red]failed")
         if not return_code_check:
             util.printer.print("Returned a non-zero code: %d" % returncode, style="error")
@@ -500,17 +500,17 @@ q_print_first_traceback_0 = False
 q_print_first_traceback_1 = False
 
 
-def Worker_RunMethod(result_queue, Function, args_queue):
+def worker_run_method(result_queue, function, args_queue):
     while True:
         try:
             args = args_queue.get(True, 0.1)
         except queue.Empty:
             return
-        Function(*args)
+        function(*args)
         result_queue.put((None, "success"))
 
 
-def ReportWorkerFailure(result_queue, function, *args):
+def report_worker_failure(result_queue, function, *args):
     """Forward a worker's traceback to its parent without task-specific labels."""
     try:
         function(*args)
@@ -519,24 +519,24 @@ def ReportWorkerFailure(result_queue, function, *args):
     finally:
         result_queue.put(None)
 
-def RunMethodParallel(
-        Function,
+def run_method_parallel(
+        function,
         args_queue,
-        nProcesses,
+        n_processes,
         total_tasks=0,
         show_progress=True,
     ):
 
     result_queue = mp.Queue()
-    runningProcesses = [
-        mp.Process(target=ReportWorkerFailure,
-                   args=(result_queue, Worker_RunMethod, result_queue, Function, args_queue))
-        for i_ in range(nProcesses)
+    running_processes = [
+        mp.Process(target=report_worker_failure,
+                   args=(result_queue, worker_run_method, result_queue, function, args_queue))
+        for i_ in range(n_processes)
     ]
-    ManageQueueNew(runningProcesses, total_tasks, nProcesses, result_queue, show_progress=show_progress)
+    manage_queue_new(running_processes, total_tasks, n_processes, result_queue, show_progress=show_progress)
 
-def ManageQueueNew(
-        runningProcesses,
+def manage_queue_new(
+        running_processes,
         total_tasks,
         nprocess,
         result_queue,
@@ -557,7 +557,7 @@ def ManageQueueNew(
     # Start the workers before the progress bar: its refresh thread holds the
     # console lock while drawing, and a process forked at that moment would
     # inherit the lock already held and could block on its first print.
-    for proc in runningProcesses:
+    for proc in running_processes:
         proc.start()
     progressbar, task = util.get_progressbar(total_tasks, visible=show_progress)
     update_cycle = 1
@@ -572,14 +572,14 @@ def ManageQueueNew(
             try:
                 msg = result_queue.get(timeout=0.1)
             except queue.Empty:
-                failed = [proc for proc in runningProcesses if proc.exitcode not in (None, 0)]
+                failed = [proc for proc in running_processes if proc.exitcode not in (None, 0)]
                 if failed:
                     details = "; ".join(
                         f"{proc.name} (PID {proc.pid}) exited with status {proc.exitcode}"
                         for proc in failed
                     )
                     raise WorkerError(f"Worker exited without reporting a traceback: {details}")
-                if all(proc.exitcode is not None for proc in runningProcesses):
+                if all(proc.exitcode is not None for proc in running_processes):
                     raise WorkerError(
                         f"Workers exited before reporting completion "
                         f"({completed_tasks}/{total_tasks} tasks completed)."
@@ -618,15 +618,15 @@ def ManageQueueNew(
         # A failure: stop the other workers now instead of waiting for them.
         if show_progress:
             progressbar.stop()
-        TerminateProcesses(runningProcesses)
+        terminate_processes(running_processes)
         result_queue.cancel_join_thread()
         raise
 
     # All workers reported that they have finished: wait for them to exit.
     try:
-        WaitForExit(runningProcesses, "workers", GRACE_PERIOD)
+        wait_for_exit(running_processes, "workers", GRACE_PERIOD)
     except BaseException:
-        TerminateProcesses(runningProcesses)
+        terminate_processes(running_processes)
         raise
     if show_progress:
         progressbar.stop()
@@ -639,7 +639,7 @@ def ManageQueueNew(
 
 
 
-def _I_Spawn_Processes(message_to_spawner, message_to_PTM):
+def _i_spawn_processes(message_to_spawner, message_to_ptm):
     """
     Args:
         message_queue - for passing messages that a new queue of tasks should be started (PTM -> I_Space_Processes) or that the tasks are complete
@@ -648,7 +648,7 @@ def _I_Spawn_Processes(message_to_spawner, message_to_PTM):
         A process should be started as early as possible (while RAM usage is low) with this method as its target.
         This is now a separate process with low RAM usage.
         Each time some parallel work is required then the queue for that is placed in the message_queue by the PTM.
-        _I_Spawn_Processes - will spawn parallel processes when instructed by the message_queue in the message_queue and get them
+        _i_spawn_processes - will spawn parallel processes when instructed by the message_queue in the message_queue and get them
         working on the queue. When the queue is empty it will wait for the next one. It can receive a special signal to exit - the None
         object
     """
@@ -670,20 +670,20 @@ def _I_Spawn_Processes(message_to_spawner, message_to_PTM):
                 # for i, _ in as_completed(futures):
                 #     n_done = i+1
                 #     if n_done >= 0 and divmod(n_done, 10 if n_done <= 200 else 100 if n_done <= 2000 else 1000)[1] == 0:
-                #         PrintTime("Done %d of %d" % (n_done, n_to_do))
+                #         print_time("Done %d of %d" % (n_done, n_to_do))
             # Version 2: launch n worker threads each executing a worker method that takes tasks from a queue
             with ProcessPoolExecutor(n_parallel) as pool:
                 for args in args_list:
                     futures.append(pool.submit(func, *args))
             wait(futures)
-            message_to_PTM.put("Done")
+            message_to_ptm.put("Done")
             time.sleep(1)
         except queue.Empty:
             time.sleep(1)  # there wasn't anything this time, sleep then try again
     pass
 
 
-class ParallelTaskManager_singleton:
+class ParallelTaskManagerSingleton:
     """
     Creating new process requires forking parent process and can lea to very high RAM usage. One way to mitigate this is
     to create the pool of processes as early in execution as possible so that the memory footprint is low. The
@@ -702,24 +702,24 @@ class ParallelTaskManager_singleton:
             An alternative would be they should always stay alive - but then they could die for some reason? And I'd have to check how many there are.
             """
             self.message_to_spawner = mp.Queue()
-            self.message_to_PTM = mp.Queue()
+            self.message_to_ptm = mp.Queue()
             # Orders/Messages:
             # None (PTM -> spawn_thread) - thread should return (i.e. exit)
             # 'Done' (spawn_thread -> PTM) - the cmds from the cmd queue have completed
             # Anything else = (nParallel, nTasks) (PTM -> spawn_thread) - cmds (nTasks of them) have been placed in the cmd queue,
             #   they should be executed using nParallel threads
             self.manager_process = mp.Process(
-                target=_I_Spawn_Processes,
-                args=(self.message_to_spawner, self.message_to_PTM),
+                target=_i_spawn_processes,
+                args=(self.message_to_spawner, self.message_to_ptm),
             )
             self.manager_process.start()
 
     instance = None
 
     def __init__(self):
-        if not ParallelTaskManager_singleton.instance:
-            ParallelTaskManager_singleton.instance = (
-                ParallelTaskManager_singleton.__Singleton()
+        if not ParallelTaskManagerSingleton.instance:
+            ParallelTaskManagerSingleton.instance = (
+                ParallelTaskManagerSingleton.__Singleton()
             )
 
     # def RunParallel(self, func, args_list, nParallel):
@@ -739,7 +739,7 @@ class ParallelTaskManager_singleton:
     #             pass
     #         time.sleep(1)
 
-    def Stop(self):
+    def stop(self):
         """Warning, cannot be restarted"""
         self.instance.message_to_spawner.put(None)
         self.instance.manager_process.join()
@@ -750,20 +750,20 @@ class ParallelTaskManager_singleton:
 #     commands - list of lists of commands where the commands in the inner list are completed in order (the i_th won't run until
 #     the i-1_th has finished).
 #     """
-#     ptm = ParallelTaskManager_singleton()
+#     ptm = ParallelTaskManagerSingleton()
 #     ptm.RunParallel(func, args_list, nProcesses)
 
 
-def Success():
-    ptm = ParallelTaskManager_singleton()
-    ptm.Stop()
+def success():
+    ptm = ParallelTaskManagerSingleton()
+    ptm.stop()
     sys.exit()
 
 
-def Fail():
+def fail():
     sys.stderr.flush()
-    ptm = ParallelTaskManager_singleton()
-    ptm.Stop()
+    ptm = ParallelTaskManagerSingleton()
+    ptm.stop()
     printer.print(
         "ERROR: An error occurred, ***please review the error messages*** they may contain useful information about the problem.", style="error"
     )

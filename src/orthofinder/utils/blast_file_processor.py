@@ -39,7 +39,7 @@ from . import util, file_io
 PY2 = sys.version_info <= (3,)       
 file_read_mode = 'rb' if PY2 else 'rt'
 
-def GetBLAST6Scores(seqsInfo, blastDir_list, iSpecies, jSpecies, qExcludeSelfHits = True, sep = "_", qDoubleBlast=True, q_allow_empty=False, fmt="lil"):
+def get_blast6_scores(seqs_info, blast_dir_list, i_species, j_species, q_exclude_self_hits = True, sep = "_", q_double_blast=True, q_allow_empty=False, fmt="lil"):
     """
     Bit-score matrix (nSeqs_i x nSeqs_j) for the hits of species iSpecies
     against jSpecies: the highest score for each (query, hit) pair; hits with
@@ -48,31 +48,31 @@ def GetBLAST6Scores(seqsInfo, blastDir_list, iSpecies, jSpecies, qExcludeSelfHit
     Hits are collected into arrays and the matrix is built once, rather than
     by setting one lil_matrix element per hit, which is several times slower.
     """
-    qSameSpecies = iSpecies==jSpecies
-    qCheckForSelfHits = qExcludeSelfHits and qSameSpecies
-    if not qDoubleBlast:
-        qRev = (iSpecies > jSpecies)
+    q_same_species = i_species==j_species
+    q_check_for_self_hits = q_exclude_self_hits and q_same_species
+    if not q_double_blast:
+        q_rev = (i_species > j_species)
     else:
-        qRev = False      
-    if qRev:
-        iSpeciesOpen = jSpecies
-        jSpeciesOpen = iSpecies
+        q_rev = False      
+    if q_rev:
+        i_species_open = j_species
+        j_species_open = i_species
     else:        
-        iSpeciesOpen = iSpecies
-        jSpeciesOpen = jSpecies
-    nSeqs_i = seqsInfo.nSeqsPerSpecies[iSpecies]
-    nSeqs_j = seqsInfo.nSeqsPerSpecies[jSpecies]
+        i_species_open = i_species
+        j_species_open = j_species
+    n_seqs_i = seqs_info.n_seqs_per_species[i_species]
+    n_seqs_j = seqs_info.n_seqs_per_species[j_species]
 
     def result(I, J, S):
-        B = sparse.csr_matrix((S, (I, J)), shape=(nSeqs_i, nSeqs_j))
+        B = sparse.csr_matrix((S, (I, J)), shape=(n_seqs_i, n_seqs_j))
         return B.tolil() if fmt == "lil" else B
 
     empty = (np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.int64), np.zeros(0))
     row = ""
-    for d in blastDir_list:
+    for d in blast_dir_list:
         if d[-1] != os.sep:
             d += os.sep
-        fn = d + "Blast%d_%d.txt" % (iSpeciesOpen, jSpeciesOpen)
+        fn = d + "Blast%d_%d.txt" % (i_species_open, j_species_open)
         if os.path.exists(fn) or os.path.exists(fn + ".gz"): break
     if q_allow_empty and not os.path.exists(fn) and not os.path.exists(fn + ".gz"):
         return result(*empty)
@@ -81,7 +81,7 @@ def GetBLAST6Scores(seqsInfo, blastDir_list, iSpecies, jSpecies, qExcludeSelfHit
     # recorded when the search was run): read the IDs and bit score by name.
     layout = file_io.hit_format(path)
     # Fast path for large files.
-    query, hit = ("subject_seq", "query_seq") if qRev else ("query_seq", "subject_seq")
+    query, hit = ("subject_seq", "query_seq") if q_rev else ("query_seq", "subject_seq")
     cols = None
     if file_io.use_pandas(path):
         try:
@@ -89,79 +89,79 @@ def GetBLAST6Scores(seqsInfo, blastDir_list, iSpecies, jSpecies, qExcludeSelfHit
         except (ValueError, OSError):
             cols = None   # the line-by-line reader below reports any problem
     if cols is not None:
-        return _bit_score_matrix(cols[query], cols[hit], cols["bitscore"], nSeqs_i, nSeqs_j,
-                                 qCheckForSelfHits, iSpecies, jSpecies, result, empty)
+        return _bit_score_matrix(cols[query], cols[hit], cols["bitscore"], n_seqs_i, n_seqs_j,
+                                 q_check_for_self_hits, i_species, j_species, result, empty)
 
     I = array.array("q")
     J = array.array("q")
     S = array.array("d")
     try:
-        iQ, iH = layout.index("qseqid"), layout.index("sseqid")
-        if qRev:
-            iQ, iH = iH, iQ
-        iBitscore = layout.index("bitscore")
+        i_q, i_h = layout.index("qseqid"), layout.index("sseqid")
+        if q_rev:
+            i_q, i_h = i_h, i_q
+        i_bitscore = layout.index("bitscore")
         with (gzip.open(fn + ".gz", file_read_mode) if os.path.exists(fn + ".gz") else open(fn, file_read_mode)) as blastfile:
             # Search output is never quoted, so a plain split gives the fields
             for line in file_io.hit_lines(blastfile, layout):
                 row = line.rstrip("\r\n").split("\t")
                 # Get hit and query IDs
                 try:
-                    sequence1ID = int(row[iQ].split(sep, 2)[1])
-                    sequence2ID = int(row[iH].split(sep, 2)[1])
+                    sequence1_id = int(row[i_q].split(sep, 2)[1])
+                    sequence2_id = int(row[i_h].split(sep, 2)[1])
                 except (IndexError, ValueError):
                     sys.stderr.write("\nERROR: Query or hit sequence ID in BLAST results file was missing or incorrectly formatted.\n")
                     raise
                 # Get bit score for pair
                 try:
-                    score = float(row[iBitscore])
+                    score = float(row[i_bitscore])
                 except (IndexError, ValueError):
                     sys.stderr.write("\nERROR: field %d of the search results should be the bit score of the hit "
-                                     "(columns: %s)\n" % (iBitscore + 1, " ".join(layout.fields)))
+                                     "(columns: %s)\n" % (i_bitscore + 1, " ".join(layout.fields)))
                     raise
-                I.append(sequence1ID)
-                J.append(sequence2ID)
+                I.append(sequence1_id)
+                J.append(sequence2_id)
                 S.append(score)
     except Exception:
-        print("ERROR: Blast%d_%d.txt is corrupted" % (iSpecies, jSpecies))
-        sys.stderr.write("Malformatted line in %sBlast%d_%d.txt\nOffending line was:\n" % (d, iSpecies, jSpecies))
+        print("ERROR: Blast%d_%d.txt is corrupted" % (i_species, j_species))
+        sys.stderr.write("Malformatted line in %sBlast%d_%d.txt\nOffending line was:\n" % (d, i_species, j_species))
         sys.stderr.write("\t".join(row) + "\n")
         raise
 
     return _bit_score_matrix(
         np.frombuffer(I, dtype=np.int64), np.frombuffer(J, dtype=np.int64),
-        np.frombuffer(S, dtype=np.float64), nSeqs_i, nSeqs_j,
-        qCheckForSelfHits, iSpecies, jSpecies, result, empty)
+        np.frombuffer(S, dtype=np.float64), n_seqs_i, n_seqs_j,
+        q_check_for_self_hits, i_species, j_species, result, empty)
 
 
-def _bit_score_matrix(I, J, S, nSeqs_i, nSeqs_j, qCheckForSelfHits, iSpecies, jSpecies, result, empty):
+def _bit_score_matrix(I, J, S, n_seqs_i, n_seqs_j, q_check_for_self_hits, i_species, j_species, result, empty):
     """Max score per (query, hit) as a matrix; scores <= 0 and (optionally) self-hits dropped."""
     keep = S > 0     # the old element-wise update only stored scores above 0
-    if qCheckForSelfHits:
+    if q_check_for_self_hits:
         keep &= I != J
     I, J, S = I[keep], J[keep], S[keep]
     if I.size == 0:
         return result(*empty)
 
-    bad = (I < 0) | (I >= nSeqs_i) | (J < 0) | (J >= nSeqs_j)
+    bad = (I < 0) | (I >= n_seqs_i) | (J < 0) | (J >= n_seqs_j)
     if bad.any():
         k = int(np.argmax(bad))
-        sequence1ID, sequence2ID = int(I[k]), int(J[k])
+        sequence1_id, sequence2_id = int(I[k]), int(J[k])
         def ord(n):
             return str(n)+("th" if 4<=n%100<=20 else {1:"st",2:"nd",3:"rd"}.get(n%10, "th"))
         sys.stderr.write("\nERROR: Inconsistent input files.\n")
-        kSpecies, nSeqs_k, sequencekID = (iSpecies,  nSeqs_i, sequence1ID) if not (0 <= sequence1ID < nSeqs_i) else (jSpecies,  nSeqs_j, sequence2ID)
+        k_species, n_seqs_k, sequencek_id = (i_species,  n_seqs_i, sequence1_id) if not (0 <= sequence1_id < n_seqs_i) else (j_species,  n_seqs_j, sequence2_id)
         text = ("Blast%d_%d.txt is corrupted: Species%d.fa contains only %d sequences but found a query/hit "
                 "for sequence %d_%d (i.e. %s sequence in species %d)."
-                % (iSpecies, jSpecies, kSpecies, nSeqs_k, kSpecies, sequencekID, ord(sequencekID+1), kSpecies))
+                % (i_species, j_species, k_species, n_seqs_k, k_species, sequencek_id, ord(sequencek_id+1), k_species))
         print("ERROR: " + text)
         raise ValueError(text)
 
     # Keep the highest score for each (query, hit) pair: sort by pair, then
     # score, and take the last entry of each pair.
-    key = I * nSeqs_j + J
+    key = I * n_seqs_j + J
     order = np.lexsort((S, key))
     key = key[order]
     last = np.ones(key.size, dtype=bool)
     last[:-1] = key[1:] != key[:-1]
     key = key[last]
-    return result(key // nSeqs_j, key % nSeqs_j, S[order][last])
+    return result(key // n_seqs_j, key % n_seqs_j, S[order][last])

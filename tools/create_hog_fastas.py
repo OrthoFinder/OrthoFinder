@@ -58,7 +58,7 @@ def process_run_state(dres):
     return run_state.dirs(results_dir, state)["base"], _species_ids(state["species"]["ids_lines"])
 
 
-def process_log(logFN):
+def process_log(log_fn):
     """
     Process to Log.txt file to get wd_base and the species list
     Args:
@@ -70,7 +70,7 @@ def process_log(logFN):
     Should work with relevant paths to allow directory to move
     """
     earlier_wds = []     # listed after the last WorkingDirectory_Base (this version)
-    with open(logFN, 'r') as infile:
+    with open(log_fn, 'r') as infile:
         for line in infile:
             for key in file_handler.EARLIER_WD_KEYS:
                 if line.startswith(key + ": "):
@@ -88,17 +88,17 @@ def process_log(logFN):
                     # try to see if it's a relative directory to current one
                     path, d_wd = os.path.split(wd_base_anchor[:-1])
                     path, d_res = os.path.split(path)
-                    wd_base_anchor = os.path.split(logFN)[0] + ("/../%s/%s/" % (d_res, d_wd))
+                    wd_base_anchor = os.path.split(log_fn)[0] + ("/../%s/%s/" % (d_res, d_wd))
                     if not os.path.exists(wd_base_anchor):
                         print("ERROR: Missing directory: %s" % wd_base_anchor)
-                        util.Fail()
+                        util.fail()
                 earlier_wds = []
     # the earlier working directories: in Log.txt, or (older versions) followed
     # from previous_wd.txt
     if earlier_wds:
         wd_base_prev = [wd_base_anchor] + earlier_wds
     else:
-        wd_base_prev = file_handler.PreviousFilesLocator_new.GetWDBaseChain(wd_base_anchor)
+        wd_base_prev = file_handler.PreviousFilesLocatorNew.get_wd_base_chain(wd_base_anchor)
     return wd_base_prev, _species_ids(species_ids_lines)
 
 
@@ -126,13 +126,13 @@ def create_files_for_node(dres, node_name, dout):
     # Check required files are present
     if not os.path.exists(dres):
         print("ERROR: %s does not exist" % dres)
-        util.Fail()
+        util.fail()
     # HOG files
     d_hogs = os.path.join(dres, "Phylogenetic_Hierarchical_Orthogroups")
     fn_hogs = os.path.join(d_hogs, node_name + ".tsv")
     if not os.path.exists(fn_hogs):
         print("ERROR: HOGs file '%s' does not exist" % fn_hogs)
-        util.Fail()
+        util.fail()
     # Check can write to output directory
     d_out_fasta = create_output_directories(dout, node_name)
     ogs = read_hierarchical_orthogroup(fn_hogs)
@@ -143,7 +143,7 @@ def create_files_for_node(dres, node_name, dout):
         fn_log = os.path.join(dres, "Log.txt")
         if not os.path.exists(fn_log):
             print("ERROR: %s does not exist" % fn_log)
-            util.Fail()
+            util.fail()
         found = process_log(fn_log)
     wd_base_prev, i_species = found
     # Sequence files
@@ -151,10 +151,10 @@ def create_files_for_node(dres, node_name, dout):
         if not any(os.path.exists(d + "/Species%d.fa" % isp) for d in wd_base_prev):
             print("ERROR: Can't find Species%d.fa in any of the Working Directories:" % isp)
             print("\n".join(wd_base_prev))
-            util.Fail()
+            util.fail()
     fw = msa_trees.FastaWriter(wd_base_prev, i_species)
     # convert IDs - do on a per species basis to increase likelihood of success
-    ids, ids_rev = GetIDs(wd_base_prev, i_species)
+    ids, ids_rev = get_ids(wd_base_prev, i_species)
     # Convert one at a time in case of error, can continue with rest
     q_warning = False
     for iog, og in enumerate(ogs):
@@ -162,7 +162,7 @@ def create_files_for_node(dres, node_name, dout):
             og_ids = [ids_rev[g] for sp in og for g in sp]    # don't care what species they're from (may need to later if this helps identify sequences)
             og_ids = [orthogroups_set.Seq(g) for g in og_ids if g != "inf_inf"]
             fn = os.path.join(d_out_fasta, node_name + (".HOG%07d.fa" % iog))
-            fw.WriteSeqsToFasta_withNewAccessions(og_ids, fn, ids)
+            fw.write_seqs_to_fasta_with_new_accessions(og_ids, fn, ids)
         except KeyError as e:
             q_warning = True
             print("WARNING: %s.HOG%07d.fa. Problem with sequences:" % (node_name, iog))
@@ -197,7 +197,7 @@ def create_output_directories(dout, node_name):
         except OSError as e:
             print("Could not create output directory: %s" % dout)
             print(str(e))
-            util.Fail()
+            util.fail()
     d_out_node = dout + node_name + "/"
     if not os.path.exists(d_out_node):
         try:
@@ -205,7 +205,7 @@ def create_output_directories(dout, node_name):
         except OSError as e:
             print("Could not create output directory: %s" % d_out_node)
             print(str(e))
-            util.Fail()
+            util.fail()
     d_out_fasta = d_out_node + "HOG_Sequences/"
     if not os.path.exists(d_out_fasta):
         try:
@@ -213,11 +213,11 @@ def create_output_directories(dout, node_name):
         except OSError as e:
             print("Could not create output directory: %s" % d_out_fasta)
             print(str(e))
-            util.Fail()
+            util.fail()
     return d_out_fasta
 
 
-def GetIDs(wd_base_list, i_species):
+def get_ids(wd_base_list, i_species):
     """
     Get the sequence IDs including ambiguous accessions
     Args:
@@ -227,20 +227,20 @@ def GetIDs(wd_base_list, i_species):
         ids - OrthoFinder id to user ID
         ids_rev - User ID to OrthoFinder ID
     """
-    nSpAll = max(i_species) + 1
+    n_sp_all = max(i_species) + 1
     try:
-        ids = util.FirstWordExtractor(wd_base_list[0] + "SequenceIDs.txt").GetIDToNameDict()
+        ids = util.FirstWordExtractor(wd_base_list[0] + "SequenceIDs.txt").get_id_to_name_dict()
     except RuntimeError as error:
-        ids = util.FullAccession(wd_base_list[0] + "SequenceIDs.txt").GetIDToNameDict()
+        ids = util.FullAccession(wd_base_list[0] + "SequenceIDs.txt").get_id_to_name_dict()
     species_start = ["%d_" % isp for isp in i_species]
     ids = {k:v for k, v in ids.items() if any(k.startswith(sp_start) for sp_start in species_start)}
     # replace any ambiguous sequences
     ids_rev = {v:k for k,v in ids.items()}
     accessions_count = Counter(ids.values())
-    for acc, n in accessions_count.most_common():
+    for assign, n in accessions_count.most_common():
         if n == 1: 
             break
-        ids_rev[acc] = "inf_inf"
+        ids_rev[assign] = "inf_inf"
     ids["inf_inf"] = "AMBIGUOUS_ID"
     return ids, ids_rev
 

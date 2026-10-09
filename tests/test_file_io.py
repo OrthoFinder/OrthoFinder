@@ -269,9 +269,9 @@ def test_blast_scores_with_custom_layout(tmp_path, monkeypatch, use_pandas):
     (custom_dir / "blast_commands.txt").write_text(
         'mmseqs convertalis A B C Blast3_5.txt --format-output "evalue,bits,target,query" --format-mode 4\n')
     monkeypatch.setattr(file_io, "use_pandas", lambda p: use_pandas)
-    info = types.SimpleNamespace(nSeqsPerSpecies={3: 20, 5: 20})
-    a = bfp.GetBLAST6Scores(info, [str(std_dir)], 3, 5, fmt="csr")
-    b = bfp.GetBLAST6Scores(info, [str(custom_dir)], 3, 5, fmt="csr")
+    info = types.SimpleNamespace(n_seqs_per_species={3: 20, 5: 20})
+    a = bfp.get_blast6_scores(info, [str(std_dir)], 3, 5, fmt="csr")
+    b = bfp.get_blast6_scores(info, [str(custom_dir)], 3, 5, fmt="csr")
     assert a.nnz == 2 and (a != b).nnz == 0
     assert a[17, 2] == 315.0 and a[18, 9] == 88.5
 

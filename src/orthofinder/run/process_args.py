@@ -3,7 +3,7 @@ import re
 from ..utils import util, file_handler, program_caller
 from ..utils.util import printer
 from ..orthology import workflow
-from .. import __version__, g_mclInflation, nThreadsDefault, __location__
+from .. import __version__, g_mcl_inflation, n_threads_default, __location__
 from . import helpinfo, previous_run
 import shutil
 import traceback
@@ -87,24 +87,24 @@ configfile_location = os.path.join(__location__, "run")
 # Control
 class Options(object):  #
     def __init__(self):
-        self.nBlast = nThreadsDefault
-        self.nProcessAlg = None
-        self.qFastAdd = False  # Add species in near-linear time
-        self.qStartFromBlast = False  # remove, just store BLAST to do
-        self.qStartFromFasta = False  # local to argument checking
-        self.qStartFromGroups = False
-        self.qStartFromTrees = False
-        self.qStartFromSpeciesTrees = False
-        self.qStopAfterPrepare = False
-        self.qStopAfterGroups = False
-        self.qStopAfterMCLGroups = False
-        self.qStopAfterSeqs = False
-        self.qStopAfterAlignments = False
-        self.qStopAfterTrees = False
-        self.qStopAfterSpeciesTrees = False
-        self.qMSATrees = True  # Updated default
-        self.qAddSpeciesToIDs = True
-        self.qTrim = True
+        self.n_blast = n_threads_default
+        self.n_process_alg = None
+        self.q_fast_add = False  # Add species in near-linear time
+        self.q_start_from_blast = False  # remove, just store BLAST to do
+        self.q_start_from_fasta = False  # local to argument checking
+        self.q_start_from_groups = False
+        self.q_start_from_trees = False
+        self.q_start_from_species_trees = False
+        self.q_stop_after_prepare = False
+        self.q_stop_after_groups = False
+        self.q_stop_after_mcl_groups = False
+        self.q_stop_after_seqs = False
+        self.q_stop_after_alignments = False
+        self.q_stop_after_trees = False
+        self.q_stop_after_species_trees = False
+        self.q_msa_trees = True  # Updated default
+        self.q_add_species_to_ids = True
+        self.q_trim = True
         self.gathering_version = (1, 0)  # < 3 is the original method
         self.search_program = "diamond"
         self.search_program_given = False   # -S on the command line
@@ -113,12 +113,12 @@ class Options(object):  #
         self.tree_program = "fasttree"
         self.recon_method = "of_recon"
         self.name = None  # name to identify this set of results
-        self.qDoubleBlast = True
-        self.qSplitParaClades = False
-        self.qPhyldog = False
-        self.speciesXMLInfoFN = None
-        self.speciesTreeFN = None
-        self.mclInflation = g_mclInflation
+        self.q_double_blast = True
+        self.q_split_para_clades = False
+        self.q_phyldog = False
+        self.species_xml_info_fn = None
+        self.species_tree_fn = None
+        self.mcl_inflation = g_mcl_inflation
         self.dna = False
         self.fewer_open_files = (
             True  # By default only open O(n) orthologs files at a time
@@ -173,28 +173,28 @@ class Options(object):  #
 #     return str(n) + suffix
 
 
-def GetDirectoryArgument(arg, args):
+def get_directory_argument(arg, args):
     if len(args) == 0:
         print("Missing option for command line argument %s" % arg)
-        util.Fail()
+        util.fail()
     directory = os.path.abspath(args.pop(0))
     if not os.path.isfile(directory) and directory[-1] != os.sep:
         directory += os.sep
     if not os.path.exists(directory):
         print("Specified directory doesn't exist: %s" % directory)
-        util.Fail()
+        util.fail()
     return directory
 
 
-def GetFileArgument(arg: str) -> str:
+def get_file_argument(arg: str) -> str:
     file_path = os.path.abspath(arg)
     directory = os.path.dirname(file_path)
     if not os.path.exists(directory):
         print("Directory points to the file doesn't exist: %s" % directory)
-        util.Fail()
+        util.fail()
     if not os.path.isfile(file_path):
         print("Specified file doesn't exist: %s" % file_path)
-        util.Fail()
+        util.fail()
     return file_path
 
 
@@ -319,7 +319,7 @@ def GetFileArgument(arg: str) -> str:
 #         util.Fail()
 
 
-def GetProgramCaller():
+def get_program_caller():
     config_file = os.path.join(configfile_location, "config.json")
     pc = program_caller.ProgramCaller(
         config_file if os.path.exists(config_file) else None
@@ -327,11 +327,11 @@ def GetProgramCaller():
     config_file_user = os.path.expanduser("~/config_orthofinder_user.json")
     if os.path.exists(config_file_user):
         pc_user = program_caller.ProgramCaller(config_file_user)
-        pc.Add(pc_user)
+        pc.add(pc_user)
     return pc
 
 
-def ProcessArgs(args):
+def process_args(args):
     """
     Workflow
     | 1. Fasta Files | 2.  Prepare files    | 3.   Blast    | 4. Orthogroups    | 5.   Gene Trees     | 6.   Reconciliations/Orthologues   |
@@ -340,7 +340,7 @@ def ProcessArgs(args):
     Start from:
     -f: 1,2,..,6    (start from fasta files, --fasta)
     -b: 4,5,6       (start from blast results, --blast)
-    -fg: 5,6         (start from orthogroups/do orthologue workflow, --from-groups)
+    -fg: 5,6         (start from orthogroups/do ortholog workflow, --from-groups)
     -ft: 6           (start from gene tree/do reconciliation, --from-trees)
     Stop at:
     -op: 2           (only prepare, --only-prepare)
@@ -354,41 +354,41 @@ def ProcessArgs(args):
     config_file_user = os.path.expanduser("~/config_orthofinder_user.json")
     if os.path.exists(config_file_user):
         pc_user = program_caller.ProgramCaller(config_file_user)
-        prog_caller.Add(pc_user)
+        prog_caller.add(pc_user)
 
     if "--config" in args:
         config_index = args.index("--config")
         config_file = args[config_index + 1]
-        config_path = GetFileArgument(config_file)
+        config_path = get_file_argument(config_file)
         if os.path.exists(config_path):
             pc_user = program_caller.ProgramCaller(config_path)
-            prog_caller.Add(pc_user)
+            prog_caller.add(pc_user)
         args.remove("--config")
         args.remove(config_file)
 
     if len(args) == 0 or args[0] == "--help" or args[0] == "help" or args[0] == "-h":
-        helpinfo.PrintHelp(prog_caller)
-        util.Success()
+        helpinfo.print_help(prog_caller)
+        util.success()
 
     if args[0] == "-v" or args[0] == "--version":
         printer.print(
             f"[dark_goldenrod]OrthoFinder[/dark_goldenrod]:v[deep_sky_blue2]{__version__}[/deep_sky_blue2]"
         )
-        util.Success()
+        util.success()
 
     # if args[0] == "-sm" or args[0] == "--scoring-matrix":
     #     printer.print(diamond_sm_options_table)
     #     util.Success()
 
     options = Options()
-    fastaDir = None
-    continuationDir = None
-    resultsDir_nonDefault = None
-    pickleDir_nonDefault = None
+    fasta_dir = None
+    continuation_dir = None
+    results_dir_non_default = None
+    pickle_dir_non_default = None
     q_selected_msa_options = False
     q_selected_tree_options = False
     q_selected_search_option = False
-    user_specified_M = False
+    user_specified_m = False
     scoring_matrix_info = "--matrix"
 
     """
@@ -403,117 +403,117 @@ def ProcessArgs(args):
         arg = args.pop(0)
 
         if arg == "-f" or arg == "--fasta":
-            if options.qStartFromFasta:
+            if options.q_start_from_fasta:
                 print("Repeated argument: -f/--fasta\n")
-                util.Fail()
-            options.qStartFromFasta = True
-            fastaDir = GetDirectoryArgument(arg, args)
+                util.fail()
+            options.q_start_from_fasta = True
+            fasta_dir = get_directory_argument(arg, args)
 
         elif arg == "-b" or arg == "--blast":
-            if options.qStartFromBlast:
+            if options.q_start_from_blast:
                 print("Repeated argument: -b/--blast\n")
-                util.Fail()
-            options.qStartFromBlast = True
+                util.fail()
+            options.q_start_from_blast = True
             options.use_base = True
-            continuationDir = GetDirectoryArgument(arg, args)
+            continuation_dir = get_directory_argument(arg, args)
 
         elif arg == "--assign":
-            options.qFastAdd = True
-            fastaDir = GetDirectoryArgument(arg, args)
+            options.q_fast_add = True
+            fasta_dir = get_directory_argument(arg, args)
 
         elif arg == "--core":
-            options.qFastAdd = True
-            continuationDir = GetDirectoryArgument(arg, args)
+            options.q_fast_add = True
+            continuation_dir = get_directory_argument(arg, args)
 
         elif arg == "-fg" or arg == "--from-groups":
-            if options.qStartFromGroups:
+            if options.q_start_from_groups:
                 print("Repeated argument: -fg/--from-groups\n")
-                util.Fail()
-            options.qStartFromGroups = True
+                util.fail()
+            options.q_start_from_groups = True
             options.use_base = True
-            continuationDir = GetDirectoryArgument(arg, args)
+            continuation_dir = get_directory_argument(arg, args)
 
         elif arg == "-fgt" or arg == "--from-trees":
-            if options.qStartFromTrees:
+            if options.q_start_from_trees:
                 print("Repeated argument: -ft/--from-trees\n")
-                util.Fail()
-            options.qStartFromTrees = True
+                util.fail()
+            options.q_start_from_trees = True
             options.use_base = True
-            continuationDir = GetDirectoryArgument(arg, args)
+            continuation_dir = get_directory_argument(arg, args)
 
         elif arg == "-fst" or arg == "--from-species-trees":
-            if options.qStartFromSpeciesTrees:
+            if options.q_start_from_species_trees:
                 print("Repeated argument: -fst/--from-species-trees\n")
-                util.Fail()
-            options.qStartFromSpeciesTrees = True
+                util.fail()
+            options.q_start_from_species_trees = True
             options.use_base = True
-            continuationDir = GetDirectoryArgument(arg, args)
+            continuation_dir = get_directory_argument(arg, args)
 
         elif arg == "-t" or arg == "--threads":
             if len(args) == 0:
                 print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
+                util.fail()
             arg = args.pop(0)
             try:
-                options.nBlast = int(arg)
-                if options.nBlast > nThreadsDefault:
+                options.n_blast = int(arg)
+                if options.n_blast > n_threads_default:
                     print(
                         "WARNING: The specified number of BLAST threads exceed the number of cores: %s"
-                        % str(nThreadsDefault)
+                        % str(n_threads_default)
                     )
                     print(
                         "The number of BLAST threads is reset to %s"
-                        % str(nThreadsDefault)
+                        % str(n_threads_default)
                     )
             except:
                 print("Incorrect argument for number of BLAST threads: %s\n" % arg)
-                util.Fail()
+                util.fail()
 
         elif arg == "-a" or arg == "--algthreads":
             if len(args) == 0:
                 print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
+                util.fail()
             arg = args.pop(0)
             try:
-                options.nProcessAlg = int(arg)
-                if options.nProcessAlg > nThreadsDefault:
+                options.n_process_alg = int(arg)
+                if options.n_process_alg > n_threads_default:
                     print(
                         "WARNING: The specified number of OrthoFinder threads exceed the number of cores: %s"
-                        % str(nThreadsDefault)
+                        % str(n_threads_default)
                     )
                     print(
                         "The number of OrthoFinder threads is reset to %s"
-                        % str(nThreadsDefault)
+                        % str(n_threads_default)
                     )
-                    options.nProcessAlg = nThreadsDefault
+                    options.n_process_alg = n_threads_default
             except:
                 print(
                     "Incorrect argument for number of OrthoFinder threads: %s\n" % arg
                 )
-                util.Fail()
+                util.fail()
 
         elif arg == "-mt" or arg == "--method-threads":
             if len(args) == 0:
                 print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
+                util.fail()
             arg = args.pop(0)
             try:
                 options.method_threads = str(arg)
-                if int(options.method_threads) > nThreadsDefault:
+                if int(options.method_threads) > n_threads_default:
                     print(
                         "WARNING: The specified number of threads for external commands exceed the number of cores: %d"
-                        % nThreadsDefault
+                        % n_threads_default
                     )
                     print(
                         "The number of threads for external commands is reset to %d"
-                        % nThreadsDefault
+                        % n_threads_default
                     )
-                    options.method_threads = str(nThreadsDefault)
+                    options.method_threads = str(n_threads_default)
                 if int(options.method_threads) < 1:
                     raise ValueError
             except:
                 print("Incorrect argument for number of method threads: %s\n" % arg)
-                util.Fail()
+                util.fail()
             if int(options.method_threads) > 1:
                 # Each alignment/tree command of a program that takes a thread
                 # count (FAMSA, IQ-TREE, RAxML-NG) then reserves this many
@@ -610,7 +610,7 @@ def ProcessArgs(args):
                 print(
                     f"Incorrect argument {arg} for the minmum number of sequence. Values must be an integer equal to or greater than 4."
                 )
-                util.Fail()
+                util.fail()
         elif arg == "--msa-min-seq":
             try:
                 arg = int(args.pop(0))
@@ -619,7 +619,7 @@ def ProcessArgs(args):
                 print(
                     f"Incorrect argument {arg} for the minmum number of sequence MSA analysis. Values must be an integer equal to or greater than 4."
                 )
-                util.Fail()
+                util.fail()
 
         elif arg == "-fd":
             try:
@@ -633,7 +633,7 @@ def ProcessArgs(args):
                 options.fd_limit = (soft, hard) if soft > 0 and hard > 0 else None
             except:
                 print(f"Incorrect argument {arg} for the minmum number of sequence.")
-                util.Fail()
+                util.fail()
 
         # elif arg == "--friendly":
 
@@ -661,7 +661,7 @@ def ProcessArgs(args):
         elif arg == "-ST" or arg == "--species-tree-program":
             if len(args) == 0:
                 print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
+                util.fail()
             arg = args.pop(0)
             if "astral" in arg.lower():
                 options.astral = True
@@ -670,37 +670,37 @@ def ProcessArgs(args):
         #     options.save_blast_commands = True
 
         elif arg == "-1":
-            options.qDoubleBlast = False
+            options.q_double_blast = False
 
         elif arg == "-d" or arg == "--dna":
             options.dna = True
 
         elif arg == "-X":
-            options.qAddSpeciesToIDs = False
+            options.q_add_species_to_ids = False
 
         elif arg == "-y":
-            options.qSplitParaClades = True
+            options.q_split_para_clades = True
 
         elif arg == "-z":
-            options.qTrim = False
+            options.q_trim = False
 
         elif arg == "-nk":
             if len(args) == 0:
                 print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
+                util.fail()
 
             options.n_skip = int(args.pop(0))
 
         elif arg == "-I" or arg == "--inflation":
             if len(args) == 0:
                 print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
+                util.fail()
             arg = args.pop(0)
             try:
-                options.mclInflation = float(arg)
+                options.mcl_inflation = float(arg)
             except:
                 print("Incorrect argument for MCL inflation parameter: %s\n" % arg)
-                util.Fail()
+                util.fail()
 
         # elif arg == "-c1":
         #     print("\nThe option 'c1' has been renamed '--c-homologs'")
@@ -732,120 +732,120 @@ def ProcessArgs(args):
         elif arg == "-n" or arg == "--name":
             if options.name:
                 print("Repeated argument: -n/--name")
-                util.Fail()
+                util.fail()
             if len(args) == 0:
                 print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
+                util.fail()
             options.name = args.pop(0)
             while options.name.endswith("/"):
                 options.name = options.name[:-1]
             if any([symbol in options.name for symbol in [" ", "/"]]):
                 print("Invalid symbol for command line argument %s\n" % arg)
-                util.Fail()
+                util.fail()
 
         elif arg == "-o" or arg == "--output":
-            if resultsDir_nonDefault != None:
+            if results_dir_non_default != None:
                 print("Repeated argument: -o/--output")
-                util.Fail()
+                util.fail()
             if len(args) == 0:
                 print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
-            resultsDir_nonDefault = args.pop(0)
+                util.fail()
+            results_dir_non_default = args.pop(0)
 
-            while resultsDir_nonDefault.endswith("/"):
-                resultsDir_nonDefault = resultsDir_nonDefault[:-1]
+            while results_dir_non_default.endswith("/"):
+                results_dir_non_default = results_dir_non_default[:-1]
 
-            resultsDir_nonDefault += "/"
+            results_dir_non_default += "/"
             # Tests put multiple named Results_* directories under one shared
             # output base, including runs whose FASTA input is ExampleData.
             # Keep the normal CLI safeguard, but allow that shared base in the
             # suite's explicitly isolated test mode.
-            if os.path.exists(resultsDir_nonDefault) and os.getenv("ORTHOFINDER_TEST_ISOLATE") != "1":
+            if os.path.exists(results_dir_non_default) and os.getenv("ORTHOFINDER_TEST_ISOLATE") != "1":
                 print(
                     "ERROR: non-default output directory already exists: %s\n"
-                    % resultsDir_nonDefault
+                    % results_dir_non_default
                 )
-                util.Fail()
+                util.fail()
 
-            if " " in resultsDir_nonDefault:
+            if " " in results_dir_non_default:
                 print(
                     "ERROR: non-default output directory cannot include spaces: %s\n"
-                    % resultsDir_nonDefault
+                    % results_dir_non_default
                 )
-                util.Fail()
-            checkDirName = resultsDir_nonDefault
+                util.fail()
+            check_dir_name = results_dir_non_default
 
-            while checkDirName.endswith("/"):
-                checkDirName = checkDirName[:-1]
+            while check_dir_name.endswith("/"):
+                check_dir_name = check_dir_name[:-1]
 
-            path, newDir = os.path.split(checkDirName)
+            path, new_dir = os.path.split(check_dir_name)
             if path != "" and not os.path.exists(path):
                 print(
                     "ERROR: location '%s' for results directory '%s' does not exist.\n"
-                    % (path, newDir)
+                    % (path, new_dir)
                 )
-                util.Fail()
+                util.fail()
 
         elif arg == "-s" or arg == "--speciestree":
-            if options.speciesTreeFN:
+            if options.species_tree_fn:
                 print("Repeated argument: -s/--speciestree")
-                util.Fail()
+                util.fail()
 
             if len(args) == 0:
                 print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
+                util.fail()
 
-            options.speciesTreeFN = args.pop(0)
+            options.species_tree_fn = args.pop(0)
 
         elif arg == "--scores-v2":
             options.v2_scores = True
 
         elif arg == "-S" or arg == "--search":
-            choices = prog_caller.ListSearchMethods()
+            choices = prog_caller.list_search_methods()
             if "blast" not in choices:
                 choices = ["blast"] + choices   # another name for "blastp"
             switch_used = arg
             if len(args) == 0:
                 print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
+                util.fail()
 
             arg = args.pop(0)
-            # "-S blast" becomes blastn (with -d) or blastp (ResolveSearchProgram)
+            # "-S blast" becomes blastn (with -d) or blastp (resolve_search_program)
             if arg in choices:
                 options.search_program = arg
                 options.search_program_given = True
             else:
                 print("Invalid argument for option %s: %s" % (switch_used, arg))
                 print("Valid options are: {%s}\n" % (", ".join(choices)))
-                util.Fail()
+                util.fail()
 
         elif arg == "-M" or arg == "--method":
-            arg_M_or_msa = arg
-            user_specified_M = True
+            arg_m_or_msa = arg
+            user_specified_m = True
             if len(args) == 0:
                 print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
+                util.fail()
 
             arg = args.pop(0)
             if arg == "msa":
-                options.qMSATrees = True
+                options.q_msa_trees = True
             # elif arg == "phyldog":
             #     options.qPhyldog = True
             #     options.recon_method = "phyldog"
             #     options.qMSATrees = False
             elif arg == "dendroblast":
-                options.qMSATrees = False
+                options.q_msa_trees = False
             else:
-                print("Invalid argument for option %s: %s" % (arg_M_or_msa, arg))
+                print("Invalid argument for option %s: %s" % (arg_m_or_msa, arg))
                 print("Valid options are 'dendroblast' and 'msa'\n")
-                util.Fail()
+                util.fail()
 
         elif arg == "-A" or arg == "--msa-program":
-            choices = ["mafft"] + prog_caller.ListMSAMethods()
+            choices = ["mafft"] + prog_caller.list_msa_methods()
             switch_used = arg
             if len(args) == 0:
                 print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
+                util.fail()
             arg = args.pop(0)
             if arg in choices:
                 options.msa_program = arg
@@ -853,14 +853,14 @@ def ProcessArgs(args):
             else:
                 print("Invalid argument for option %s: %s" % (switch_used, arg))
                 print("Valid options are: {%s}\n" % (", ".join(choices)))
-                util.Fail()
+                util.fail()
 
         elif arg == "-T" or arg == "--tree-program":
-            choices = ["fasttree"] + prog_caller.ListTreeMethods()
+            choices = ["fasttree"] + prog_caller.list_tree_methods()
             switch_used = arg
             if len(args) == 0:
                 print("Missing option for command line argument %s\n" % arg)
-                util.Fail()
+                util.fail()
             arg = args.pop(0)
             if arg in choices:
                 options.tree_program = arg
@@ -868,7 +868,7 @@ def ProcessArgs(args):
             else:
                 print("Invalid argument for option %s: %s" % (switch_used, arg))
                 print("Valid options are: {%s}\n" % (", ".join(choices)))
-                util.Fail()
+                util.fail()
 
         # elif arg == "-R" or arg == "--recon_method":
         #     choices = ["of_recon", "dlcpar", "dlcpar_convergedsearch", "only_overlap"]
@@ -885,17 +885,17 @@ def ProcessArgs(args):
         #         util.Fail()
 
         # elif arg == "-p":
-        #     pickleDir_nonDefault = GetDirectoryArgument(arg, args)
+        #     pickleDir_nonDefault = get_directory_argument(arg, args)
 
         elif arg == "-op" or arg == "--only-prepare":
-            options.qStopAfterPrepare = True
+            options.q_stop_after_prepare = True
 
         elif arg == "-og" or arg == "--only-groups":
-            options.qStopAfterMCLGroups = True
+            options.q_stop_after_mcl_groups = True
 
 
         elif arg == "-ogh" or arg == "--only-hierarchical-groups":
-            options.qStopAfterGroups = True
+            options.q_stop_after_groups = True
 
         # elif arg == "-os" or arg == "--only-seqs":
         #     options.qStopAfterSeqs = False
@@ -904,14 +904,14 @@ def ProcessArgs(args):
         #     options.qStopAfterAlignments = False
 
         elif arg == "-ogt" or arg == "--only-trees":
-            options.qStopAfterTrees = True
+            options.q_stop_after_trees = True
 
         elif arg == "-ost" or arg == "--only-species-trees":
-            options.qStopAfterSpeciesTrees = True
+            options.q_stop_after_species_trees = True
 
         elif arg == "-h" or arg == "--help":
-            helpinfo.PrintHelp(prog_caller)
-            util.Success()
+            helpinfo.print_help(prog_caller)
+            util.success()
         ### ----------------------------------------------------------
         # elif arg == "--matrix" or arg == "--custom-matrix":
         #     options.score_matrix = GetScoreMatrix(args.pop(0))
@@ -944,7 +944,7 @@ def ProcessArgs(args):
 
         else:
             print("Unrecognised argument: %s\n" % arg)
-            util.Fail()
+            util.fail()
 
     # if "diamond" in options.search_program and not options.score_matrix:
     #     options.score_matrix = "BLOSUM62"
@@ -960,175 +960,175 @@ def ProcessArgs(args):
     #         )
 
     # set a default for number of algorithm threads
-    if options.nProcessAlg is None:
-        options.nProcessAlg = min(16, max(1, int(options.nBlast / 8)))
+    if options.n_process_alg is None:
+        options.n_process_alg = min(16, max(1, int(options.n_blast / 8)))
 
-    if options.nBlast < 1:
+    if options.n_blast < 1:
         print(
             "ERROR: Number of '-t' threads cannot be fewer than 1, got %d"
-            % options.nBlast
+            % options.n_blast
         )
-        util.Fail()
+        util.fail()
 
-    if options.nProcessAlg < 1:
+    if options.n_process_alg < 1:
         print(
             "ERROR: Number of '-a' threads cannot be fewer than 1, got %d"
-            % options.nProcessAlg
+            % options.n_process_alg
         )
-        util.Fail()
+        util.fail()
 
     # check argument combinations
     if not (
-        options.qStartFromFasta
-        or options.qStartFromBlast
-        or options.qStartFromGroups
-        or options.qStartFromTrees
-        or options.qFastAdd
-        or options.qStartFromSpeciesTrees
+        options.q_start_from_fasta
+        or options.q_start_from_blast
+        or options.q_start_from_groups
+        or options.q_start_from_trees
+        or options.q_fast_add
+        or options.q_start_from_species_trees
     ):
         print(
             "ERROR: Please specify the input directory for OrthoFinder using one of the options: '-f', '-b', '-fg' or '-ft', '--assign'."
         )
-        util.Fail()
+        util.fail()
 
-    if options.qFastAdd:
+    if options.q_fast_add:
         if (
-            options.qStartFromFasta
-            or options.qStartFromBlast
-            or options.qStartFromGroups
-            or options.qStartFromTrees
-            or options.qStartFromSpeciesTrees
+            options.q_start_from_fasta
+            or options.q_start_from_blast
+            or options.q_start_from_groups
+            or options.q_start_from_trees
+            or options.q_start_from_species_trees
         ):
             print(
                 "ERROR: Incompatible options used with --assign, cannot accept: '-f', '-b', '-fg', '-ft', '-fst'"
             )
-            util.Fail()
-        if fastaDir is None:
+            util.fail()
+        if fasta_dir is None:
             print(
                 "ERROR: '--assign' option also requires '--core' directory to be specified"
             )
-            util.Fail()
-        if continuationDir is None:
+            util.fail()
+        if continuation_dir is None:
             print(
                 "ERROR: '--core' option also requires '--assign' directory to be specified"
             )
-            util.Fail()
-        if not options.qMSATrees:
+            util.fail()
+        if not options.q_msa_trees:
             print(
                 "ERROR: --assign requires MSA trees, option '-M dendroblast' is invalid"
             )
-            util.Fail()
+            util.fail()
 
-    if options.qStartFromFasta and (
-        options.qStartFromTrees
+    if options.q_start_from_fasta and (
+        options.q_start_from_trees
         # or options.qStartFromGroups
-        or options.qStartFromSpeciesTrees
+        or options.q_start_from_species_trees
     ):
         err_msg = "ERROR: Incompatible arguments, -f (start from fasta files) and"
-        if options.qStartFromGroups:
+        if options.q_start_from_groups:
             err_msg += " -fg (start from orthogroups)"
-        elif options.qStartFromTrees:
+        elif options.q_start_from_trees:
             err_msg += " -ft (start from gene trees)"
         else:
             err_msg += "-fst (start from species trees)"
         print(err_msg)
 
-        util.Fail()
+        util.fail()
 
-    if options.qStartFromBlast and (
-        options.qStartFromTrees
-        or options.qStartFromGroups
-        or options.qStartFromSpeciesTrees
+    if options.q_start_from_blast and (
+        options.q_start_from_trees
+        or options.q_start_from_groups
+        or options.q_start_from_species_trees
     ):
         err_msg = "ERROR: Incompatible arguments, -b (start from pre-calcualted BLAST results) and"
 
-        if options.qStartFromGroups:
+        if options.q_start_from_groups:
             err_msg += " -fg (start from orthogroups)"
-        elif options.qStartFromGroups:
+        elif options.q_start_from_groups:
             err_msg += " -ft (start from gene trees)"
         else:
             err_msg += "-fst (start from species trees)"
         print(err_msg)
-        util.Fail()
+        util.fail()
 
-    if options.qStartFromTrees and options.qStartFromGroups:
+    if options.q_start_from_trees and options.q_start_from_groups:
         print(
             "ERROR: Incompatible arguments, -fg (start from orthogroups) and -ft (start from gene trees)"
         )
-        util.Fail()
+        util.fail()
 
-    if options.qStartFromSpeciesTrees and options.qStartFromGroups:
+    if options.q_start_from_species_trees and options.q_start_from_groups:
         print(
             "ERROR: Incompatible arguments, -fg (start from orthogroups) and -fst (start from species gene trees)"
         )
-        util.Fail()
+        util.fail()
 
-    if options.qStartFromSpeciesTrees and options.qStartFromTrees:
+    if options.q_start_from_species_trees and options.q_start_from_trees:
         print(
             "ERROR: Incompatible arguments, -ft (start from gene trees) and -fst (start from species gene trees)"
         )
-        util.Fail()
+        util.fail()
 
-    if options.qStopAfterSeqs and (not options.qMSATrees):
+    if options.q_stop_after_seqs and (not options.q_msa_trees):
         print(
             "ERROR: Argument '-os' (stop after sequences) also requires option '-M msa'"
         )
-        util.Fail()
+        util.fail()
 
-    if options.qStopAfterAlignments and (not options.qMSATrees):
+    if options.q_stop_after_alignments and (not options.q_msa_trees):
         print(
             "ERROR: Argument '-oa' (stop after alignments) also requires option '-M msa'"
         )
-        util.Fail()
+        util.fail()
 
     if (q_selected_msa_options or q_selected_tree_options) and (
-        not options.qMSATrees and not options.qPhyldog
+        not options.q_msa_trees and not options.q_phyldog
     ):
         print(
             "ERROR: Argument '-A' or '-T' (multiple sequence alignment/tree inference program) also requires option '-M msa'"
         )
-        util.Fail()
+        util.fail()
 
     # if options.qPhyldog and (not options.speciesTreeFN):
     #     print("ERROR: Phyldog currently needs a species tree to be provided")
     #     util.Fail()
 
-    if resultsDir_nonDefault != None and (
-        (not options.qStartFromFasta) or options.qStartFromBlast
+    if results_dir_non_default != None and (
+        (not options.q_start_from_fasta) or options.q_start_from_blast
     ):
         print(
             "ERROR: Incompatible arguments, -o (non-default output directory) can only be used with a new OrthoFinder run using option '-f'"
         )
-        util.Fail()
+        util.fail()
 
-    if options.search_program not in prog_caller.ListSearchMethods() + ["blast"]:
+    if options.search_program not in prog_caller.list_search_methods() + ["blast"]:
         print(
             "ERROR: Search program (%s) not configured in config.json file"
             % options.search_program
         )
-        util.Fail()
+        util.fail()
 
     if options.print_info:
         print()
-        util.PrintTime(
+        util.print_time(
             f"Starting [dark_goldenrod]OrthoFinder[/dark_goldenrod] v[deep_sky_blue2]{__version__}[/deep_sky_blue2]"
         )
         print(
             "%d thread(s) for highly parallel tasks (BLAST searches etc.)"
-            % options.nBlast
+            % options.n_blast
         )
         print(
             "%d thread(s) for [dark_goldenrod]OrthoFinder[/dark_goldenrod] algorithm\n"
-            % options.nProcessAlg
+            % options.n_process_alg
         )
 
-    if options.qFastAdd and not q_selected_msa_options:
+    if options.q_fast_add and not q_selected_msa_options:
         if options.print_info:
             print("INFO: For --assign defaulting to 'famsa' to reduce RAM usage\n")
         # options.msa_program = "mafft_memsave"
         options.msa_program = "famsa"
 
-    if options.qFastAdd and not q_selected_tree_options:
+    if options.q_fast_add and not q_selected_tree_options:
         if options.print_info:
             print(
                 "INFO: For --assign defaulting to 'FastTree -fastest' to reduce RAM usage\n"
@@ -1156,21 +1156,21 @@ def ProcessArgs(args):
     #         scoring_matrix_info
     #     )
     ### ---------------------------------------------------------
-    if resultsDir_nonDefault is not None:
-        resultsDir_nonDefault = os.path.abspath(resultsDir_nonDefault) + os.path.sep
+    if results_dir_non_default is not None:
+        results_dir_non_default = os.path.abspath(results_dir_non_default) + os.path.sep
 
     return (
         prog_caller,
         options,
-        fastaDir,
-        continuationDir,
-        resultsDir_nonDefault,
-        pickleDir_nonDefault,
-        user_specified_M,
+        fasta_dir,
+        continuation_dir,
+        results_dir_non_default,
+        pickle_dir_non_default,
+        user_specified_m,
     )
 
 
-def DeleteDirectoryTree(d):
+def delete_directory_tree(d):
     if os.path.exists(d):
         try:
             shutil.rmtree(d)
@@ -1179,32 +1179,32 @@ def DeleteDirectoryTree(d):
             shutil.rmtree(d, True)
 
 
-def CheckOptions(options, speciesToUse):
+def check_options(options, species_to_use):
     """Check any optional arguments are valid once we know what species are in the analysis
     - user supplied species tree
     """
-    if options.speciesTreeFN:
-        expSpecies = list(
-            previous_run.SpeciesNameDict(file_handler.FileHandler.GetSpeciesIDsFN()).values()
+    if options.species_tree_fn:
+        exp_species = list(
+            previous_run.species_name_dict(file_handler.handler.get_species_ids_fn()).values()
         )
-        previous_run.CheckUserSpeciesTree(options.speciesTreeFN, expSpecies)
+        previous_run.check_user_species_tree(options.species_tree_fn, exp_species)
 
     # check can open enough files
     n_extra = 50
     q_do_orthologs = not any(
         (
-            options.qStopAfterPrepare,
-            options.qStopAfterGroups,
-            options.qStopAfterMCLGroups,
-            options.qStopAfterSeqs,
-            options.qStopAfterAlignments,
-            options.qStopAfterTrees,
-            options.qStopAfterSpeciesTrees,
+            options.q_stop_after_prepare,
+            options.q_stop_after_groups,
+            options.q_stop_after_mcl_groups,
+            options.q_stop_after_seqs,
+            options.q_stop_after_alignments,
+            options.q_stop_after_trees,
+            options.q_stop_after_species_trees,
         )
     )
     if q_do_orthologs:
-        n_sp = len(speciesToUse)
-        wd = file_handler.FileHandler.GetWorkingDirectory_Write()
+        n_sp = len(species_to_use)
+        wd = file_handler.handler.get_working_directory_write()
         wd_files_test = wd + "Files_test/"
         fh = []
         try:
@@ -1225,18 +1225,18 @@ def CheckOptions(options, speciesToUse):
             # close the files again and delete
             for fhh in fh:
                 fhh.close()
-            DeleteDirectoryTree(wd_files_test)
+            delete_directory_tree(wd_files_test)
         except IOError as e:
             if str(e).startswith("[Errno 24] Too many open files"):
-                util.number_open_files_exception_advice(len(speciesToUse), False)
+                util.number_open_files_exception_advice(len(species_to_use), False)
                 for fhh in fh:
                     fhh.close()
-                DeleteDirectoryTree(wd_files_test)
-                util.Fail()
+                delete_directory_tree(wd_files_test)
+                util.fail()
             else:
                 for fhh in fh:
                     fhh.close()
-                DeleteDirectoryTree(wd_files_test)
+                delete_directory_tree(wd_files_test)
                 print(
                     "ERROR: Attempted to open required files for OrthoFinder run but an unexpected error occurred. \n\nStacktrace:"
                 )
@@ -1244,7 +1244,7 @@ def CheckOptions(options, speciesToUse):
     return options
 
 
-def ResolveSearchProgram(options, prog_caller):
+def resolve_search_program(options, prog_caller):
     """
     The search programs whose commands depend on whether the input is
     nucleotide (-d) or protein:
@@ -1252,31 +1252,31 @@ def ResolveSearchProgram(options, prog_caller):
         configured for "blastn"/"blastp" in config.json;
       - MMseqs2 (any configured method that runs it) needs --search-type 3
         for nucleotide sequences, which is then added to its commands with
-        a k-mer length (program_caller.AddNucleotideSearchType).
+        a k-mer length (program_caller.add_nucleotide_search_type).
     DIAMOND compares protein sequences only: with -d the default search is
     BLAST+ blastn instead, and DIAMOND given with -S is an error (a restart
     keeps the program of the run it continues, which ran its searches).
     The input is not read here: nucleotide input must be given with -d
-    (without it, fasta_processor.ProcessesNewFasta stops with an error).
+    (without it, fasta_processor.processes_new_fasta stops with an error).
     """
-    if options.dna and prog_caller.UsesDiamond(options.search_program) and not options.search_program_from_run:
+    if options.dna and prog_caller.uses_diamond(options.search_program) and not options.search_program_from_run:
         if options.search_program_given:
             print('ERROR: The search program "%s" (DIAMOND) compares protein sequences only, and the '
                   'input is nucleotide (-d). Use "-S blast" (BLAST+ blastn) or "-S mmseqs" (MMseqs2), '
                   'or leave out -S to use blastn.' % options.search_program)
-            util.Fail()
+            util.fail()
         print('Search program: nucleotide input (-d) is searched with BLAST+ blastn by default, as '
               'DIAMOND compares protein sequences only ("-S mmseqs" is faster on large inputs)\n')
-        if "blastn" in prog_caller.ListSearchMethods():
+        if "blastn" in prog_caller.list_search_methods():
             options.search_program = "blastn"
             return options
         options.search_program = "blast"
-    q_blast = options.search_program == "blast" and "blast" not in prog_caller.ListSearchMethods()
+    q_blast = options.search_program == "blast" and "blast" not in prog_caller.list_search_methods()
     if q_blast:
         options.search_program = "blastn" if options.dna else "blastp"
         print('Search program: "-S blast" uses BLAST+ %s (%s sequences), as configured for "%s" in config.json\n'
               % (options.search_program, "nucleotide" if options.dna else "protein", options.search_program))
-    elif options.dna and prog_caller.UsesMMseqs(options.search_program):
+    elif options.dna and prog_caller.uses_mmseqs(options.search_program):
         print('Search program: "%s" (MMseqs2) compares the nucleotide sequences as nucleotides: '
               '"--search-type 3 -k %d" is added to its search commands, and no index is created '
               '(see the mmseqs comment in config.json)\n'

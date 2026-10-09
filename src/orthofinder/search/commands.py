@@ -2,9 +2,9 @@ from ..utils import util, file_handler
 import itertools
 import os 
 
-def GetOrderedSearchCommands(
-        seqsInfo, 
-        speciesInfoObj, 
+def get_ordered_search_commands(
+        seqs_info, 
+        species_info_obj, 
         options, 
         prog_caller, 
         n_genes_per_species=None, 
@@ -16,46 +16,46 @@ def GetOrderedSearchCommands(
     the BLAST commands.
     n_genes_per_species: List[int] - number of genes per species
     """
-    iSpeciesPrevious = list(range(speciesInfoObj.iFirstNewSpecies))
-    iSpeciesNew = list(range(speciesInfoObj.iFirstNewSpecies, speciesInfoObj.nSpAll))
+    i_species_previous = list(range(species_info_obj.i_first_new_species))
+    i_species_new = list(range(species_info_obj.i_first_new_species, species_info_obj.n_sp_all))
     if q_new_species_unassigned_genes:
         if n_genes_per_species is not None:
             exclude = {isp for isp, n_genes in enumerate(n_genes_per_species) if n_genes == 0}
-            iSpeciesNew = list(set(iSpeciesNew).difference(exclude))
-        speciesPairs = [(i, j) for i, j in itertools.product(iSpeciesNew, iSpeciesNew)]
-        taskSizes = [n_genes_per_species[i]*n_genes_per_species[j] for i,j in speciesPairs]
+            i_species_new = list(set(i_species_new).difference(exclude))
+        species_pairs = [(i, j) for i, j in itertools.product(i_species_new, i_species_new)]
+        task_sizes = [n_genes_per_species[i]*n_genes_per_species[j] for i,j in species_pairs]
     else:
-        speciesPairs = [(i, j) for i, j in itertools.product(iSpeciesNew, iSpeciesNew) if (options.qDoubleBlast or i <=j)] + \
-                       [(i, j) for i, j in itertools.product(iSpeciesNew, iSpeciesPrevious) if (options.qDoubleBlast or i <=j)] + \
-                       [(i, j) for i, j in itertools.product(iSpeciesPrevious, iSpeciesNew) if (options.qDoubleBlast or i <=j)]
-        taskSizes = [seqsInfo.nSeqsPerSpecies[i]*seqsInfo.nSeqsPerSpecies[j] for i,j in speciesPairs]
+        species_pairs = [(i, j) for i, j in itertools.product(i_species_new, i_species_new) if (options.q_double_blast or i <=j)] + \
+                       [(i, j) for i, j in itertools.product(i_species_new, i_species_previous) if (options.q_double_blast or i <=j)] + \
+                       [(i, j) for i, j in itertools.product(i_species_previous, i_species_new) if (options.q_double_blast or i <=j)]
+        task_sizes = [seqs_info.n_seqs_per_species[i]*seqs_info.n_seqs_per_species[j] for i,j in species_pairs]
     
     # Smaller files should be processed first 
-    qLargestFirst = False
+    q_largest_first = False
     if options.cmd_order != "ascending":
-        qLargestFirst = True 
+        q_largest_first = True 
     
-    taskSizes, speciesPairs = util.SortArrayPairByFirst(taskSizes, speciesPairs, qLargestFirst=qLargestFirst)
+    task_sizes, species_pairs = util.sort_array_pair_by_first(task_sizes, species_pairs, q_largest_first=q_largest_first)
     
     method_threads = None
 
-    commands = [prog_caller.GetSearchMethodCommand_Search(options.search_program,
-                    file_handler.FileHandler.GetSpeciesUnassignedFastaFN(iFasta) if q_new_species_unassigned_genes else file_handler.FileHandler.GetSpeciesFastaFN(iFasta),
-                    file_handler.FileHandler.GetSpeciesDatabaseN(iDB, options.search_program),
-                    file_handler.FileHandler.GetBlastResultsFN(iFasta, iDB, qForCreation=True),
+    commands = [prog_caller.get_search_method_command_search(options.search_program,
+                    file_handler.handler.get_species_unassigned_fasta_fn(i_fasta) if q_new_species_unassigned_genes else file_handler.handler.get_species_fasta_fn(i_fasta),
+                    file_handler.handler.get_species_database_n(i_db, options.search_program),
+                    file_handler.handler.get_blast_results_fn(i_fasta, i_db, q_for_creation=True),
                     scorematrix=options.score_matrix,
                     gapopen=options.gapopen,
                     gapextend=options.gapextend,
                     method_threads=method_threads,
                     nucleotide=options.dna,
                     ) 
-                    for iFasta, iDB in speciesPairs]
-    return commands, taskSizes
+                    for i_fasta, i_db in species_pairs]
+    return commands, task_sizes
 
 
-def GetOrderedSearchCommands_clades(
-        seqsInfo, 
-        speciesInfoObj, 
+def get_ordered_search_commands_clades(
+        seqs_info, 
+        species_info_obj, 
         options, prog_caller,
         n_genes_per_species, 
         species_clades
@@ -66,24 +66,24 @@ def GetOrderedSearchCommands_clades(
     method_threads = None
 
     exclude = {isp for isp, n_genes in enumerate(n_genes_per_species) if n_genes == 0}
-    speciesPairs = []
+    species_pairs = []
     for clade in species_clades:
         clade = list(set(clade).difference(exclude))
-        speciesPairs.extend([(i, j) for i, j in itertools.product(clade, clade)])
+        species_pairs.extend([(i, j) for i, j in itertools.product(clade, clade)])
     commands = []
-    for iFasta, iDB in speciesPairs:
+    for i_fasta, i_db in species_pairs:
         if options.search_program in ["mmseqs"]:
-            unassigned = file_handler.FileHandler.GetSpeciesUnassignedFastaFN(iFasta)
+            unassigned = file_handler.handler.get_species_unassigned_fasta_fn(i_fasta)
             query = os.path.join(os.path.dirname(unassigned), os.path.basename(unassigned).split(".", 1)[-1])
         else:
-            query = file_handler.FileHandler.GetSpeciesUnassignedFastaFN(iFasta)
+            query = file_handler.handler.get_species_unassigned_fasta_fn(i_fasta)
 
         commands.append(
-            prog_caller.GetSearchMethodCommand_Search(
+            prog_caller.get_search_method_command_search(
                 options.search_program,
                 query,
-                file_handler.FileHandler.GetSpeciesDatabaseN(iDB, options.search_program),
-                file_handler.FileHandler.GetBlastResultsFN(iFasta, iDB, qForCreation=True),
+                file_handler.handler.get_species_database_n(i_db, options.search_program),
+                file_handler.handler.get_blast_results_fn(i_fasta, i_db, q_for_creation=True),
                 scorematrix=options.score_matrix,
                 gapopen=options.gapopen,
                 gapextend=options.gapextend,
@@ -92,11 +92,11 @@ def GetOrderedSearchCommands_clades(
             )
         )
     # commands = [
-    #     prog_caller.GetSearchMethodCommand_Search(
+    #     prog_caller.get_search_method_command_search(
     #         options.search_program,
-    #         files.FileHandler.GetSpeciesUnassignedFastaFN(iFasta),
-    #         files.FileHandler.GetSpeciesDatabaseN(iDB, options.search_program),
-    #         files.FileHandler.GetBlastResultsFN(iFasta, iDB, qForCreation=True),
+    #         files.FileHandler.get_species_unassigned_fasta_fn(iFasta),
+    #         files.FileHandler.get_species_database_n(iDB, options.search_program),
+    #         files.FileHandler.get_blast_results_fn(iFasta, iDB, qForCreation=True),
     #         scorematrix=options.score_matrix,
     #         gapopen=options.gapopen,
     #         gapextend=options.gapextend,
@@ -105,36 +105,36 @@ def GetOrderedSearchCommands_clades(
     #     for iFasta, iDB in speciesPairs
     # ]
     tasksize =  [
-        os.stat(file_handler.FileHandler.GetSpeciesDatabaseN(iDB, options.search_program)).st_size
-        for iFasta, iDB in speciesPairs
-        if os.path.isfile(file_handler.FileHandler.GetSpeciesDatabaseN(iDB, options.search_program)) \
-            and os.path.exists(file_handler.FileHandler.GetSpeciesDatabaseN(iDB, options.search_program))
+        os.stat(file_handler.handler.get_species_database_n(i_db, options.search_program)).st_size
+        for i_fasta, i_db in species_pairs
+        if os.path.isfile(file_handler.handler.get_species_database_n(i_db, options.search_program)) \
+            and os.path.exists(file_handler.handler.get_species_database_n(i_db, options.search_program))
     ]
 
     return  commands, tasksize
 
 
-def GetOrderedSearchCommands_accelerate(speciesInfoObj, diamond_db, options, prog_caller, q_one_query, threads=1):
+def get_ordered_search_commands_assign(species_info_obj, diamond_db, options, prog_caller, q_one_query, threads=1):
     """ Using the nSeq1 x nSeq2 as a rough estimate of the amount of work required for a given species-pair, returns the commands
     ordered so that the commands predicted to take the longest come first. This allows the load to be balanced better when processing
     the BLAST commands.
     """
-    iSpeciesNew = list(range(speciesInfoObj.iFirstNewSpecies, speciesInfoObj.nSpAll))
+    i_species_new = list(range(species_info_obj.i_first_new_species, species_info_obj.n_sp_all))
     tasksize = None
 
     method_threads = None
     
     if q_one_query:
-        wd = file_handler.FileHandler.GetSpeciesSeqsDir()[0]
+        wd = file_handler.handler.get_species_seqs_dir()[0]
         fn_single_fasta = "%sall_sequences.fa" % wd
         with open(fn_single_fasta, 'w') as outfile:
-            for iFasta in iSpeciesNew:
-                with open(file_handler.FileHandler.GetSpeciesFastaFN(iFasta), 'r') as infile:
+            for i_fasta in i_species_new:
+                with open(file_handler.handler.get_species_fasta_fn(i_fasta), 'r') as infile:
                     for line in infile:
                         outfile.write(line)
                     outfile.write("\n")
         results = wd + "Blast_all_sequences.txt"
-        # commands = [prog_caller.GetSearchMethodCommand_Search(search_program, fn_single_fasta, diamond_db, results,
+        # commands = [prog_caller.get_search_method_command_search(search_program, fn_single_fasta, diamond_db, results,
                                                                 # scorematrix=options.score_matrix, 
                                                                 # gapopen=options.gapopen, 
                                                                 # gapextend=options.gapextend,#
@@ -143,27 +143,27 @@ def GetOrderedSearchCommands_accelerate(speciesInfoObj, diamond_db, options, pro
         results_files = [results + ".gz"]
     else:
         commands = [
-            prog_caller.GetSearchMethodCommand_Search(
+            prog_caller.get_search_method_command_search(
                 options.search_program,
-                file_handler.FileHandler.GetSpeciesFastaFN(iFasta),
+                file_handler.handler.get_species_fasta_fn(i_fasta),
                 diamond_db,
-                file_handler.FileHandler.GetBlastResultsFN(iFasta, -1, qForCreation=True),
+                file_handler.handler.get_blast_results_fn(i_fasta, -1, q_for_creation=True),
                 scorematrix=options.score_matrix, 
                 gapopen=options.gapopen, 
                 gapextend=options.gapextend,#
                 method_threads=method_threads,
                 nucleotide=options.dna,
             )
-            for iFasta in iSpeciesNew
+            for i_fasta in i_species_new
         ]
         if options.search_program in ["mmseqs"]:
-            results_files = [file_handler.FileHandler.GetBlastResultsFN(iFasta, -1, qForCreation=True) for iFasta in iSpeciesNew]
+            results_files = [file_handler.handler.get_blast_results_fn(i_fasta, -1, q_for_creation=True) for i_fasta in i_species_new]
         else:
-            results_files = [file_handler.FileHandler.GetBlastResultsFN(iFasta, -1, qForCreation=True) + ".gz" for iFasta in iSpeciesNew]
+            results_files = [file_handler.handler.get_blast_results_fn(i_fasta, -1, q_for_creation=True) + ".gz" for i_fasta in i_species_new]
         tasksize = [
-            os.stat(file_handler.FileHandler.GetSpeciesFastaFN(iFasta)).st_size
-            for iFasta in iSpeciesNew
-            if os.path.isfile(file_handler.FileHandler.GetSpeciesFastaFN(iFasta)) \
-                and os.path.exists(file_handler.FileHandler.GetSpeciesFastaFN(iFasta))
+            os.stat(file_handler.handler.get_species_fasta_fn(i_fasta)).st_size
+            for i_fasta in i_species_new
+            if os.path.isfile(file_handler.handler.get_species_fasta_fn(i_fasta)) \
+                and os.path.exists(file_handler.handler.get_species_fasta_fn(i_fasta))
         ]
     return commands, tasksize, results_files

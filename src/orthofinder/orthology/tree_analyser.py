@@ -7,7 +7,7 @@ Created on Tue Aug  1 09:11:11 2017
 Perform directed 'reconciliation' first and then apply EggNOG method
 
 1 - root gene trees on outgroup: unique one this time
-2 - infer orthologues
+2 - infer orthologs
 """
 import os
 import sys
@@ -29,50 +29,50 @@ from ..utils import util, file_handler, file_io
 debug = False   # HOGs
 
 
-def GeneToSpecies_dash(g):
+def gene_to_species_dash(g):
   return g.split("_", 1)[0]
   
-OrthoFinderIDs = GeneToSpecies_dash
+ortho_finder_ids = gene_to_species_dash
 
 
-def SpeciesAndGene_dash(g):
+def species_and_gene_dash(g):
   return g.split("_", 1)
 
   
-SpeciesAndGene_lookup = {
-    GeneToSpecies_dash:SpeciesAndGene_dash, 
+species_and_gene_lookup = {
+    gene_to_species_dash:species_and_gene_dash, 
 }
 
 
 class RootMap(object):
-    def __init__(self, setA, setB, GeneToSpecies):
-        self.setA = setA
-        self.setB = setB
+    def __init__(self, set_a, set_b, GeneToSpecies):
+        self.set_a = set_a
+        self.set_b = set_b
         self.GeneToSpecies = GeneToSpecies
         
-    def GeneMap(self, gene_name):
+    def gene_map(self, gene_name):
         sp = self.GeneToSpecies(gene_name)
-        if sp in self.setA: return True 
-        elif sp in self.setB: return False
+        if sp in self.set_a: return True 
+        elif sp in self.set_b: return False
         else: return None
 
 class TreeAnalyser(object):
     def __init__(
             self, 
-            nOgs, 
-            dResultsOrthologues, 
-            reconTreesRenamedDir, 
+            n_ogs, 
+            d_results_orthologs, 
+            recon_trees_renamed_dir, 
             species_tree_rooted_labelled, 
-            speciesToUse, 
+            species_to_use, 
             GeneToSpecies, 
-            SequenceDict, 
-            speciesDict, 
+            sequence_dict, 
+            species_dict, 
             spec_seq_dict, 
             neighbours, 
-            qNoRecon, 
+            q_no_recon, 
             dups_file_handle, 
             stride_dups, 
-            ologs_files_handles, 
+            orthologs_files_handles, 
             putative_xenolog_file_handles, 
             hog_writer, 
             q_split_paralogous_clades, 
@@ -81,27 +81,27 @@ class TreeAnalyser(object):
             write_hog_tree=True,
             fix_files=True,
     ):
-        self.nOgs = nOgs
-        self.dResultsOrthologues = dResultsOrthologues
-        self.reconTreesRenamedDir = reconTreesRenamedDir
+        self.n_ogs = n_ogs
+        self.d_results_orthologs = d_results_orthologs
+        self.recon_trees_renamed_dir = recon_trees_renamed_dir
         self.species_tree_rooted_labelled = species_tree_rooted_labelled
-        self.speciesToUse = speciesToUse
-        self.nspecies = len(self.speciesToUse)
+        self.species_to_use = species_to_use
+        self.nspecies = len(self.species_to_use)
         self.GeneToSpecies = GeneToSpecies
-        self.SequenceDict = SequenceDict
-        self.speciesDict = speciesDict
+        self.sequence_dict = sequence_dict
+        self.species_dict = species_dict
         self.spec_seq_dict = spec_seq_dict
         self.spec_seq_dict[">%d genes" % (5*self.nspecies)] = ">%d genes" % (5*self.nspecies)   # used in Duplications
         self.neighbours = neighbours
-        self.qNoRecon = qNoRecon
+        self.q_no_recon = q_no_recon
         self.dups_file_handle = dups_file_handle
         self.stride_dups = stride_dups
-        self.ologs_files_handles = ologs_files_handles
+        self.orthologs_files_handles = orthologs_files_handles
         self.putative_xenolog_file_handles = putative_xenolog_file_handles
         self.hog_writer = hog_writer
         self.q_split_paralogous_clades = q_split_paralogous_clades
         self.fewer_open_files = fewer_open_files
-        self.lock_ologs = [mp.Lock() for i in range(self.nspecies)]   # lock the larger of the two species index
+        self.lock_orthologs = [mp.Lock() for i in range(self.nspecies)]   # lock the larger of the two species index
         self.lock_dups = mp.Lock()
         self.lock_suspect = mp.Lock()
         self.lock_hogs = mp.Lock()
@@ -110,30 +110,30 @@ class TreeAnalyser(object):
         self.fix_files = fix_files
 
 
-    def AnalyseTree(self, iog, nOrtho_acc=None):
+    def analyse_tree(self, iog, n_ortho_acc=None):
         """
         Analyse one gene tree.
 
         It returns a payload to the parent process.
 
-        If nOrtho_acc (a util.nOrtho_sp) is given, this tree's orthologue
+        If nOrtho_acc (a util.NOrthoSp) is given, this tree's ortholog
         counts are added to it once the whole tree has been analysed, and the
         payload's "n_orthologues" is None. Otherwise it holds a dense
-        nOrtho_sp for this tree.
+        NOrthoSp for this tree.
         """
         og_name = "OG%07d" % iog
-        n_species = len(self.speciesToUse)
+        n_species = len(self.species_to_use)
 
         try:
             if self.write_hog_tree or not self.fix_files:
-                tree_file = file_handler.FileHandler.GetOGsTreeFN(iog)
+                tree_file = file_handler.handler.get_ogs_tree_fn(iog)
             else:
-                tree_file = file_handler.FileHandler.GetResolvedTreeIDDir() + "OG%07d.txt" % iog
+                tree_file = file_handler.handler.get_resolved_tree_id_dir() + "OG%07d.txt" % iog
 
             if not os.path.exists(tree_file):
                 return None
 
-            rooted_tree_ids, qHaveSupport = CheckAndRootTree(
+            rooted_tree_ids, q_have_support = check_and_root_tree(
                 tree_file,
                 self.species_tree_rooted_labelled,
                 self.GeneToSpecies
@@ -142,57 +142,57 @@ class TreeAnalyser(object):
             if rooted_tree_ids is None:
                 return None
 
-            ologs, recon_tree, suspect_genes, dups = GetOrthologues_from_tree(
+            orthologs, recon_tree, suspect_genes, dups = get_orthologs_from_tree(
                 iog,
                 rooted_tree_ids,
                 self.species_tree_rooted_labelled,
                 self.GeneToSpecies,
                 self.neighbours,
                 q_get_dups=True,
-                qNoRecon=self.qNoRecon
+                q_no_recon=self.q_no_recon
             )
 
-            olog_lines = EmptyOlogLines(self.nspecies, self.fewer_open_files)
-            olog_sus_lines = ["" for _ in range(self.nspecies)]
+            ortholog_lines = empty_ortholog_lines(self.nspecies, self.fewer_open_files)
+            ortholog_sus_lines = ["" for _ in range(self.nspecies)]
 
-            pair_counts = [] if nOrtho_acc is not None else None
-            nOrthologues_SpPair = GetLinesForOlogFiles(
-                [(iog, ologs)],
-                self.speciesDict,
-                self.speciesToUse,
-                self.SequenceDict,
+            pair_counts = [] if n_ortho_acc is not None else None
+            n_orthologs_sp_pair = get_lines_for_ortholog_files(
+                [(iog, orthologs)],
+                self.species_dict,
+                self.species_to_use,
+                self.sequence_dict,
                 len(suspect_genes) > 0,
-                olog_lines,
-                olog_sus_lines,
+                ortholog_lines,
+                ortholog_sus_lines,
                 fewer_open_files=self.fewer_open_files,
                 pair_counts=pair_counts,
             )
 
-            cached_hogs = GetHOGs_from_tree(
+            cached_hogs = get_hogs_from_tree(
                 iog,
                 recon_tree,
                 self.hog_writer,
                 self.q_split_paralogous_clades,
             )
 
-            util.RenameTreeTaxa(
+            util.rename_tree_taxa(
                 recon_tree,
-                self.reconTreesRenamedDir + "OG%07d.txt" % iog,
+                self.recon_trees_renamed_dir + "OG%07d.txt" % iog,
                 self.spec_seq_dict,
-                qSupport=False,
-                qFixNegatives=True
+                q_support=False,
+                q_fix_negatives=True
             )
 
-            if nOrtho_acc is not None:
+            if n_ortho_acc is not None:
                 # Only count trees that were analysed completely.
                 for counts in pair_counts:
-                    nOrtho_acc.add_pair(*counts)
+                    n_ortho_acc.add_pair(*counts)
 
             return {
                 "iog": iog,
-                "n_orthologues": nOrthologues_SpPair,
-                "olog_lines": olog_lines,
-                "olog_sus_lines": olog_sus_lines,
+                "n_orthologues": n_orthologs_sp_pair,
+                "olog_lines": ortholog_lines,
+                "olog_sus_lines": ortholog_sus_lines,
                 "duplications": dups,
                 "suspect_genes": suspect_genes,
                 "cached_hogs": cached_hogs,
@@ -205,63 +205,63 @@ class TreeAnalyser(object):
             return {
                 "iog": iog,
                 "n_orthologues": (
-                    util.nOrtho_sp(n_species) if nOrtho_acc is None else None
+                    util.NOrthoSp(n_species) if n_ortho_acc is None else None
                 ),
-                "olog_lines": EmptyOlogLines(self.nspecies, self.fewer_open_files),
+                "olog_lines": empty_ortholog_lines(self.nspecies, self.fewer_open_files),
                 "olog_sus_lines": ["" for _ in range(self.nspecies)],
                 "duplications": [],
                 "suspect_genes": set(),
                 "cached_hogs": [],
             }
 
-def EmptyOlogLines(nspecies, fewer_open_files):
+def empty_ortholog_lines(nspecies, fewer_open_files):
     """
-    Per-species containers for one tree's orthologue rows.
+    Per-species containers for one tree's ortholog rows.
 
     In pairwise mode each row is a dict {j: text} holding only the partner
-    species that have orthologues, instead of an nspecies x nspecies grid
-    (1,000,000 cells per tree at 1,000 species). Use IterOlogRow to read it.
+    species that have orthologs, instead of an nspecies x nspecies grid
+    (1,000,000 cells per tree at 1,000 species). Use iter_ortholog_row to read it.
     """
     if fewer_open_files:
         return [[""] for _ in range(nspecies)]
     return [{} for _ in range(nspecies)]
 
 
-def IterOlogRow(row):
+def iter_ortholog_row(row):
     """(j, text) for the non-empty cells of an olog_lines row (list or dict)."""
     items = row.items() if isinstance(row, dict) else enumerate(row)
     return ((j, text) for j, text in items if text)
 
 
-def CheckAndRootTree(treeFN, species_tree_rooted, GeneToSpecies):
+def check_and_root_tree(tree_fn, species_tree_rooted, GeneToSpecies):
     """
     Check that the tree can be analysed and rooted
     Root tree
     Returns None if this fails, i.e. checks: exists, has more than one gene, can be rooted
     """
-    if (not os.path.exists(treeFN)) or os.stat(treeFN).st_size == 0:
+    if (not os.path.exists(tree_fn)) or os.stat(tree_fn).st_size == 0:
         return None, False
-    qHaveSupport = False
+    q_have_support = False
     try:
-        tree = tree_lib.Tree(treeFN, format=2)
-        qHaveSupport = True
+        tree = tree_lib.Tree(tree_fn, format=2)
+        q_have_support = True
     except:
         try:
-            tree = tree_lib.Tree(treeFN)
+            tree = tree_lib.Tree(tree_fn)
         except:
-            tree = tree_lib.Tree(treeFN, format=3)
+            tree = tree_lib.Tree(tree_fn, format=3)
     if len(tree) == 1: 
         return None, False
-    root = GetRoot(tree, species_tree_rooted, GeneToSpecies)
+    root = get_root(tree, species_tree_rooted, GeneToSpecies)
     if root == None: 
         return None, False
     # Pick the first root for now
     if root != tree:
         tree.set_outgroup(root)
-    return tree, qHaveSupport
+    return tree, q_have_support
 
-def GetRoot(tree, species_tree_rooted, GeneToSpecies):
-        roots = GetRoots(tree, species_tree_rooted, GeneToSpecies)
+def get_root(tree, species_tree_rooted, GeneToSpecies):
+        roots = get_roots(tree, species_tree_rooted, GeneToSpecies)
         if len(roots) > 0:
             root_dists = [r.get_closest_leaf()[1] for r in roots]
             i, _ = max(enumerate(root_dists), key=operator.itemgetter(1))
@@ -269,27 +269,27 @@ def GetRoot(tree, species_tree_rooted, GeneToSpecies):
         else:
             return None # single species tree
         
-def GetRoots(tree, species_tree_rooted, GeneToSpecies):
+def get_roots(tree, species_tree_rooted, GeneToSpecies):
     """
     Allow non-binary gene or species trees.
     (A,B,C) => consider splits A|BC, B|AC, C|AB - this applies to gene and species tree
     If a clean ingroup/outgroup split cannot be found then score root by geometric mean of fraction of expected species actually 
     observed for the two splits
     """
-    speciesObserved = set([GeneToSpecies(g) for g in tree.get_leaf_names()])
-    if len(speciesObserved) == 1:
+    species_observed = set([GeneToSpecies(g) for g in tree.get_leaf_names()])
+    if len(species_observed) == 1:
         return [next(n for n in tree)] # arbitrary root if all genes are from the same species
     
     # use species tree to find correct outgroup according to what species are present in the gene tree
     n = species_tree_rooted
     children = n.get_children()
     leaves = [set(ch.get_leaf_names()) for ch in children]
-    have = [len(l.intersection(speciesObserved)) != 0 for l in leaves]
+    have = [len(l.intersection(species_observed)) != 0 for l in leaves]
     while sum(have) < 2:
         n = children[have.index(True)]
         children = n.get_children()
         leaves = [set(ch.get_leaf_names()) for ch in children]
-        have = [len(l.intersection(speciesObserved)) != 0 for l in leaves]
+        have = [len(l.intersection(species_observed)) != 0 for l in leaves]
 
     # Get splits to look for
     roots_list = []
@@ -297,7 +297,7 @@ def GetRoots(tree, species_tree_rooted, GeneToSpecies):
 #    roots_set = set()
     # Species below/above each node: the same for every split, so computed once
     # (the tree is not modified in this loop).
-    StoreSpeciesSets(tree, GeneToSpecies)   # sets of species
+    store_species_sets(tree, GeneToSpecies)   # sets of species
     for i in range(len(leaves)):
         t1 = leaves[i]
         t2 = set.union(*[l for j,l in enumerate(leaves) if j!=i])
@@ -309,9 +309,9 @@ def GetRoots(tree, species_tree_rooted, GeneToSpecies):
         sett2 = set(t2)
         nt1 = float(len(t1))
         nt2 = float(len(t2))
-        N_recip = 1./(nt1*nt1*nt2*nt2)
-        GeneMap = root_mapper.GeneMap
-        StoreSpeciesSets(tree, GeneMap, "inout_") # ingroup/outgroup identification
+        n_recip = 1./(nt1*nt1*nt2*nt2)
+        gene_map = root_mapper.gene_map
+        store_species_sets(tree, gene_map, "inout_") # ingroup/outgroup identification
         # find all possible locations in the gene tree at which the root should be
 
         T = {True,}
@@ -344,7 +344,7 @@ def GetRoots(tree, species_tree_rooted, GeneToSpecies):
                         sp_down = nodes[i].sp_down
                         sp_up = nodes[i].sp_up
 #                        print(m)
-                        scores_list.append(OutgroupIngroupSeparationScore(sp_up, sp_down, sett1, sett2, N_recip, nt1, nt2))
+                        scores_list.append(outgroup_ingroup_separation_score(sp_up, sp_down, sett1, sett2, n_recip, nt1, nt2))
                     elif clades.count(TF) >= 2:  
                         # (A,A,A)-excluded, (A,A,AB)-ignore as want A to be bigest without including B, (A,AB,AB), (AB,AB,AB) 
                         i = 0
@@ -352,7 +352,7 @@ def GetRoots(tree, species_tree_rooted, GeneToSpecies):
                         sp_down = nodes[i].sp_down
                         sp_up = nodes[i].sp_up
 #                        print(m)
-                        scores_list.append(OutgroupIngroupSeparationScore(sp_up, sp_down, sett1, sett2, N_recip, nt1, nt2))
+                        scores_list.append(outgroup_ingroup_separation_score(sp_up, sp_down, sett1, sett2, n_recip, nt1, nt2))
                 elif T in clades and F in clades:
                     roots_list.append(m)
                     scores_list.append(0)  # last choice
@@ -362,14 +362,14 @@ def GetRoots(tree, species_tree_rooted, GeneToSpecies):
     return [sorted(zip(scores_list, roots_list), key=lambda x: x[0], reverse=True)[0][1]]
 
 
-def StoreSpeciesSets(t, GeneMap, tag="sp_"):
+def store_species_sets(t, gene_map, tag="sp_"):
     if t is None:
         raise ValueError("StoreSpeciesSets got t=None (tree is None)")
     tag_up = tag + "up"
     tag_down = tag + "down"  
     for node in t.traverse('postorder'):
         if node.is_leaf():
-            node_type = GeneMap(node.name)
+            node_type = gene_map(node.name)
             node.add_feature(tag_down, set() if node_type is None else {node_type})
         elif node.is_root():
             continue
@@ -389,10 +389,10 @@ def StoreSpeciesSets(t, GeneMap, tag="sp_"):
                 node.add_feature(tag_up, parent.__getattribute__(tag_up).union(sp_downs))
     t.add_feature(tag_down, set.union(*[ch.__getattribute__(tag_down) for ch in t.get_children()]))
 
-def OutgroupIngroupSeparationScore(sp_up, sp_down, sett1, sett2, N_recip, n1, n2):
-    f_dup = len(sp_up.intersection(sett1)) * len(sp_up.intersection(sett2)) * len(sp_down.intersection(sett1)) * len(sp_down.intersection(sett2)) * N_recip
-    f_a = len(sp_up.intersection(sett1)) * (n2-len(sp_up.intersection(sett2))) * (n1-len(sp_down.intersection(sett1))) * len(sp_down.intersection(sett2)) * N_recip
-    f_b = (n1-len(sp_up.intersection(sett1))) * len(sp_up.intersection(sett2)) * len(sp_down.intersection(sett1)) * (n2-len(sp_down.intersection(sett2))) * N_recip
+def outgroup_ingroup_separation_score(sp_up, sp_down, sett1, sett2, n_recip, n1, n2):
+    f_dup = len(sp_up.intersection(sett1)) * len(sp_up.intersection(sett2)) * len(sp_down.intersection(sett1)) * len(sp_down.intersection(sett2)) * n_recip
+    f_a = len(sp_up.intersection(sett1)) * (n2-len(sp_up.intersection(sett2))) * (n1-len(sp_down.intersection(sett1))) * len(sp_down.intersection(sett2)) * n_recip
+    f_b = (n1-len(sp_up.intersection(sett1))) * len(sp_up.intersection(sett2)) * len(sp_down.intersection(sett1)) * (n2-len(sp_down.intersection(sett2))) * n_recip
     choice = (f_dup, f_a, f_b)
     return max(choice)
 
@@ -452,34 +452,34 @@ class SpeciesSets(object):
         return self.leaves[name]
 
 
-def GetOrthologues_from_tree(
+def get_orthologs_from_tree(
         iog,
         tree,
         species_tree_rooted,
         GeneToSpecies,
         neighbours,
         q_get_dups=False,
-        qNoRecon=False,
+        q_no_recon=False,
     ):
-    """Infer orthologues and duplications from a reconciled gene tree."""
+    """Infer orthologs and duplications from a reconciled gene tree."""
     og_name = "OG%07d" % iog
-    qPrune = False
+    q_prune = False
 
-    SpeciesAndGene = SpeciesAndGene_lookup[GeneToSpecies]
+    species_and_gene = species_and_gene_lookup[GeneToSpecies]
 
-    orthologues = []
+    orthologs = []
     duplications = []
 
-    if not qNoRecon:
-        tree = Resolve(tree, GeneToSpecies)
+    if not q_no_recon:
+        tree = resolve_tree(tree, GeneToSpecies)
 
-    if qPrune:
+    if q_prune:
         tree.prune(tree.get_leaf_names())
 
     if len(tree) == 1:
-        return set(orthologues), tree, set(), duplications
+        return set(orthologs), tree, set(), duplications
 
-    iNode = 1
+    i_node = 1
     tree.name = "n0"
 
     suspect_genes = set()
@@ -493,7 +493,7 @@ def GetOrthologues_from_tree(
     def species_tree_mrca(mask, species):
         node = mrca_cache.get(mask)
         if node is None:
-            node = MRCA_node(species_tree_rooted, species)
+            node = mrca_node(species_tree_rooted, species)
             mrca_cache[mask] = node
         return node
 
@@ -502,13 +502,13 @@ def GetOrthologues_from_tree(
             continue
 
         if not n.is_root():
-            n.name = "n%d" % iNode
-            iNode += 1
+            n.name = "n%d" % i_node
+            i_node += 1
 
         ch = n.get_children()
 
         if len(ch) == 2:
-            oSize, overlap, sp0, sp1 = OverlapSize(
+            o_size, overlap, sp0, sp1 = overlap_size(
                 n,
                 GeneToSpecies,
                 suspect_genes,
@@ -518,14 +518,14 @@ def GetOrthologues_from_tree(
             sp_present = sp0.union(sp1)
             if len(sp_present) == len(sp_sets.species(n)):
                 # No species removed as suspect: the set is exactly the species below n.
-                stNode = species_tree_mrca(sp_sets.mask(n), sp_present)
+                st_node = species_tree_mrca(sp_sets.mask(n), sp_present)
             else:
-                stNode = MRCA_node(species_tree_rooted, sp_present)
+                st_node = mrca_node(species_tree_rooted, sp_present)
 
-            n.add_feature("sp_node", stNode.name)
+            n.add_feature("sp_node", st_node.name)
 
-            if oSize != 0:
-                qResolved, misplaced_genes = ResolveOverlap(
+            if o_size != 0:
+                q_resolved, misplaced_genes = resolve_overlap(
                     overlap,
                     sp0,
                     sp1,
@@ -543,7 +543,7 @@ def GetOrthologues_from_tree(
             else:
                 misplaced_genes = empty_set
 
-            dup = oSize != 0 and not qResolved
+            dup = o_size != 0 and not q_resolved
 
             n.add_feature("dup", dup)
 
@@ -555,9 +555,9 @@ def GetOrthologues_from_tree(
                     genes1 = ch[1].get_leaf_names()
 
                     duplications.append((
-                        stNode.name,
+                        st_node.name,
                         n.name,
-                        float(oSize) / len(stNode),
+                        float(o_size) / len(st_node),
                         genes0,
                         genes1
                     ))
@@ -565,12 +565,12 @@ def GetOrthologues_from_tree(
             else:
                 n.add_feature("dup_type", "speciation")
 
-                orthologues.append(
-                    Orthologs_and_Suspect(
+                orthologs.append(
+                    orthologs_and_suspect(
                         ch,
                         suspect_genes,
                         misplaced_genes,
-                        SpeciesAndGene
+                        species_and_gene
                     )
                 )
 
@@ -579,24 +579,24 @@ def GetOrthologues_from_tree(
         elif len(ch) > 2:
             species = [sp_sets.species(child) for child in ch]
             all_species = set.union(*species)
-            stNode = species_tree_mrca(sp_sets.mask(n), all_species)
-            n.add_feature("sp_node", stNode.name)
+            st_node = species_tree_mrca(sp_sets.mask(n), all_species)
+            n.add_feature("sp_node", st_node.name)
 
             if len(all_species) == 1:
                 genes = n.get_leaf_names()
-                duplications.append((stNode.name, n.name, 1.0, genes, []))
+                duplications.append((st_node.name, n.name, 1.0, genes, []))
                 n.add_feature("dup", True)
             else:
                 dups = []
                 for (n0, s0), (n1, s1) in itertools.combinations(
                         zip(ch, species), 2):
                     if len(s0.intersection(s1)) == 0:
-                        orthologues.append(
-                            Orthologs_and_Suspect(
+                        orthologs.append(
+                            orthologs_and_suspect(
                                 (n0, n1),
                                 suspect_genes,
                                 empty_set,
-                                SpeciesAndGene
+                                species_and_gene
                             )
                         )
                         dups.append(False)
@@ -605,17 +605,17 @@ def GetOrthologues_from_tree(
 
                 if all(dups):
                     genes = n.get_leaf_names()
-                    duplications.append((stNode.name, n.name, 1.0, genes, []))
+                    duplications.append((st_node.name, n.name, 1.0, genes, []))
 
                 n.add_feature("dup", all(dups))
 
-    return orthologues, tree, suspect_genes, duplications
+    return orthologs, tree, suspect_genes, duplications
 
 
-def Resolve(tree, GeneToSpecies):
+def resolve_tree(tree, GeneToSpecies):
     if tree is None:
         raise ValueError("Resolve got tree=None")
-    StoreSpeciesSets(tree, GeneToSpecies)
+    store_species_sets(tree, GeneToSpecies)
     for n in tree.traverse("postorder"):
         new_tree = resolve.resolve(n, GeneToSpecies)
         if new_tree is not None:
@@ -623,11 +623,11 @@ def Resolve(tree, GeneToSpecies):
     return tree
 
 
-def MRCA_node(t_rooted, taxa):
+def mrca_node(t_rooted, taxa):
     return (t_rooted & next(taxon for taxon in taxa)) if len(taxa) == 1 else t_rooted.get_common_ancestor(taxa)
 
 
-def OverlapSize(node, GeneToSpecies, suspect_genes, sp_sets=None):
+def overlap_size(node, GeneToSpecies, suspect_genes, sp_sets=None):
     if sp_sets is None:
         descendents = [{GeneToSpecies(l) for l in n.get_leaf_names()}.difference(suspect_genes) for n in node.get_children()]
     else:
@@ -635,7 +635,7 @@ def OverlapSize(node, GeneToSpecies, suspect_genes, sp_sets=None):
     intersection = descendents[0].intersection(descendents[1])
     return len(intersection), intersection, descendents[0], descendents[1]
 
-def ResolveOverlap(overlap, sp0, sp1, ch, tree, neighbours, GeneToSpecies, relOverlapCutoff=4, sp_sets=None):
+def resolve_overlap(overlap, sp0, sp1, ch, tree, neighbours, GeneToSpecies, rel_overlap_cutoff=4, sp_sets=None):
     """
     Is an overlap suspicious and if so can it be resolved by identifying genes that are out of place?
     Args:
@@ -654,23 +654,23 @@ def ResolveOverlap(overlap, sp0, sp1, ch, tree, neighbours, GeneToSpecies, relOv
         - for each species with genes in both clades: the genes in one clade must all be more out of place (according to the 
           species tree) than all the gene from that species in the other tree
     """
-    oSize = len(overlap)
+    o_size = len(overlap)
     lsp0 = len(sp0)
     lsp1 = len(sp1)
-    if (oSize == lsp0 or oSize == lsp1) or (relOverlapCutoff*oSize >= lsp0 and relOverlapCutoff*oSize >= lsp1): 
+    if (o_size == lsp0 or o_size == lsp1) or (rel_overlap_cutoff*o_size >= lsp0 and rel_overlap_cutoff*o_size >= lsp1): 
         return False, []
     # The overlap looks suspect, misplaced genes?
     # for each species, we'd need to be able to determine that all genes from A or all genes from B are misplaced
     genes_removed = []
-    nA_removed = 0
-    nB_removed = 0
-    qResolved = True
+    n_a_removed = 0
+    n_b_removed = 0
+    q_resolved = True
     for sp in overlap:
         A = [g for g in ch[0].get_leaf_names() if GeneToSpecies(g) == sp]
         B = [g for g in ch[1].get_leaf_names() if GeneToSpecies(g) == sp]
-        A_levels = []
-        B_levels = []
-        for X, level in zip((A,B),(A_levels, B_levels)):
+        a_levels = []
+        b_levels = []
+        for X, level in zip((A,B),(a_levels, b_levels)):
             for g in X:
                 if sp_sets is None:
                     gene_node = tree & g
@@ -679,34 +679,34 @@ def ResolveOverlap(overlap, sp0, sp1, ch, tree, neighbours, GeneToSpecies, relOv
                     gene_node = sp_sets.leaf(g)
                     species_below = sp_sets.species
                 r = gene_node.up
-                nextSpecies = species_below(r)
+                next_species = species_below(r)
                 # having a gene from the same species isn't enough?? No, but we add to the count I think.
-                while len(nextSpecies) == 1:
+                while len(next_species) == 1:
                     r = r.up
-                    nextSpecies = species_below(r)
-                nextSpecies.remove(sp)
+                    next_species = species_below(r)
+                next_species.remove(sp)
                 # get the level
                 # the sum of the closest and furthest expected distance topological distance for the closest genes in the gene tree (based on species tree topology)
                 neigh = neighbours[sp]
-                observed = [neigh[nSp] for nSp in nextSpecies]
+                observed = [neigh[n_sp] for n_sp in next_species]
                 level.append(min(observed) + max(observed))
-        qRemoveA = max(B_levels) + 2 < min(A_levels)   # if the clade is one step up the tree further way (min=max) then this gives +2. There's no way this is a problem                        
-        qRemoveB = max(A_levels) + 2 < min(B_levels)                           
-        if qRemoveA and relOverlapCutoff*oSize < len(sp0):
-            nA_removed += len(A_levels)
+        q_remove_a = max(b_levels) + 2 < min(a_levels)   # if the clade is one step up the tree further way (min=max) then this gives +2. There's no way this is a problem                        
+        q_remove_b = max(a_levels) + 2 < min(b_levels)                           
+        if q_remove_a and rel_overlap_cutoff*o_size < len(sp0):
+            n_a_removed += len(a_levels)
             genes_removed.extend(A)
-        elif qRemoveB and relOverlapCutoff*oSize < len(sp1):
-            nB_removed += len(B_levels)
+        elif q_remove_b and rel_overlap_cutoff*o_size < len(sp1):
+            n_b_removed += len(b_levels)
             genes_removed.extend(B)
         else:
-            qResolved = False
+            q_resolved = False
             break
-    if qResolved:
+    if q_resolved:
         return True, set(genes_removed)
     else:
         return False, set()
           
-def Orthologs_and_Suspect(ch, suspect_genes, misplaced_genes, SpeciesAndGene):
+def orthologs_and_suspect(ch, suspect_genes, misplaced_genes, species_and_gene):
     """
     ch - the two child nodes that are orthologous
     suspect_genes - genes already identified as misplaced at lower levels
@@ -719,7 +719,7 @@ def Orthologs_and_Suspect(ch, suspect_genes, misplaced_genes, SpeciesAndGene):
     d_sus = [defaultdict(list) for _ in range(2)] 
     for node, di, d_susi in zip(ch, d, d_sus):
         for g in [g for g in node.get_leaf_names() if g not in misplaced_genes]:
-            sp, seq = SpeciesAndGene(g)
+            sp, seq = species_and_gene(g)
             if g in suspect_genes:
                 d_susi[sp].append(seq)
             else:
@@ -727,36 +727,36 @@ def Orthologs_and_Suspect(ch, suspect_genes, misplaced_genes, SpeciesAndGene):
     return d[0], d[1], d_sus[0], d_sus[1]
 
 
-def GetLinesForOlogFiles(
-        orthologues_alltrees,
-        speciesDict,
-        iSpeciesToUse,
-        sequenceDict,
-        qContainsSuspectOlogs,
-        olog_lines,
-        olog_sus_lines,
+def get_lines_for_ortholog_files(
+        orthologs_alltrees,
+        species_dict,
+        i_species_to_use,
+        sequence_dict,
+        q_contains_suspect_orthologs,
+        ortholog_lines,
+        ortholog_sus_lines,
         fewer_open_files,
         pair_counts=None,
     ):
     """
-    Add orthologue rows to olog_lines/olog_sus_lines.
+    Add ortholog rows to olog_lines/olog_sus_lines.
 
-    Returns a dense nOrtho_sp for these trees. If pair_counts is a list, the
+    Returns a dense NOrthoSp for these trees. If pair_counts is a list, the
     (iL, iR, nL, nR) records are appended to it instead and None is returned,
     which avoids allocating five nspecies x nspecies matrices per tree.
     """
-    nsp = len(iSpeciesToUse)
-    nOrtho = util.nOrtho_sp(nsp) if pair_counts is None else None
+    nsp = len(i_species_to_use)
+    n_ortho = util.NOrthoSp(nsp) if pair_counts is None else None
 
     # Rows are collected in lists and joined once at the end. Appending with
     # olog_lines[i][j] += row copies the whole accumulated string every time
     # (Python can't append in place to a string held in a list), which is
     # quadratic for large trees.
-    olog_parts = defaultdict(list)   # (i, j) -> rows
+    ortholog_parts = defaultdict(list)   # (i, j) -> rows
     sus_parts = defaultdict(list)    # i -> rows
 
-    sp_to_i = {str(sp): i for i, sp in enumerate(iSpeciesToUse)}
-    sp_label = [speciesDict[str(sp)] for sp in iSpeciesToUse]
+    sp_to_i = {str(sp): i for i, sp in enumerate(i_species_to_use)}
+    sp_label = [species_dict[str(sp)] for sp in i_species_to_use]
     getrow = file_io.unquoted_line
 
     seq_cache = {}
@@ -767,7 +767,7 @@ def GetLinesForOlogFiles(
         v = seq_cache.get(key)
 
         if v is None:
-            v = sequenceDict[key]
+            v = sequence_dict[key]
             seq_cache[key] = v
 
         return v
@@ -777,117 +777,117 @@ def GetLinesForOlogFiles(
             sorted(seq_name(sp, g) for g in genes)
         )
 
-    def add_stats(iL, iR, nL, nR):
+    def add_stats(i_l, i_r, n_l, n_r):
         if pair_counts is None:
-            nOrtho.add_pair(iL, iR, nL, nR)
+            n_ortho.add_pair(i_l, i_r, n_l, n_r)
         else:
-            pair_counts.append((iL, iR, nL, nR))
+            pair_counts.append((i_l, i_r, n_l, n_r))
 
-    def add_olog_row(og, spL, genesL, spR, genesR):
+    def add_ortholog_row(og, sp_l, genes_l, sp_r, genes_r):
         """
-        Add one species-pair orthologue row in both directions.
+        Add one species-pair ortholog row in both directions.
         """
-        spL = str(spL)
-        spR = str(spR)
+        sp_l = str(sp_l)
+        sp_r = str(sp_r)
 
-        if spL == spR:
+        if sp_l == sp_r:
             return
 
-        if not genesL or not genesR:
+        if not genes_l or not genes_r:
             return
 
-        iL = sp_to_i[spL]
-        iR = sp_to_i[spR]
+        i_l = sp_to_i[sp_l]
+        i_r = sp_to_i[sp_r]
 
-        nL = len(genesL)
-        nR = len(genesR)
+        n_l = len(genes_l)
+        n_r = len(genes_r)
 
-        textL = join_gene_names(spL, genesL)
-        textR = join_gene_names(spR, genesR)
+        text_l = join_gene_names(sp_l, genes_l)
+        text_r = join_gene_names(sp_r, genes_r)
 
         if fewer_open_files:
-            olog_parts[(iL, 0)].append(getrow((
+            ortholog_parts[(i_l, 0)].append(getrow((
                 og,
-                sp_label[iR],
-                textL,
-                textR
+                sp_label[i_r],
+                text_l,
+                text_r
             )))
 
-            olog_parts[(iR, 0)].append(getrow((
+            ortholog_parts[(i_r, 0)].append(getrow((
                 og,
-                sp_label[iL],
-                textR,
-                textL
+                sp_label[i_l],
+                text_r,
+                text_l
             )))
 
         else:
-            olog_parts[(iL, iR)].append(getrow((
+            ortholog_parts[(i_l, i_r)].append(getrow((
                 og,
-                textL,
-                textR
+                text_l,
+                text_r
             )))
 
-            olog_parts[(iR, iL)].append(getrow((
+            ortholog_parts[(i_r, i_l)].append(getrow((
                 og,
-                textR,
-                textL
+                text_r,
+                text_l
             )))
 
-        add_stats(iL, iR, nL, nR)
+        add_stats(i_l, i_r, n_l, n_r)
 
-    def add_suspect_row(og, spL, genesL, spR, genesR):
-        spL = str(spL)
-        spR = str(spR)
+    def add_suspect_row(og, sp_l, genes_l, sp_r, genes_r):
+        sp_l = str(sp_l)
+        sp_r = str(sp_r)
 
-        if spL == spR:
+        if sp_l == sp_r:
             return
 
-        if not genesL or not genesR:
+        if not genes_l or not genes_r:
             return
 
-        iL = sp_to_i[spL]
-        iR = sp_to_i[spR]
+        i_l = sp_to_i[sp_l]
+        i_r = sp_to_i[sp_r]
 
-        textL = join_gene_names(spL, genesL)
-        textR = join_gene_names(spR, genesR)
+        text_l = join_gene_names(sp_l, genes_l)
+        text_r = join_gene_names(sp_r, genes_r)
 
-        sus_parts[iL].append(getrow((og, textL, textR)))
-        sus_parts[iR].append(getrow((og, textR, textL)))
+        sus_parts[i_l].append(getrow((og, text_l, text_r)))
+        sus_parts[i_r].append(getrow((og, text_r, text_l)))
 
-    for iog, orthologues_onetree in orthologues_alltrees:
+    for iog, orthologs_onetree in orthologs_alltrees:
         og = "OG%07d" % iog
 
-        for leavesL, leavesR, leavesL_sus, leavesR_sus in orthologues_onetree:
-            for spL in sorted(leavesL.keys(), key=lambda sp: sp_to_i[str(sp)]):
-                genesL = leavesL[spL]
+        for leaves_l, leaves_r, leaves_l_sus, leaves_r_sus in orthologs_onetree:
+            for sp_l in sorted(leaves_l.keys(), key=lambda sp: sp_to_i[str(sp)]):
+                genes_l = leaves_l[sp_l]
 
-                if not genesL:
+                if not genes_l:
                     continue
 
-                for spR in sorted(leavesR.keys(), key=lambda sp: sp_to_i[str(sp)]):
-                    genesR = leavesR[spR]
+                for sp_r in sorted(leaves_r.keys(), key=lambda sp: sp_to_i[str(sp)]):
+                    genes_r = leaves_r[sp_r]
 
-                    if not genesR:
+                    if not genes_r:
                         continue
 
-                    add_olog_row(
+                    add_ortholog_row(
                         og,
-                        spL,
-                        genesL,
-                        spR,
-                        genesR
+                        sp_l,
+                        genes_l,
+                        sp_r,
+                        genes_r
                     )
 
-            if not qContainsSuspectOlogs:
+            if not q_contains_suspect_orthologs:
                 continue
 
-            leaves_sus = (leavesL_sus, leavesR_sus)
-            leaves_norm = (leavesL, leavesR)
+            leaves_sus = (leaves_l_sus, leaves_r_sus)
+            leaves_norm = (leaves_l, leaves_r)
 
-            for iPair in range(2):
-                leaves_sus0 = leaves_sus[iPair]
-                leaves_sus1 = leaves_sus[1 - iPair]
-                leaves_norm1 = leaves_norm[1 - iPair]
+            for i_pair in range(2):
+                leaves_sus0 = leaves_sus[i_pair]
+                leaves_sus1 = leaves_sus[1 - i_pair]
+                leaves_norm1 = leaves_norm[1 - i_pair]
 
                 partner_species = dict.fromkeys(
                     list(leaves_norm1.keys()) + list(leaves_sus1.keys())
@@ -919,20 +919,20 @@ def GetLinesForOlogFiles(
                             genes1
                         )
 
-    for (i, j), parts in olog_parts.items():
-        row = olog_lines[i]
+    for (i, j), parts in ortholog_parts.items():
+        row = ortholog_lines[i]
         if isinstance(row, dict):
-            # Sparse row: only species pairs with orthologues are stored.
+            # Sparse row: only species pairs with orthologs are stored.
             row[j] = row.get(j, "") + "".join(parts)
         else:
             row[j] += "".join(parts)
     for i, parts in sus_parts.items():
-        olog_sus_lines[i] += "".join(parts)
+        ortholog_sus_lines[i] += "".join(parts)
 
-    return nOrtho
+    return n_ortho
 
 
-def GetHOGs_from_tree(
+def get_hogs_from_tree(
         iog,
         tree,
         hog_writer,

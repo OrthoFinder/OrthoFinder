@@ -7,7 +7,7 @@ Created on Tue Aug  1 09:11:11 2017
 Perform directed 'reconciliation' first and then apply EggNOG method
 
 1 - root gene trees on outgroup: unique one this time
-2 - infer orthologues
+2 - infer orthologs
 """
 import os
 import sys
@@ -60,16 +60,16 @@ class HogWriter(object):
             q_results = False
 
         self.fhs = dict()
-        self.iSps = list(map(str, sorted(species_to_use)))   # list of strings
-        self.i_sp_to_index = {int(isp):i_col for i_col, isp in enumerate(self.iSps)}
-        self.iHOG = defaultdict(int)
-        self.lock_iHOG = mp.Lock()
+        self.i_sps = list(map(str, sorted(species_to_use)))   # list of strings
+        self.i_sp_to_index = {int(isp):i_col for i_col, isp in enumerate(self.i_sps)}
+        self.i_hog = defaultdict(int)
+        self.lock_i_hog = mp.Lock()
         self.species_tree = species_tree
         # Name -> node, first match in the same (level) order as species_tree & name.
         self.species_tree_nodes = {}
         for node in species_tree.traverse():
             self.species_tree_nodes.setdefault(str(node.name), node)
-        species_names = [sp_ids[i] for i in self.iSps]
+        species_names = [sp_ids[i] for i in self.i_sps]
 
         self.write_output = write_output
         self.write_named = write_named
@@ -81,7 +81,7 @@ class HogWriter(object):
 
         if write_output:
             d = os.path.dirname(
-                file_handler.FileHandler.GetHierarchicalOrthogroupsFN(
+                file_handler.handler.get_hierarchical_orthogroups_fn(
                     "N0",
                     q_results=q_results
                 )
@@ -91,12 +91,12 @@ class HogWriter(object):
 
             for name in (species_tree_node_names if write_named else []) + ["N0.ids"]:
                 if not name.endswith(".ids"):
-                    fn = file_handler.FileHandler.GetHierarchicalOrthogroupsFN(
+                    fn = file_handler.handler.get_hierarchical_orthogroups_fn(
                         name,
                         q_results=q_results
                     )
                 else:
-                    fn = file_handler.FileHandler.GetHierarchicalOrthogroupsFN(
+                    fn = file_handler.handler.get_hierarchical_orthogroups_fn(
                         name,
                         q_results=q_results,
                         extension=".ids"
@@ -126,9 +126,9 @@ class HogWriter(object):
             self.file_cache.close_all()
 
     def get_hog_index(self, hog_name):
-        with self.lock_iHOG:
-            i = self.iHOG[hog_name]
-            self.iHOG[hog_name] += 1
+        with self.lock_i_hog:
+            i = self.i_hog[hog_name]
+            self.i_hog[hog_name] += 1
             return i
         
     def write_hog_genes(self, genes, sp_node_name_list, og_name):
@@ -158,7 +158,7 @@ class HogWriter(object):
 
         row_genes = [
             ", ".join(genes_per_species[isp])
-            for isp in self.iSps
+            for isp in self.i_sps
         ]
 
         for i_hog, sp_node_name in zip(i_hogs, sp_node_name_list):
@@ -173,7 +173,7 @@ class HogWriter(object):
             if sp_node_name == "N0":
                 row_genes_ids = [
                     ", ".join(genes_per_species_ids[isp])
-                    for isp in self.iSps
+                    for isp in self.i_sps
                 ]
                 fh_ids = self._get_hog_handle("N0.ids")
                 file_io.write_unquoted(
@@ -355,8 +355,8 @@ class HogWriter(object):
             # Note there can be at most one of each. Only a subset of these will fall under this HOG.
             units = self._species_below(h, genes_ids_per_species_id.keys())
             # print("Units: " + str(units))
-            genes_row_ids = ["" for _ in self.iSps]
-            genes_row = ["" for _ in self.iSps]
+            genes_row_ids = ["" for _ in self.i_sps]
+            genes_row = ["" for _ in self.i_sps]
             # put the units into the row
             for isp in units:
                 # translate the species ID to the species column it should be in
@@ -515,7 +515,7 @@ class HogWriter(object):
         # raise Exception()
         return None
 
-    def WriteCachedHOGs(
+    def write_cached_hogs(
             self,
             cached_hogs,
             lock_hogs=None,

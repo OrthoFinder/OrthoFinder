@@ -21,7 +21,7 @@ except ImportError:
     ...
 
 from ..utils import util, file_handler, parallel_task_manager, file_io
-from .tree_analyser import IterOlogRow
+from .tree_analyser import iter_ortholog_row
 
 
 class LazyFileCache(object):
@@ -74,16 +74,16 @@ class ParentOutputWriter(object):
     """
     Owns all shared output files.
 
-    Workers must not write orthologues, xenologues, duplications, suspect genes,
+    Workers must not write orthologs, xenologues, duplications, suspect genes,
     or HOG files. They return data. This parent writer writes the data.
     """
 
     def __init__(
             self,
-            dResultsOrthologues,
-            speciesDict,
-            speciesToUse,
-            SequenceDict,
+            d_results_orthologs,
+            species_dict,
+            species_to_use,
+            sequence_dict,
             spec_seq_dict,
             stride_dups,
             hog_writer,
@@ -95,21 +95,21 @@ class ParentOutputWriter(object):
             flush_every_results=1000,
             flush_every_seconds=60,
         ):
-        self.dResultsOrthologues = dResultsOrthologues
-        self.speciesDict = speciesDict
-        self.speciesToUse = list(speciesToUse)
-        self.SequenceDict = SequenceDict
+        self.d_results_orthologs = d_results_orthologs
+        self.species_dict = species_dict
+        self.species_to_use = list(species_to_use)
+        self.sequence_dict = sequence_dict
         self.spec_seq_dict = spec_seq_dict
         self.stride_dups = stride_dups
         self.hog_writer = hog_writer
-        self.nspecies = len(self.speciesToUse)
+        self.nspecies = len(self.species_to_use)
 
         self.fewer_open_files = fewer_open_files or save_space
         self.save_space = save_space
 
         self.write_hog_tree = write_hog_tree
         self.fix_files = fix_files
-        self.need_olog_output = (not write_hog_tree or not fix_files)
+        self.need_ortholog_output = (not write_hog_tree or not fix_files)
 
         self.cache = LazyFileCache(max_open=max_open)
 
@@ -118,21 +118,21 @@ class ParentOutputWriter(object):
         self.results_since_flush = 0
         self.last_flush_time = time.time()
 
-        self.putative_xenolog_dir = file_handler.FileHandler.GetPutativeXenelogsDir()
-        self.suspect_genes_dir = file_handler.FileHandler.GetSuspectGenesDir()
-        self.duplications_path = file_handler.FileHandler.GetDuplicationsFN()
+        self.putative_xenolog_dir = file_handler.handler.get_putative_xenelogs_dir()
+        self.suspect_genes_dir = file_handler.handler.get_suspect_genes_dir()
+        self.duplications_path = file_handler.handler.get_duplications_fn()
 
-        if self.need_olog_output:
-            self.initialise_orthologue_outputs()
+        if self.need_ortholog_output:
+            self.initialise_ortholog_outputs()
 
-    def initialise_orthologue_outputs(self):
+    def initialise_ortholog_outputs(self):
         for i in range(self.nspecies):
-            sp0 = str(self.speciesToUse[i])
-            sp0_name = self.speciesDict[sp0]
+            sp0 = str(self.species_to_use[i])
+            sp0_name = self.species_dict[sp0]
 
             if self.fewer_open_files:
                 filename = os.path.join(
-                    self.dResultsOrthologues,
+                    self.d_results_orthologs,
                     "%s.tsv" % sp0_name
                 )
                 with util.file_open(filename, util.csv_write_mode, gz=self.save_space) as outfile:
@@ -145,7 +145,7 @@ class ParentOutputWriter(object):
                     ))
             else:
                 d = os.path.join(
-                    self.dResultsOrthologues,
+                    self.d_results_orthologs,
                     "Orthologues_" + sp0_name
                 )
                 if not os.path.exists(d):
@@ -155,8 +155,8 @@ class ParentOutputWriter(object):
                     if j == i:
                         continue
 
-                    sp1 = str(self.speciesToUse[j])
-                    sp1_name = self.speciesDict[sp1]
+                    sp1 = str(self.species_to_use[j])
+                    sp1_name = self.species_dict[sp1]
 
                     fn = os.path.join(
                         d,
@@ -167,10 +167,10 @@ class ParentOutputWriter(object):
                         writer = file_io.writer(outfile)
                         writer.writerow(("Orthogroup", sp0_name, sp1_name))
 
-        InitialiseSuspectGenesDirs(
+        initialise_suspect_genes_dirs(
             self.nspecies,
-            self.speciesToUse,
-            self.speciesDict
+            self.species_to_use,
+            self.species_dict
         )
 
         with open(self.duplications_path, util.csv_write_mode) as outfile:
@@ -188,20 +188,20 @@ class ParentOutputWriter(object):
             )
 
     def ortholog_path(self, i, j=None):
-        sp0 = str(self.speciesToUse[i])
-        sp0_name = self.speciesDict[sp0]
+        sp0 = str(self.species_to_use[i])
+        sp0_name = self.species_dict[sp0]
 
         if self.fewer_open_files:
             return os.path.join(
-                self.dResultsOrthologues,
+                self.d_results_orthologs,
                 "%s.tsv" % sp0_name
             )
 
-        sp1 = str(self.speciesToUse[j])
-        sp1_name = self.speciesDict[sp1]
+        sp1 = str(self.species_to_use[j])
+        sp1_name = self.species_dict[sp1]
 
         d = os.path.join(
-            self.dResultsOrthologues,
+            self.d_results_orthologs,
             "Orthologues_" + sp0_name
         )
 
@@ -211,14 +211,14 @@ class ParentOutputWriter(object):
         )
 
     def xenolog_path(self, i):
-        sp0 = str(self.speciesToUse[i])
-        sp0_name = self.speciesDict[sp0]
+        sp0 = str(self.species_to_use[i])
+        sp0_name = self.species_dict[sp0]
         return os.path.join(self.putative_xenolog_dir, "%s.tsv" % sp0_name)
 
-    def write_ortholog_lines(self, olog_lines):
+    def write_ortholog_lines(self, ortholog_lines):
         if self.fewer_open_files:
             for i in range(self.nspecies):
-                text = olog_lines[i][0]
+                text = ortholog_lines[i][0]
                 if text:
                     self.cache.write(
                         self.ortholog_path(i),
@@ -228,7 +228,7 @@ class ParentOutputWriter(object):
                     )
         else:
             for i in range(self.nspecies):
-                for j, text in IterOlogRow(olog_lines[i]):
+                for j, text in iter_ortholog_row(ortholog_lines[i]):
                     if i == j:
                         continue
                     self.cache.write(
@@ -238,9 +238,9 @@ class ParentOutputWriter(object):
                         gz=False
                     )
 
-    def write_xenolog_lines(self, olog_sus_lines):
+    def write_xenolog_lines(self, ortholog_sus_lines):
         for i in range(self.nspecies):
-            text = olog_sus_lines[i]
+            text = ortholog_sus_lines[i]
             if text:
                 self.cache.write(
                     self.xenolog_path(i),
@@ -254,10 +254,10 @@ class ParentOutputWriter(object):
             return
 
         og_name = "OG%07d" % iog
-        rows = DuplicationRows(
+        rows = duplication_rows(
             og_name,
             duplications,
-            self.speciesDict,
+            self.species_dict,
             self.spec_seq_dict,
             self.stride_dups
         )
@@ -275,7 +275,7 @@ class ParentOutputWriter(object):
         if not suspect_genes:
             return
 
-        species = list(map(str, self.speciesToUse))
+        species = list(map(str, self.species_to_use))
 
         for i in range(self.nspecies):
             strsp0 = species[i]
@@ -291,11 +291,11 @@ class ParentOutputWriter(object):
 
             path = os.path.join(
                 self.suspect_genes_dir,
-                self.speciesDict[strsp0] + ".txt"
+                self.species_dict[strsp0] + ".txt"
             )
 
             text = "\n".join(
-                [self.SequenceDict[g] for g in these_genes]
+                [self.sequence_dict[g] for g in these_genes]
             ) + "\n"
 
             self.cache.write(
@@ -307,7 +307,7 @@ class ParentOutputWriter(object):
 
     def write_hog_rows(self, cached_hogs):
         if cached_hogs:
-            self.hog_writer.WriteCachedHOGs(cached_hogs, lock_hogs=None)
+            self.hog_writer.write_cached_hogs(cached_hogs, lock_hogs=None)
 
 
     def write_non_hog_result(self, result, do_flush=True):
@@ -319,7 +319,7 @@ class ParentOutputWriter(object):
         if result is None:
             return
 
-        if self.need_olog_output:
+        if self.need_ortholog_output:
             self.write_duplications(
                 result["iog"],
                 result.get("duplications", [])
@@ -467,7 +467,7 @@ class OrderedHogCommitter(object):
 
     def _commit(self, cached_hogs):
         if cached_hogs:
-            self.hog_writer.WriteCachedHOGs(cached_hogs, lock_hogs=None)
+            self.hog_writer.write_cached_hogs(cached_hogs, lock_hogs=None)
 
     def _drain_ready(self):
         while self.next_index < len(self.iogs_ordered):
@@ -509,17 +509,17 @@ class NonHogAppendWriter(object):
 
     def __init__(
             self,
-            dResultsOrthologues,
-            speciesDict,
-            speciesToUse,
+            d_results_orthologs,
+            species_dict,
+            species_to_use,
             save_space=False,
             fewer_open_files=False,
             max_open=64,
         ):
-        self.dResultsOrthologues = dResultsOrthologues
-        self.speciesDict = speciesDict
-        self.speciesToUse = list(speciesToUse)
-        self.nspecies = len(self.speciesToUse)
+        self.d_results_orthologs = d_results_orthologs
+        self.species_dict = species_dict
+        self.species_to_use = list(species_to_use)
+        self.nspecies = len(self.species_to_use)
 
         self.save_space = save_space
         self.fewer_open_files = fewer_open_files or save_space
@@ -527,20 +527,20 @@ class NonHogAppendWriter(object):
         self.cache = LazyFileCache(max_open=max_open)
 
     def ortholog_path(self, i, j=None):
-        sp0 = str(self.speciesToUse[i])
-        sp0_name = self.speciesDict[sp0]
+        sp0 = str(self.species_to_use[i])
+        sp0_name = self.species_dict[sp0]
 
         if self.fewer_open_files:
             return os.path.join(
-                self.dResultsOrthologues,
+                self.d_results_orthologs,
                 "%s.tsv" % sp0_name
             )
 
-        sp1 = str(self.speciesToUse[j])
-        sp1_name = self.speciesDict[sp1]
+        sp1 = str(self.species_to_use[j])
+        sp1_name = self.species_dict[sp1]
 
         d = os.path.join(
-            self.dResultsOrthologues,
+            self.d_results_orthologs,
             "Orthologues_" + sp0_name
         )
 
@@ -549,10 +549,10 @@ class NonHogAppendWriter(object):
             "%s__v__%s.tsv" % (sp0_name, sp1_name)
         )
 
-    def write_ortholog_lines(self, olog_lines):
+    def write_ortholog_lines(self, ortholog_lines):
         if self.fewer_open_files:
             for i in range(self.nspecies):
-                text = olog_lines[i][0]
+                text = ortholog_lines[i][0]
                 if text:
                     self.cache.write(
                         self.ortholog_path(i),
@@ -562,7 +562,7 @@ class NonHogAppendWriter(object):
                     )
         else:
             for i in range(self.nspecies):
-                for j, text in IterOlogRow(olog_lines[i]):
+                for j, text in iter_ortholog_row(ortholog_lines[i]):
                     if i == j:
                         continue
                     self.cache.write(
@@ -579,28 +579,28 @@ class NonHogAppendWriter(object):
         self.cache.close_all()
 
 
-def InitialiseSuspectGenesDirs(nspecies, speciesIDs, speciesDict):
-    file_handler.FileHandler.GetSuspectGenesDir()  # creates the directory
-    dSuspectOrthologues = file_handler.FileHandler.GetPutativeXenelogsDir()
+def initialise_suspect_genes_dirs(nspecies, species_ids, species_dict):
+    file_handler.handler.get_suspect_genes_dir()  # creates the directory
+    d_suspect_orthologs = file_handler.handler.get_putative_xenelogs_dir()
     for index1 in range(nspecies):
-        with open(dSuspectOrthologues + '%s.tsv' % speciesDict[str(speciesIDs[index1])], util.csv_write_mode) as outfile:
+        with open(d_suspect_orthologs + '%s.tsv' % species_dict[str(species_ids[index1])], util.csv_write_mode) as outfile:
             writer1 = file_io.writer(outfile)
-            writer1.writerow(("Orthogroup", speciesDict[str(speciesIDs[index1])], "Other"))
+            writer1.writerow(("Orthogroup", species_dict[str(species_ids[index1])], "Other"))
 
-def WriteSuspectGenes(nspecies, speciesToUse, suspect_genes, speciesDict, SequenceDict):
-    species = list(map(str, speciesToUse))
-    dSuspectGenes = file_handler.FileHandler.GetSuspectGenesDir()
+def write_suspect_genes(nspecies, species_to_use, suspect_genes, species_dict, sequence_dict):
+    species = list(map(str, species_to_use))
+    d_suspect_genes = file_handler.handler.get_suspect_genes_dir()
     for index0 in range(nspecies):
         strsp0 = species[index0]
         strsp0_ = strsp0+"_"
         these_genes = [g for g in suspect_genes if g.startswith(strsp0_)]
         if len(these_genes) > 0:
-            with open(dSuspectGenes + speciesDict[strsp0] + ".txt", util.csv_append_mode) as outfile:
+            with open(d_suspect_genes + species_dict[strsp0] + ".txt", util.csv_append_mode) as outfile:
                 # not a CSV file so \n line endings are fine
-                outfile.write("\n".join([SequenceDict[g] for g in these_genes]) + "\n")
+                outfile.write("\n".join([sequence_dict[g] for g in these_genes]) + "\n")
 
 
-def DuplicationRows(og_name, duplications, spIDs, seqIDs, stride_dups):
+def duplication_rows(og_name, duplications, sp_ids, seq_ids, stride_dups):
     """
     Convert duplication records into rows.
 
@@ -612,24 +612,24 @@ def DuplicationRows(og_name, duplications, spIDs, seqIDs, stride_dups):
         q_terminal = not sp_node_id.startswith("N")
 
         if stride_dups is None:
-            isSTRIDE = "Terminal" if q_terminal else "Non-Terminal"
+            is_stride = "Terminal" if q_terminal else "Non-Terminal"
         else:
             if q_terminal:
-                isSTRIDE = "Terminal"
+                is_stride = "Terminal"
             elif frozenset(genes0 + genes1) in stride_dups:
-                isSTRIDE = "Non-Terminal: STRIDE"
+                is_stride = "Non-Terminal: STRIDE"
             else:
-                isSTRIDE = "Non-Terminal"
+                is_stride = "Non-Terminal"
 
-        gene_list0 = ", ".join([seqIDs[g] for g in genes0])
-        gene_list1 = ", ".join([seqIDs[g] for g in genes1])
+        gene_list0 = ", ".join([seq_ids[g] for g in genes0])
+        gene_list1 = ", ".join([seq_ids[g] for g in genes1])
 
         rows.append([
             og_name,
-            spIDs[sp_node_id] if q_terminal else sp_node_id,
+            sp_ids[sp_node_id] if q_terminal else sp_node_id,
             gene_node_name,
             str(frac),   # as text: all-str rows take the fast path
-            isSTRIDE,
+            is_stride,
             gene_list0,
             gene_list1
         ])
@@ -637,7 +637,7 @@ def DuplicationRows(og_name, duplications, spIDs, seqIDs, stride_dups):
     return rows
 
 
-def WriteDuplications(dups_file_handle, og_name, duplications, spIDs, seqIDs, stride_dups):
+def write_duplications(dups_file_handle, og_name, duplications, sp_ids, seq_ids, stride_dups):
     """
     Args:
         duplications - list of (sp_node_id, gene_node_name, fraction, genes0, genes1)
@@ -645,12 +645,12 @@ def WriteDuplications(dups_file_handle, og_name, duplications, spIDs, seqIDs, st
     for sp_node_id, gene_node_name, frac, genes0, genes1 in duplications:
         q_terminal = not sp_node_id.startswith("N")
         if stride_dups is None:
-            isSTRIDE = "Terminal" if q_terminal else "Non-Terminal"
+            is_stride = "Terminal" if q_terminal else "Non-Terminal"
         else:
-            isSTRIDE = "Terminal" if q_terminal else "Non-Terminal: STRIDE" if frozenset(genes0 + genes1) in stride_dups else "Non-Terminal"
-        gene_list0 = ", ".join([seqIDs[g] for g in genes0])   # line can read ">1234 genes" for example, but this has been added to dict
-        gene_list1 = ", ".join([seqIDs[g] for g in genes1])
-        file_io.write_unquoted(dups_file_handle, [og_name, spIDs[sp_node_id] if q_terminal else sp_node_id, gene_node_name, str(frac), isSTRIDE, gene_list0, gene_list1]) 
+            is_stride = "Terminal" if q_terminal else "Non-Terminal: STRIDE" if frozenset(genes0 + genes1) in stride_dups else "Non-Terminal"
+        gene_list0 = ", ".join([seq_ids[g] for g in genes0])   # line can read ">1234 genes" for example, but this has been added to dict
+        gene_list1 = ", ".join([seq_ids[g] for g in genes1])
+        file_io.write_unquoted(dups_file_handle, [og_name, sp_ids[sp_node_id] if q_terminal else sp_node_id, gene_node_name, str(frac), is_stride, gene_list0, gene_list1]) 
 
 
 
@@ -689,12 +689,12 @@ def _empty_non_hog_payload(iog):
     }
 
 
-def PartitionNonHogResult(
+def partition_non_hog_result(
         result,
         n_writers,
         tree_analyser,
         fewer_open_files,
-        need_olog_output,
+        need_ortholog_output,
     ):
     """
     Split one analysed OG into file-owner payloads for non-HOG output.
@@ -702,7 +702,7 @@ def PartitionNonHogResult(
     Orthologue, xenologue, and suspect-gene files are owned by source species.
     Duplications.tsv is owned by writer 0. Empty writer payloads are omitted.
     """
-    if not need_olog_output:
+    if not need_ortholog_output:
         return {}
 
     iog = result["iog"]
@@ -715,10 +715,10 @@ def PartitionNonHogResult(
             payloads[owner] = payload
         return payload
 
-    olog_lines = result.get("olog_lines", [])
+    ortholog_lines = result.get("olog_lines", [])
 
     if fewer_open_files:
-        for i, row in enumerate(olog_lines):
+        for i, row in enumerate(ortholog_lines):
             if not row:
                 continue
             text = row[0]
@@ -727,9 +727,9 @@ def PartitionNonHogResult(
             owner = i % n_writers
             payload_for(owner)["olog_chunks"].append((i, None, text))
     else:
-        for i, row in enumerate(olog_lines):
+        for i, row in enumerate(ortholog_lines):
             owner = i % n_writers
-            for j, text in IterOlogRow(row):
+            for j, text in iter_ortholog_row(row):
                 if i == j:
                     continue
                 payload_for(owner)["olog_chunks"].append((i, j, text))
@@ -744,7 +744,7 @@ def PartitionNonHogResult(
     if suspect_genes:
         sp_id_to_index = {
             str(sp): i
-            for i, sp in enumerate(tree_analyser.speciesToUse)
+            for i, sp in enumerate(tree_analyser.species_to_use)
         }
         by_species = {}
 
@@ -758,7 +758,7 @@ def PartitionNonHogResult(
         for i, genes in by_species.items():
             genes.sort()
             text = "\n".join(
-                tree_analyser.SequenceDict[g]
+                tree_analyser.sequence_dict[g]
                 for g in genes
             ) + "\n"
             owner = i % n_writers
@@ -789,10 +789,10 @@ def _write_non_hog_payload(output_writer, payload):
         )
 
     for i, text in payload.get("suspect_chunks", []):
-        sp_id = str(output_writer.speciesToUse[i])
+        sp_id = str(output_writer.species_to_use[i])
         path = os.path.join(
             output_writer.suspect_genes_dir,
-            output_writer.speciesDict[sp_id] + ".txt"
+            output_writer.species_dict[sp_id] + ".txt"
         )
         output_writer.cache.write(
             path,
@@ -811,7 +811,7 @@ def _write_non_hog_payload(output_writer, payload):
     output_writer.maybe_flush()
 
 
-def NonHogWriterProcess(
+def non_hog_writer_process(
         writer_queue,
         writer_status_queue,
         output_writer,
@@ -869,7 +869,7 @@ def NonHogWriterProcess(
         ))
 
 
-def OrderedHogWriterProcess(
+def ordered_hog_writer_process(
         hog_queue,
         writer_status_queue,
         hog_writer,
@@ -916,7 +916,7 @@ def OrderedHogWriterProcess(
 
         committer.assert_finished()
         hog_writer.file_cache.flush_all()
-        hog_counts = dict(hog_writer.iHOG)
+        hog_counts = dict(hog_writer.i_hog)
 
     except Exception:
         error_text = traceback.format_exc()
@@ -937,7 +937,7 @@ def OrderedHogWriterProcess(
         ))
 
 
-def Worker_RunOrthologsMethod_Pipeline(
+def worker_run_orthologs_method_pipeline(
         tree_analyser,
         nspecies,
         args_queue,
@@ -945,8 +945,8 @@ def Worker_RunOrthologsMethod_Pipeline(
         non_hog_queues,
         progress_queue,
         fewer_open_files,
-        need_olog_output,
-        n_ologs_cache=100,
+        need_ortholog_output,
+        n_orthologs_cache=100,
         write_hog_tree=False,
         fix_files=False,
     ):
@@ -959,7 +959,7 @@ def Worker_RunOrthologsMethod_Pipeline(
     """
     n_writers = len(non_hog_queues)
     worker_pid = os.getpid()
-    nOrtho_acc = util.nOrtho_sp(nspecies)
+    n_ortho_acc = util.NOrthoSp(nspecies)
 
     while True:
         try:
@@ -969,7 +969,7 @@ def Worker_RunOrthologsMethod_Pipeline(
                 break
 
             progress_queue.put(("start", worker_pid, iog))
-            result = tree_analyser.AnalyseTree(iog, nOrtho_acc=nOrtho_acc)
+            result = tree_analyser.analyse_tree(iog, n_ortho_acc=n_ortho_acc)
 
             if result is None:
                 hog_queue.put(("skip", iog))
@@ -985,12 +985,12 @@ def Worker_RunOrthologsMethod_Pipeline(
                 result.get("cached_hogs", []),
             ))
 
-            payloads = PartitionNonHogResult(
+            payloads = partition_non_hog_result(
                 result,
                 n_writers,
                 tree_analyser,
                 fewer_open_files,
-                need_olog_output,
+                need_ortholog_output,
             )
 
             for owner, payload in payloads.items():
@@ -1011,19 +1011,19 @@ def Worker_RunOrthologsMethod_Pipeline(
     hog_queue.put(None)
     for writer_queue in non_hog_queues:
         writer_queue.put(None)
-    progress_queue.put(("worker_done", worker_pid, nOrtho_acc))
+    progress_queue.put(("worker_done", worker_pid, n_ortho_acc))
 
 
-def RunOrthologsParallel_Pipeline(
+def run_orthologs_parallel_pipeline(
         tree_analyser,
         nspecies,
         args_queue,
-        nProcesses,
+        n_processes,
         total_tasks,
         fewer_open_files,
         output_writer,
         iogs_ordered,
-        n_ologs_cache=100,
+        n_orthologs_cache=100,
         write_hog_tree=False,
         fix_files=False,
         fd_limit=None,
@@ -1055,13 +1055,13 @@ def RunOrthologsParallel_Pipeline(
     if n_writer_processes is None:
         n_writer_processes = get_n_writer_processes(
             nspecies,
-            nProcesses,
+            n_processes,
             fewer_open_files=fewer_open_files,
         )
     else:
         n_writer_processes = max(
             1,
-            min(int(n_writer_processes), max(1, nProcesses))
+            min(int(n_writer_processes), max(1, n_processes))
         )
 
     # print(
@@ -1076,48 +1076,48 @@ def RunOrthologsParallel_Pipeline(
     # )
 
     if writer_queue_size is None:
-        writer_queue_size = max(2 * nProcesses, 16)
+        writer_queue_size = max(2 * n_processes, 16)
 
-    hog_queue = mp.Queue(maxsize=max(4 * nProcesses, 32))
+    hog_queue = mp.Queue(maxsize=max(4 * n_processes, 32))
     non_hog_queues = [
         mp.Queue(maxsize=writer_queue_size)
         for _ in range(n_writer_processes)
     ]
-    progress_queue = mp.Queue(maxsize=max(4 * nProcesses, 32))
+    progress_queue = mp.Queue(maxsize=max(4 * n_processes, 32))
     writer_status_queue = mp.Queue()
 
-    for _ in range(nProcesses):
+    for _ in range(n_processes):
         args_queue.put(None)
 
     hog_proc = mp.Process(
-        target=OrderedHogWriterProcess,
+        target=ordered_hog_writer_process,
         args=(
             hog_queue,
             writer_status_queue,
             output_writer.hog_writer,
             iogs_ordered,
-            nProcesses,
+            n_processes,
             spill_dir,
         )
     )
 
     non_hog_procs = [
         mp.Process(
-            target=NonHogWriterProcess,
+            target=non_hog_writer_process,
             args=(
                 non_hog_queues[writer_id],
                 writer_status_queue,
                 output_writer,
-                nProcesses,
+                n_processes,
                 writer_id,
             )
         )
         for writer_id in range(n_writer_processes)
     ]
 
-    runningProcesses = [
+    running_processes = [
         mp.Process(
-            target=Worker_RunOrthologsMethod_Pipeline,
+            target=worker_run_orthologs_method_pipeline,
             args=(
                 tree_analyser,
                 nspecies,
@@ -1126,19 +1126,19 @@ def RunOrthologsParallel_Pipeline(
                 non_hog_queues,
                 progress_queue,
                 fewer_open_files,
-                output_writer.need_olog_output,
-                n_ologs_cache,
+                output_writer.need_ortholog_output,
+                n_orthologs_cache,
                 write_hog_tree,
                 fix_files,
             )
         )
-        for _ in range(nProcesses)
+        for _ in range(n_processes)
     ]
 
     hog_proc.start()
     for proc in non_hog_procs:
         proc.start()
-    for proc in runningProcesses:
+    for proc in running_processes:
         proc.start()
 
     # Start the progress bar only after all children exist: its refresh thread
@@ -1146,7 +1146,7 @@ def RunOrthologsParallel_Pipeline(
     progressbar, task = util.get_progressbar(total_tasks)
     progressbar.start()
 
-    nOrthologues_SpPair = util.nOrtho_sp(nspecies)
+    n_orthologs_sp_pair = util.NOrthoSp(nspecies)
     errors = []   # error text for the WorkerError raised at the end
 
     def report_error(text):
@@ -1155,7 +1155,7 @@ def RunOrthologsParallel_Pipeline(
 
     completed_tasks = 0
     skipped_tasks = 0
-    active_workers = nProcesses
+    active_workers = n_processes
     finished_worker_pids = set()
     in_flight = {}
     exited_without_status = {}
@@ -1165,7 +1165,7 @@ def RunOrthologsParallel_Pipeline(
     hog_counts = None
     last_progress_time = time.monotonic()
     last_writer_activity_time = None
-    child_processes = runningProcesses + [hog_proc] + non_hog_procs
+    child_processes = running_processes + [hog_proc] + non_hog_procs
 
     try:
         while (
@@ -1185,8 +1185,8 @@ def RunOrthologsParallel_Pipeline(
             elif isinstance(msg, tuple) and msg[0] == "worker_done":
                 _, worker_pid, worker_counts = msg
                 finished_worker_pids.add(worker_pid)
-                active_workers = nProcesses - len(finished_worker_pids)
-                nOrthologues_SpPair += worker_counts
+                active_workers = n_processes - len(finished_worker_pids)
+                n_orthologs_sp_pair += worker_counts
 
             elif isinstance(msg, tuple) and msg[0] == "start":
                 _, worker_pid, iog = msg
@@ -1269,7 +1269,7 @@ def RunOrthologsParallel_Pipeline(
             now = time.monotonic()
             process_statuses = [
                 ("analysis worker", proc, proc.pid in finished_worker_pids)
-                for proc in runningProcesses
+                for proc in running_processes
             ] + [("HOG writer", hog_proc, hog_done)] + [
                 ("non-HOG writer %d" % writer_id, proc,
                  writer_id in non_hog_done_ids)
@@ -1352,19 +1352,19 @@ def RunOrthologsParallel_Pipeline(
         if fatal or sys.exc_info()[0] is not None:
             # A failed consumer can leave producers blocked on full queues.
             # Stop all children before joining any of them in the error path.
-            parallel_task_manager.TerminateProcesses(child_processes)
+            parallel_task_manager.terminate_processes(child_processes)
             args_queue.cancel_join_thread()
         else:
             # Everything reported completion: wait for the children to exit.
             # They are not stopped for taking long, only warned about.
             try:
-                parallel_task_manager.WaitForExit(
+                parallel_task_manager.wait_for_exit(
                     child_processes, "orthologue pipeline processes", GRACE_PERIOD
                 )
             except parallel_task_manager.WorkerError as e:
                 report_error("ERROR: %s" % e)
                 fatal = True
-                parallel_task_manager.TerminateProcesses(child_processes)
+                parallel_task_manager.terminate_processes(child_processes)
         for proc in child_processes:
             proc.join()
             if proc.exitcode != 0:
@@ -1383,8 +1383,8 @@ def RunOrthologsParallel_Pipeline(
                 pass
 
     if hog_counts is not None:
-        output_writer.hog_writer.iHOG.clear()
-        output_writer.hog_writer.iHOG.update(hog_counts)
+        output_writer.hog_writer.i_hog.clear()
+        output_writer.hog_writer.i_hog.update(hog_counts)
 
     skip_rate = skipped_tasks / max(1, total_tasks)
     if skip_rate > 0.02:
@@ -1410,7 +1410,7 @@ def RunOrthologsParallel_Pipeline(
             "\n".join(errors) or "Orthologue inference failed."
         )
 
-    return nOrthologues_SpPair
+    return n_orthologs_sp_pair
 
 def set_file_descriptor_limit(fd_limit) -> None:
     """
@@ -1469,10 +1469,10 @@ def set_file_descriptor_limit(fd_limit) -> None:
         print("Could not adjust file descriptor limit: %s" % e)
 
 
-def SortNonHogOutputFiles(
+def sort_non_hog_output_files(
         n_parallel,
-        speciesToUse,
-        speciesDict,
+        species_to_use,
+        species_dict,
         fewer_open_files,
         save_space,
         write_hog_tree,
@@ -1482,8 +1482,8 @@ def SortNonHogOutputFiles(
     if write_hog_tree and fix_files:
         return
 
-    species = [speciesDict[str(sp)] for sp in speciesToUse]
-    dResultsOrthologues = file_handler.FileHandler.GetOrthologuesDirectory()
+    species = [species_dict[str(sp)] for sp in species_to_use]
+    d_results_orthologs = file_handler.handler.get_orthologs_directory()
 
     fns = []
 
@@ -1491,12 +1491,12 @@ def SortNonHogOutputFiles(
     if fewer_open_files or save_space:
         for sp in species:
             fns.append((
-                os.path.join(dResultsOrthologues, "%s.tsv" % sp),
+                os.path.join(d_results_orthologs, "%s.tsv" % sp),
                 bool(save_space)
             ))
     else:
         for sp1 in species:
-            d = os.path.join(dResultsOrthologues, "Orthologues_" + sp1)
+            d = os.path.join(d_results_orthologs, "Orthologues_" + sp1)
             for sp2 in species:
                 if sp1 == sp2:
                     continue
@@ -1506,16 +1506,16 @@ def SortNonHogOutputFiles(
                 ))
 
     # Xenolog files.
-    dXenologs = file_handler.FileHandler.GetPutativeXenelogsDir()
+    d_xenologs = file_handler.handler.get_putative_xenelogs_dir()
     for sp in species:
         fns.append((
-            os.path.join(dXenologs, "%s.tsv" % sp),
+            os.path.join(d_xenologs, "%s.tsv" % sp),
             False
         ))
 
     # Duplications file.
     fns.append((
-        file_handler.FileHandler.GetDuplicationsFN(),
+        file_handler.handler.get_duplications_fn(),
         False
     ))
 
@@ -1535,8 +1535,8 @@ def SortNonHogOutputFiles(
         args_queue.put((fn, gz))
         n_sort_tasks += 1
 
-    parallel_task_manager.RunMethodParallel(
-        SortFileByFirstColumnNoRepair,
+    parallel_task_manager.run_method_parallel(
+        sort_file_by_first_column_no_repair,
         args_queue,
         n_parallel,
         total_tasks=n_sort_tasks,
@@ -1544,9 +1544,9 @@ def SortNonHogOutputFiles(
     )
 
     suspect_queue = mp.Queue()
-    dSuspectGenes = file_handler.FileHandler.GetSuspectGenesDir()
+    d_suspect_genes = file_handler.handler.get_suspect_genes_dir()
     suspect_fns = [
-        os.path.join(dSuspectGenes, "%s.txt" % sp) for sp in species
+        os.path.join(d_suspect_genes, "%s.txt" % sp) for sp in species
     ]
     suspect_fns = sorted(
         (fn for fn in suspect_fns if os.path.exists(fn)),
@@ -1557,8 +1557,8 @@ def SortNonHogOutputFiles(
         suspect_queue.put((fn,))
         n_suspect_tasks += 1
 
-    parallel_task_manager.RunMethodParallel(
-        SortPlainTextFile,
+    parallel_task_manager.run_method_parallel(
+        sort_plain_text_file,
         suspect_queue,
         n_parallel,
         total_tasks=n_suspect_tasks,
@@ -1604,7 +1604,7 @@ def _write_sorted_run(lines, run_path, gz):
         outfile.writelines(lines)
 
 
-def SortLinesInFile(fn, gz=False, has_header=False, chunk_chars=SORT_CHUNK_CHARS):
+def sort_lines_in_file(fn, gz=False, has_header=False, chunk_chars=SORT_CHUNK_CHARS):
     """
     Sort the lines of fn (fn + ".gz" if gz), keeping an optional header first.
 
@@ -1674,27 +1674,27 @@ def SortLinesInFile(fn, gz=False, has_header=False, chunk_chars=SORT_CHUNK_CHARS
                 os.remove(p)
 
 
-def SortFileByFirstColumnNoRepair(fn, gz=False):
+def sort_file_by_first_column_no_repair(fn, gz=False):
     """
     Sort a TSV file by first column.
 
-    This is for orthologues, xenologues, and duplications only.
+    This is for orthologs, xenologues, and duplications only.
     It must never be used for HOG files.
 
     Plain line order is the same as ordering by (first column, line): the
     first column is followed by a tab, which sorts before any character that
     can appear in an OG ID. Sorting whole lines avoids building a key per line.
     """
-    SortLinesInFile(fn, gz=gz, has_header=True)
+    sort_lines_in_file(fn, gz=gz, has_header=True)
 
 
-def SortPlainTextFile(fn):
+def sort_plain_text_file(fn):
     """Sort a plain-text output file deterministically."""
-    SortLinesInFile(fn, gz=False, has_header=False)
+    sort_lines_in_file(fn, gz=False, has_header=False)
 
 
 
-def ValidateHogWriterNoDuplicateIds(hog_writer):
+def validate_hog_writer_no_duplicate_ids(hog_writer):
 
     if not getattr(hog_writer, "write_output", True):
         return

@@ -9,14 +9,14 @@ from orthofinder.run import process_args
 from orthofinder.phylo import tree
 from orthofinder.species_tree import stride
 from orthofinder.run.process_args import Options
-from orthofinder.hog_orthogroups.convert import OrthoGroupsSet, update_ogs, IDFullDict
+from orthofinder.hog_orthogroups.convert import OrthogroupSet, update_ogs, id_full_dict
 from orthofinder.hog_orthogroups.update_trees import read_tree_file
 from orthofinder.hog_orthogroups.finalise import hogs_converter, read_hog_file, hog_file_over4genes, index_files
-from orthofinder.run.previous_run import SpeciesNameDict, ProcessPreviousFiles
-from orthofinder.orthology.reconciliation import GetSpeciesNeighbours, ReconciliationAndOrthologues, AllOrthologues
+from orthofinder.run.previous_run import species_name_dict, process_previous_files
+from orthofinder.orthology.reconciliation import get_species_neighbours, reconciliation_and_orthologs, get_all_orthologs
 
 from orthofinder.orthology.hog_writer import HogWriter
-from orthofinder.orthology.tree_analyser import GetLinesForOlogFiles, CheckAndRootTree, GeneToSpecies_dash, GetOrthologues_from_tree
+from orthofinder.orthology.tree_analyser import get_lines_for_ortholog_files, check_and_root_tree, gene_to_species_dash, get_orthologs_from_tree
 
 
 class OrthoFinderTestFuncs:
@@ -33,7 +33,7 @@ class OrthoFinderTestFuncs:
         self.projects = projects
         self.assign = assign
         self.options = Options()
-        self.options.qStartFromFasta = True
+        self.options.q_start_from_fasta = True
         if "msa" in of_args_dict:
             if of_args_dict["msa"]:
                 self.options.msa_program = of_args_dict["msa"]
@@ -44,9 +44,9 @@ class OrthoFinderTestFuncs:
             self.options.species_tree_program = of_args_dict["species_tree_method"]
             
         if "-t" in of_args_dict:
-            self.options.nBlast = of_args_dict["sequence_search_threads"]
+            self.options.n_blast = of_args_dict["sequence_search_threads"]
         if "-a" in of_args_dict:
-            self.options.nProcessAlg = of_args_dict["analysis_threads"]
+            self.options.n_process_alg = of_args_dict["analysis_threads"]
 
         core_results_dir = os.path.join(self.projects, "OrthoFinder")
 
@@ -119,20 +119,20 @@ class OrthoFinderTestFuncs:
         (
             self.prog_caller,
             _opts,
-            fastaDir,
-            continuationDir,
-            resultsDir_nonDefault,
-            pickleDir_nonDefault,
-            _userM
-        ) = process_args.ProcessArgs(args)
+            fasta_dir,
+            continuation_dir,
+            results_dir_non_default,
+            pickle_dir_non_default,
+            _user_m
+        ) = process_args.process_args(args)
 
         # ---------- Initialise FileHandler to the **current** WD ----------
-        file_handler.InitialiseFileHandler(
+        file_handler.initialise_file_handler(
             self.options,
-            fastaDir=self.projects,
-            continuationDir=continuationDir,
-            resultsDir_nonDefault=resultsDir_nonDefault,
-            pickleDir_nonDefault=pickleDir_nonDefault,
+            fasta_dir=self.projects,
+            continuation_dir=continuation_dir,
+            results_dir_non_default=results_dir_non_default,
+            pickle_dir_non_default=pickle_dir_non_default,
             working_dir=self.current_working_dir,
         )
         self._fh_init = self._snapshot_fh()
@@ -146,26 +146,26 @@ class OrthoFinderTestFuncs:
     # ---------------- helpers ----------------
     def _snapshot_fh(self):
         return dict(
-            wd_base = list(getattr(file_handler.FileHandler, "wd_base", [])),
-            wd_current= getattr(file_handler.FileHandler, "wd_current", None),
-            rd1 = getattr(file_handler.FileHandler, "rd1", None),
-            wd_trees = getattr(file_handler.FileHandler, "wd_trees", None),
+            wd_base = list(getattr(file_handler.handler, "wd_base", [])),
+            wd_current= getattr(file_handler.handler, "wd_current", None),
+            rd1 = getattr(file_handler.handler, "rd1", None),
+            wd_trees = getattr(file_handler.handler, "wd_trees", None),
         )
 
     def _restore_fh(self, snap):
-        file_handler.FileHandler.wd_base = snap["wd_base"]
-        file_handler.FileHandler.wd_current = snap["wd_current"]
-        file_handler.FileHandler.rd1 = snap["rd1"]
-        file_handler.FileHandler.wd_trees = snap["wd_trees"]
+        file_handler.handler.wd_base = snap["wd_base"]
+        file_handler.handler.wd_current = snap["wd_current"]
+        file_handler.handler.rd1 = snap["rd1"]
+        file_handler.handler.wd_trees = snap["wd_trees"]
 
     @contextlib.contextmanager
     def _use_fh_wds(self, wds):
         wds = [wd if wd.endswith(os.sep) else wd + os.sep for wd in wds]
         snap = self._snapshot_fh()
-        file_handler.FileHandler.wd_base = wds
-        file_handler.FileHandler.wd_current = wds[-1]
-        file_handler.FileHandler.rd1 = os.path.dirname(file_handler.FileHandler.wd_current.rstrip(os.sep))
-        file_handler.FileHandler.wd_trees = file_handler.FileHandler.wd_current
+        file_handler.handler.wd_base = wds
+        file_handler.handler.wd_current = wds[-1]
+        file_handler.handler.rd1 = os.path.dirname(file_handler.handler.wd_current.rstrip(os.sep))
+        file_handler.handler.wd_trees = file_handler.handler.wd_current
         try:
             yield
         finally:
@@ -179,21 +179,21 @@ class OrthoFinderTestFuncs:
             self.active_wd_list = [self.core_working_dir]
             # self.wd_scope_list = [self.core_working_dir]
             with self._use_fh_wds(self.active_wd_list):
-                speciesInfoObj, _ = ProcessPreviousFiles(
+                species_info_obj, _ = process_previous_files(
                     self.active_wd_list,
-                    self.options.qDoubleBlast,
+                    self.options.q_double_blast,
                     check_blast=False,
                 )
-            self._species_cache = speciesInfoObj
-            return speciesInfoObj
+            self._species_cache = species_info_obj
+            return species_info_obj
 
         # self.wd_scope_list = [self.assign_working_dir, self.core_working_dir]
         self.active_wd_list = [self.core_working_dir, self.assign_working_dir]
 
         with self._use_fh_wds(self.active_wd_list[::-1]):
-            speciesInfoObj, speciesToUse_names = ProcessPreviousFiles(
+            species_info_obj, species_to_use_names = process_previous_files(
                 self.active_wd_list[::-1],
-                self.options.qDoubleBlast,
+                self.options.q_double_blast,
                 check_blast=False,
             )
 
@@ -215,41 +215,41 @@ class OrthoFinderTestFuncs:
             # speciesInfoObj.nSpAll = max(speciesInfoObj.speciesToUse) + 1      # will be one of the new species
     
 
-        self._species_cache = speciesInfoObj
-        return speciesInfoObj
+        self._species_cache = species_info_obj
+        return species_info_obj
 
     def get_sequence_info_obj(self):
-        speciesInfoObj = self.get_species_info_obj()
-        return util.GetSeqsInfo(self.active_wd_list[::-1], speciesInfoObj.speciesToUse, speciesInfoObj.nSpAll)
+        species_info_obj = self.get_species_info_obj()
+        return util.get_seqs_info(self.active_wd_list[::-1], species_info_obj.species_to_use, species_info_obj.n_sp_all)
 
     def get_og_obj(self):
-        speciesInfoObj = self.get_species_info_obj()
-        ogSet = OrthoGroupsSet(
+        species_info_obj = self.get_species_info_obj()
+        og_set = OrthogroupSet(
             self.options.min_seq,
             self.active_wd_list[::-1],
-            speciesInfoObj.speciesToUse,
-            speciesInfoObj.nSpAll,
-            self.options.qAddSpeciesToIDs,
+            species_info_obj.species_to_use,
+            species_info_obj.n_sp_all,
+            self.options.q_add_species_to_ids,
             self.options.tree_program,
-            idExtractor=util.FirstWordExtractor,
+            id_extractor=util.FirstWordExtractor,
             species_id_fn=self.species_id_fn,
             sequence_id_fn=self.sequence_id_fn,
-            ogs_all_fn=self.ogs_all_fn,        # core OGsAll.tsv in assign mode
+            ogs_all_fn=self.ogs_all_fn,        # core get_ogs_all.tsv in assign mode
             # results_dir=self.current_results_dir,
         )
-        return ogSet
+        return og_set
 
     def get_species_name_dict(self):
-        return SpeciesNameDict(self.species_id_fn)
+        return species_name_dict(self.species_id_fn)
 
     def get_othologues_obj(self):
-        ogSet = self.get_og_obj()
-        return ReconciliationAndOrthologues(
+        og_set = self.get_og_obj()
+        return reconciliation_and_orthologs(
             self.options.recon_method,
-            ogSet,
-            self.options.nBlast,
-            self.options.nProcessAlg,
-            iSpeciesTree=None,
+            og_set,
+            self.options.n_blast,
+            self.options.n_process_alg,
+            i_species_tree=None,
             stride_dups=None,
             q_split_para_clades=False,
             fewer_open_files=False,
@@ -284,70 +284,70 @@ class OrthoFinderTestFuncs:
 
         return gene_tree_dict
 
-    def get_orthologues(self):
-        ogSet = self.get_og_obj()
-        speciesTree_ids_fn = os.path.join(self.current_working_dir, "SpeciesTree_rooted_ids.txt")
+    def get_orthologs(self):
+        og_set = self.get_og_obj()
+        species_tree_ids_fn = os.path.join(self.current_working_dir, "SpeciesTree_rooted_ids.txt")
         labeled_tree_fn = os.path.join(self.current_results_dir, "Species_Tree", "SpeciesTree_rooted_node_labels.txt")
-        util.RenameTreeTaxa(
-            speciesTree_ids_fn, labeled_tree_fn,
-            ogSet.SpeciesDict(), qSupport=False, qFixNegatives=True, label='N'
+        util.rename_tree_taxa(
+            species_tree_ids_fn, labeled_tree_fn,
+            og_set.species_dict(), q_support=False, q_fix_negatives=True, label='N'
         )
-        species_tree_rooted_labelled = tree.Tree(speciesTree_ids_fn)
+        species_tree_rooted_labelled = tree.Tree(species_tree_ids_fn)
         species_tree_rooted_labelled.name = "N0"
-        iNode = 1
+        i_node = 1
         for n in species_tree_rooted_labelled.traverse():
             if (not n.is_leaf()) and (not n.is_root()):
-                n.name = f"N{iNode}"
-                iNode += 1
-        qNoRecon  = (self.options.recon_method == "only_overlap")
-        neighbours = GetSpeciesNeighbours(species_tree_rooted_labelled)
+                n.name = f"N{i_node}"
+                i_node += 1
+        q_no_recon  = (self.options.recon_method == "only_overlap")
+        neighbours = get_species_neighbours(species_tree_rooted_labelled)
 
         recon_gene_tree_id_dir = os.path.join(self.current_working_dir, "Resolved_Gene_Trees_ids")
-        iogs4 = ogSet.Get_iOGs4()
-        orthologues_alltrees = []
+        iogs4 = og_set.get_i_ogs4()
+        orthologs_alltrees = []
         for iog in iogs4:
             og_id = f"OG{iog:07d}"
             recon_tree_file = os.path.join(recon_gene_tree_id_dir, og_id+".txt")
-            rooted_tree_ids, _ = CheckAndRootTree(
+            rooted_tree_ids, _ = check_and_root_tree(
                 recon_tree_file,
                 species_tree_rooted_labelled,
-                GeneToSpecies_dash,
+                gene_to_species_dash,
             )
-            ologs, _recon_tree, suspect_genes, _dups = GetOrthologues_from_tree(
+            orthologs, _recon_tree, suspect_genes, _dups = get_orthologs_from_tree(
                 iog,
                 rooted_tree_ids,
                 species_tree_rooted_labelled,
-                GeneToSpecies_dash,
+                gene_to_species_dash,
                 neighbours,
                 q_get_dups=True,
-                qNoRecon=qNoRecon,
+                q_no_recon=q_no_recon,
             )
-            orthologues_alltrees.append((iog, ologs))
+            orthologs_alltrees.append((iog, orthologs))
 
-        two_three_all, nspecies, sp_to_index, _, _ = AllOrthologues(ogSet)  # ensure n==1 uses "continue"
-        orthologues_alltrees.extend(two_three_all)
+        two_three_all, nspecies, sp_to_index, _, _ = get_all_orthologs(og_set)  # ensure n==1 uses "continue"
+        orthologs_alltrees.extend(two_three_all)
 
         fewer_open_files = True
         dim2 = 1 if fewer_open_files else nspecies
-        olog_lines_tot     = [["" for _ in range(dim2)] for _ in range(nspecies)]
-        olog_sus_lines_tot = ["" for _ in range(nspecies)]
-        GetLinesForOlogFiles(
-            orthologues_alltrees,
-            ogSet.SpeciesDict(),
-            ogSet.speciesToUse,
-            ogSet.SequenceDict(),
-            qContainsSuspectOlogs=False,
-            olog_lines=olog_lines_tot,
-            olog_sus_lines=olog_sus_lines_tot,
+        ortholog_lines_tot     = [["" for _ in range(dim2)] for _ in range(nspecies)]
+        ortholog_sus_lines_tot = ["" for _ in range(nspecies)]
+        get_lines_for_ortholog_files(
+            orthologs_alltrees,
+            og_set.species_dict(),
+            og_set.species_to_use,
+            og_set.sequence_dict(),
+            q_contains_suspect_orthologs=False,
+            ortholog_lines=ortholog_lines_tot,
+            ortholog_sus_lines=ortholog_sus_lines_tot,
             fewer_open_files=fewer_open_files,
         )
 
-        species_names = [ogSet.SpeciesDict()[str(sp)] for sp in ogSet.speciesToUse]
-        orthologues_dict = defaultdict(lambda: defaultdict(list))
+        species_names = [og_set.species_dict()[str(sp)] for sp in og_set.species_to_use]
+        orthologs_dict = defaultdict(lambda: defaultdict(list))
 
         for i in range(nspecies):
             species_name = species_names[i] 
-            block = olog_lines_tot[i][0]   
+            block = ortholog_lines_tot[i][0]   
             if not block:
                 continue
             tokens = [t for t in re.split(r"[\t\n]+", block.strip()) if t]
@@ -368,70 +368,70 @@ class OrthoFinderTestFuncs:
                 aset = frozenset(re.split(r"[,\s;]+", a)) - {""}
                 bset = frozenset(re.split(r"[,\s;]+", b)) - {""}
                 
-                orthologues_dict[species_name][ogname].append((partner_name, aset, bset))
-        return orthologues_dict
+                orthologs_dict[species_name][ogname].append((partner_name, aset, bset))
+        return orthologs_dict
 
     def get_duplications(self):
         dup_fn = os.path.join(self.current_results_dir, "Gene_Duplication_Events", "Duplications.tsv")
         
-        ogSet = self.get_og_obj()
-        speciesTree_ids_fn = os.path.join(self.current_working_dir, "SpeciesTree_rooted_ids.txt")
+        og_set = self.get_og_obj()
+        species_tree_ids_fn = os.path.join(self.current_working_dir, "SpeciesTree_rooted_ids.txt")
         labeled_tree_fn = os.path.join(self.current_results_dir, "Species_Tree", "SpeciesTree_rooted_node_labels.txt")
-        util.RenameTreeTaxa(
-            speciesTree_ids_fn, labeled_tree_fn,
-            ogSet.SpeciesDict(), qSupport=False, qFixNegatives=True, label='N'
+        util.rename_tree_taxa(
+            species_tree_ids_fn, labeled_tree_fn,
+            og_set.species_dict(), q_support=False, q_fix_negatives=True, label='N'
         )
-        species_tree_rooted_labelled = tree.Tree(speciesTree_ids_fn)
+        species_tree_rooted_labelled = tree.Tree(species_tree_ids_fn)
         species_tree_rooted_labelled.name = "N0"
-        iNode = 1
+        i_node = 1
         for n in species_tree_rooted_labelled.traverse():
             if (not n.is_leaf()) and (not n.is_root()):
-                n.name = f"N{iNode}"
-                iNode += 1
-        qNoRecon  = (self.options.recon_method == "only_overlap")
-        neighbours = GetSpeciesNeighbours(species_tree_rooted_labelled)
+                n.name = f"N{i_node}"
+                i_node += 1
+        q_no_recon  = (self.options.recon_method == "only_overlap")
+        neighbours = get_species_neighbours(species_tree_rooted_labelled)
 
         recon_gene_tree_id_dir = os.path.join(self.current_working_dir, "Resolved_Gene_Trees_ids")
-        spTreeFN_ids = os.path.join(self.current_working_dir, "SpeciesTree_unrooted_ids.txt") 
-        nHighParallel = self.options.nBlast 
+        sp_tree_fn_ids = os.path.join(self.current_working_dir, "SpeciesTree_unrooted_ids.txt") 
+        n_high_parallel = self.options.n_blast 
         trees_id_dir = os.path.join(self.current_working_dir, "Trees_ids")
-        roots, clusters_counter, rootedSpeciesTreeFN, nSupport, _, _, stride_dups = \
-            stride.GetRoot(
-                spTreeFN_ids, 
+        roots, clusters_counter, rooted_species_tree_fn, n_support, _, _, stride_dups = \
+            stride.get_root(
+                sp_tree_fn_ids, 
                 trees_id_dir, 
-                stride.GeneToSpecies_dash, 
-                nHighParallel, 
-                qWriteRootedTree=True
+                stride.gene_to_species_dash, 
+                n_high_parallel, 
+                q_write_rooted_tree=True
             )
-        spec_seq_dict = ogSet.Spec_SeqDict()
-        nspecies = len(ogSet.speciesToUse)
+        spec_seq_dict = og_set.spec_seq_dict()
+        nspecies = len(og_set.species_to_use)
         spec_seq_dict[">%d genes" % (5*nspecies)] = ">%d genes" % (5*nspecies)   # used in Duplications
-        iogs4 = ogSet.Get_iOGs4()
+        iogs4 = og_set.get_i_ogs4()
         duplication_dict = {}
         for iog in iogs4:
             og_id = f"OG{iog:07d}"
             recon_tree_file = os.path.join(recon_gene_tree_id_dir, og_id+".txt")
-            rooted_tree_ids, _ = CheckAndRootTree(
+            rooted_tree_ids, _ = check_and_root_tree(
                 recon_tree_file,
                 species_tree_rooted_labelled,
-                GeneToSpecies_dash,
+                gene_to_species_dash,
             )
-            ologs, _recon_tree, suspect_genes, duplications = GetOrthologues_from_tree(
+            orthologs, _recon_tree, suspect_genes, duplications = get_orthologs_from_tree(
                 iog,
                 rooted_tree_ids,
                 species_tree_rooted_labelled,
-                GeneToSpecies_dash,
+                gene_to_species_dash,
                 neighbours,
                 q_get_dups=True,
-                qNoRecon=qNoRecon,
+                q_no_recon=q_no_recon,
             )
             duplication_dict[og_id] = []
             for sp_node_id, gene_node_name, frac, genes0, genes1 in duplications:
                 q_terminal = not sp_node_id.startswith("N")
                 if stride_dups is None:
-                    isSTRIDE = "Terminal" if q_terminal else "Non-Terminal"
+                    is_stride = "Terminal" if q_terminal else "Non-Terminal"
                 else:
-                    isSTRIDE = "Terminal" if q_terminal else "Non-Terminal: STRIDE" if frozenset(genes0 + genes1) in stride_dups else "Non-Terminal"
+                    is_stride = "Terminal" if q_terminal else "Non-Terminal: STRIDE" if frozenset(genes0 + genes1) in stride_dups else "Non-Terminal"
                 # gene_list0 = ", ".join([seqIDs[g] for g in genes0])   # line can read ">1234 genes" for example, but this has been added to dict
                 # gene_list1 = ", ".join([seqIDs[g] for g in genes1])
 
@@ -443,47 +443,47 @@ class OrthoFinderTestFuncs:
 
 
                 duplication_dict[og_id].append(
-                        (isSTRIDE, gene_set0, gene_set1)
+                        (is_stride, gene_set0, gene_set1)
                 )
 
         return duplication_dict
 
     def get_orthogroups(self):
         old_hog_n0_file = os.path.join(self.current_working_dir, "Legacy", "HOGs", "N0.tsv")
-        ogSet = self.get_og_obj()
-        species_to_use = ogSet.speciesToUse
-        sp_ids = ogSet.SpeciesDict()
-        iSps = list(map(str, sorted(species_to_use)))   # list of strings
-        species_names = [sp_ids[i] for i in iSps]
+        og_set = self.get_og_obj()
+        species_to_use = og_set.species_to_use
+        sp_ids = og_set.species_dict()
+        i_sps = list(map(str, sorted(species_to_use)))   # list of strings
+        species_names = [sp_ids[i] for i in i_sps]
 
-        seqsInfo = self.get_sequence_info_obj()
-        speciesInfoObj = self.get_species_info_obj()
-        speciesNamesDict = self.get_species_name_dict()
-        all_seq_ids = ogSet.AllUsedSequenceIDs()
+        seqs_info = self.get_sequence_info_obj()
+        species_info_obj = self.get_species_info_obj()
+        species_names_dict = self.get_species_name_dict()
+        all_seq_ids = og_set.all_used_sequence_ids()
         hogs_converter(os.path.join(os.path.dirname(old_hog_n0_file), "N0.ids.tsv"), old_hog_n0_file, species_names)
         new_ogs, name_dictionary =  update_ogs(old_hog_n0_file)
         all_assigned = set([g for og in new_ogs for g in og])
         unassigned = set(all_seq_ids).difference(all_assigned)
         single_ogs_list = [{g,} for g in unassigned]
         new_ogs.extend(single_ogs_list)
-        idsFilenames = [self.sequence_id_fn]
+        ids_filenames = [self.sequence_id_fn]
         try:
-            idToNameDict = IDFullDict(idsFilenames, func=util.FirstWordExtractor)
+            id_to_name_dict = id_full_dict(ids_filenames, func=util.FirstWordExtractor)
         except:
-            idToNameDict = IDFullDict(idsFilenames, func=util.FullAccession)
+            id_to_name_dict = id_full_dict(ids_filenames, func=util.FullAccession)
 
-        nSpecies = len(speciesNamesDict)
+        n_species = len(species_names_dict)
         
-        ogs_names = [[idToNameDict[seq] for seq in og] for og in new_ogs]
+        ogs_names = [[id_to_name_dict[seq] for seq in og] for og in new_ogs]
         ogs_ints = [[list(map(int, sequence.split("_"))) for sequence in og] for og in new_ogs]
 
         orthogroups_dict = {}
-        for iOg, (og, og_names) in enumerate(zip(ogs_ints, ogs_names)):
-            ogDict = defaultdict(list)
-            og_id = "OG%07d" % iOg
+        for i_og, (og, og_names) in enumerate(zip(ogs_ints, ogs_names)):
+            og_dict = defaultdict(list)
+            og_id = "OG%07d" % i_og
             
-            for (iSpecies, iSequence), name in zip(og, og_names):
-                ogDict[speciesInfoObj.speciesToUse.index(iSpecies)].append(name)
+            for (i_species, i_sequence), name in zip(og, og_names):
+                og_dict[species_info_obj.species_to_use.index(i_species)].append(name)
             
             # orthogroups_list = [
             #     (species_id, frozenset([g.rsplit("_", 1)[0] for g in genes]))
@@ -491,7 +491,7 @@ class OrthoFinderTestFuncs:
             # ]
             orthogroups_list = [
                 (species_id, frozenset(genes))
-                for species_id, genes in ogDict.items()
+                for species_id, genes in og_dict.items()
             ]
 
             sorted_orthogroups_list = sorted(orthogroups_list)
@@ -502,59 +502,59 @@ class OrthoFinderTestFuncs:
         
     def get_hogs(self):
 
-        ogSet = self.get_og_obj()
-        speciesTree_ids_fn = os.path.join(self.current_working_dir, "SpeciesTree_rooted_ids.txt")
+        og_set = self.get_og_obj()
+        species_tree_ids_fn = os.path.join(self.current_working_dir, "SpeciesTree_rooted_ids.txt")
         labeled_tree_fn = os.path.join(self.current_results_dir, "Species_Tree", "SpeciesTree_rooted_node_labels.txt")
-        util.RenameTreeTaxa(
-            speciesTree_ids_fn, labeled_tree_fn,
-            ogSet.SpeciesDict(), qSupport=False, qFixNegatives=True, label='N'
+        util.rename_tree_taxa(
+            species_tree_ids_fn, labeled_tree_fn,
+            og_set.species_dict(), q_support=False, q_fix_negatives=True, label='N'
         )
-        species_tree_rooted_labelled = tree.Tree(speciesTree_ids_fn)
+        species_tree_rooted_labelled = tree.Tree(species_tree_ids_fn)
         species_tree_rooted_labelled.name = "N0"
-        iNode = 1
+        i_node = 1
         node_names = [species_tree_rooted_labelled.name]
         for n in species_tree_rooted_labelled.traverse():
             if (not n.is_leaf()) and (not n.is_root()):
-                n.name = "N%d" % iNode
+                n.name = "N%d" % i_node
                 node_names.append(n.name)
-                iNode += 1
+                i_node += 1
 
-        qNoRecon  = (self.options.recon_method == "only_overlap")
-        neighbours = GetSpeciesNeighbours(species_tree_rooted_labelled)
+        q_no_recon  = (self.options.recon_method == "only_overlap")
+        neighbours = get_species_neighbours(species_tree_rooted_labelled)
 
         recon_gene_tree_id_dir = os.path.join(self.current_working_dir, "Resolved_Gene_Trees_ids")
         
-        speciesDict = ogSet.SpeciesDict()
-        SequenceDict = ogSet.SequenceDict()
+        species_dict = og_set.species_dict()
+        sequence_dict = og_set.sequence_dict()
         hog_writer = HogWriter(
             species_tree_rooted_labelled, 
             node_names, 
-            SequenceDict, 
-            speciesDict, 
-            ogSet.speciesToUse,
+            sequence_dict, 
+            species_dict, 
+            og_set.species_to_use,
             write_to_rd=True,
             write_output=False
         )
-        q_split_paralogous_clades = self.options.qSplitParaClades
+        q_split_paralogous_clades = self.options.q_split_para_clades
         
-        iogs4 = ogSet.Get_iOGs4()
+        iogs4 = og_set.get_i_ogs4()
         hogs_dict = defaultdict(lambda: defaultdict(list))
         for iog in iogs4:
             og_id = f"OG{iog:07d}"
             recon_tree_file = os.path.join(recon_gene_tree_id_dir, og_id+".txt")
-            rooted_tree_ids, _ = CheckAndRootTree(
+            rooted_tree_ids, _ = check_and_root_tree(
                 recon_tree_file,
                 species_tree_rooted_labelled,
-                GeneToSpecies_dash,
+                gene_to_species_dash,
             )
-            ologs, _recon_tree, suspect_genes, _dups = GetOrthologues_from_tree(
+            orthologs, _recon_tree, suspect_genes, _dups = get_orthologs_from_tree(
                 iog,
                 rooted_tree_ids,
                 species_tree_rooted_labelled,
-                GeneToSpecies_dash,
+                gene_to_species_dash,
                 neighbours,
                 q_get_dups=True,
-                qNoRecon=qNoRecon,
+                q_no_recon=q_no_recon,
             )
 
             recon_tree = hog_writer.mark_dups_below(_recon_tree)

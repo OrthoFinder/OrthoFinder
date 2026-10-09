@@ -119,19 +119,19 @@ Utilities
 -------------------------------------------------------------------------------
 """
 SequencesInfo = namedtuple(
-    "SequencesInfo", "nSeqs nSpecies speciesToUse seqStartingIndices nSeqsPerSpecies"
+    "SequencesInfo", "n_seqs n_species species_to_use seq_starting_indices n_seqs_per_species"
 )
 """
-nSeqs: int - number of sequences in speciesToUse
-nSpecies: int - number in speciesToUse
-speciesToUse: List[int]
-seqStartingIndices: List[int] of size |speciesToUse|, reindexed from zero according to the speices present
-nSeqsPerSpecies: Dict[int, int] - indexed by OrthoFinder species ID, info on all species, nto just those included in analysis
+n_seqs: int - number of sequences in species_to_use
+n_species: int - number in species_to_use
+species_to_use: List[int]
+seq_starting_indices: List[int] of size |species_to_use|, reindexed from zero according to the speices present
+n_seqs_per_species: Dict[int, int] - indexed by OrthoFinder species ID, info on all species, nto just those included in analysis
 """
 
 
 # Get Info from seqs IDs file?
-def CountFastaSequences(fastaFilename, block_size=1 << 24):
+def count_fasta_sequences(fasta_filename, block_size=1 << 24):
     """
     Number of lines starting with ">" in a FASTA file.
 
@@ -141,7 +141,7 @@ def CountFastaSequences(fastaFilename, block_size=1 << 24):
     """
     n = 0
     previous = b"\n"            # the start of the file counts as a line start
-    with open(fastaFilename, "rb") as infile:
+    with open(fasta_filename, "rb") as infile:
         while True:
             block = infile.read(block_size)
             if not block:
@@ -152,48 +152,48 @@ def CountFastaSequences(fastaFilename, block_size=1 << 24):
             previous = block[-1:]
 
 
-def GetSeqsInfo(inputDirectory_list, speciesToUse, nSpAll):
-    inputDirectory_list = list(inputDirectory_list)
-    speciesToUse = list(speciesToUse)
-    seqStartingIndices = [0]
-    nSeqs = 0
-    nSeqsPerSpecies = {}
+def get_seqs_info(input_directory_list, species_to_use, n_sp_all):
+    input_directory_list = list(input_directory_list)
+    species_to_use = list(species_to_use)
+    seq_starting_indices = [0]
+    n_seqs = 0
+    n_seqs_per_species = {}
 
-    for iFasta in range(nSpAll):
-        fastaFilename = None
+    for i_fasta in range(n_sp_all):
+        fasta_filename = None
 
-        for d in inputDirectory_list:
-            candidate = os.path.join(d, f"Species{iFasta}.fa")
+        for d in input_directory_list:
+            candidate = os.path.join(d, f"Species{i_fasta}.fa")
             if os.path.exists(candidate):
-                fastaFilename = candidate
+                fasta_filename = candidate
                 break
 
-        if fastaFilename is None:
-            if iFasta in speciesToUse:
+        if fasta_filename is None:
+            if i_fasta in species_to_use:
                 raise FileNotFoundError(
-                    f"Species{iFasta}.fa not found in any of the input "
-                    f"directories: {inputDirectory_list}"
+                    f"Species{i_fasta}.fa not found in any of the input "
+                    f"directories: {input_directory_list}"
                 )
             continue
-        n = CountFastaSequences(fastaFilename)
+        n = count_fasta_sequences(fasta_filename)
 
-        nSeqsPerSpecies[iFasta] = n
+        n_seqs_per_species[i_fasta] = n
 
-        if iFasta in speciesToUse:
-            nSeqs += n
-            seqStartingIndices.append(nSeqs)
+        if i_fasta in species_to_use:
+            n_seqs += n
+            seq_starting_indices.append(n_seqs)
 
-    if seqStartingIndices:
-        seqStartingIndices = seqStartingIndices[:-1]
+    if seq_starting_indices:
+        seq_starting_indices = seq_starting_indices[:-1]
 
-    nSpecies = len(speciesToUse)
+    n_species = len(species_to_use)
 
     return SequencesInfo(
-        nSeqs=nSeqs,
-        nSpecies=nSpecies,
-        speciesToUse=speciesToUse,
-        seqStartingIndices=seqStartingIndices,
-        nSeqsPerSpecies=nSeqsPerSpecies,
+        n_seqs=n_seqs,
+        n_species=n_species,
+        species_to_use=species_to_use,
+        seq_starting_indices=seq_starting_indices,
+        n_seqs_per_species=n_seqs_per_species,
     )
 
     # seqStartingIndices = [0]
@@ -226,7 +226,7 @@ def GetSeqsInfo(inputDirectory_list, speciesToUse, nSpAll):
     # )
 
 
-def SeqsInfoRecompute(seqs_info_orig, new_species_to_use):
+def seqs_info_recompute(seqs_info_orig, new_species_to_use):
     """
     Args:
         seqs_info_orig
@@ -237,48 +237,48 @@ def SeqsInfoRecompute(seqs_info_orig, new_species_to_use):
     - nSeqs updated
     - nSpecies updated
     """
-    seqStartingIndices = [0]
+    seq_starting_indices = [0]
     for isp in new_species_to_use:
-        seqStartingIndices.append(
-            seqStartingIndices[-1] + seqs_info_orig.nSeqsPerSpecies[isp]
+        seq_starting_indices.append(
+            seq_starting_indices[-1] + seqs_info_orig.n_seqs_per_species[isp]
         )
-    nSeqs = seqStartingIndices[-1]
-    seqStartingIndices = seqStartingIndices[:-1]
+    n_seqs = seq_starting_indices[-1]
+    seq_starting_indices = seq_starting_indices[:-1]
     return SequencesInfo(
-        nSeqs=nSeqs,
-        nSpecies=len(new_species_to_use),
-        speciesToUse=new_species_to_use,
-        seqStartingIndices=seqStartingIndices,
-        nSeqsPerSpecies=seqs_info_orig.nSeqsPerSpecies,
+        n_seqs=n_seqs,
+        n_species=len(new_species_to_use),
+        species_to_use=new_species_to_use,
+        seq_starting_indices=seq_starting_indices,
+        n_seqs_per_species=seqs_info_orig.n_seqs_per_species,
     )
 
 
 class SpeciesInfo(object):
     def __init__(self):
-        self.speciesToUse = []  #       seqsInfo.iSpeciesToUse   - which to include for this analysis
-        self.nSpAll = None  #       seqsInfo.nSpAll => 0, 1, ..., nSpAll - 1 are valid species indices
-        self.iFirstNewSpecies = None  #       iFirstNew   => (0, 1, ..., iFirstNew-1) are from previous and (iFirstNew, iFirstNew+1, ..., nSpecies-1) are the new species indices
+        self.species_to_use = []  #       seqsInfo.iSpeciesToUse   - which to include for this analysis
+        self.n_sp_all = None  #       seqsInfo.nSpAll => 0, 1, ..., nSpAll - 1 are valid species indices
+        self.i_first_new_species = None  #       iFirstNew   => (0, 1, ..., iFirstNew-1) are from previous and (iFirstNew, iFirstNew+1, ..., nSpecies-1) are the new species indices
 
     def __str__(self):
-        return str((self.speciesToUse, self.nSpAll, self.iFirstNewSpecies))
+        return str((self.species_to_use, self.n_sp_all, self.i_first_new_species))
 
     def get_original_species(self):
-        if self.iFirstNewSpecies is None:
-            return self.speciesToUse
+        if self.i_first_new_species is None:
+            return self.species_to_use
         else:
-            return [iSp for iSp in self.speciesToUse if iSp < self.iFirstNewSpecies]
+            return [i_sp for i_sp in self.species_to_use if i_sp < self.i_first_new_species]
 
 
 # picProtocol = 1
 # version = "3.0.1"
 
 
-def PrintNoNewLine(text):
-    parallel_task_manager.PrintNoNewLine(text)
+def print_no_new_line(text):
+    parallel_task_manager.print_no_new_line(text)
 
 
-def PrintTime(message):
-    parallel_task_manager.PrintTime(message)
+def print_time(message):
+    parallel_task_manager.print_time(message)
 
 
 """
@@ -287,8 +287,8 @@ Directory and file management
 """
 
 
-def GetDirectoryName(
-    baseDirName,
+def get_directory_name(
+    base_dir_name,
     i,
     search_program,
     msa_program,
@@ -301,9 +301,9 @@ def GetDirectoryName(
 
     if not extended_filename:
         if i == 0:
-            return baseDirName + os.sep
+            return base_dir_name + os.sep
         else:
-            return baseDirName + ("_%d" % i) + os.sep
+            return base_dir_name + ("_%d" % i) + os.sep
     else:
         if scorematrix and os.path.isfile(scorematrix):
             matrix_name = os.path.basename(scorematrix).split(".")[0]
@@ -326,17 +326,17 @@ def GetDirectoryName(
             extension = "-".join((search_program, msa_program, tree_program))
 
         if i == 0:
-            return baseDirName + "_" + extension + os.sep
+            return base_dir_name + "_" + extension + os.sep
         else:
-            return baseDirName + ("_%d" % i) + "_" + extension + os.sep
+            return base_dir_name + ("_%d" % i) + "_" + extension + os.sep
 
 
 """Call GetNameForNewWorkingDirectory before a call to CreateNewWorkingDirectory to find out what directory will be created"""
 
 
-def CreateNewWorkingDirectory(
-    baseDirectoryName,
-    qDate=True,
+def create_new_working_directory(
+    base_directory_name,
+    q_date=True,
     search_program=None,
     msa_program=None,
     tree_program=None,
@@ -346,11 +346,11 @@ def CreateNewWorkingDirectory(
     extended_filename=False,
     makedir=True,
 ):
-    dateStr = datetime.date.today().strftime("%b%d") if qDate else ""
-    iAppend = 0
-    newDirectoryName = GetDirectoryName(
-        baseDirectoryName + dateStr,
-        iAppend,
+    date_str = datetime.date.today().strftime("%b%d") if q_date else ""
+    i_append = 0
+    new_directory_name = get_directory_name(
+        base_directory_name + date_str,
+        i_append,
         search_program,
         msa_program,
         tree_program,
@@ -360,11 +360,11 @@ def CreateNewWorkingDirectory(
         extended_filename,
     )
     if makedir:
-        while os.path.exists(newDirectoryName):
-            iAppend += 1
-            newDirectoryName = GetDirectoryName(
-                baseDirectoryName + dateStr,
-                iAppend,
+        while os.path.exists(new_directory_name):
+            i_append += 1
+            new_directory_name = get_directory_name(
+                base_directory_name + date_str,
+                i_append,
                 search_program,
                 msa_program,
                 tree_program,
@@ -373,14 +373,14 @@ def CreateNewWorkingDirectory(
                 gapextend,
                 extended_filename,
             )
-        os.mkdir(newDirectoryName)
-    return newDirectoryName
+        os.mkdir(new_directory_name)
+    return new_directory_name
 
 
 # Unused
-def CreateNewPairedDirectories(
-    baseDirectoryName1,
-    baseDirectoryName2,
+def create_new_paired_directories(
+    base_directory_name1,
+    base_directory_name2,
     search_program=None,
     msa_program=None,
     tree_program=None,
@@ -389,11 +389,11 @@ def CreateNewPairedDirectories(
     gapextend=None,
     extended_filename=False,
 ):
-    dateStr = datetime.date.today().strftime("%b%d")
-    iAppend = 0
-    newDirectoryName1 = GetDirectoryName(
-        baseDirectoryName1 + dateStr,
-        iAppend,
+    date_str = datetime.date.today().strftime("%b%d")
+    i_append = 0
+    new_directory_name1 = get_directory_name(
+        base_directory_name1 + date_str,
+        i_append,
         search_program,
         msa_program,
         tree_program,
@@ -402,9 +402,9 @@ def CreateNewPairedDirectories(
         gapextend,
         extended_filename,
     )
-    newDirectoryName2 = GetDirectoryName(
-        baseDirectoryName2 + dateStr,
-        iAppend,
+    new_directory_name2 = get_directory_name(
+        base_directory_name2 + date_str,
+        i_append,
         search_program,
         msa_program,
         tree_program,
@@ -413,11 +413,11 @@ def CreateNewPairedDirectories(
         gapextend,
         extended_filename,
     )
-    while os.path.exists(newDirectoryName1) or os.path.exists(newDirectoryName2):
-        iAppend += 1
-        newDirectoryName1 = GetDirectoryName(
-            baseDirectoryName1 + dateStr,
-            iAppend,
+    while os.path.exists(new_directory_name1) or os.path.exists(new_directory_name2):
+        i_append += 1
+        new_directory_name1 = get_directory_name(
+            base_directory_name1 + date_str,
+            i_append,
             search_program,
             msa_program,
             tree_program,
@@ -426,9 +426,9 @@ def CreateNewPairedDirectories(
             gapextend,
             extended_filename,
         )
-        newDirectoryName2 = GetDirectoryName(
-            baseDirectoryName2 + dateStr,
-            iAppend,
+        new_directory_name2 = get_directory_name(
+            base_directory_name2 + date_str,
+            i_append,
             search_program,
             msa_program,
             tree_program,
@@ -437,57 +437,57 @@ def CreateNewPairedDirectories(
             gapextend,
             extended_filename,
         )
-    os.mkdir(newDirectoryName1)
-    os.mkdir(newDirectoryName2)
-    return newDirectoryName1, newDirectoryName2
+    os.mkdir(new_directory_name1)
+    os.mkdir(new_directory_name2)
+    return new_directory_name1, new_directory_name2
 
 
-def GetUnusedFilename(baseFilename, ext, i_unassigned=None):
-    iAppend = 0
-    newFilename = baseFilename + ext
+def get_unused_filename(base_filename, ext, i_unassigned=None):
+    i_append = 0
+    new_filename = base_filename + ext
     if i_unassigned is not None:
-        while os.path.exists(newFilename):
-            iAppend += 1
-            newFilename = baseFilename + ("_%d" % iAppend) + ext
-    return newFilename, iAppend
+        while os.path.exists(new_filename):
+            i_append += 1
+            new_filename = base_filename + ("_%d" % i_append) + ext
+    return new_filename, i_append
 
 
-def SortArrayPairByFirst(useForSortAr, keepAlignedAr, qLargestFirst=False):
-    sortedTuples = sorted(zip(useForSortAr, keepAlignedAr), reverse=qLargestFirst)
-    useForSortAr = [i for i, j in sortedTuples]
-    keepAlignedAr = [j for i, j in sortedTuples]
-    return useForSortAr, keepAlignedAr
+def sort_array_pair_by_first(use_for_sort_ar, keep_aligned_ar, q_largest_first=False):
+    sorted_tuples = sorted(zip(use_for_sort_ar, keep_aligned_ar), reverse=q_largest_first)
+    use_for_sort_ar = [i for i, j in sorted_tuples]
+    keep_aligned_ar = [j for i, j in sorted_tuples]
+    return use_for_sort_ar, keep_aligned_ar
 
 
-def GetSpeciesToUse(speciesIDsFN):
+def get_species_to_use(species_ids_fn):
     """Returns species indices (int) to use and total number of species available"""
-    speciesToUse = []
-    speciesToUse_names = []
-    nSkipped = 0
-    with open(speciesIDsFN, "r") as speciesF:
-        for line in speciesF:
+    species_to_use = []
+    species_to_use_names = []
+    n_skipped = 0
+    with open(species_ids_fn, "r") as species_f:
+        for line in species_f:
             line = line.rstrip()
             if not line:
                 continue
             if line.startswith("#"):
-                nSkipped += 1
+                n_skipped += 1
             else:
-                iSp, spName = line.split(": ")
-                if spName not in speciesToUse_names:
-                    speciesToUse.append(int(iSp))
-                    speciesToUse_names.append(spName)
+                i_sp, sp_name = line.split(": ")
+                if sp_name not in species_to_use_names:
+                    species_to_use.append(int(i_sp))
+                    species_to_use_names.append(sp_name)
 
-    return speciesToUse, len(speciesToUse) + nSkipped, speciesToUse_names
+    return species_to_use, len(species_to_use) + n_skipped, species_to_use_names
 
 
-def PrintContinueHint(option, directory, what):
+def print_continue_hint(option, directory, what):
     """After a run stopped early (-op, -og, -ogt, -ost): how to continue it."""
     from rich.markup import escape
     printer.print("\nTo continue this analysis from %s, run:" % what)
     printer.print("    [bold]orthofinder %s [dark_cyan]%s[/dark_cyan][/bold]" % (option, escape(directory)))
 
 
-def PrintRunEnd(d_results, continue_option=None, continue_from=None):
+def print_run_end(d_results, continue_option=None, continue_from=None):
     """
     The end of a run, also of one stopped early (-op, -og, -ogh, -ogt, -ost):
     the results directory, how to continue a stopped run, and the citation.
@@ -497,20 +497,20 @@ def PrintRunEnd(d_results, continue_option=None, continue_from=None):
     printer.print("\n[bold]Results directory:[/bold]")
     printer.print("    [dark_cyan]%s[/dark_cyan]" % escape(d_results))
     if continue_option is not None:
-        PrintContinueHint(continue_option, d_results, continue_from)
-    PrintCitation(d_results)
+        print_continue_hint(continue_option, d_results, continue_from)
+    print_citation(d_results)
 
 
-def PrintRestartInfo(options, directory):
+def print_restart_info(options, directory):
     """At the start of a restarted run (-b, -fg, -fgt, -fst): what it continues from."""
     from rich.markup import escape
-    if options.qStartFromBlast and not options.qStartFromFasta:
+    if options.q_start_from_blast and not options.q_start_from_fasta:
         what = "the sequence search results"
-    elif options.qStartFromGroups:
+    elif options.q_start_from_groups:
         what = "the orthogroups"
-    elif options.qStartFromTrees:
+    elif options.q_start_from_trees:
         what = "the gene trees"
-    elif options.qStartFromSpeciesTrees:
+    elif options.q_start_from_species_trees:
         what = "the species tree"
     else:
         return
@@ -518,12 +518,12 @@ def PrintRestartInfo(options, directory):
     printer.print("    [dark_cyan]%s[/dark_cyan]" % escape(directory))
 
 
-def Success():
-    parallel_task_manager.Success()
+def success():
+    parallel_task_manager.success()
 
 
-def Fail():
-    parallel_task_manager.Fail()
+def fail():
+    parallel_task_manager.fail()
 
 
 """
@@ -532,7 +532,7 @@ IDExtractor
 """
 
 
-def GetIDPairFromString(line):
+def get_id_pair_from_string(line):
     return list(map(int, line.split("_")))
 
 
@@ -541,11 +541,11 @@ class IDExtractor(object):
     want to extract a unique sequence ID from the fasta file accessions uin different
     ways."""
 
-    def GetIDToNameDict(self):
+    def get_id_to_name_dict(self):
         raise NotImplementedError("Should not be implemented")
 
 
-def CleanAccession(accession):
+def clean_accession(accession):
     """
     A FASTA header as a gene name: characters that would break the output
     files are replaced by "_" (":" "," "(" ")" in trees; a tab, possible in a
@@ -587,7 +587,7 @@ class GeneNames(object):
 
     def add(self, accession):
         """The unique name of the next gene with this header."""
-        name = CleanAccession(accession)
+        name = clean_accession(accession)
         tree_form = self._tree_form(name)
         if tree_form in self.used:
             n = 2
@@ -599,12 +599,12 @@ class GeneNames(object):
 
 
 class FullAccession(IDExtractor):
-    def __init__(self, idsFilename):
+    def __init__(self, ids_filename):
         # only want the first part and nothing else (easy!)
-        self.idToNameDict = dict()
+        self.id_to_name_dict = dict()
         names_in_species = {}
-        with open(idsFilename, "r") as idsFile:
-            for line in idsFile:
+        with open(ids_filename, "r") as ids_file:
+            for line in ids_file:
                 line = line.rstrip()
                 if not line:
                     continue
@@ -612,31 +612,31 @@ class FullAccession(IDExtractor):
                 id, accession = line.split(": ", 1)
                 id = id.replace("#", "")
                 id = id.strip()
-                if id in self.idToNameDict:
+                if id in self.id_to_name_dict:
                     raise RuntimeError(
                         "ERROR: A duplicate id was found in the fasta files: % s" % id
                     )
                 # Names are unique within a species (see GeneNames)
-                iSp = id.split("_")[0]
-                if iSp not in names_in_species:
-                    names_in_species[iSp] = GeneNames()
-                self.idToNameDict[id] = names_in_species[iSp].add(accession)
+                i_sp = id.split("_")[0]
+                if i_sp not in names_in_species:
+                    names_in_species[i_sp] = GeneNames()
+                self.id_to_name_dict[id] = names_in_species[i_sp].add(accession)
 
-    def GetIDToNameDict(self):
-        return self.idToNameDict
+    def get_id_to_name_dict(self):
+        return self.id_to_name_dict
 
 
 class FirstWordExtractor(IDExtractor):
-    def __init__(self, idsFilename):
+    def __init__(self, ids_filename):
         # only want the first part and nothing else (easy!)
-        self.idToNameDict = dict()
+        self.id_to_name_dict = dict()
         accs_in_species = []
-        with open(idsFilename, "r") as idsFile:
-            for line in idsFile:
+        with open(ids_filename, "r") as ids_file:
+            for line in ids_file:
                 id, rest = line.split(": ", 1)
                 accession = rest.split(None, 1)[0]
-                iSp = int(id.split("_")[0])
-                while len(accs_in_species) < iSp + 1:
+                i_sp = int(id.split("_")[0])
+                while len(accs_in_species) < i_sp + 1:
                     accs_in_species.append(set())
                 # Replace problematic characters
                 accession = (
@@ -646,92 +646,92 @@ class FirstWordExtractor(IDExtractor):
                     .replace(")", "_")
                 )  # .replace(".", "_")
                 # Only ensure the accessions are unique within the species, there's no need to ensure global uniqueness
-                if accession in accs_in_species[iSp]:
+                if accession in accs_in_species[i_sp]:
                     raise RuntimeError(
                         "A duplicate accession was found using just first part: % s"
                         % accession
                     )
-                accs_in_species[iSp].add(accession)
-                if id in self.idToNameDict:
+                accs_in_species[i_sp].add(accession)
+                if id in self.id_to_name_dict:
                     raise RuntimeError(
                         "ERROR: A duplicate id was found in the fasta files: % s" % id
                     )
-                self.idToNameDict[id] = accession
+                self.id_to_name_dict[id] = accession
 
-    def GetIDToNameDict(self):
-        return self.idToNameDict
+    def get_id_to_name_dict(self):
+        return self.id_to_name_dict
 
 
-def HaveSupportValues(speciesTreeFN_ids):
-    qHaveSupport = False
+def have_support_values(species_tree_fn_ids):
+    q_have_support = False
     try:
-        tree.Tree(speciesTreeFN_ids, format=2)
-        qHaveSupport = True
+        tree.Tree(species_tree_fn_ids, format=2)
+        q_have_support = True
     except:
         pass
-    return qHaveSupport
+    return q_have_support
 
 
-def RenameTreeTaxa(
-    treeFN_or_tree,
-    newTreeFilename,
-    idsMap,
-    qSupport,
-    qFixNegatives=False,
-    inFormat=None,
+def rename_tree_taxa(
+    tree_fn_or_tree,
+    new_tree_filename,
+    ids_map,
+    q_support,
+    q_fix_negatives=False,
+    in_format=None,
     label=None,
-    qViaCopy=False,
+    q_via_copy=False,
 ):
     """
     qViaCopy - create a copy of the tree and edit this copy. I.e. don't make changes to the original
     """
     if label != None:
-        qSupport = False
-    qHaveSupport = False
+        q_support = False
+    q_have_support = False
     try:
-        if type(treeFN_or_tree) is tree.TreeNode:
-            if qViaCopy:
-                t = treeFN_or_tree.copy("newick")
+        if type(tree_fn_or_tree) is tree.TreeNode:
+            if q_via_copy:
+                t = tree_fn_or_tree.copy("newick")
             else:
-                t = treeFN_or_tree
+                t = tree_fn_or_tree
         else:
-            qHaveSupport = False
-            if inFormat == None:
+            q_have_support = False
+            if in_format == None:
                 try:
-                    t = tree.Tree(treeFN_or_tree, format=2)
-                    qHaveSupport = True
+                    t = tree.Tree(tree_fn_or_tree, format=2)
+                    q_have_support = True
                 except:
-                    t = tree.Tree(treeFN_or_tree)
+                    t = tree.Tree(tree_fn_or_tree)
             else:
-                t = tree.Tree(treeFN_or_tree, format=inFormat)
+                t = tree.Tree(tree_fn_or_tree, format=in_format)
         for node in t.get_leaves():
-            node.name = idsMap[node.name]
-        if qFixNegatives:
+            node.name = ids_map[node.name]
+        if q_fix_negatives:
             tree_length = sum([n.dist for n in t.traverse() if n != t])
             sliver = tree_length * 1e-6
-        iNode = 1
+        i_node = 1
         for n in t.traverse():
-            if qFixNegatives and n.dist < 0.0:
+            if q_fix_negatives and n.dist < 0.0:
                 n.dist = sliver
             if label != None:
                 if (not n.is_leaf()) and (not n.is_root()):
-                    n.name = label + ("%d" % iNode)
-                    iNode += 1
+                    n.name = label + ("%d" % i_node)
+                    i_node += 1
         if label != None:
-            with open(newTreeFilename, "w") as outfile:
+            with open(new_tree_filename, "w") as outfile:
                 outfile.write(
                     t.write(format=3)[:-1] + label + "0;"
                 )  # internal + terminal branch lengths, leaf names, node names. (tree library won't label root node)
         elif t.name == "N0" or t.name == "n0":
-            with open(newTreeFilename, "w") as outfile:
+            with open(new_tree_filename, "w") as outfile:
                 outfile.write(
                     t.write(format=3)[:-1] + t.name + ";"
                 )  # internal + terminal branch lengths, leaf names, node names. (tree library won't label root node)
         else:
-            if qSupport or qHaveSupport:
-                t.write(outfile=newTreeFilename, format=2)
+            if q_support or q_have_support:
+                t.write(outfile=new_tree_filename, format=2)
             else:
-                t.write(outfile=newTreeFilename, format=5)
+                t.write(outfile=new_tree_filename, format=5)
     except:
         pass
 
@@ -742,19 +742,19 @@ Find results of previous run
 """
 
 
-def GetSpeciesDirectory():
+def get_species_directory():
     # Confirms all required Sequence files and BLAST etc are present
     pass
 
 
-def WriteCitation(d):
+def write_citation(d):
     with open(d + "Citation.txt", "w") as outfile:
         outfile.write(citation)
 
 
-def PrintCitation(d=None):
+def print_citation(d=None):
     if d is not None:
-        WriteCitation(d)
+        write_citation(d)
     # printer.print(print_citation)
     printer.print("\n[bold]CITATION:[/bold]")
     printer.print(
@@ -781,13 +781,13 @@ def PrintCitation(d=None):
     )
 
 
-def PrintUnderline(text, qHeavy=False):
+def print_underline(text, q_heavy=False):
     run_logging.RunLogger.message(text)
     n = len(text)
     if text.startswith("\n"):
         n -= 1
-    print(("\n[bold]" + text + "[/bold]") if qHeavy else ("\n" + text))
-    print((("=" if qHeavy else "-") * n))
+    print(("\n[bold]" + text + "[/bold]") if q_heavy else ("\n" + text))
+    print((("=" if q_heavy else "-") * n))
 
 
 # def FlowText(text, n=60):
@@ -822,7 +822,7 @@ def number_open_files_exception_advice(n_species, q_at_trees):
         n_species - the number of species in the analysis
         q_at_trees - has this error occurred at the orthologs from trees stage
     """
-    # parallel_task_manager.RunCommand("ulimit -Hn")
+    # parallel_task_manager.run_command("ulimit -Hn")
     n_req = n_species + 100
     msg = (
         "\nERROR: The system limits on the number of files a process can open is too low. For %d species \
@@ -863,18 +863,18 @@ To increase the limit to %d for user  called 'emms' add the lines:\n\
 """
 
 
-class nOrtho_sp(object):
-    """matrix of number of genes in species i that have orthologues/an orthologue in species j"""
+class NOrthoSp(object):
+    """matrix of number of genes in species i that have orthologues/an ortholog in species j"""
 
-    def __init__(self, nSp):
-        self.n = np.zeros((nSp, nSp))
-        self.n_121 = np.zeros((nSp, nSp))  # genes in i that have one orthologue in j
-        self.n_12m = np.zeros((nSp, nSp))  # genes in i that have many orthologues in j
+    def __init__(self, n_sp):
+        self.n = np.zeros((n_sp, n_sp))
+        self.n_121 = np.zeros((n_sp, n_sp))  # genes in i that have one ortholog in j
+        self.n_12m = np.zeros((n_sp, n_sp))  # genes in i that have many orthologs in j
         self.n_m21 = np.zeros(
-            (nSp, nSp)
+            (n_sp, n_sp)
         )  # genes in i that are in a many-to-one orthology relationship with genes in j
         self.n_m2m = np.zeros(
-            (nSp, nSp)
+            (n_sp, n_sp)
         )  # genes in i that are in a many-to-many orthology relationship with genes in j
 
     def __iadd__(self, other):
@@ -885,36 +885,36 @@ class nOrtho_sp(object):
         self.n_m2m += other.n_m2m
         return self
 
-    def add_pair(self, iL, iR, nL, nR):
+    def add_pair(self, i_l, i_r, n_l, n_r):
         """Record one orthology relationship between nL genes in iL and nR genes in iR."""
-        self.n[iL, iR] += nL
-        self.n[iR, iL] += nR
+        self.n[i_l, i_r] += n_l
+        self.n[i_r, i_l] += n_r
 
-        if nL == 1 and nR == 1:
-            self.n_121[iL, iR] += 1
-            self.n_121[iR, iL] += 1
+        if n_l == 1 and n_r == 1:
+            self.n_121[i_l, i_r] += 1
+            self.n_121[i_r, i_l] += 1
 
-        elif nL == 1:
-            self.n_12m[iL, iR] += 1
-            self.n_m21[iR, iL] += nR
+        elif n_l == 1:
+            self.n_12m[i_l, i_r] += 1
+            self.n_m21[i_r, i_l] += n_r
 
-        elif nR == 1:
-            self.n_m21[iL, iR] += nL
-            self.n_12m[iR, iL] += 1
+        elif n_r == 1:
+            self.n_m21[i_l, i_r] += n_l
+            self.n_12m[i_r, i_l] += 1
 
         else:
-            self.n_m2m[iL, iR] += nL
-            self.n_m2m[iR, iL] += nR
+            self.n_m2m[i_l, i_r] += n_l
+            self.n_m2m[i_r, i_l] += n_r
 
 
-class nOrtho_cache(object):
+class NOrthoCache(object):
     """matrix of approx number of unwritten cached orthologs"""
 
-    def __init__(self, nSp):
-        self.n = np.zeros((nSp, nSp))
+    def __init__(self, n_sp):
+        self.n = np.zeros((n_sp, n_sp))
 
-    def __iadd__(self, nOrtho_sp_obj):
-        self.n += nOrtho_sp_obj.n
+    def __iadd__(self, n_ortho_sp_obj):
+        self.n += n_ortho_sp_obj.n
         return self
 
     def get_i_j_to_write(self, n_max_cache, fewer_open_files=False):
@@ -939,14 +939,14 @@ class Finalise(object):
         pass
 
     def __exit__(self, type, value, traceback):
-        ptm = parallel_task_manager.ParallelTaskManager_singleton()
-        ptm.Stop()
+        ptm = parallel_task_manager.ParallelTaskManagerSingleton()
+        ptm.stop()
 
 
 def seq_id_key(seq_id):
     """Sort key for "species_sequence" IDs in numeric order (0_61 before 0_317)."""
-    iSp, iSeq = seq_id.split("_")
-    return int(iSp), int(iSeq)
+    i_sp, i_seq = seq_id.split("_")
+    return int(i_sp), int(i_seq)
 
 
 def version_parse_simple(sem_version):
@@ -1025,10 +1025,10 @@ def clear_dir(of3_dir):
                     )
 
 
-def split_ortholog_files(d_ologs, q_compress=False):
-    if not d_ologs.endswith("/"):
-        d_ologs += "/"
-    filenames = list(glob.glob(d_ologs + "*.tsv") + glob.glob(d_ologs + "*.tsv.gz"))
+def split_ortholog_files(d_orthologs, q_compress=False):
+    if not d_orthologs.endswith("/"):
+        d_orthologs += "/"
+    filenames = list(glob.glob(d_orthologs + "*.tsv") + glob.glob(d_orthologs + "*.tsv.gz"))
     species = [
         os.path.splitext(os.path.splitext(os.path.basename(fn))[0])[0]
         if fn.endswith(".gz")
@@ -1036,7 +1036,7 @@ def split_ortholog_files(d_ologs, q_compress=False):
         for fn in filenames
     ]
     for fn, sp0 in zip(filenames, species):
-        d_out = d_ologs + "Orthologues_" + sp0 + "/"
+        d_out = d_orthologs + "Orthologues_" + sp0 + "/"
         if not os.path.exists(d_out):
             os.mkdir(d_out)
         file_handles = []

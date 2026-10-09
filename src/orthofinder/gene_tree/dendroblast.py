@@ -16,21 +16,21 @@ except ImportError:
 from ..phylo import tree
 from ..species_tree import stag
 from ..utils import util, file_handler, parallel_task_manager, program_caller
-from ..utils import blast_file_processor as BlastFileProcessor
+from ..utils import blast_file_processor as blast_file_processor
 
 
 class DendroBLASTTrees(object):
-    def __init__(self, ogSet, nProcesses_alg, nProcess_std, qDoubleBlast):
-        self.ogSet = ogSet
-        self.nProcesses = nProcesses_alg
-        self.nProcess_std = nProcess_std
-        self.qDoubleBlast = qDoubleBlast
+    def __init__(self, og_set, n_processes_alg, n_process_std, q_double_blast):
+        self.og_set = og_set
+        self.n_processes = n_processes_alg
+        self.n_process_std = n_process_std
+        self.q_double_blast = q_double_blast
         # Check files exist
     
-    def TreeFilename_IDs(self, iog):
-        return file_handler.FileHandler.GetOGsTreeFN(iog)
+    def tree_filename_ids(self, iog):
+        return file_handler.handler.get_ogs_tree_fn(iog)
         
-    def GetOGMatrices_FullParallel(self):
+    def get_og_matrices_full_parallel(self):
         """
         read the blast files as well, remove need for intermediate pickle and unpickle
         ogMatrices contains matrix M for each OG where:
@@ -38,7 +38,7 @@ class DendroBLASTTrees(object):
         """
         with warnings.catch_warnings():         
             warnings.simplefilter("ignore")
-            ogs_all = self.ogSet.OGsAll()
+            ogs_all = self.og_set.get_ogs_all()
             # DendroBLAST cannot be applied for --fast-add since we don't have hits between all genes, therefore can
             # assume that orthogroups are ordered
             lengths = [len(og) for og in ogs_all]
@@ -49,50 +49,50 @@ class DendroBLASTTrees(object):
             except:
                 iog4 = len(ogs_all)
             ogs = ogs_all[:iog4]
-            ogsPerSpecies = [[[(g, i) for i, g in enumerate(og) if g.iSp == iSp] for iSp in self.ogSet.seqsInfo.speciesToUse] for og in ogs]
-            nGenes = [len(og) for og in ogs]
-            nSeqs = self.ogSet.seqsInfo.nSeqsPerSpecies
-            ogMatrices = [[mp.Array('d', n, lock=False) for _ in range(n)] for n in nGenes]
-            blastDir_list = file_handler.FileHandler.GetBlastResultsDir()
+            ogs_per_species = [[[(g, i) for i, g in enumerate(og) if g.i_sp == i_sp] for i_sp in self.og_set.seqs_info.species_to_use] for og in ogs]
+            n_genes = [len(og) for og in ogs]
+            n_seqs = self.og_set.seqs_info.n_seqs_per_species
+            og_matrices = [[mp.Array('d', n, lock=False) for _ in range(n)] for n in n_genes]
+            blast_dir_list = file_handler.handler.get_blast_results_dir()
             cmd_queue = mp.Queue()
-            for iiSp, sp1 in enumerate(self.ogSet.seqsInfo.speciesToUse):
-                cmd_queue.put((iiSp, sp1, nSeqs[sp1]))
+            for ii_sp, sp1 in enumerate(self.og_set.seqs_info.species_to_use):
+                cmd_queue.put((ii_sp, sp1, n_seqs[sp1]))
             worker_status_queue = mp.Queue()
             # Should use PTM?
-            runningProcesses = [mp.Process(target=Worker_OGMatrices_ReadBLASTAndUpdateDistances,
-                                           args=(cmd_queue, worker_status_queue, iWorker, ogMatrices, nGenes,
-                                                 self.ogSet.seqsInfo, blastDir_list, ogsPerSpecies, self.qDoubleBlast))
-                                for iWorker in range(self.nProcesses)]
-            for proc in runningProcesses:
+            running_processes = [mp.Process(target=worker_og_matrices_read_blast_and_update_distances,
+                                           args=(cmd_queue, worker_status_queue, i_worker, og_matrices, n_genes,
+                                                 self.og_set.seqs_info, blast_dir_list, ogs_per_species, self.q_double_blast))
+                                for i_worker in range(self.n_processes)]
+            for proc in running_processes:
                 proc.start()
-            rota = [None for iWorker in range(self.nProcesses)]
+            rota = [None for i_worker in range(self.n_processes)]
             unfinished = []
             while True:
                 # get process alive/dead
                 time.sleep(1)
-                alive = [proc.is_alive() for proc in runningProcesses]
+                alive = [proc.is_alive() for proc in running_processes]
                 # read latest updates from queue, update rota
                 try:
                     while True:
-                        status, iWorker, iTask = worker_status_queue.get(True, 0.1)
+                        status, i_worker, i_task = worker_status_queue.get(True, 0.1)
                         if status == "start":
-                            rota[iWorker] = iTask
+                            rota[i_worker] = i_task
                         elif status == "finish":
-                            rota[iWorker] = None
+                            rota[i_worker] = None
                         elif status == "empty":
-                            rota[iWorker] = "empty"
+                            rota[i_worker] = "empty"
                 except queue.Empty:
                     pass
                 # A worker that died without finishing its task: stop the
                 # others and raise, so main() records the error in checkpoint.txt.
-                for proc, al, r in zip(runningProcesses, alive, rota):
+                for proc, al, r in zip(running_processes, alive, rota):
                     if (not al) and (r != "empty"):
-                        parallel_task_manager.TerminateProcesses(runningProcesses)
+                        parallel_task_manager.terminate_processes(running_processes)
                         cmd_queue.cancel_join_thread()
                         raise parallel_task_manager.WorkerError(
                             "DendroBLAST worker (PID %s) exited with status %s "
                             "before finishing species %s.\n%s"
-                            % (proc.pid, proc.exitcode, r, GetRAMErrorText())
+                            % (proc.pid, proc.exitcode, r, get_ram_error_text())
                         )
                 if not any(alive):
                     break
@@ -101,11 +101,11 @@ class DendroBLASTTrees(object):
 #                print("unsuccessful again then it will have to exit. Consider using")
 #                print("the option '-a 1' or running on a machine with more RAM")
             #ogMatrices = [np.matrix(m) for m in ogMatrices]
-            return ogs, ogMatrices      
+            return ogs, og_matrices      
                    
-    def CompleteOGMatrices(self, ogs, ogMatrices):
-        newMatrices = []
-        for iog, (og, m) in enumerate(zip(ogs, ogMatrices)):
+    def complete_og_matrices(self, ogs, og_matrices):
+        new_matrices = []
+        for iog, (og, m) in enumerate(zip(ogs, og_matrices)):
             # dendroblast scores
             n = m.shape[0]
             m2 = np.zeros(m.shape)
@@ -115,14 +115,14 @@ class DendroBLASTTrees(object):
                     m2[i, j] = -np.log(m[i,j] + m[j,i])  
                     m2[j, i] = m2[i, j]  
                     max_og = max(max_og, m2[i,j])
-            newMatrices.append(m2)
-        return newMatrices
+            new_matrices.append(m2)
+        return new_matrices
         
-    def CompleteAndWriteOGMatrices(self, ogs, ogMatrices):
+    def complete_and_write_og_matrices(self, ogs, og_matrices):
         """
         ogMatrices - each matrix is a list of mp.Array  (so that each represents an nSeq x nSeq matrix
         """
-        for iog, (og, m) in enumerate(zip(ogs, ogMatrices)):
+        for iog, (og, m) in enumerate(zip(ogs, og_matrices)):
             # dendroblast scores
             n = len(m)
             max_og = -9e99
@@ -132,17 +132,17 @@ class DendroBLASTTrees(object):
                     m[i][j] = -np.log(m[i][j] + m[j][i])  
                     m[j][i] = m[i][j]  
                     max_og = max(max_og, m[i][j])
-            self.WritePhylipMatrix(m, [g.ToString() for g in og], file_handler.FileHandler.GetOGsDistMatFN(iog), max_og)
-        return ogMatrices
+            self.write_phylip_matrix(m, [g.to_string() for g in og], file_handler.handler.get_ogs_dist_mat_fn(iog), max_og)
+        return og_matrices
     
     @staticmethod
-    def WritePhylipMatrix(m, names, outFN, max_og):
+    def write_phylip_matrix(m, names, out_fn, max_og):
         """
         m - list of mp.Array  (so that each represents an nSeq x nSeq matrix
         """
         max_og = 1.1*max_og
         sliver = 1e-6
-        with open(outFN, 'w') as outfile:
+        with open(out_fn, 'w') as outfile:
             n = len(m)
             outfile.write("%d\n" % n)
             for i in range(n):
@@ -153,141 +153,141 @@ class DendroBLASTTrees(object):
                 values = " ".join(["%.6f" % v for v in V])   
                 outfile.write(values + "\n")
     
-    def SpeciesTreeDistances(self, ogs, ogMatrices, method = 0):
+    def species_tree_distances(self, ogs, og_matrices, method = 0):
         """
         ogMatrices - each matrix is a list of mp.Array  (so that each represents an nSeq x nSeq matrix
         """
-        spPairs = list(itertools.combinations(self.ogSet.seqsInfo.speciesToUse, 2))
-        D = [[] for _ in spPairs]
+        sp_pairs = list(itertools.combinations(self.og_set.seqs_info.species_to_use, 2))
+        D = [[] for _ in sp_pairs]
         if method == 0:
             """ closest distance for each species pair in each orthogroup"""
-            for og, m in zip(ogs, ogMatrices):
-                spDict = defaultdict(list)
+            for og, m in zip(ogs, og_matrices):
+                sp_dict = defaultdict(list)
                 for i, g in enumerate(og):
-                    spDict[g.iSp].append(i)
-                for (sp1, sp2), d_list in zip(spPairs, D):
-                    distances = [m[i][j] for i in spDict[sp1] for j in spDict[sp2]]
+                    sp_dict[g.i_sp].append(i)
+                for (sp1, sp2), d_list in zip(sp_pairs, D):
+                    distances = [m[i][j] for i in sp_dict[sp1] for j in sp_dict[sp2]]
                     if len(distances) > 0: d_list.append(min(distances))
 #                    d_list.append(min(distances) if len(distances) > 0 else None)
-        return D, spPairs
+        return D, sp_pairs
     
-    def PrepareSpeciesTreeCommand(self, D, spPairs, qPutInWorkingDir=False):
-        n = len(self.ogSet.seqsInfo.speciesToUse)
+    def prepare_species_tree_command(self, D, sp_pairs, q_put_in_working_dir=False):
+        n = len(self.og_set.seqs_info.species_to_use)
         M = np.zeros((n, n))
-        for (sp1, sp2), d in zip(spPairs, D):
-            sp1 = self.ogSet.seqsInfo.speciesToUse.index(sp1)
-            sp2 = self.ogSet.seqsInfo.speciesToUse.index(sp2)
+        for (sp1, sp2), d in zip(sp_pairs, D):
+            sp1 = self.og_set.seqs_info.species_to_use.index(sp1)
+            sp2 = self.og_set.seqs_info.species_to_use.index(sp2)
             x = np.median(d)
             M[sp1, sp2] = x
             M[sp2, sp1] = x
-        speciesMatrixFN = file_handler.FileHandler.GetSpeciesTreeMatrixFN(qPutInWorkingDir)  
+        species_matrix_fn = file_handler.handler.get_species_tree_matrix_fn(q_put_in_working_dir)  
         sliver = 1e-6
-        with open(speciesMatrixFN, 'w') as outfile:
+        with open(species_matrix_fn, 'w') as outfile:
             outfile.write("%d\n" % n)
             for i in range(n):
-                outfile.write(str(self.ogSet.seqsInfo.speciesToUse[i]) + " ")
+                outfile.write(str(self.og_set.seqs_info.species_to_use[i]) + " ")
                 V = [(0. + M[i,j]) for j in range(n)]  # hack to avoid printing out "-0"
                 V = [sliver if 0 < v < sliver else v for v in V]  # make sure scientific notation is not used (not accepted by fastme)
                 values = " ".join(["%.6f" % v for v in V])   
                 outfile.write(values + "\n")       
-        treeFN = file_handler.FileHandler.GetSpeciesTreeUnrootedFN()
-        cmd = " ".join(["fastme", "-i", speciesMatrixFN, "-o", treeFN, "-N", "-w", "O"] + (["-s"] if n < 1000 else []))
-        return cmd, treeFN
+        tree_fn = file_handler.handler.get_species_tree_unrooted_fn()
+        cmd = " ".join(["fastme", "-i", species_matrix_fn, "-o", tree_fn, "-N", "-w", "O"] + (["-s"] if n < 1000 else []))
+        return cmd, tree_fn
                 
-    def PrepareGeneTreeCommand(self):
+    def prepare_gene_tree_command(self):
         cmds = []
-        ogs = self.ogSet.OGsAll()
+        ogs = self.og_set.get_ogs_all()
         for iog in range(len(ogs)):
-            nTaxa = len(ogs[iog])
-            if nTaxa < 4:
+            n_taxa = len(ogs[iog])
+            if n_taxa < 4:
                 continue
-            cmds.append([" ".join(["fastme", "-i", file_handler.FileHandler.GetOGsDistMatFN(iog), "-o",
-                                   file_handler.FileHandler.GetOGsTreeFN(iog), "-N", "-w", "O"] + (["-s"] if nTaxa < 1000 else []))])
+            cmds.append([" ".join(["fastme", "-i", file_handler.handler.get_ogs_dist_mat_fn(iog), "-o",
+                                   file_handler.handler.get_ogs_tree_fn(iog), "-N", "-w", "O"] + (["-s"] if n_taxa < 1000 else []))])
         return cmds
 
     @staticmethod    
-    def EnoughOGsForSTAG(ogs, speciesToUse):
-        nSp = len(speciesToUse)
-        nSp_perOG = [len(set([g.iSp for g in og])) for og in ogs]
-        return (nSp_perOG.count(nSp) >= 100)
+    def enough_ogs_for_stag(ogs, species_to_use):
+        n_sp = len(species_to_use)
+        n_sp_per_og = [len(set([g.i_sp for g in og])) for og in ogs]
+        return (n_sp_per_og.count(n_sp) >= 100)
     
-    def RunAnalysis(self, qSpeciesTree=True):
+    def run_analysis(self, q_species_tree=True):
         """
         Args:
             qSpeciesTree - Bool: infer the species tree
         """
-        util.PrintUnderline("Calculating gene distances")
-        ogs, ogMatrices_partial = self.GetOGMatrices_FullParallel()
-        ogMatrices = self.CompleteAndWriteOGMatrices(ogs, ogMatrices_partial)
-        del ogMatrices_partial
-        util.PrintTime("Done")
-        cmds_trees = self.PrepareGeneTreeCommand()
-        qLessThanFourSpecies = len(self.ogSet.seqsInfo.speciesToUse) < 4
-        if not qSpeciesTree:
-            qSTAG = False
-        elif qLessThanFourSpecies:
-            qSTAG = False
-            spTreeFN_ids = file_handler.FileHandler.GetSpeciesTreeUnrootedFN()
-            WriteSpeciesTreeIDs_TwoThree(self.ogSet.seqsInfo.speciesToUse, spTreeFN_ids)
+        util.print_underline("Calculating gene distances")
+        ogs, og_matrices_partial = self.get_og_matrices_full_parallel()
+        og_matrices = self.complete_and_write_og_matrices(ogs, og_matrices_partial)
+        del og_matrices_partial
+        util.print_time("Done")
+        cmds_trees = self.prepare_gene_tree_command()
+        q_less_than_four_species = len(self.og_set.seqs_info.species_to_use) < 4
+        if not q_species_tree:
+            q_stag = False
+        elif q_less_than_four_species:
+            q_stag = False
+            sp_tree_fn_ids = file_handler.handler.get_species_tree_unrooted_fn()
+            write_species_tree_ids_two_three(self.og_set.seqs_info.species_to_use, sp_tree_fn_ids)
         else:
-            qSTAG = self.EnoughOGsForSTAG(ogs, self.ogSet.seqsInfo.speciesToUse)
-            if not qSTAG:
+            q_stag = self.enough_ogs_for_stag(ogs, self.og_set.seqs_info.species_to_use)
+            if not q_stag:
                 print("Using fallback species tree inference method")
-                D, spPairs = self.SpeciesTreeDistances(ogs, ogMatrices)
-                cmd_spTree, spTreeFN_ids = self.PrepareSpeciesTreeCommand(D, spPairs)
-                cmds_trees = [[cmd_spTree]] + cmds_trees
-        del ogMatrices
-        util.PrintUnderline("Inferring gene and species trees" if qSpeciesTree else "Inferring gene trees")
-        program_caller.RunParallelCommands(self.nProcess_std, cmds_trees, qListOfList=True)
-        if qSTAG:
+                D, sp_pairs = self.species_tree_distances(ogs, og_matrices)
+                cmd_sp_tree, sp_tree_fn_ids = self.prepare_species_tree_command(D, sp_pairs)
+                cmds_trees = [[cmd_sp_tree]] + cmds_trees
+        del og_matrices
+        util.print_underline("Inferring gene and species trees" if q_species_tree else "Inferring gene trees")
+        program_caller.run_parallel_commands(self.n_process_std, cmds_trees, q_list_of_list=True)
+        if q_stag:
             # Trees must have been completed
             print("")
-            spTreeFN_ids = file_handler.FileHandler.GetSpeciesTreeUnrootedFN()
-            stag.Run_ForOrthoFinder(file_handler.FileHandler.GetOGsTreeDir(), file_handler.FileHandler.GetWorkingDirectory_Write(),
-                                    self.ogSet.seqsInfo.speciesToUse, spTreeFN_ids)
-        if qSpeciesTree:
-            util.RenameTreeTaxa(spTreeFN_ids, file_handler.FileHandler.GetSpeciesTreeUnrootedFN(True), self.ogSet.SpeciesDict(),
-                                qSupport=False, qFixNegatives=True)
-            return spTreeFN_ids, qSTAG
+            sp_tree_fn_ids = file_handler.handler.get_species_tree_unrooted_fn()
+            stag.run_for_ortho_finder(file_handler.handler.get_ogs_tree_dir(), file_handler.handler.get_working_directory_write(),
+                                    self.og_set.seqs_info.species_to_use, sp_tree_fn_ids)
+        if q_species_tree:
+            util.rename_tree_taxa(sp_tree_fn_ids, file_handler.handler.get_species_tree_unrooted_fn(True), self.og_set.species_dict(),
+                                q_support=False, q_fix_negatives=True)
+            return sp_tree_fn_ids, q_stag
         else:      
-            return None, qSTAG
+            return None, q_stag
             
-    def SpeciesTreeOnly(self):
-        qLessThanFourSpecies = len(self.ogSet.seqsInfo.speciesToUse) < 4
-        if qLessThanFourSpecies:
-            spTreeFN_ids = file_handler.FileHandler.GetSpeciesTreeUnrootedFN()
-            WriteSpeciesTreeIDs_TwoThree(self.ogSet.seqsInfo.speciesToUse, spTreeFN_ids)
+    def species_tree_only(self):
+        q_less_than_four_species = len(self.og_set.seqs_info.species_to_use) < 4
+        if q_less_than_four_species:
+            sp_tree_fn_ids = file_handler.handler.get_species_tree_unrooted_fn()
+            write_species_tree_ids_two_three(self.og_set.seqs_info.species_to_use, sp_tree_fn_ids)
         else:
-            ogs, ogMatrices_partial = self.GetOGMatrices_FullParallel()
-            ogMatrices = self.CompleteOGMatrices(ogs, ogMatrices_partial)
-            del ogMatrices_partial
-            D, spPairs = self.SpeciesTreeDistances(ogs, ogMatrices)
-            del ogMatrices
-            cmd_spTree, spTreeFN_ids = self.PrepareSpeciesTreeCommand(D, spPairs, True)
-            parallel_task_manager.RunCommand(cmd_spTree, True, False, raise_on_error=True)
-        spTreeUnrootedFN = file_handler.FileHandler.GetSpeciesTreeUnrootedFN(True) 
-        util.RenameTreeTaxa(spTreeFN_ids, spTreeUnrootedFN, self.ogSet.SpeciesDict(), qSupport=False, qFixNegatives=True)  
-        return spTreeFN_ids
+            ogs, og_matrices_partial = self.get_og_matrices_full_parallel()
+            og_matrices = self.complete_og_matrices(ogs, og_matrices_partial)
+            del og_matrices_partial
+            D, sp_pairs = self.species_tree_distances(ogs, og_matrices)
+            del og_matrices
+            cmd_sp_tree, sp_tree_fn_ids = self.prepare_species_tree_command(D, sp_pairs, True)
+            parallel_task_manager.run_command(cmd_sp_tree, True, False, raise_on_error=True)
+        sp_tree_unrooted_fn = file_handler.handler.get_species_tree_unrooted_fn(True) 
+        util.rename_tree_taxa(sp_tree_fn_ids, sp_tree_unrooted_fn, self.og_set.species_dict(), q_support=False, q_fix_negatives=True)  
+        return sp_tree_fn_ids
 
 # ==============================================================================================================================      
 # DendroBlast   
 
-def Worker_OGMatrices_ReadBLASTAndUpdateDistances(cmd_queue, worker_status_queue, iWorker, ogMatrices, nGenes, seqsInfo,
-                                                  blastDir_list, ogsPerSpecies, qDoubleBlast):
-    speciesToUse = seqsInfo.speciesToUse
+def worker_og_matrices_read_blast_and_update_distances(cmd_queue, worker_status_queue, i_worker, og_matrices, n_genes, seqs_info,
+                                                  blast_dir_list, ogs_per_species, q_double_blast):
+    species_to_use = seqs_info.species_to_use
     og_genes = None   # per orthogroup and species: (gene iSeq array, matrix index array)
     with np.errstate(divide='ignore'):
         while True:
             try:
-                iiSp, sp1, nSeqs_sp1 = cmd_queue.get(True, 1)
-                worker_status_queue.put(("start", iWorker, iiSp))
-                Bs = [BlastFileProcessor.GetBLAST6Scores(seqsInfo, blastDir_list, sp1, sp2,
-                                                         qExcludeSelfHits = False, qDoubleBlast=qDoubleBlast,
+                ii_sp, sp1, n_seqs_sp1 = cmd_queue.get(True, 1)
+                worker_status_queue.put(("start", i_worker, ii_sp))
+                bs = [blast_file_processor.get_blast6_scores(seqs_info, blast_dir_list, sp1, sp2,
+                                                         q_exclude_self_hits = False, q_double_blast=q_double_blast,
                                                          fmt="csr")
-                      for sp2 in speciesToUse]
-                mins = np.ones((nSeqs_sp1, 1), dtype=np.float64)*9e99 
-                maxes = np.zeros((nSeqs_sp1, 1), dtype=np.float64)
-                for B in Bs:
+                      for sp2 in species_to_use]
+                mins = np.ones((n_seqs_sp1, 1), dtype=np.float64)*9e99 
+                maxes = np.zeros((n_seqs_sp1, 1), dtype=np.float64)
+                for B in bs:
                     m0, m1 = csr_minmax(B)
                     mins = np.minimum(mins, m0)
                     maxes = np.maximum(maxes, m1)
@@ -298,16 +298,16 @@ def Worker_OGMatrices_ReadBLASTAndUpdateDistances(cmd_queue, worker_status_queue
                 # instead of one per gene pair.
                 if og_genes is None:
                     og_genes = [
-                        [(np.array([int(g.iSeq) for g, _ in og[s]], dtype=np.int64),
+                        [(np.array([int(g.i_seq) for g, _ in og[s]], dtype=np.int64),
                           np.array([k for _, k in og[s]], dtype=np.intp))
                          for s in range(len(og))]
-                        for og in ogsPerSpecies
+                        for og in ogs_per_species
                     ]
-                for jjSp, B in enumerate(Bs):
+                for jj_sp, B in enumerate(bs):
                     blocks, rows_a, cols_b = [], [], []
                     for k, genes in enumerate(og_genes):
-                        a, i_idx = genes[iiSp]
-                        b, j_idx = genes[jjSp]
+                        a, i_idx = genes[ii_sp]
+                        b, j_idx = genes[jj_sp]
                         if a.size and b.size:
                             rows_a.append(np.repeat(a, b.size))
                             cols_b.append(np.tile(b, a.size))
@@ -321,16 +321,16 @@ def Worker_OGMatrices_ReadBLASTAndUpdateDistances(cmd_queue, worker_status_queue
                     for k, i_idx, j_idx in blocks:
                         block = values[pos:pos + i_idx.size * j_idx.size].reshape(i_idx.size, j_idx.size)
                         pos += i_idx.size * j_idx.size
-                        m = ogMatrices[k]
+                        m = og_matrices[k]
                         for i, row_values in zip(i_idx, block):
                             np.ctypeslib.as_array(m[i])[j_idx] = row_values
-                del Bs, B, mins, maxes, m0, m1, maxes_inv    # significantly reduces RAM usage
-                worker_status_queue.put(("finish", iWorker, iiSp))
+                del bs, B, mins, maxes, m0, m1, maxes_inv    # significantly reduces RAM usage
+                worker_status_queue.put(("finish", i_worker, ii_sp))
             except queue.Empty:
-                worker_status_queue.put(("empty", iWorker, None))
+                worker_status_queue.put(("empty", i_worker, None))
                 return 
 
-def GetRAMErrorText():
+def get_ram_error_text():
     text = "ERROR: The computer ran out of RAM and killed OrthoFinder processes\n"
     text += "Try using a computer with more RAM. If you used the '-a' option\n"
     text += "it may be possible to complete the run by removing this option."
@@ -355,18 +355,18 @@ def lil_minmax(M):
     n = M.shape[0]
     mins = np.ones((n, 1), dtype = np.float64) * 9e99
     maxes = np.zeros((n, 1), dtype = np.float64)
-    for kRow in range(n):
-        values=M.getrowview(kRow)
+    for k_row in range(n):
+        values=M.getrowview(k_row)
         if values.nnz == 0:
             continue
-        mins[kRow] = min(values.data[0])
-        maxes[kRow] = max(values.data[0])
+        mins[k_row] = min(values.data[0])
+        maxes[k_row] = max(values.data[0])
     return mins, maxes
 
 # ==============================================================================================================================    
 # Species trees for two- & three-species analyses
 
-def WriteSpeciesTreeIDs_TwoThree(taxa, outFN):
+def write_species_tree_ids_two_three(taxa, out_fn):
     """
     Get the unrooted species tree for two or three species
     Args:
@@ -377,12 +377,12 @@ def WriteSpeciesTreeIDs_TwoThree(taxa, outFN):
     t = tree.Tree()
     for s in taxa:
         t.add_child(tree.TreeNode(name=s))
-    t.write(outfile=outFN)
+    t.write(outfile=out_fn)
     
-def GetSpeciesTreeRoot_TwoTaxa(taxa):
-    speciesTreeFN_ids = file_handler.FileHandler.GetSpeciesTreeUnrootedFN()
+def get_species_tree_root_two_taxa(taxa):
+    species_tree_fn_ids = file_handler.handler.get_species_tree_unrooted_fn()
     t = tree.Tree("(%s,%s);" % (taxa[0], taxa[1]))  
-    t.write(outfile=speciesTreeFN_ids)
-    return speciesTreeFN_ids
+    t.write(outfile=species_tree_fn_ids)
+    return species_tree_fn_ids
 
  

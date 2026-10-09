@@ -12,20 +12,20 @@ from . import orthogroups_set
 from ..utils import util, file_handler, matrices, parallel_task_manager
 
 
-def WriteGraph_perSpecies(args):
-    seqsInfo, graphFN, iSpec, d_pickle = args
+def write_graph_per_species(args):
+    seqs_info, graph_fn, i_spec, d_pickle = args
     # calculate the 2-way connections for one query species
-    with open(graphFN + "_%d" % iSpec, "w") as graphFile:
+    with open(graph_fn + "_%d" % i_spec, "w") as graph_file:
         connect2 = []
-        for jSpec in range(seqsInfo.nSpecies):
-            m1 = matrices.LoadMatrix("connect", iSpec, jSpec, d_pickle)
+        for j_spec in range(seqs_info.n_species):
+            m1 = matrices.load_matrix("connect", i_spec, j_spec, d_pickle)
             m2tr = numeric.transpose(
-                matrices.LoadMatrix("connect", jSpec, iSpec, d_pickle)
+                matrices.load_matrix("connect", j_spec, i_spec, d_pickle)
             )
             connect2.append(m1 + m2tr)
             del m1, m2tr
-        B = matrices.LoadMatrixArray("B", seqsInfo, iSpec, d_pickle)
-        B_connect = matrices.MatricesAnd_s(connect2, B)
+        B = matrices.load_matrix_array("B", seqs_info, i_spec, d_pickle)
+        b_connect = matrices.matrices_and_s(connect2, B)
         del B, connect2
 
         # CSR with sorted columns: each row's entries are a slice of the arrays,
@@ -34,55 +34,55 @@ def WriteGraph_perSpecies(args):
             # sorted_indices() always copies; only call it if the indices are not sorted.
             b = b.tocsr()
             return b if b.has_sorted_indices else b.sorted_indices()
-        W = [csr_sorted(b) for b in B_connect]
-        del B_connect
+        W = [csr_sorted(b) for b in b_connect]
+        del b_connect
         W = [(w.indptr, w.indices, w.data) for w in W]
-        offset = seqsInfo.seqStartingIndices[iSpec]
-        jOffsets = [seqsInfo.seqStartingIndices[jSpec] for jSpec in range(seqsInfo.nSpecies)]
-        for query in range(seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[iSpec]]):
+        offset = seqs_info.seq_starting_indices[i_spec]
+        j_offsets = [seqs_info.seq_starting_indices[j_spec] for j_spec in range(seqs_info.n_species)]
+        for query in range(seqs_info.n_seqs_per_species[seqs_info.species_to_use[i_spec]]):
             parts = ["%d    " % (offset + query)]
-            for (indptr, indices, data), jOffset in zip(W, jOffsets):
+            for (indptr, indices, data), j_offset in zip(W, j_offsets):
                 a, b = indptr[query], indptr[query + 1]
                 if a == b:
                     continue
                 parts.extend(
-                    "%d:%.3f " % (j + jOffset, value)
+                    "%d:%.3f " % (j + j_offset, value)
                     for j, value in zip(indices[a:b].tolist(), data[a:b].tolist())
                 )
             parts.append("$\n")
-            graphFile.write("".join(parts))
-        if iSpec == (seqsInfo.nSpecies - 1):
-            graphFile.write(")\n")
-        # util.PrintTime("Written final scores for species %d to graph file" % iSpec)
+            graph_file.write("".join(parts))
+        if i_spec == (seqs_info.n_species - 1):
+            graph_file.write(")\n")
+        # util.print_time("Written final scores for species %d to graph file" % iSpec)
 
 
-def WriteGraph_perSpecies_homology(args):
-    seqsInfo, graphFN, iSpec, d_pickle = args
+def write_graph_per_species_homology(args):
+    seqs_info, graph_fn, i_spec, d_pickle = args
     # calculate the 2-way connections for one query species
-    # W = [matrices.LoadMatrix("B", iSpec, jSpec, d_pickle).tolil() for jSpec in range(seqsInfo.nSpecies)]
+    # W = [matrices.load_matrix("B", iSpec, jSpec, d_pickle).tolil() for jSpec in range(seqsInfo.nSpecies)]
     W = []
-    for jSpec in range(seqsInfo.nSpecies):
-        w1 = matrices.LoadMatrix("B", iSpec, jSpec, d_pickle)
-        matrices.DumpMatrix("H", (w1 > 0).tolil(), iSpec, jSpec, d_pickle)
-        w2tr = numeric.transpose(matrices.LoadMatrix("B", jSpec, iSpec, d_pickle))
+    for j_spec in range(seqs_info.n_species):
+        w1 = matrices.load_matrix("B", i_spec, j_spec, d_pickle)
+        matrices.dump_matrix("H", (w1 > 0).tolil(), i_spec, j_spec, d_pickle)
+        w2tr = numeric.transpose(matrices.load_matrix("B", j_spec, i_spec, d_pickle))
         W.append((w1 + w2tr > 0).tolil())  # symmetrise
-    # matrices.DumpMatrixArray("H", W, iSpec, d_pickle)
-    with open(graphFN + "_%d" % iSpec, "w") as graphFile:
-        for query in range(seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[iSpec]]):
-            offset = seqsInfo.seqStartingIndices[iSpec]
-            graphFile.write("%d    " % (offset + query))
-            for jSpec in range(seqsInfo.nSpecies):
-                row = W[jSpec].getrowview(query)
-                jOffset = seqsInfo.seqStartingIndices[jSpec]
+    # matrices.dump_matrix_array("H", W, iSpec, d_pickle)
+    with open(graph_fn + "_%d" % i_spec, "w") as graph_file:
+        for query in range(seqs_info.n_seqs_per_species[seqs_info.species_to_use[i_spec]]):
+            offset = seqs_info.seq_starting_indices[i_spec]
+            graph_file.write("%d    " % (offset + query))
+            for j_spec in range(seqs_info.n_species):
+                row = W[j_spec].getrowview(query)
+                j_offset = seqs_info.seq_starting_indices[j_spec]
                 for j in row.rows[0]:
-                    graphFile.write("%d:%.3f " % (j + jOffset, 1.0))
-            graphFile.write("$\n")
-        if iSpec == (seqsInfo.nSpecies - 1):
-            graphFile.write(")\n")
-        util.PrintTime("Written final scores for species %d to graph file" % iSpec)
+                    graph_file.write("%d:%.3f " % (j + j_offset, 1.0))
+            graph_file.write("$\n")
+        if i_spec == (seqs_info.n_species - 1):
+            graph_file.write(")\n")
+        util.print_time("Written final scores for species %d to graph file" % i_spec)
 
 
-def LargestSpeciesFirst(seqsInfo):
+def largest_species_first(seqs_info):
     """
     Species job indices, largest proteome first.
 
@@ -92,41 +92,41 @@ def LargestSpeciesFirst(seqsInfo):
     species from running alone at the end while other workers sit idle. Only
     the order changes; every task does the same work.
     """
-    n_seqs = [seqsInfo.nSeqsPerSpecies[seqsInfo.speciesToUse[i]] for i in range(seqsInfo.nSpecies)]
-    return sorted(range(seqsInfo.nSpecies), key=lambda i: -n_seqs[i])
+    n_seqs = [seqs_info.n_seqs_per_species[seqs_info.species_to_use[i]] for i in range(seqs_info.n_species)]
+    return sorted(range(seqs_info.n_species), key=lambda i: -n_seqs[i])
 
 
-def GetSequenceLengths(seqsInfo):
-    sequenceLengths = []
-    for iSpecies, iFasta in enumerate(seqsInfo.speciesToUse):
-        sequenceLengths.append(np.zeros(seqsInfo.nSeqsPerSpecies[iFasta]))
-        fastaFilename = file_handler.FileHandler.GetSpeciesFastaFN(iFasta)
-        currentSequenceLength = 0
-        iCurrentSequence = -1
-        qFirstLine = True
-        with open(fastaFilename) as infile:
+def get_sequence_lengths(seqs_info):
+    sequence_lengths = []
+    for i_species, i_fasta in enumerate(seqs_info.species_to_use):
+        sequence_lengths.append(np.zeros(seqs_info.n_seqs_per_species[i_fasta]))
+        fasta_filename = file_handler.handler.get_species_fasta_fn(i_fasta)
+        current_sequence_length = 0
+        i_current_sequence = -1
+        q_first_line = True
+        with open(fasta_filename) as infile:
             for row in infile:
                 if len(row) > 1 and row[0] == ">":
-                    if qFirstLine:
-                        qFirstLine = False
+                    if q_first_line:
+                        q_first_line = False
                     else:
-                        sequenceLengths[iSpecies][
-                            iCurrentSequence
-                        ] = currentSequenceLength
-                        currentSequenceLength = 0
-                    _, iCurrentSequence = util.GetIDPairFromString(row[1:])
+                        sequence_lengths[i_species][
+                            i_current_sequence
+                        ] = current_sequence_length
+                        current_sequence_length = 0
+                    _, i_current_sequence = util.get_id_pair_from_string(row[1:])
                 else:
-                    currentSequenceLength += len(row.rstrip())
-        sequenceLengths[iSpecies][iCurrentSequence] = currentSequenceLength
-    return sequenceLengths
+                    current_sequence_length += len(row.rstrip())
+        sequence_lengths[i_species][i_current_sequence] = current_sequence_length
+    return sequence_lengths
 
 
-def DoOrthogroups(
+def do_orthogroups(
         options,
-        speciesInfoObj,
-        seqsInfo,
-        speciesNamesDict,
-        speciesXML=None,
+        species_info_obj,
+        seqs_info,
+        species_names_dict,
+        species_xml=None,
         i_unassigned=None,
         GRACE_PERIOD = 10.,
         STALL_TIMEOUT = 200.
@@ -136,7 +136,7 @@ def DoOrthogroups(
     q_unassigned = i_unassigned is not None
 
     # Run Algorithm, cluster and output cluster files with original accessions
-    util.PrintUnderline(
+    util.print_underline(
         "Running OrthoFinder algorithm"
         + (" for clade-specific genes" if q_unassigned else "")
     )
@@ -146,142 +146,142 @@ def DoOrthogroups(
     # way I can find to do this is to launch the memory intensive python code
     # as separate process that exits before MCL is launched.
 
-    Lengths = GetSequenceLengths(seqsInfo)  # Alternatively, self-self bit scores, but it amounts to the same thing
+    lengths = get_sequence_lengths(seqs_info)  # Alternatively, self-self bit scores, but it amounts to the same thing
 
     # Process BLAST hits
-    util.PrintTime("Initial processing of each species")
+    util.print_time("Initial processing of each species")
 
-    blastDir_list = file_handler.FileHandler.GetBlastResultsDir()
+    blast_dir_list = file_handler.handler.get_blast_results_dir()
     if q_unassigned:
-        blastDir_list = blastDir_list[:1]  # only use latet directory with unassigned gene searches
+        blast_dir_list = blast_dir_list[:1]  # only use latet directory with unassigned gene searches
     
-    file_handler.FileHandler.GetPickleDir()  # create the pickle directory before the parallel processing to prevent a race condition
+    file_handler.handler.get_pickle_dir()  # create the pickle directory before the parallel processing to prevent a race condition
     cmd_queue = mp.Queue()  
-    for iSpeciesJob in LargestSpeciesFirst(seqsInfo):  # The i-th job, not the OrthoFinder species ID
-        cmd_queue.put(iSpeciesJob)
+    for i_species_job in largest_species_first(seqs_info):  # The i-th job, not the OrthoFinder species ID
+        cmd_queue.put(i_species_job)
 
-    for _ in range(options.nProcessAlg):
+    for _ in range(options.n_process_alg):
         cmd_queue.put(None)
     
-    total_tasks = seqsInfo.nSpecies
+    total_tasks = seqs_info.n_species
     # progressbar, task = util.get_progressbar(total_tasks)
     # update_cycle = 1
     # progressbar.start()
     result_queue = mp.Queue()
-    runningProcesses = [
+    running_processes = [
         mp.Process(
-            target=score_normalisation.WaterfallMethod.Worker_ProcessBlastHits_New,
+            target=score_normalisation.WaterfallMethod.worker_process_blast_hits_new,
             args=(
-                seqsInfo,
-                blastDir_list,
-                Lengths,
+                seqs_info,
+                blast_dir_list,
+                lengths,
                 cmd_queue,
-                file_handler.FileHandler.GetPickleDir(),
-                options.qDoubleBlast,
+                file_handler.handler.get_pickle_dir(),
+                options.q_double_blast,
                 options.v2_scores,
                 q_unassigned,
                 result_queue,
             ),
         )
-        for _ in range(options.nProcessAlg)
+        for _ in range(options.n_process_alg)
     ]
 
-    parallel_task_manager.ManageQueueNew(
-        runningProcesses, 
+    parallel_task_manager.manage_queue_new(
+        running_processes, 
         total_tasks, 
-        options.nProcessAlg, 
+        options.n_process_alg, 
         result_queue, 
         GRACE_PERIOD = GRACE_PERIOD,
         STALL_TIMEOUT = STALL_TIMEOUT
     )
 
     if options.gathering_version < (3, 0):
-        util.PrintTime("Connected putative homologues")
+        util.print_time("Connected putative homologues")
         ## -------------------------------------------------------------
         cmd_queue = mp.Queue()
-        for iSpecies in LargestSpeciesFirst(seqsInfo):
-            cmd_queue.put((seqsInfo, iSpecies))
+        for i_species in largest_species_first(seqs_info):
+            cmd_queue.put((seqs_info, i_species))
 
-        for _ in range(options.nProcessAlg):
+        for _ in range(options.n_process_alg):
             cmd_queue.put(None)
         result_queue = mp.Queue()
 
-        runningProcesses = [
+        running_processes = [
             mp.Process(
-                target=score_normalisation.WaterfallMethod.Worker_ConnectCognates_New,
+                target=score_normalisation.WaterfallMethod.worker_connect_cognates_new,
                 args=(
                     cmd_queue,  
                     result_queue, 
-                    file_handler.FileHandler.GetPickleDir(), 
+                    file_handler.handler.get_pickle_dir(), 
                     options.v2_scores
                 ),
             )
-            for i_ in range(options.nProcessAlg)
+            for i_ in range(options.n_process_alg)
         ]
-        parallel_task_manager.ManageQueueNew(
-            runningProcesses, 
+        parallel_task_manager.manage_queue_new(
+            running_processes, 
             total_tasks, 
-            options.nProcessAlg, 
+            options.n_process_alg, 
             result_queue, 
             GRACE_PERIOD = GRACE_PERIOD,
             STALL_TIMEOUT = STALL_TIMEOUT
         )
 
     
-        graphFilename = score_normalisation.WaterfallMethod.WriteGraphParallel(
-            WriteGraph_perSpecies, seqsInfo, options.nProcessAlg, i_unassigned
+        graph_filename = score_normalisation.WaterfallMethod.write_graph_parallel(
+            write_graph_per_species, seqs_info, options.n_process_alg, i_unassigned
         )
 
         # 5b. MCL
-        clustersFilename, clustersFilename_pairs = (
-            file_handler.FileHandler.CreateUnusedClustersFN(
-                options.mclInflation, i_unassigned
+        clusters_filename, clusters_filename_pairs = (
+            file_handler.handler.create_unused_clusters_fn(
+                options.mcl_inflation, i_unassigned
             )
         )
-        mcl.MCL.RunMCL(
-            graphFilename, clustersFilename, options.nProcessAlg, options.mclInflation
+        mcl.MCL.run_mcl(
+            graph_filename, clusters_filename, options.n_process_alg, options.mcl_inflation
         )
         # If processing unassigned, then ignore all 'unclustered' genes - they will include any genes not included in this search
-        mcl.ConvertSingleIDsToIDPair(
-            seqsInfo, clustersFilename, clustersFilename_pairs, q_unassigned
+        mcl.convert_single_ids_to_id_pair(
+            seqs_info, clusters_filename, clusters_filename_pairs, q_unassigned
         )
 
     elif options.gathering_version == (3, 2):
 
-        graphFilename = score_normalisation.WaterfallMethod.WriteGraphParallel(
-            WriteGraph_perSpecies_homology, seqsInfo, options.nProcessAlg, i_unassigned
+        graph_filename = score_normalisation.WaterfallMethod.write_graph_parallel(
+            write_graph_per_species_homology, seqs_info, options.n_process_alg, i_unassigned
         )
-        clustersFilename, clustersFilename_pairs = (
-            file_handler.FileHandler.CreateUnusedClustersFN(
-                options.mclInflation, i_unassigned
+        clusters_filename, clusters_filename_pairs = (
+            file_handler.handler.create_unused_clusters_fn(
+                options.mcl_inflation, i_unassigned
             )
         )
-        mcl.MCL.RunMCL(
-            graphFilename, clustersFilename, options.nProcessAlg, options.mclInflation
+        mcl.MCL.run_mcl(
+            graph_filename, clusters_filename, options.n_process_alg, options.mcl_inflation
         )
-        mcl.ConvertSingleIDsToIDPair(
-            seqsInfo, clustersFilename, clustersFilename_pairs, q_unassigned
+        mcl.convert_single_ids_to_id_pair(
+            seqs_info, clusters_filename, clusters_filename_pairs, q_unassigned
         )
 
     if not q_unassigned:
         post_clustering_orthogroups(
-            clustersFilename_pairs,
-            speciesInfoObj,
-            seqsInfo,
-            speciesNamesDict,
+            clusters_filename_pairs,
+            species_info_obj,
+            seqs_info,
+            species_names_dict,
             options,
-            speciesXML,
+            species_xml,
         )
-    return clustersFilename_pairs
+    return clusters_filename_pairs
 
 
 def post_clustering_orthogroups(
-        clustersFilename_pairs,
-        speciesInfoObj,
-        seqsInfo,
-        speciesNamesDict,
+        clusters_filename_pairs,
+        species_info_obj,
+        seqs_info,
+        species_names_dict,
         options,
-        speciesXML,
+        species_xml,
         q_incremental=False,
     ):
     """
@@ -289,88 +289,88 @@ def post_clustering_orthogroups(
     Args:
         q_incremental - These are not the final orthogroups, don't write results
     """
-    ogs = mcl.GetPredictedOGs(clustersFilename_pairs)
-    resultsBaseFilename = file_handler.FileHandler.GetOrthogroupResultsFNBase()
+    ogs = mcl.get_predicted_ogs(clusters_filename_pairs)
+    results_base_filename = file_handler.handler.get_orthogroup_results_fn_base()
 
     # if not options.fix_files:
-    if not options.qStopAfterTrees:
-        util.PrintUnderline("Writing orthogroups to file")
-        idsDict = mcl.MCL.WriteOrthogroupFiles(
+    if not options.q_stop_after_trees:
+        util.print_underline("Writing orthogroups to file")
+        ids_dict = mcl.MCL.write_orthogroup_files(
             ogs,
-            [file_handler.FileHandler.GetSequenceIDsFN()],
-            resultsBaseFilename,
-            clustersFilename_pairs,
+            [file_handler.handler.get_sequence_ids_fn()],
+            results_base_filename,
+            clusters_filename_pairs,
         )
     else:
         try:
-            idsDict = mcl.IDFullDict(
-                [file_handler.FileHandler.GetSequenceIDsFN()], 
+            ids_dict = mcl.id_full_dict(
+                [file_handler.handler.get_sequence_ids_fn()], 
                 func=util.FirstWordExtractor
             )
         except:
-            idsDict = mcl.IDFullDict(
-                [file_handler.FileHandler.GetSequenceIDsFN()], 
+            ids_dict = mcl.id_full_dict(
+                [file_handler.handler.get_sequence_ids_fn()], 
                 func=util.FullAccession
             )
     
     ## --------- this doesn't need to run at this point with the new process --------
-    if not options.fix_files or options.qStopAfterMCLGroups:
+    if not options.fix_files or options.q_stop_after_mcl_groups:
         if not q_incremental:
-            mcl.MCL.CreateOrthogroupTable(
+            mcl.MCL.create_orthogroup_table(
                 ogs,
-                idsDict,
-                speciesNamesDict,
-                speciesInfoObj.speciesToUse,
-                resultsBaseFilename,
+                ids_dict,
+                species_names_dict,
+                species_info_obj.species_to_use,
+                results_base_filename,
             )
 
     # Write Orthogroup FASTA files
-    ogSet = orthogroups_set.OrthoGroupsSet(
+    og_set = orthogroups_set.OrthogroupSet(
         options.min_seq,
-        file_handler.FileHandler.GetWorkingDirectory1_Read(),
-        speciesInfoObj.speciesToUse,
-        speciesInfoObj.nSpAll,
-        options.qAddSpeciesToIDs,
+        file_handler.handler.get_working_directory1_read(),
+        species_info_obj.species_to_use,
+        species_info_obj.n_sp_all,
+        options.q_add_species_to_ids,
         options.tree_program,
-        idExtractor=util.FirstWordExtractor,
+        id_extractor=util.FirstWordExtractor,
     )
 
 
-    treeGen = msa_trees.TreesForOrthogroups(None, None, None)
-    fastaWriter = msa_trees.FastaWriter(
-        file_handler.FileHandler.GetSpeciesSeqsDir(), speciesInfoObj.speciesToUse
+    tree_gen = msa_trees.TreesForOrthogroups(None, None, None)
+    fasta_writer = msa_trees.FastaWriter(
+        file_handler.handler.get_species_seqs_dir(), species_info_obj.species_to_use
     )
 
-    # d_seqs = files.FileHandler.GetResultsSeqsDir()
+    # d_seqs = files.FileHandler.get_results_seqs_dir()
     # if not os.path.exists(d_seqs):
     #     os.mkdir(d_seqs)
 
-    # treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idsDict, False)
+    # treeGen.write_fasta_files(fastaWriter, ogSet.get_ogs_all(), idsDict, False)
 
-    d_seqs_id = file_handler.FileHandler.GetSeqsIDDir()
+    d_seqs_id = file_handler.handler.get_seqs_id_dir()
     if not os.path.exists(d_seqs_id):
         os.mkdir(d_seqs_id)
 
-    qResults=False
-    if not options.fix_files or options.qStopAfterMCLGroups:
-        d_seqs = file_handler.FileHandler.GetResultsSeqsDir()
+    q_results=False
+    if not options.fix_files or options.q_stop_after_mcl_groups:
+        d_seqs = file_handler.handler.get_results_seqs_dir()
         if not os.path.exists(d_seqs):
             os.mkdir(d_seqs)
-        qResults = True 
+        q_results = True 
 
-    treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idsDict, qID=True, qResults=qResults)
+    tree_gen.write_fasta_files(fasta_writer, og_set.get_ogs_all(), ids_dict, q_id=True, q_results=q_results)
 
     if not q_incremental:
         # stats.Stats(ogs, speciesNamesDict, speciesInfoObj.speciesToUse, files.FileHandler.iResultsVersion)
-        if options.speciesXMLInfoFN:
+        if options.species_xml_info_fn:
             mcl.MCL.WriteOrthoXML(
-                speciesXML,
+                species_xml,
                 ogs,
-                seqsInfo.nSeqsPerSpecies,
-                idsDict,
-                resultsBaseFilename + ".orthoxml",
-                speciesInfoObj.speciesToUse,
+                seqs_info.n_seqs_per_species,
+                ids_dict,
+                results_base_filename + ".orthoxml",
+                species_info_obj.species_to_use,
             )
         # print("")
-        util.PrintTime("Done orthogroups")
-        file_handler.FileHandler.LogOGs()
+        util.print_time("Done orthogroups")
+        file_handler.handler.log_ogs()

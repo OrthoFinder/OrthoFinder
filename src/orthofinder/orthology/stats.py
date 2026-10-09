@@ -16,33 +16,33 @@ from ..utils import util, file_handler, file_io
 from ..phylo import tree
 
 
-def WriteOrthologuesStats(ogSet, nOrtho_sp):
+def write_orthologs_stats(og_set, NOrthoSp):
     """
-    nOrtho_sp is a util.nOrtho_sp object
+    NOrthoSp is a util.NOrthoSp object
     """
-    speciesToUse = ogSet.speciesToUse
-    speciesDict = ogSet.SpeciesDict()
-    d = file_handler.FileHandler.GetOGsStatsResultsDirectory()
+    species_to_use = og_set.species_to_use
+    species_dict = og_set.species_dict()
+    d = file_handler.handler.get_ogs_stats_results_directory()
 
-    # print(nOrtho_sp.n)
-    # print(nOrtho_sp.n_121)
-    # print(nOrtho_sp.n_12m)
-    # print( nOrtho_sp.n_m21)
-    # print(nOrtho_sp.n_m2m)
+    # print(NOrthoSp.n)
+    # print(NOrthoSp.n_121)
+    # print(NOrthoSp.n_12m)
+    # print( NOrthoSp.n_m21)
+    # print(NOrthoSp.n_m2m)
     
-    WriteOrthologuesMatrix(d + "OrthologuesStats_Totals.tsv", nOrtho_sp.n, speciesToUse, speciesDict)
-    WriteOrthologuesMatrix(d + "OrthologuesStats_one-to-one.tsv", nOrtho_sp.n_121, speciesToUse, speciesDict)
-    WriteOrthologuesMatrix(d + "OrthologuesStats_one-to-many.tsv", nOrtho_sp.n_12m, speciesToUse, speciesDict)
-    WriteOrthologuesMatrix(d + "OrthologuesStats_many-to-one.tsv", nOrtho_sp.n_m21, speciesToUse, speciesDict)
-    WriteOrthologuesMatrix(d + "OrthologuesStats_many-to-many.tsv", nOrtho_sp.n_m2m, speciesToUse, speciesDict)
+    write_orthologs_matrix(d + "OrthologuesStats_Totals.tsv", NOrthoSp.n, species_to_use, species_dict)
+    write_orthologs_matrix(d + "OrthologuesStats_one-to-one.tsv", NOrthoSp.n_121, species_to_use, species_dict)
+    write_orthologs_matrix(d + "OrthologuesStats_one-to-many.tsv", NOrthoSp.n_12m, species_to_use, species_dict)
+    write_orthologs_matrix(d + "OrthologuesStats_many-to-one.tsv", NOrthoSp.n_m21, species_to_use, species_dict)
+    write_orthologs_matrix(d + "OrthologuesStats_many-to-many.tsv", NOrthoSp.n_m2m, species_to_use, species_dict)
     
     # Duplications
-    nodeCount = defaultdict(int)
-    nodeCount_50 = defaultdict(int)
-    ogCount = defaultdict(int)
-    ogCount_50 = defaultdict(int)
-    if not os.path.exists(file_handler.FileHandler.GetDuplicationsFN()): return
-    with open(file_handler.FileHandler.GetDuplicationsFN(), util.csv_read_mode) as infile:
+    node_count = defaultdict(int)
+    node_count50 = defaultdict(int)
+    og_count = defaultdict(int)
+    og_count50 = defaultdict(int)
+    if not os.path.exists(file_handler.handler.get_duplications_fn()): return
+    with open(file_handler.handler.get_duplications_fn(), util.csv_read_mode) as infile:
         reader = file_io.unquoted_reader(infile)   # written unquoted
         next(reader)
         # for line in reader:
@@ -53,53 +53,53 @@ def WriteOrthologuesStats(ogSet, nOrtho_sp):
         #         raise
         for og, node, _, support, _, _, _ in reader:
             support = float(support)
-            nodeCount[node] += 1
-            ogCount[og] += 1
+            node_count[node] += 1
+            og_count[og] += 1
             if support >= 0.5:
-                nodeCount_50[node] += 1
-                ogCount_50[og] += 1
+                node_count50[node] += 1
+                og_count50[og] += 1
     with open(d + "Duplications_per_Species_Tree_Node.tsv", util.csv_write_mode) as outfile:
         writer = file_io.writer(outfile)
         writer.writerow(["Species Tree Node", "Duplications (all)", "Duplications (50% support)"])
 #        max_node = max([int(s[1:]) for s in nodeCount.keys()])    # Get largest node number
-        for node in nodeCount:
-            writer.writerow([node, nodeCount[node], nodeCount_50[node]])
+        for node in node_count:
+            writer.writerow([node, node_count[node], node_count50[node]])
     # Write on species tree
-    in_tree_fn = file_handler.FileHandler.GetSpeciesTreeResultsNodeLabelsFN()
-    out_tree_fn = os.path.split(file_handler.FileHandler.GetDuplicationsFN())[0] + "/SpeciesTree_Gene_Duplications_0.5_Support.txt"
+    in_tree_fn = file_handler.handler.get_species_tree_results_node_labels_fn()
+    out_tree_fn = os.path.split(file_handler.handler.get_duplications_fn())[0] + "/SpeciesTree_Gene_Duplications_0.5_Support.txt"
     t = tree.Tree(in_tree_fn, format=1)
     for n in t.traverse():
-        n.name = n.name + "_" + str(nodeCount_50[n.name])
+        n.name = n.name + "_" + str(node_count50[n.name])
     with open(out_tree_fn, 'w') as outfile:
         outfile.write(t.write(format=1)[:-1] + t.name + ";")
     with open(d + "Duplications_per_Orthogroup.tsv", util.csv_write_mode) as outfile:
         writer = file_io.writer(outfile)
         writer.writerow(["Orthogroup", "Duplications (all)", "Duplications (50% support)"])
-        if len(ogCount) > 0:
-            max_og = max([int(s[2:]) for s in ogCount.keys()]) 
-            pat = file_handler.FileHandler.baseOgFormat 
+        if len(og_count) > 0:
+            max_og = max([int(s[2:]) for s in og_count.keys()]) 
+            pat = file_handler.handler.base_og_format 
             for i in range(max_og + 1):
                 og = pat % i
-                writer.writerow([og, ogCount[og], ogCount_50[og]])
+                writer.writerow([og, og_count[og], og_count50[og]])
 
-def WriteOrthologuesMatrix(fn, matrix, speciesToUse, speciesDict):
+def write_orthologs_matrix(fn, matrix, species_to_use, species_dict):
     with open(fn, util.csv_write_mode) as outfile:
         writer = file_io.writer(outfile)
-        writer.writerow([""] + [speciesDict[str(index)] for index in speciesToUse])
-        for ii, iSp in enumerate(speciesToUse):
-            overlap = [matrix[ii, jj] for jj, jSp in enumerate(speciesToUse)]
-            writer.writerow([speciesDict[str(iSp)]] + overlap)   
+        writer.writerow([""] + [species_dict[str(index)] for index in species_to_use])
+        for ii, i_sp in enumerate(species_to_use):
+            overlap = [matrix[ii, jj] for jj, j_sp in enumerate(species_to_use)]
+            writer.writerow([species_dict[str(i_sp)]] + overlap)   
     
-def OrthogroupsMatrix(iSpecies, properOGs):
-    speciesIndexDict = {iSp: iCol for iCol, iSp in enumerate(iSpecies)}
-    nSpecies = len(iSpecies)
-    nGroups = len(properOGs)
+def orthogroups_matrix(i_species, proper_ogs):
+    species_index_dict = {i_sp: i_col for i_col, i_sp in enumerate(i_species)}
+    n_species = len(i_species)
+    n_groups = len(proper_ogs)
     # (i, j)-th entry of ogMatrix gives the number of genes from i in orthogroup j
-    ogMatrix = np.zeros((nGroups, nSpecies))
-    for i_og, og in enumerate(properOGs):
+    og_matrix = np.zeros((n_groups, n_species))
+    for i_og, og in enumerate(proper_ogs):
         for species, _ in og:
-            ogMatrix[i_og, speciesIndexDict[species]] += 1
-    return ogMatrix
+            og_matrix[i_og, species_index_dict[species]] += 1
+    return og_matrix
 
 
 # def Stats_SpeciesOverlaps(fn, speciesNamesDict, iSpecies, speciesPresence):
@@ -112,158 +112,158 @@ def OrthogroupsMatrix(iSpecies, properOGs):
 #             writer.writerow([speciesNamesDict[iSp]] + overlap)
 
 
-def Stats_SizeTable(writer_sum, writer_sp, properOGs, allGenesCounter, iSpecies, speciesPresence):
+def stats_size_table(writer_sum, writer_sp, proper_ogs, all_genes_counter, i_species, species_presence):
     """ Overall and per-species histogram tables of orthogroup sizes. Called by Stats"""
     bins = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16, 21, 51, 101, 151, 201, 501, 1001, 9e99]
     writer_sum.writerow([])
     writer_sp.writerow([])
-    nGenesPerOG = [len(og) for og in properOGs]
-    nGenesPerOGPerSpecies = [[len([1 for g in og if g[0] == iSp]) for og in properOGs] for iSp in iSpecies]
-    counters_GenesPerOGPerSpecies = [Counter(spCount) for spCount in nGenesPerOGPerSpecies]
-    counters_GenesPerOG = Counter(nGenesPerOG)
-    nSp = len(iSpecies)
-    nOGs = len(properOGs)
-    nGenesTotal = sum([len(og) for og in properOGs])
-    percentFormat = "%0.1f"
+    n_genes_per_og = [len(og) for og in proper_ogs]
+    n_genes_per_og_per_species = [[len([1 for g in og if g[0] == i_sp]) for og in proper_ogs] for i_sp in i_species]
+    counters_genes_per_og_per_species = [Counter(sp_count) for sp_count in n_genes_per_og_per_species]
+    counters_genes_per_og = Counter(n_genes_per_og)
+    n_sp = len(i_species)
+    n_ogs = len(proper_ogs)
+    n_genes_total = sum([len(og) for og in proper_ogs])
+    percent_format = "%0.1f"
     writer_sum.writerow(
         ["Average number of genes per-species in orthogroup", "Number of orthogroups", "Percentage of orthogroups",
          "Number of genes", "Percentage of genes"])
     # Per-species tables
-    table_NO = [["Number of genes per-species in orthogroup"] + ["Number of orthogroups" for _ in
-                                                                 iSpecies]]  # number of orthogroups
-    table_PO = [["Number of genes per-species in orthogroup"] + ["Percentage of orthogroups" for _ in
-                                                                 iSpecies]]  # percentage of orthogroups
-    table_NG = [
-        ["Number of genes per-species in orthogroup"] + ["Number of genes" for _ in iSpecies]]  # Number of genes
-    table_PG = [["Number of genes per-species in orthogroup"] + ["Percentage of genes" for _ in
-                                                                 iSpecies]]  # percentage of genes
+    table_no = [["Number of genes per-species in orthogroup"] + ["Number of orthogroups" for _ in
+                                                                 i_species]]  # number of orthogroups
+    table_po = [["Number of genes per-species in orthogroup"] + ["Percentage of orthogroups" for _ in
+                                                                 i_species]]  # percentage of orthogroups
+    table_ng = [
+        ["Number of genes per-species in orthogroup"] + ["Number of genes" for _ in i_species]]  # Number of genes
+    table_pg = [["Number of genes per-species in orthogroup"] + ["Percentage of genes" for _ in
+                                                                 i_species]]  # percentage of genes
     for start, end in zip(bins, bins[1:]):
-        binName = "<1" if start == 0 else (
+        bin_name = "<1" if start == 0 else (
                     "'%d" % start) if start + 1 == end else "'%d+" % start if end == 9e99 else "%d-%d" % (
         start, end - 1)
-        nOrthogroups = sum([count for size, count in counters_GenesPerOG.items() if start * nSp <= size < end * nSp])
-        nGenes = sum([size * count for size, count in counters_GenesPerOG.items() if start * nSp <= size < end * nSp])
-        row_sum = [binName, nOrthogroups, percentFormat % (100. * nOrthogroups / nOGs), nGenes,
-                   percentFormat % (100. * nGenes / nGenesTotal)]
+        n_orthogroups = sum([count for size, count in counters_genes_per_og.items() if start * n_sp <= size < end * n_sp])
+        n_genes = sum([size * count for size, count in counters_genes_per_og.items() if start * n_sp <= size < end * n_sp])
+        row_sum = [bin_name, n_orthogroups, percent_format % (100. * n_orthogroups / n_ogs), n_genes,
+                   percent_format % (100. * n_genes / n_genes_total)]
         writer_sum.writerow(row_sum)
         # Per-species stats
-        if binName == "<1": binName = "'0"
-        nOrthogroups_ps = [sum([number for size, number in c.items() if start <= size < end]) for c in
-                           counters_GenesPerOGPerSpecies]
-        nGenes_ps = [sum([size * number for size, number in c.items() if start <= size < end]) for c in
-                     counters_GenesPerOGPerSpecies]
-        table_NO.append([binName] + nOrthogroups_ps)
-        table_PO.append([binName] + [percentFormat % (100. * n / nOGs) for n in nOrthogroups_ps])
-        table_NG.append([binName] + nGenes_ps)
-        table_PG.append(
-            [binName] + [percentFormat % (100. * n / allGenesCounter[iSp]) for iSp, n in zip(iSpecies, nGenes_ps)])
+        if bin_name == "<1": bin_name = "'0"
+        n_orthogroups_ps = [sum([number for size, number in c.items() if start <= size < end]) for c in
+                           counters_genes_per_og_per_species]
+        n_genes_ps = [sum([size * number for size, number in c.items() if start <= size < end]) for c in
+                     counters_genes_per_og_per_species]
+        table_no.append([bin_name] + n_orthogroups_ps)
+        table_po.append([bin_name] + [percent_format % (100. * n / n_ogs) for n in n_orthogroups_ps])
+        table_ng.append([bin_name] + n_genes_ps)
+        table_pg.append(
+            [bin_name] + [percent_format % (100. * n / all_genes_counter[i_sp]) for i_sp, n in zip(i_species, n_genes_ps)])
     writer_sp.writerow([])
-    for r in table_NO: writer_sp.writerow(r)
+    for r in table_no: writer_sp.writerow(r)
     writer_sp.writerow([])
-    for r in table_PO: writer_sp.writerow(r)
+    for r in table_po: writer_sp.writerow(r)
     writer_sp.writerow([])
-    for r in table_NG: writer_sp.writerow(r)
+    for r in table_ng: writer_sp.writerow(r)
     writer_sp.writerow([])
-    for r in table_PG: writer_sp.writerow(r)
+    for r in table_pg: writer_sp.writerow(r)
 
     # Species presence
-    n = list(map(len, speciesPresence))
+    n = list(map(len, species_presence))
     writer_sum.writerow([])
     writer_sum.writerow(["Number of species in orthogroup", "Number of orthogroups"])
-    for i in range(1, nSp + 1):
+    for i in range(1, n_sp + 1):
         writer_sum.writerow([i, n.count(i)])
 
 
-def Stats(ogs, speciesNamesDict, iSpecies, iResultsVersion, fastaWriter, ids_dict, q_fast_add=False):
+def stats(ogs, species_names_dict, i_species, i_results_version, fasta_writer, ids_dict, q_fast_add=False):
     """ Top-level method for calculation of stats for the orthogroups"""
-    allOgs = [[list(map(int, g.split("_"))) for g in og] for og in ogs]
-    properOGs = [og for og in allOgs if len(og) > 1]
-    iogs_properOGs = [iog for iog, og in enumerate(allOgs) if len(og) > 1]
-    allGenes = [g for og in allOgs for g in og]
-    ogStatsResultsDir = file_handler.FileHandler.GetOGsStatsResultsDirectory()
-    filename_sp = ogStatsResultsDir + "Statistics_PerSpecies" + (
-        "" if iResultsVersion == 0 else "_%d" % iResultsVersion) + ".tsv"
-    filename_sum = ogStatsResultsDir + "Statistics_Overall" + (
-        "" if iResultsVersion == 0 else "_%d" % iResultsVersion) + ".tsv"
-    filename_overlap = ogStatsResultsDir + "Orthogroups_SpeciesOverlaps" + (
-        "" if iResultsVersion == 0 else "_%d" % iResultsVersion) + ".tsv"
-    filename_single_copy = file_handler.FileHandler.GetOrthogroupResultsFNBase() + "_SingleCopyOrthologues.txt"
-    percentFormat = "%0.1f"
+    all_ogs = [[list(map(int, g.split("_"))) for g in og] for og in ogs]
+    proper_ogs = [og for og in all_ogs if len(og) > 1]
+    iogs_proper_ogs = [iog for iog, og in enumerate(all_ogs) if len(og) > 1]
+    all_genes = [g for og in all_ogs for g in og]
+    og_stats_results_dir = file_handler.handler.get_ogs_stats_results_directory()
+    filename_sp = og_stats_results_dir + "Statistics_PerSpecies" + (
+        "" if i_results_version == 0 else "_%d" % i_results_version) + ".tsv"
+    filename_sum = og_stats_results_dir + "Statistics_Overall" + (
+        "" if i_results_version == 0 else "_%d" % i_results_version) + ".tsv"
+    filename_overlap = og_stats_results_dir + "Orthogroups_SpeciesOverlaps" + (
+        "" if i_results_version == 0 else "_%d" % i_results_version) + ".tsv"
+    filename_single_copy = file_handler.handler.get_orthogroup_results_fn_base() + "_SingleCopyOrthologues.txt"
+    percent_format = "%0.1f"
     with open(filename_sp, util.csv_write_mode) as outfile_species, \
         open(filename_sum, util.csv_write_mode) as outfile_sum:
         writer_sp = file_io.writer(outfile_species)
         writer_sum = file_io.writer(outfile_sum)
         # header
-        writer_sp.writerow([""] + [speciesNamesDict[index] for index in iSpecies])
+        writer_sp.writerow([""] + [species_names_dict[index] for index in i_species])
 
         # Number of genes
-        allGenesCounter = Counter([g[0] for g in allGenes])
-        nGenes = sum(allGenesCounter.values())
-        writer_sum.writerow(["Number of species", len(iSpecies)])
-        writer_sp.writerow(["Number of genes"] + [allGenesCounter[iSp] for iSp in iSpecies])
-        writer_sum.writerow(["Number of genes", nGenes])
+        all_genes_counter = Counter([g[0] for g in all_genes])
+        n_genes = sum(all_genes_counter.values())
+        writer_sum.writerow(["Number of species", len(i_species)])
+        writer_sp.writerow(["Number of genes"] + [all_genes_counter[i_sp] for i_sp in i_species])
+        writer_sum.writerow(["Number of genes", n_genes])
 
         # Number of assigned/unassigned genes
-        assignedGenesCounter = Counter([g[0] for og in properOGs for g in og])
-        nAssigned = sum(assignedGenesCounter.values())
-        writer_sp.writerow(["Number of genes in orthogroups"] + [assignedGenesCounter[iSp] for iSp in iSpecies])
-        writer_sum.writerow(["Number of genes in orthogroups"] + [nAssigned])
+        assigned_genes_counter = Counter([g[0] for og in proper_ogs for g in og])
+        n_assigned = sum(assigned_genes_counter.values())
+        writer_sp.writerow(["Number of genes in orthogroups"] + [assigned_genes_counter[i_sp] for i_sp in i_species])
+        writer_sum.writerow(["Number of genes in orthogroups"] + [n_assigned])
         writer_sp.writerow(
-            ["Number of unassigned genes"] + [allGenesCounter[iSp] - assignedGenesCounter[iSp] for iSp in iSpecies])
-        writer_sum.writerow(["Number of unassigned genes"] + [nGenes - nAssigned])
+            ["Number of unassigned genes"] + [all_genes_counter[i_sp] - assigned_genes_counter[i_sp] for i_sp in i_species])
+        writer_sum.writerow(["Number of unassigned genes"] + [n_genes - n_assigned])
         # Percentages
-        pAssigned = 100. * nAssigned / nGenes
+        p_assigned = 100. * n_assigned / n_genes
         writer_sp.writerow(["Percentage of genes in orthogroups"] + [
-            percentFormat % (100. * assignedGenesCounter[iSp] / allGenesCounter[iSp]) for iSp in iSpecies])
-        writer_sum.writerow(["Percentage of genes in orthogroups", percentFormat % pAssigned])
+            percent_format % (100. * assigned_genes_counter[i_sp] / all_genes_counter[i_sp]) for i_sp in i_species])
+        writer_sum.writerow(["Percentage of genes in orthogroups", percent_format % p_assigned])
         writer_sp.writerow(["Percentage of unassigned genes"] + [
-            percentFormat % (100 * (1. - (float(assignedGenesCounter[iSp]) / allGenesCounter[iSp]))) for iSp in
-            iSpecies])
+            percent_format % (100 * (1. - (float(assigned_genes_counter[i_sp]) / all_genes_counter[i_sp]))) for i_sp in
+            i_species])
         writer_sum.writerow(
-            ["Percentage of unassigned genes", percentFormat % (100 * (1. - (float(nAssigned) / nGenes)))])
+            ["Percentage of unassigned genes", percent_format % (100 * (1. - (float(n_assigned) / n_genes)))])
 
         # Number of Orthogroups
-        speciesPresence = [set([g[0] for g in og]) for og in properOGs]
-        nOgs = len(properOGs)
+        species_presence = [set([g[0] for g in og]) for og in proper_ogs]
+        n_ogs = len(proper_ogs)
         # one pass over the orthogroups rather than one per species
-        nOGsWithSpecies = Counter(iSp for og_sp in speciesPresence for iSp in og_sp)
-        writer_sum.writerow(["Number of orthogroups", nOgs])
+        n_ogs_with_species = Counter(i_sp for og_sp in species_presence for i_sp in og_sp)
+        writer_sum.writerow(["Number of orthogroups", n_ogs])
         writer_sp.writerow(
-            ["Number of orthogroups containing species"] + [nOGsWithSpecies[iSp] for iSp in iSpecies])
-        writer_sp.writerow(["Percentage of orthogroups containing species"] + [percentFormat % (
-            (100. * nOGsWithSpecies[iSp] / len(properOGs)) if len(properOGs) > 0 else 0.)
-                                                                               for iSp in iSpecies])
+            ["Number of orthogroups containing species"] + [n_ogs_with_species[i_sp] for i_sp in i_species])
+        writer_sp.writerow(["Percentage of orthogroups containing species"] + [percent_format % (
+            (100. * n_ogs_with_species[i_sp] / len(proper_ogs)) if len(proper_ogs) > 0 else 0.)
+                                                                               for i_sp in i_species])
 
         # Species specific orthogroups - orthogroups-based
-        speciesSpecificOGsCounter = Counter([next(iter(og_sp)) for og_sp in speciesPresence if len(og_sp) == 1])
+        species_specific_ogs_counter = Counter([next(iter(og_sp)) for og_sp in species_presence if len(og_sp) == 1])
         writer_sp.writerow(
-            ["Number of species-specific orthogroups"] + [speciesSpecificOGsCounter[iSp] for iSp in iSpecies])
-        writer_sum.writerow(["Number of species-specific orthogroups", sum(speciesSpecificOGsCounter.values())])
+            ["Number of species-specific orthogroups"] + [species_specific_ogs_counter[i_sp] for i_sp in i_species])
+        writer_sum.writerow(["Number of species-specific orthogroups", sum(species_specific_ogs_counter.values())])
 
         # Species specific orthogroups - gene-based
-        iSpeciesSpecificOGs = [i for i, og_sp in enumerate(speciesPresence) if len(og_sp) == 1]
-        nGenesInSpeciesSpecificOGs = Counter()
-        for iog in iSpeciesSpecificOGs:
-            nGenesInSpeciesSpecificOGs[properOGs[iog][0][0]] += len(properOGs[iog])
-        iSpSpecificOGsGeneCounts = [nGenesInSpeciesSpecificOGs[iSp] for iSp in iSpecies]
-        writer_sp.writerow(["Number of genes in species-specific orthogroups"] + iSpSpecificOGsGeneCounts)
-        writer_sum.writerow(["Number of genes in species-specific orthogroups", sum(iSpSpecificOGsGeneCounts)])
+        i_species_specific_ogs = [i for i, og_sp in enumerate(species_presence) if len(og_sp) == 1]
+        n_genes_in_species_specific_ogs = Counter()
+        for iog in i_species_specific_ogs:
+            n_genes_in_species_specific_ogs[proper_ogs[iog][0][0]] += len(proper_ogs[iog])
+        i_sp_specific_ogs_gene_counts = [n_genes_in_species_specific_ogs[i_sp] for i_sp in i_species]
+        writer_sp.writerow(["Number of genes in species-specific orthogroups"] + i_sp_specific_ogs_gene_counts)
+        writer_sum.writerow(["Number of genes in species-specific orthogroups", sum(i_sp_specific_ogs_gene_counts)])
         writer_sp.writerow(["Percentage of genes in species-specific orthogroups"] + [
-            percentFormat % (100. * n_ss / allGenesCounter[iSp]) for n_ss, iSp in
-            zip(iSpSpecificOGsGeneCounts, iSpecies)])
+            percent_format % (100. * n_ss / all_genes_counter[i_sp]) for n_ss, i_sp in
+            zip(i_sp_specific_ogs_gene_counts, i_species)])
         writer_sum.writerow(["Percentage of genes in species-specific orthogroups",
-                             percentFormat % (100. * sum(iSpSpecificOGsGeneCounts) / nGenes)])
+                             percent_format % (100. * sum(i_sp_specific_ogs_gene_counts) / n_genes)])
 
         # 'averages'
-        l = list(sorted(list(map(len, properOGs))))
+        l = list(sorted(list(map(len, proper_ogs))))
         writer_sum.writerow(["Mean orthogroup size", "%0.1f" % np.mean(l)])
         writer_sum.writerow(["Median orthogroup size", np.median(l)])
         L = np.cumsum(l)
-        j, _ = next((i, x) for i, x in enumerate(L) if x > nAssigned / 2)
+        j, _ = next((i, x) for i, x in enumerate(L) if x > n_assigned / 2)
         writer_sum.writerow(["G50 (assigned genes)", l[j]])
         l2 = list(reversed(list(map(len, ogs))))
         L2 = np.cumsum(l2)
-        j2, _ = next((i, x) for i, x in enumerate(L2) if x > nGenes / 2)
+        j2, _ = next((i, x) for i, x in enumerate(L2) if x > n_genes / 2)
         G50 = l2[j2]
         writer_sum.writerow(["G50 (all genes)", G50])
         writer_sum.writerow(["O50 (assigned genes)", len(l) - j])
@@ -271,53 +271,53 @@ def Stats(ogs, speciesNamesDict, iSpecies, iResultsVersion, fastaWriter, ids_dic
         writer_sum.writerow(["O50 (all genes)", O50])
 
         # Single-copy orthogroups
-        ogMatrix = OrthogroupsMatrix(iSpecies, properOGs)  # use iogs_properOGs for indexing
-        nSpecies = len(iSpecies)
-        nPresent = (ogMatrix > np.zeros((1, nSpecies))).sum(1)
-        nCompleteOGs = list(nPresent).count(nSpecies)
-        singleCopyOGs = (ogMatrix == np.ones((1, nSpecies))).all(1).nonzero()[0]
-        nSingleCopy = len(singleCopyOGs)
-        writer_sum.writerow(["Number of orthogroups with all species present", nCompleteOGs])
-        writer_sum.writerow(["Number of single-copy orthogroups", nSingleCopy])
+        og_matrix = orthogroups_matrix(i_species, proper_ogs)  # use iogs_properOGs for indexing
+        n_species = len(i_species)
+        n_present = (og_matrix > np.zeros((1, n_species))).sum(1)
+        n_complete_ogs = list(n_present).count(n_species)
+        single_copy_ogs = (og_matrix == np.ones((1, n_species))).all(1).nonzero()[0]
+        n_single_copy = len(single_copy_ogs)
+        writer_sum.writerow(["Number of orthogroups with all species present", n_complete_ogs])
+        writer_sum.writerow(["Number of single-copy orthogroups", n_single_copy])
         with open(filename_single_copy, 'w') as outfile_singlecopy:
             # outfile_singlecopy.write("\n".join(["N0.HOG%07d" % iogs_properOGs[i_] for i_ in singleCopyOGs]))
-            outfile_singlecopy.write("\n".join(["OG%07d" % iogs_properOGs[i_] for i_ in singleCopyOGs]))
-        # Link single-copy orthologues
-        # g_fmt = files.FileHandler.GetResultsSeqsDir_SingleCopy() +  "N0.HOG%07d.fa"
-        g_fmt = file_handler.FileHandler.GetResultsSeqsDir_SingleCopy() +  "OG%07d.fa"
+            outfile_singlecopy.write("\n".join(["OG%07d" % iogs_proper_ogs[i_] for i_ in single_copy_ogs]))
+        # Link single-copy orthologs
+        # g_fmt = files.FileHandler.get_results_seqs_dir_single_copy() +  "N0.HOG%07d.fa"
+        g_fmt = file_handler.handler.get_results_seqs_dir_single_copy() +  "OG%07d.fa"
 
-        for i in singleCopyOGs:
-            out_fn = g_fmt % iogs_properOGs[i]
-            og = ["%d_%d" % tuple(g) for g in properOGs[i]]
-            fastaWriter.WriteSeqsToFasta_withNewAccessions(og, out_fn, ids_dict)
+        for i in single_copy_ogs:
+            out_fn = g_fmt % iogs_proper_ogs[i]
+            og = ["%d_%d" % tuple(g) for g in proper_ogs[i]]
+            fasta_writer.write_seqs_to_fasta_with_new_accessions(og, out_fn, ids_dict)
 
         # Results filenames
         writer_sum.writerow(["Date", str(datetime.datetime.now()).split()[0]])
         writer_sum.writerow(
-            ["Orthogroups file", "Orthogroups" + ("" if iResultsVersion == 0 else "_%d" % iResultsVersion) + ".tsv"])
+            ["Orthogroups file", "Orthogroups" + ("" if i_results_version == 0 else "_%d" % i_results_version) + ".tsv"])
         writer_sum.writerow(["Unassigned genes file", "Orthogroups" + (
-            "" if iResultsVersion == 0 else "_%d" % iResultsVersion) + "_UnassignedGenes.tsv"])
+            "" if i_results_version == 0 else "_%d" % i_results_version) + "_UnassignedGenes.tsv"])
         writer_sum.writerow(["Per-species statistics", os.path.split(filename_sp)[1]])
         writer_sum.writerow(["Overall statistics", os.path.split(filename_sum)[1]])
         writer_sum.writerow(["Orthogroups shared between species", os.path.split(filename_overlap)[1]])
 
         # Sizes
-        Stats_SizeTable(writer_sum, writer_sp, properOGs, allGenesCounter, iSpecies, speciesPresence)
+        stats_size_table(writer_sum, writer_sp, proper_ogs, all_genes_counter, i_species, species_presence)
         # Stats_SpeciesOverlaps(filename_overlap, speciesNamesDict, iSpecies, speciesPresence)
     # 
-    util.PrintTime("Done writing files")
+    util.print_time("Done writing files")
     print("\n[bold]Summary: [/bold]")
-    summaryText1 = f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] assigned [deep_sky_blue2]{nAssigned}[/deep_sky_blue2] genes ([deep_sky_blue2]{pAssigned:0.1f}%[/deep_sky_blue2] of total) to [deep_sky_blue2]{nOgs}[/deep_sky_blue2] orthogroups. "
-    summaryText2 = f"[deep_sky_blue2]50%[/deep_sky_blue2] of genes were in orthogroups with [deep_sky_blue2]{G50}[/deep_sky_blue2] or more genes (G50 was [deep_sky_blue2]{G50}[/deep_sky_blue2]) and were contained in the largest [deep_sky_blue2]{O50}[/deep_sky_blue2] orthogroups (O50 was [deep_sky_blue2]{O50}[/deep_sky_blue2]). "
-    summaryText3 = f"There were [deep_sky_blue2]{nCompleteOGs}[/deep_sky_blue2] orthogroups with all species present and [deep_sky_blue2]{nSingleCopy}[/deep_sky_blue2] of these consisted entirely of single-copy genes."
+    summary_text1 = f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] assigned [deep_sky_blue2]{n_assigned}[/deep_sky_blue2] genes ([deep_sky_blue2]{p_assigned:0.1f}%[/deep_sky_blue2] of total) to [deep_sky_blue2]{n_ogs}[/deep_sky_blue2] orthogroups. "
+    summary_text2 = f"[deep_sky_blue2]50%[/deep_sky_blue2] of genes were in orthogroups with [deep_sky_blue2]{G50}[/deep_sky_blue2] or more genes (G50 was [deep_sky_blue2]{G50}[/deep_sky_blue2]) and were contained in the largest [deep_sky_blue2]{O50}[/deep_sky_blue2] orthogroups (O50 was [deep_sky_blue2]{O50}[/deep_sky_blue2]). "
+    summary_text3 = f"There were [deep_sky_blue2]{n_complete_ogs}[/deep_sky_blue2] orthogroups with all species present and [deep_sky_blue2]{n_single_copy}[/deep_sky_blue2] of these consisted entirely of single-copy genes."
 
     console = Console()
     table = Table(show_header=False, box=None, expand=False)
     # table_options.add_column("Option", justify="left", width=width, no_wrap=False, overflow="fold")
     table.add_column("Description", justify="left", overflow="fold")
-    table.add_row(summaryText1)
-    table.add_row(summaryText2)
-    table.add_row(summaryText3)
+    table.add_row(summary_text1)
+    table.add_row(summary_text2)
+    table.add_row(summary_text3)
     # console.print(table)
 
 #     summaryText = """  [dark_goldenrod]OrthoFinder[/dark_goldenrod] assigned %d genes (%0.1f%% of total) to %d orthogroups. 

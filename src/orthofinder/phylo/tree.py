@@ -1370,7 +1370,7 @@ class TreeNode(object):
             
         return new_node
         
-    def _asciiArt(self, char1='-', show_internal=True, compact=False, attributes=None):
+    def _ascii_art(self, char1='-', show_internal=True, compact=False, attributes=None):
         """
         Returns the ASCII representation of the tree.
 
@@ -1395,7 +1395,7 @@ class TreeNode(object):
                     char2 = '\\'
                 else:
                     char2 = '-'
-                (clines, mid) = c._asciiArt(char2, show_internal, compact, attributes)
+                (clines, mid) = c._ascii_art(char2, show_internal, compact, attributes)
                 mids.append(mid+len(result))
                 result.extend(clines)
                 if not compact:
@@ -1425,7 +1425,7 @@ class TreeNode(object):
             ASCII representation.
         
         """
-        (lines, mid) = self._asciiArt(show_internal=show_internal,
+        (lines, mid) = self._ascii_art(show_internal=show_internal,
                                       compact=compact, attributes=attributes)
         return '\n'+'\n'.join(lines)
 

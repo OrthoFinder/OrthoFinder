@@ -29,10 +29,10 @@ def test_recon_tree(of_and_expected_recon_tree):
     reason="Skipping OrthoFinder results test"
 )
 @pytest.mark.order(8)
-def test_orthologues(of_and_expected_orthologues):
-    of_obj, expected = of_and_expected_orthologues
-    of_orthologues = of_obj.get_orthologues()
-    per_species_triplets, per_species_locations = helper._index_of_orthologues(of_orthologues)
+def test_orthologs(of_and_expected_orthologs):
+    of_obj, expected = of_and_expected_orthologs
+    of_orthologs = of_obj.get_orthologs()
+    per_species_triplets, per_species_locations = helper._index_of_orthologs(of_orthologs)
 
     missing = []   
     relocations = []  

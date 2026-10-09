@@ -47,17 +47,17 @@ def write_tree(hog_name, newick_string, resolved_trees_id_dir):
 
 def read_fasta(file_path):
     genes_dict = {}
-    qFirst = True
+    q_first = True
     accession = ""
     sequence = []
     try:
-        with open(file_path, 'r') as fastaFile:
-            for line in fastaFile:
+        with open(file_path, 'r') as fasta_file:
+            for line in fasta_file:
                 if line[0] == ">":
-                    if not qFirst:
+                    if not q_first:
                         genes_dict[accession] = "".join(sequence)
                         sequence = []
-                    qFirst = False
+                    q_first = False
                     accession = line[1:].rstrip()
                 else:
                     sequence.append(line)
@@ -68,7 +68,7 @@ def read_fasta(file_path):
     return genes_dict
 
 
-def write_fasta(align_dir, hog_name, sequences, idDict):
+def write_fasta(align_dir, hog_name, sequences, id_dict):
     try:
         fasta_path = os.path.join(align_dir, hog_name + ".fa")
         sorted_seqs = sorted(
@@ -77,11 +77,11 @@ def write_fasta(align_dir, hog_name, sequences, idDict):
         )
         buffer = io.StringIO()
         for gene in sorted_seqs:
-            gene_name = idDict.get(gene)
+            gene_name = id_dict.get(gene)
             buffer.write(f">{gene_name}\n")
             buffer.write(sequences[gene])
-        with open(fasta_path, 'w', buffering=1024 * 1024) as outFile:
-            outFile.write(buffer.getvalue())
+        with open(fasta_path, 'w', buffering=1024 * 1024) as out_file:
+            out_file.write(buffer.getvalue())
     except Exception as e:
         print(f"ERROR writing FASTA for {hog_name}: {e}")
         raise
@@ -319,7 +319,7 @@ def process_task(
 def writer_task(
         process_queue, 
         min_seq, 
-        idDict,
+        id_dict,
         resolved_trees_id_dir, 
         align_dir, 
         stop_event, 
@@ -347,7 +347,7 @@ def writer_task(
 
                     if exist_msa and pruned_alignments is not None and len(pruned_alignments) >= min_seq:
                         if align_dir is not None:
-                            write_fasta(align_dir, out_name, pruned_alignments, idDict)
+                            write_fasta(align_dir, out_name, pruned_alignments, id_dict)
             elif kind != "skip":
                 raise TypeError("Unexpected message: %r" % (msg,))
             n_handled += 1
@@ -392,7 +392,7 @@ def post_ogs_processing(
     resolved_trees_id_dir,
     hog_index,
     name_dict,
-    idDict,
+    id_dict,
     spec_seq_id_dict,
     species_names,
     nprocess,
@@ -435,7 +435,7 @@ def post_ogs_processing(
     writer_processes = [
         mp.Process(
             target=writer_task,
-            args=(process_queue, min_seq, idDict, resolved_trees_id_dir,
+            args=(process_queue, min_seq, id_dict, resolved_trees_id_dir,
                   align_dir, stop_event, report_queue, exist_msa)
         )
         for _ in range(n_writer_processes)
@@ -502,7 +502,7 @@ def post_ogs_processing(
     finally:
         if failure is not None:
             stop_event.set()
-            parallel_task_manager.TerminateProcesses(all_processes)
+            parallel_task_manager.terminate_processes(all_processes)
             for q in (read_queue, process_queue, report_queue):
                 q.cancel_join_thread()
         for proc in all_processes:

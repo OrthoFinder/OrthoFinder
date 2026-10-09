@@ -62,8 +62,8 @@ def invert_mapping(ids_map):
     return acc_to_ids
 
 
-def convert_resolved_gene_trees_file(idsMap, treeFilename, outputFilename):
-    with open(treeFilename, "r") as infile, open(outputFilename, "w") as outfile:
+def convert_resolved_gene_trees_file(ids_map, tree_filename, output_filename):
+    with open(tree_filename, "r") as infile, open(output_filename, "w") as outfile:
         for line in infile:
             line = line.strip()
 
@@ -80,53 +80,53 @@ def convert_resolved_gene_trees_file(idsMap, treeFilename, outputFilename):
             tmp_tree = tree.Tree(newick, format=1)
 
             for node in tmp_tree.get_leaves():
-                if node.name in idsMap:
-                    node.name = idsMap[node.name]
+                if node.name in ids_map:
+                    node.name = ids_map[node.name]
 
             outfile.write("%s: %s\n" % (og_name, tmp_tree.write(format=5).strip()))
 
-def ReplaceFileWithNewIDs(idsMap, treeFilename, newTreeFilename):
-    with open(treeFilename, "r") as infile:
+def replace_file_with_new_ids(ids_map, tree_filename, new_tree_filename):
+    with open(tree_filename, "r") as infile:
         first_line = infile.readline().strip()
 
     if first_line.startswith("OG") and ":" in first_line:
-        convert_resolved_gene_trees_file(idsMap, treeFilename, newTreeFilename)
+        convert_resolved_gene_trees_file(ids_map, tree_filename, new_tree_filename)
         return
 
-    qHaveSupport = False
-    qHaveInternalNames = False
+    q_have_support = False
+    q_have_internal_names = False
 
     try:
-        t = tree.Tree(treeFilename, format=2)
-        qHaveSupport = True
+        t = tree.Tree(tree_filename, format=2)
+        q_have_support = True
     except Exception:
         try:
-            t = tree.Tree(treeFilename, format=3)
-            qHaveInternalNames = True
+            t = tree.Tree(tree_filename, format=3)
+            q_have_internal_names = True
         except Exception:
-            t = tree.Tree(treeFilename)
+            t = tree.Tree(tree_filename)
 
     for node in t.get_leaves():
-        if node.name in idsMap:
-            node.name = idsMap[node.name]
+        if node.name in ids_map:
+            node.name = ids_map[node.name]
 
-    if qHaveSupport:
-        t.write(outfile=newTreeFilename)
-    elif qHaveInternalNames:
-        t.write(outfile=newTreeFilename, format=3)
+    if q_have_support:
+        t.write(outfile=new_tree_filename)
+    elif q_have_internal_names:
+        t.write(outfile=new_tree_filename, format=3)
     else:
-        t.write(outfile=newTreeFilename, format=5)
+        t.write(outfile=new_tree_filename, format=5)
 
 
-def GetSpeciesSequenceIDsDict(sequenceIDsFilename, speciesIDsFN=None):
+def get_species_sequence_ids_dict(sequence_ids_filename, species_ids_fn=None):
     try:
-        extract = util.FirstWordExtractor(sequenceIDsFilename)
+        extract = util.FirstWordExtractor(sequence_ids_filename)
     except RuntimeError as error:
         msg = str(error)
         print(msg)
 
         if msg.startswith("ERROR"):
-            util.Fail()
+            util.fail()
 
         print(
             "Tried to use only the first part of the accession in order to list "
@@ -134,22 +134,22 @@ def GetSpeciesSequenceIDsDict(sequenceIDsFilename, speciesIDsFN=None):
             "unique. The full accession line will be used instead.\n"
         )
 
-        extract = util.FullAccession(sequenceIDsFilename)
+        extract = util.FullAccession(sequence_ids_filename)
 
-    idsDict = extract.GetIDToNameDict()
+    ids_dict = extract.get_id_to_name_dict()
 
-    if speciesIDsFN is not None:
-        speciesDict = util.FullAccession(speciesIDsFN).GetIDToNameDict()
-        speciesDict = {
+    if species_ids_fn is not None:
+        species_dict = util.FullAccession(species_ids_fn).get_id_to_name_dict()
+        species_dict = {
             k: v.rsplit(".", 1)[0].replace(".", "_").replace(" ", "_")
-            for k, v in speciesDict.items()
+            for k, v in species_dict.items()
         }
-        idsDict = {
-            seqID: speciesDict[seqID.split("_")[0]] + "_" + name
-            for seqID, name in idsDict.items()
+        ids_dict = {
+            seq_id: species_dict[seq_id.split("_")[0]] + "_" + name
+            for seq_id, name in ids_dict.items()
         }
 
-    return idsDict
+    return ids_dict
 
 
 def get_tree_files(tree_input):
@@ -163,31 +163,31 @@ def get_tree_files(tree_input):
         )
 
     print("ERROR: tree input does not exist: %s" % tree_input)
-    util.Fail()
+    util.fail()
 
 
 def convert_tree_ids(tree_input, sequence_ids, species_ids=None, direction="id-to-accession"):
-    idsDict = GetSpeciesSequenceIDsDict(sequence_ids, species_ids)
+    ids_dict = get_species_sequence_ids_dict(sequence_ids, species_ids)
 
     if direction == "accession-to-id":
-        idsDict = invert_mapping(idsDict)
+        ids_dict = invert_mapping(ids_dict)
 
-    filesToDo = get_tree_files(tree_input)
+    files_to_do = get_tree_files(tree_input)
 
-    for treeFilename in filesToDo:
-        pathfilename, ext = os.path.splitext(treeFilename)
+    for tree_filename in files_to_do:
+        pathfilename, ext = os.path.splitext(tree_filename)
 
         if direction == "id-to-accession":
             suffix = "_accessions"
         else:
             suffix = "_ids"
 
-        newFilename = pathfilename + suffix + ext
+        new_filename = pathfilename + suffix + ext
 
-        sys.stdout.write(newFilename)
+        sys.stdout.write(new_filename)
 
         try:
-            ReplaceFileWithNewIDs(idsDict, treeFilename, newFilename)
+            replace_file_with_new_ids(ids_dict, tree_filename, new_filename)
         except Exception as error:
             sys.stdout.write(" - skipped: %s" % error)
 

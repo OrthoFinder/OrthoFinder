@@ -56,14 +56,14 @@ class BitVector(object):
         if taxon != None:
             self.X |= 1<<taxa_index[taxon]
         
-    def Add(self, other):
+    def add(self, other):
         self.X = self.X | other.X
         
-    def AddList(self, others):
+    def add_list(self, others):
         for o in others:
             self.X = self.X | o.X
     
-    def Invert(self):
+    def invert(self):
         """
         Inverts the bits
         Args:
@@ -75,7 +75,7 @@ class BitVector(object):
         mask = ((1<<self.n)-1)
         self.X ^= mask
         
-    def Canonical(self):
+    def canonical(self):
         """
         Returns the split for this BitVector in the canonical form (arbitrarily, but consistently, defined) as a long int
         Args:
@@ -86,15 +86,15 @@ class BitVector(object):
         if (self.X >> 0) & 1: 
             c = BitVector(self.taxa_index)
             c.X = self.X
-            c.Invert()
+            c.invert()
             return c.X
         else:
             return self.X
             
-    def Is(self, taxon):
+    def contains(self, taxon):
         return (self.X >> self.taxa_index[taxon]) & 1
 
-def UpdateSplits(all_splits, tree, taxa_index):
+def update_splits(all_splits, tree, taxa_index):
     """
     Adds the splits in tree to the list all_splits
     Args:
@@ -109,42 +109,42 @@ def UpdateSplits(all_splits, tree, taxa_index):
     Requirements:
         - The taxa in tree should be identical to the taxa in taxa_index
     """
-    nRoot = len(tree.get_children())  
-    if nRoot == 2:
+    n_root = len(tree.get_children())  
+    if n_root == 2:
         # don't double count at root. If there are two children then must only do once
         for node in tree.traverse("postorder"):
             if node.is_leaf():
                 if node.up.is_root():
-                    nRoot -= 1
-                    if nRoot == 0: continue
+                    n_root -= 1
+                    if n_root == 0: continue
                 s = BitVector(taxa_index, node.name)
                 node.add_feature('split_down', s)
-                all_splits.append((s.Canonical(), node.dist))
+                all_splits.append((s.canonical(), node.dist))
             elif node.is_root():
                 continue
             else:
                 if node.up.is_root():
-                    nRoot -= 1
-                    if nRoot == 0: continue
+                    n_root -= 1
+                    if n_root == 0: continue
                 s = BitVector(taxa_index)
-                s.AddList([ch.split_down for ch in node.get_children()])    
+                s.add_list([ch.split_down for ch in node.get_children()])    
                 node.add_feature('split_down', s)
-                all_splits.append((s.Canonical(), node.dist))
+                all_splits.append((s.canonical(), node.dist))
     else:
         for node in tree.traverse("postorder"):
             if node.is_leaf():
                 s = BitVector(taxa_index, node.name)
                 node.add_feature('split_down', s)
-                all_splits.append((s.Canonical(), node.dist))
+                all_splits.append((s.canonical(), node.dist))
             elif node.is_root():
                 continue
             else:
                 s = BitVector(taxa_index)
-                s.AddList([ch.split_down for ch in node.get_children()])    
+                s.add_list([ch.split_down for ch in node.get_children()])    
                 node.add_feature('split_down', s)
-                all_splits.append((s.Canonical(), node.dist))
+                all_splits.append((s.canonical(), node.dist))
 
-def GetAllSplits(trees_dir):
+def get_all_splits(trees_dir):
     """
     Gets the set of splits in a set of trees
     
@@ -154,36 +154,36 @@ def GetAllSplits(trees_dir):
     Returns:
         list of (splits,length) tuples, taxa_index, taxa_ordered, number of trees
     """
-    treesFNs = glob.glob(trees_dir + "/*")
-    if len(treesFNs) == 0:
+    trees_fns = glob.glob(trees_dir + "/*")
+    if len(trees_fns) == 0:
         print("ERROR: No trees found in directory")
         raise Exception()
-    iFirst = 0
+    i_first = 0
     first_tree = None
-    while iFirst < len(treesFNs):
+    while i_first < len(trees_fns):
         try:
-            first_tree = tree.Tree(treesFNs[iFirst])
+            first_tree = tree.Tree(trees_fns[i_first])
             break
         except newick.NewickError:
-            print("Could not read tree, skipping: %s" % treesFNs[iFirst])
-            iFirst += 1
+            print("Could not read tree, skipping: %s" % trees_fns[i_first])
+            i_first += 1
     if first_tree is None:
         print("ERROR: Could not read any of the trees for STAG species tree inference in %s" % trees_dir)
         from ..utils import util
-        util.Fail()
+        util.fail()
     taxa_ordered = first_tree.get_leaf_names()
     taxa_index = {taxon:i for i, taxon in enumerate(taxa_ordered)}
     splits = []
-    UpdateSplits(splits, first_tree, taxa_index)
-    for treeFN in treesFNs[iFirst+1:]:
+    update_splits(splits, first_tree, taxa_index)
+    for tree_fn in trees_fns[i_first+1:]:
         try:
-            t = tree.Tree(treeFN)
-            UpdateSplits(splits, t, taxa_index)
+            t = tree.Tree(tree_fn)
+            update_splits(splits, t, taxa_index)
         except newick.NewickError:
-            print("Could not read tree, skipping: %s" % treeFN)
-    return splits, taxa_index, taxa_ordered, len(treesFNs)
+            print("Could not read tree, skipping: %s" % tree_fn)
+    return splits, taxa_index, taxa_ordered, len(trees_fns)
 
-def GetCompatibleSplits(splits_lengths):
+def get_compatible_splits(splits_lengths):
     """
     Args:
         splits_lengths - list of (split, length) tuples
@@ -208,24 +208,24 @@ def GetCompatibleSplits(splits_lengths):
         if ok: compatible_splits.append((x,n))
     return compatible_splits, lengths
     
-def ConstructTree(compatible_splits, split_lengths, taxa_index, taxa_ordered, nTrees):
+def construct_tree(compatible_splits, split_lengths, taxa_index, taxa_ordered, n_trees):
     # Progressively build the tree - Inspired by Day's algorithm (but I've not checked how similar)
     # Start from the leaves 
-#    t = ConstructTree(compatible_splits)
-    nTrees = float(nTrees)
+#    t = construct_tree(compatible_splits)
+    n_trees = float(n_trees)
     t = tree.Tree()
     nodes_list = []
     for i, taxon in enumerate(taxa_ordered):
         n = tree.TreeNode()
         n.name = taxon
-        x = BitVector(taxa_index, taxon).Canonical()
+        x = BitVector(taxa_index, taxon).canonical()
         n.dist = sum(split_lengths[x]) / float(len(split_lengths[x]))
         nodes_list.append(n)
         t.add_child(n)
     compatible_splits = sorted(compatible_splits) # ascending
     # now nodes are in preorder    
 #    one = '1'
-    for x, nSup in compatible_splits:    
+    for x, n_sup in compatible_splits:    
         # have already put leaves on:
         if bin(x).count("1") == 1: continue 
         # 1's correspond to the cluster for the tree rooted on the first
@@ -234,14 +234,14 @@ def ConstructTree(compatible_splits, split_lengths, taxa_index, taxa_ordered, nT
         # if cluster (2,3,4) is then observed then go to the first non-zero index for the node?
 #        rep = bin(x)
         # the tree may be non-binary. We may add multiple child nodes at once
-        iInsert = None
+        i_insert = None
         for i, node in enumerate(nodes_list):
             if (x >> i) & 1 and node != None:
                 # then this is one of the child nodes
-                if iInsert == None:
-                    iInsert = i
+                if i_insert == None:
+                    i_insert = i
                     node_new = tree.TreeNode()
-                    node_new.support = nSup/nTrees
+                    node_new.support = n_sup/n_trees
                     node_new.dist = sum(split_lengths[x]) / float(len(split_lengths[x]))
                     node_new.add_child(node.detach())
                     nodes_list[i] = node_new
@@ -254,7 +254,7 @@ def ConstructTree(compatible_splits, split_lengths, taxa_index, taxa_ordered, nT
     return t
     
     
-def ConsensusTree(trees_dir):
+def consensus_tree(trees_dir):
     """
     Calcualtes a greedy consensus tree for the set of trees
     
@@ -269,15 +269,15 @@ def ConsensusTree(trees_dir):
         - All trees should be unrooted
     """
     # Get the set of splits in the trees
-    splits_lengths, taxa_index, taxa_ordered, nTrees = GetAllSplits(trees_dir)
-    compatible_splits, split_lengths = GetCompatibleSplits(splits_lengths)
-    t = ConstructTree(compatible_splits, split_lengths, taxa_index, taxa_ordered, nTrees)
+    splits_lengths, taxa_index, taxa_ordered, n_trees = get_all_splits(trees_dir)
+    compatible_splits, split_lengths = get_compatible_splits(splits_lengths)
+    t = construct_tree(compatible_splits, split_lengths, taxa_index, taxa_ordered, n_trees)
     return t
 
 def main(args):
 #    try:
     start = time.time()
-    t = ConsensusTree(args.trees_dir)
+    t = consensus_tree(args.trees_dir)
     stop = time.time()    
     print(t)
     print("\n%f seconds" % (stop-start))

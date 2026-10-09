@@ -15,11 +15,11 @@ from .. import __version__
 
 def post_hogs_processing(
     all_seq_ids,
-    speciesInfoObj,
-    seqsInfo,
-    speciesNamesDict,
+    species_info_obj,
+    seqs_info,
+    species_names_dict,
     options,
-    speciesXML,
+    species_xml,
     q_incremental=False,
 ):
     """
@@ -28,10 +28,10 @@ def post_hogs_processing(
         q_incremental - These are not the final orthogroups, don't write results
     """
     new_ogs, name_dictionary = update_ogs(
-        file_handler.FileHandler.HierarchicalOrthogroupsFNN0()
+        file_handler.handler.hierarchical_orthogroups_fn_n0()
     )
-    resultsBaseFilename = file_handler.FileHandler.GetOrthogroupResultsFNBase()
-    # util.PrintUnderline("Writing orthogroups to file")
+    results_base_filename = file_handler.handler.get_orthogroup_results_fn_base()
+    # util.print_underline("Writing orthogroups to file")
     all_assigned = set([g for og in new_ogs for g in og])
     # Unassigned genes in sequence-ID order: iterating a set of strings gives a
     # different order (and so different OG numbers) in every run.
@@ -39,57 +39,57 @@ def post_hogs_processing(
     single_ogs_list = [{g} for g in unassigned]
     new_ogs.extend(single_ogs_list)
 
-    with open(file_handler.FileHandler.OGsAllIDFN(), "w") as outfile:
+    with open(file_handler.handler.ogs_all_id_fn(), "w") as outfile:
         for og in new_ogs:
             outfile.write(", ".join(sorted(og, key=util.seq_id_key)) + "\n")
 
-    idsDict = MCL.WriteOrthogroupFiles(
-        new_ogs, [file_handler.FileHandler.GetSequenceIDsFN()], resultsBaseFilename
+    ids_dict = MCL.write_orthogroup_files(
+        new_ogs, [file_handler.handler.get_sequence_ids_fn()], results_base_filename
     )
 
     if not q_incremental:
-        MCL.CreateOrthogroupTable(
+        MCL.create_orthogroup_table(
             new_ogs,
-            idsDict,
-            speciesNamesDict,
-            speciesInfoObj.speciesToUse,
-            resultsBaseFilename,
+            ids_dict,
+            species_names_dict,
+            species_info_obj.species_to_use,
+            results_base_filename,
         )
 
     # Write Orthogroup FASTA files
-    ogSet = OrthoGroupsSet(
+    og_set = OrthogroupSet(
         options.min_seq,
-        file_handler.FileHandler.GetWorkingDirectory1_Read(),
-        speciesInfoObj.speciesToUse,
-        speciesInfoObj.nSpAll,
-        options.qAddSpeciesToIDs,
+        file_handler.handler.get_working_directory1_read(),
+        species_info_obj.species_to_use,
+        species_info_obj.n_sp_all,
+        options.q_add_species_to_ids,
         options.tree_program,
-        idExtractor=util.FirstWordExtractor,
+        id_extractor=util.FirstWordExtractor,
     )
 
     ## ------------------ Fix Orthogroup_Sequences and Sequences_ids --------------------
-    treeGen = msa_trees.TreesForOrthogroups(None, None, None)
-    fastaWriter = msa_trees.FastaWriter(
-        file_handler.FileHandler.GetSpeciesSeqsDir(), speciesInfoObj.speciesToUse
+    tree_gen = msa_trees.TreesForOrthogroups(None, None, None)
+    fasta_writer = msa_trees.FastaWriter(
+        file_handler.handler.get_species_seqs_dir(), species_info_obj.species_to_use
     )
 
-    d_seqs = file_handler.FileHandler.GetResultsSeqsDir()
+    d_seqs = file_handler.handler.get_results_seqs_dir()
     if not os.path.exists(d_seqs):
         os.mkdir(d_seqs)
 
     # Update Orthogroup_Sequneces
-    treeGen.WriteFastaFiles(
-        fastaWriter, ogSet.OGsAll(), idsDict, qID=False, qResults=True
+    tree_gen.write_fasta_files(
+        fasta_writer, og_set.get_ogs_all(), ids_dict, q_id=False, q_results=True
     )
 
-    idDict = ogSet.Spec_SeqDict()
-    idDict.update(
-        ogSet.SpeciesDict()
+    id_dict = og_set.spec_seq_dict()
+    id_dict.update(
+        og_set.species_dict()
     )  # same code will then also convert concatenated alignment for species tree
 
     # Update Orthogroup_Sequneces and Sequences_ids
-    # treeGen.WriteFastaFiles(fastaWriter, ogSet.OGssAll(), idDict, True)
-    # treeGen.WriteFastaFiles(fastaWriter, ogSet.OGsAll(), idDict, False) # Set to False, only update the Orthogroup_Sequneces
+    # treeGen.write_fasta_files(fastaWriter, ogSet.OGssAll(), idDict, True)
+    # treeGen.write_fasta_files(fastaWriter, ogSet.get_ogs_all(), idDict, False) # Set to False, only update the Orthogroup_Sequneces
 
     # if not q_incremental:
     ## stats.Stats(ogs, speciesNamesDict, speciesInfoObj.speciesToUse, files.FileHandler.iResultsVersion)
@@ -102,10 +102,10 @@ def post_hogs_processing(
     #         resultsBaseFilename + ".orthoxml",
     #         speciesInfoObj.speciesToUse,
     #     )
-    # util.PrintTime("Done orthogroups")
-    # files.FileHandler.LogOGs()
+    # util.print_time("Done orthogroups")
+    # files.FileHandler.log_ogs()
 
-    return ogSet, idDict, name_dictionary, new_ogs
+    return og_set, id_dict, name_dictionary, new_ogs
 
 
 def update_ogs(input_path):
@@ -150,32 +150,32 @@ def read_hogs_to_matrix(input_path):
 #     return iSeq + offset
 
 
-def IDFullDict(idsFilenames, func=util.FirstWordExtractor):
+def id_full_dict(ids_filenames, func=util.FirstWordExtractor):
 
-    fullDict = dict()
-    for idsFilename in idsFilenames:
-        idExtract = func(idsFilename)
-        idDict = idExtract.GetIDToNameDict()
-        fullDict.update(idDict)
+    full_dict = dict()
+    for ids_filename in ids_filenames:
+        id_extract = func(ids_filename)
+        id_dict = id_extract.get_id_to_name_dict()
+        full_dict.update(id_dict)
 
-    return fullDict
+    return full_dict
 
 
 class Seq(object):
-    def __init__(self, seqInput):
+    def __init__(self, seq_input):
         """Constructor takes sequence in any format and returns generators the
         Seq object accordingly. If performance is really important then can write
         individual an @classmethod to do that without the checks"""
-        if type(seqInput) is str:
-            a, b = seqInput.split("_")
-            self.iSp = int(a)
-            self.iSeq = int(b)
-        elif len(seqInput) == 2:
-            if seqInput[0] is str:
-                self.iSp, self.iSeq = list(map(int, seqInput))
+        if type(seq_input) is str:
+            a, b = seq_input.split("_")
+            self.i_sp = int(a)
+            self.i_seq = int(b)
+        elif len(seq_input) == 2:
+            if seq_input[0] is str:
+                self.i_sp, self.i_seq = list(map(int, seq_input))
             else:
-                self.iSp = seqInput[0]
-                self.iSeq = seqInput[1]
+                self.i_sp = seq_input[0]
+                self.i_seq = seq_input[1]
         else:
             raise NotImplementedError
 
@@ -186,72 +186,72 @@ class Seq(object):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return self.ToString()
+        return self.to_string()
 
-    def ToString(self):
-        return "%d_%d" % (self.iSp, self.iSeq)
+    def to_string(self):
+        return "%d_%d" % (self.i_sp, self.i_seq)
 
 
 # ==============================================================================================================================
 
 
-class OrthoGroupsSet(object):
+class OrthogroupSet(object):
     def __init__(
         self,
         min_seq,
-        orthofinderWorkingDir_list,
-        speciesToUse,
-        nSpAll,
-        qAddSpeciesToIDs,
+        orthofinder_working_dir_list,
+        species_to_use,
+        n_sp_all,
+        q_add_species_to_ids,
         tree_prgram="fasttree",
-        idExtractor=util.FirstWordExtractor,
+        id_extractor=util.FirstWordExtractor,
         species_id_fn="",
         sequence_id_fn="",
         ogs_all_fn="",
     ):
 
         if not species_id_fn:
-            self.species_id_fn = file_handler.FileHandler.GetSpeciesIDsFN()
+            self.species_id_fn = file_handler.handler.get_species_ids_fn()
         else:
             self.species_id_fn = species_id_fn
 
         if not sequence_id_fn:
-            self.sequence_id_fn = file_handler.FileHandler.GetSequenceIDsFN()
+            self.sequence_id_fn = file_handler.handler.get_sequence_ids_fn()
         else:
             self.sequence_id_fn = sequence_id_fn
 
         if not ogs_all_fn:
-            self.ogs_all_fn = file_handler.FileHandler.OGsAllIDFN()
+            self.ogs_all_fn = file_handler.handler.ogs_all_id_fn()
         else:
             self.ogs_all_fn = ogs_all_fn
 
-        self.speciesIDsEx = util.FullAccession(self.species_id_fn)
-        self._Spec_SeqIDs = None
-        self._extractor = idExtractor
-        self.seqIDsEx = None
+        self.species_ids_ex = util.FullAccession(self.species_id_fn)
+        self._spec_seq_ids = None
+        self._extractor = id_extractor
+        self.seq_ids_ex = None
         self.ogs_all = None
-        self.iOgs4 = None
-        self.speciesToUse = speciesToUse  # list of ints
-        self.seqsInfo = util.GetSeqsInfo(
-            orthofinderWorkingDir_list, self.speciesToUse, nSpAll
+        self.i_ogs4 = None
+        self.species_to_use = species_to_use  # list of ints
+        self.seqs_info = util.get_seqs_info(
+            orthofinder_working_dir_list, self.species_to_use, n_sp_all
         )
         self.id_to_og = None
-        self.qAddSpeciesToIDs = qAddSpeciesToIDs
+        self.q_add_species_to_ids = q_add_species_to_ids
         self.cached_seq_ids_dict = None
         self.min_seq = min_seq
         self.tree_program = tree_prgram
 
-    def SequenceDict(self):
+    def sequence_dict(self):
         """returns Dict[str, str]"""
         if self.cached_seq_ids_dict is not None:
             return self.cached_seq_ids_dict
-        if self.seqIDsEx == None:
+        if self.seq_ids_ex == None:
             try:
-                self.seqIDsEx = self._extractor(self.sequence_id_fn)
+                self.seq_ids_ex = self._extractor(self.sequence_id_fn)
             except RuntimeError as error:
                 print(str(error))
                 if str(error).startswith("ERROR"):
-                    file_handler.FileHandler.LogFailAndExit()
+                    file_handler.handler.log_fail_and_exit()
                 else:
                     print(
                         "Tried to use only the first part of the accession in order to list the sequences in each orthogroup"
@@ -259,41 +259,41 @@ class OrthoGroupsSet(object):
                     print(
                         "more concisely but these were not unique. The full accession line will be used instead.\n"
                     )
-                    self.seqIDsEx = util.FullAccession(self.sequence_id_fn)
-        self.cached_seq_ids_dict = self.seqIDsEx.GetIDToNameDict()
+                    self.seq_ids_ex = util.FullAccession(self.sequence_id_fn)
+        self.cached_seq_ids_dict = self.seq_ids_ex.get_id_to_name_dict()
         return self.cached_seq_ids_dict
 
-    def SpeciesDict(self):
+    def species_dict(self):
         """returns Dict[str, str]"""
-        d = self.speciesIDsEx.GetIDToNameDict()
+        d = self.species_ids_ex.get_id_to_name_dict()
         return {k: v.rsplit(".", 1)[0] for k, v in d.items()}
 
-    def Spec_SeqDict(self):
+    def spec_seq_dict(self):
         """returns Dict[str, str]"""
-        if self._Spec_SeqIDs != None:
-            return self._Spec_SeqIDs
-        seqs = self.SequenceDict()
+        if self._spec_seq_ids != None:
+            return self._spec_seq_ids
+        seqs = self.sequence_dict()
         seqs = {
-            k: v for k, v in seqs.items() if int(k.split("_")[0]) in self.speciesToUse
+            k: v for k, v in seqs.items() if int(k.split("_")[0]) in self.species_to_use
         }
-        if not self.qAddSpeciesToIDs:
-            self._Spec_SeqIDs = seqs
+        if not self.q_add_species_to_ids:
+            self._spec_seq_ids = seqs
             return seqs
-        specs = self.SpeciesDict()
+        specs = self.species_dict()
         specs_ed = {k: v.replace(".", "_").replace(" ", "_") for k, v in specs.items()}
-        self._Spec_SeqIDs = {
-            seqID: specs_ed[seqID.split("_")[0]] + "_" + name
-            for seqID, name in seqs.items()
+        self._spec_seq_ids = {
+            seq_id: specs_ed[seq_id.split("_")[0]] + "_" + name
+            for seq_id, name in seqs.items()
         }
-        return self._Spec_SeqIDs
+        return self._spec_seq_ids
 
-    def Get_iOGs4(self):
-        if self.iOgs4 is None:
-            ogs = self.OGsAll()
-            self.iOgs4 = [i for i, og in enumerate(ogs) if len(og) >= self.min_seq]
-        return self.iOgs4
+    def get_i_ogs4(self):
+        if self.i_ogs4 is None:
+            ogs = self.get_ogs_all()
+            self.i_ogs4 = [i for i, og in enumerate(ogs) if len(og) >= self.min_seq]
+        return self.i_ogs4
 
-    def OGsAll(self):
+    def get_ogs_all(self):
         if self.ogs_all is None:
             with open(self.ogs_all_fn) as infile:
                 ogs = [og.strip().split(", ") for og in infile]
@@ -307,7 +307,7 @@ class OrthoGroupsSet(object):
             # self.ogs_all = sorted(self.ogs_all, key=len, reverse=True)
         return self.ogs_all
 
-    def AllOGs(self):
+    def all_ogs(self):
         with open(self.ogs_all_fn) as infile:
             ogs = [og.strip().split(", ") for og in infile]
         if self.tree_program in ["raxml", "raxml-ng"]:
@@ -316,18 +316,18 @@ class OrthoGroupsSet(object):
             all_ogs = [[g for g in og] for og in ogs]
         return all_ogs
 
-    def ID_to_OG_Dict(self):
+    def id_to_og_dict(self):
         if self.id_to_og != None:
             return self.id_to_og
         # Maybe shouldn't include unclustered genes:
         self.id_to_og = {
-            g.ToString(): iog for iog, og in enumerate(self.OGsAll()) for g in og
+            g.to_string(): iog for iog, og in enumerate(self.get_ogs_all()) for g in og
         }
         return self.id_to_og
 
-    def AllUsedSequenceIDs(self):
-        ids_dict = self.SequenceDict()
-        species_to_use_strings = list(map(str, self.speciesToUse))
+    def all_used_sequence_ids(self):
+        ids_dict = self.sequence_dict()
+        species_to_use_strings = list(map(str, self.species_to_use))
         all_ids = [
             s for s in ids_dict.keys() if s.split("_")[0] in species_to_use_strings
         ]
@@ -336,15 +336,15 @@ class OrthoGroupsSet(object):
 
 class MCL:
     @staticmethod
-    def CreateOGs(predictedOGs, outputFilename, idDict):
-        with open(outputFilename, "w") as outputFile:
-            for iOg, og in enumerate(predictedOGs):
-                outputFile.write("OG%07d: " % iOg)
+    def create_ogs(predicted_ogs, output_filename, id_dict):
+        with open(output_filename, "w") as output_file:
+            for i_og, og in enumerate(predicted_ogs):
+                output_file.write("OG%07d: " % i_og)
                 accessions = sorted(
-                    [idDict[seq] for seq in og if idDict.get(seq) is not None]
+                    [id_dict[seq] for seq in og if id_dict.get(seq) is not None]
                 )
-                outputFile.write(" ".join(accessions))
-                outputFile.write("\n")
+                output_file.write(" ".join(accessions))
+                output_file.write("\n")
 
     @staticmethod
     def prettify(elem):
@@ -413,28 +413,28 @@ class MCL:
     #     print("Orthogroups have been written to orthoxml file:\n   %s" % orthoxmlFilename)
 
     @staticmethod
-    def WriteOrthogroupFiles(ogs, idsFilenames, resultsBaseFilename):
-        outputFN = resultsBaseFilename + ".txt"
+    def write_orthogroup_files(ogs, ids_filenames, results_base_filename):
+        output_fn = results_base_filename + ".txt"
         try:
             # fullDict = dict()
             # for idsFilename in idsFilenames:
             #     idExtract = util.FirstWordExtractor(idsFilename)
-            #     idDict = idExtract.GetIDToNameDict()
+            #     idDict = idExtract.get_id_to_name_dict()
             #     fullDict.update(idDict)
 
-            fullDict = IDFullDict(idsFilenames, func=util.FirstWordExtractor)
-            MCL.CreateOGs(ogs, outputFN, fullDict)
+            full_dict = id_full_dict(ids_filenames, func=util.FirstWordExtractor)
+            MCL.create_ogs(ogs, output_fn, full_dict)
         except KeyError as e:
-            sys.stderr.write("ERROR: Sequence ID not found in %s\n" % idsFilenames)
+            sys.stderr.write("ERROR: Sequence ID not found in %s\n" % ids_filenames)
             sys.stderr.write(str(e) + "\n")
-            file_handler.FileHandler.LogFailAndExit(
-                ("ERROR: Sequence ID not found in %s\n" % idsFilenames) + str(e) + "\n"
+            file_handler.handler.log_fail_and_exit(
+                ("ERROR: Sequence ID not found in %s\n" % ids_filenames) + str(e) + "\n"
             )
         except RuntimeError as error:
             print(str(error))
             if str(error).startswith("ERROR"):
-                err_text = "ERROR: %s contains a duplicate ID. " % (idsFilenames)
-                file_handler.FileHandler.LogFailAndExit(err_text)
+                err_text = "ERROR: %s contains a duplicate ID. " % (ids_filenames)
+                file_handler.handler.log_fail_and_exit(err_text)
             else:
                 print(
                     "Tried to use only the first part of the accession in order to list the sequences in each orthogroup\nmore concisely but these were not unique. The full accession line will be used instead.\n"
@@ -443,76 +443,76 @@ class MCL:
                     # fullDict = dict()
                     # for idsFilename in idsFilenames:
                     #     idExtract = util.FullAccession(idsFilename)
-                    #     idDict = idExtract.GetIDToNameDict()
+                    #     idDict = idExtract.get_id_to_name_dict()
                     #     fullDict.update(idDict)
-                    fullDict = IDFullDict(idsFilenames, func=util.FullAccession)
-                    MCL.CreateOGs(ogs, outputFN, fullDict)
+                    full_dict = id_full_dict(ids_filenames, func=util.FullAccession)
+                    MCL.create_ogs(ogs, output_fn, full_dict)
                 except:
-                    err_text = "ERROR: %s contains a duplicate ID. " % (idsFilenames)
-                    file_handler.FileHandler.LogFailAndExit(err_text)
-        return fullDict
+                    err_text = "ERROR: %s contains a duplicate ID. " % (ids_filenames)
+                    file_handler.handler.log_fail_and_exit(err_text)
+        return full_dict
 
     @staticmethod
-    def CreateOrthogroupTable(
-        ogs, idToNameDict, speciesNamesDict, speciesToUse, resultsBaseFilename
+    def create_orthogroup_table(
+        ogs, id_to_name_dict, species_names_dict, species_to_use, results_base_filename
     ):
 
-        nSpecies = len(speciesNamesDict)
+        n_species = len(species_names_dict)
 
         ogs_ids = [[seq for seq in og] for og in ogs]
-        ogs_names = [[idToNameDict[seq] for seq in og] for og in ogs]
+        ogs_names = [[id_to_name_dict[seq] for seq in og] for og in ogs]
         ogs_ints = [
             [list(map(int, sequence.split("_"))) for sequence in og] for og in ogs
         ]
 
         # write out
-        orthogroups_id_fn = file_handler.FileHandler.OGsIDFN(fixed=True)
-        outputFilename = resultsBaseFilename + ".tsv"
-        outputFilename_counts = resultsBaseFilename + ".GeneCount.tsv"
-        singleGeneFilename = resultsBaseFilename + "_UnassignedGenes.tsv"
+        orthogroups_id_fn = file_handler.handler.ogs_id_fn(fixed=True)
+        output_filename = results_base_filename + ".tsv"
+        output_filename_counts = results_base_filename + ".GeneCount.tsv"
+        single_gene_filename = results_base_filename + "_UnassignedGenes.tsv"
         with (
-            open(outputFilename, util.csv_write_mode) as outputFile,
+            open(output_filename, util.csv_write_mode) as output_file,
             open(orthogroups_id_fn, util.csv_write_mode) as ogidfile,
-            open(singleGeneFilename, util.csv_write_mode) as singleGeneFile,
-            open(outputFilename_counts, util.csv_write_mode) as outFile_counts,
+            open(single_gene_filename, util.csv_write_mode) as single_gene_file,
+            open(output_filename_counts, util.csv_write_mode) as out_file_counts,
         ):
             ogid_filewriter = file_io.writer(ogidfile)
-            fileWriter = file_io.writer(outputFile)
+            file_writer = file_io.writer(output_file)
 
-            fileWriter_counts = file_io.writer(outFile_counts)
-            singleGeneWriter = file_io.writer(singleGeneFile)
-            for writer in [ogid_filewriter, fileWriter, singleGeneWriter]:
+            file_writer_counts = file_io.writer(out_file_counts)
+            single_gene_writer = file_io.writer(single_gene_file)
+            for writer in [ogid_filewriter, file_writer, single_gene_writer]:
                 row = ["Orthogroup"] + [
-                    speciesNamesDict[index] for index in speciesToUse
+                    species_names_dict[index] for index in species_to_use
                 ]
                 writer.writerow(row)
-            fileWriter_counts.writerow(row + ["Total"])
+            file_writer_counts.writerow(row + ["Total"])
 
-            for iOg, (og, og_names, og_ids) in enumerate(
+            for i_og, (og, og_names, og_ids) in enumerate(
                 zip(ogs_ints, ogs_names, ogs_ids)
             ):
-                ogDict = defaultdict(list)
-                ogIDDict = defaultdict(list)
-                row = ["OG%07d" % iOg]
-                id_row = ["OG%07d" % iOg]
-                thisOutputWriter = fileWriter
+                og_dict = defaultdict(list)
+                og_id_dict = defaultdict(list)
+                row = ["OG%07d" % i_og]
+                id_row = ["OG%07d" % i_og]
+                this_output_writer = file_writer
                 # separate it into sequences from each species
                 if len(og) == 1:
-                    row.extend(["" for x in range(nSpecies)])
-                    row[speciesToUse.index(og[0][0]) + 1] = og_names[0]
-                    thisOutputWriter = singleGeneWriter
+                    row.extend(["" for x in range(n_species)])
+                    row[species_to_use.index(og[0][0]) + 1] = og_names[0]
+                    this_output_writer = single_gene_writer
                 else:
-                    for (iSpecies, iSequence), name, ids in zip(og, og_names, og_ids):
-                        ogDict[speciesToUse.index(iSpecies)].append(name)
-                        ogIDDict[speciesToUse.index(iSpecies)].append(ids)
-                    for iSpecies in range(nSpecies):
-                        row.append(", ".join(sorted(ogDict[iSpecies])))
-                        id_row.append(", ".join(sorted(ogIDDict[iSpecies])))
+                    for (i_species, i_sequence), name, ids in zip(og, og_names, og_ids):
+                        og_dict[species_to_use.index(i_species)].append(name)
+                        og_id_dict[species_to_use.index(i_species)].append(ids)
+                    for i_species in range(n_species):
+                        row.append(", ".join(sorted(og_dict[i_species])))
+                        id_row.append(", ".join(sorted(og_id_dict[i_species])))
                     ogid_filewriter.writerow(id_row)
-                    counts = Counter([iSpecies for iSpecies, _ in og])
-                    counts_row = [counts[iSpecies] for iSpecies in speciesToUse]
-                    fileWriter_counts.writerow(row[:1] + counts_row + [sum(counts_row)])
-                thisOutputWriter.writerow(row)
+                    counts = Counter([i_species for i_species, _ in og])
+                    counts_row = [counts[i_species] for i_species in species_to_use]
+                    file_writer_counts.writerow(row[:1] + counts_row + [sum(counts_row)])
+                this_output_writer.writerow(row)
 
     # @staticmethod
     # def SingleGeneWriter(
