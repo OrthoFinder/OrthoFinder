@@ -1,5 +1,5 @@
-from ..utils import util, program_caller, files, parallel_task_manager
-from ..tools import trees_msa
+from ..utils import util, program_caller, file_handler, parallel_task_manager
+from ..gene_tree import msa_trees
 import os
 import subprocess
 from .. import __location__
@@ -16,7 +16,7 @@ def CanRunMCL():
         return False
 
 def CanRunASTRAL():
-    d_deps_test = files.FileHandler.GetDependenciesCheckDir()
+    d_deps_test = file_handler.FileHandler.GetDependenciesCheckDir()
     fn_test = d_deps_test + "astral.input.nwk"
     with open(fn_test, 'w') as outfile:
         for _ in range(20):
@@ -38,7 +38,7 @@ def CheckDependencies(options, user_specified_m, prog_caller, dirForTempFiles, q
     if not user_specified_m:
         printer.print('Running with the recommended MSA tree inference by default. To revert to legacy method use "-M dendroblast".\n')
     if options.qStartFromFasta or q_assign:
-        d_deps_check = files.FileHandler.GetDependenciesCheckDir()
+        d_deps_check = file_handler.FileHandler.GetDependenciesCheckDir()
         success, stdout, stderr, cmd = prog_caller.TestSearchMethod(options.search_program, 
                                                                     d_deps_check,
                                                                     scorematrix=options.score_matrix,
@@ -85,7 +85,7 @@ def CanRunOrthologueDependencies(
         program_caller, 
         qStopAfterAlignments
     ):
-    d_deps_test = files.FileHandler.GetDependenciesCheckDir()
+    d_deps_test = file_handler.FileHandler.GetDependenciesCheckDir()
     # FastME
     if not qMSAGeneTrees:
         testFN = d_deps_test + "SimpleTest.phy"
@@ -141,7 +141,7 @@ def CanRunOrthologueDependencies(
     
     # FastTree & MAFFT
     if qMSAGeneTrees or qPhyldog:
-        testFN = trees_msa.WriteTestFile(d_deps_test)
+        testFN = msa_trees.WriteTestFile(d_deps_test)
         if msa_method is not None:
             success, stdout, stderr, cmd = program_caller.TestMSAMethod(msa_method, d_deps_test)
             if not success and msa_method.startswith("mafft"):

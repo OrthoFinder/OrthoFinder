@@ -1,10 +1,10 @@
 import os
 import re
-from ..utils import util, files, program_caller
+from ..utils import util, file_handler, program_caller
 from ..utils.util import printer
-from ..comparative_genomics import orthologues
+from ..orthology import workflow
 from .. import __version__, g_mclInflation, nThreadsDefault, __location__
-from . import helpinfo, species_info
+from . import helpinfo, previous_run
 import shutil
 import traceback
 from typing import Optional
@@ -1185,9 +1185,9 @@ def CheckOptions(options, speciesToUse):
     """
     if options.speciesTreeFN:
         expSpecies = list(
-            species_info.SpeciesNameDict(files.FileHandler.GetSpeciesIDsFN()).values()
+            previous_run.SpeciesNameDict(file_handler.FileHandler.GetSpeciesIDsFN()).values()
         )
-        species_info.CheckUserSpeciesTree(options.speciesTreeFN, expSpecies)
+        previous_run.CheckUserSpeciesTree(options.speciesTreeFN, expSpecies)
 
     # check can open enough files
     n_extra = 50
@@ -1204,7 +1204,7 @@ def CheckOptions(options, speciesToUse):
     )
     if q_do_orthologs:
         n_sp = len(speciesToUse)
-        wd = files.FileHandler.GetWorkingDirectory_Write()
+        wd = file_handler.FileHandler.GetWorkingDirectory_Write()
         wd_files_test = wd + "Files_test/"
         fh = []
         try:

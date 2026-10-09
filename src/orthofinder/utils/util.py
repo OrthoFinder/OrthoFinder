@@ -33,7 +33,7 @@ from collections import namedtuple
 from . import logging as run_logging
 from . import file_io
 from ..citation import citation
-from ..tools import tree
+from ..phylo import tree
 
 import shutil
 import traceback
@@ -581,7 +581,7 @@ class GeneNames(object):
     def _tree_form(cls, name):
         if cls._TREE_UNSAFE is None:
             import re
-            from ..tools import newick
+            from ..phylo import newick
             cls._TREE_UNSAFE = re.compile("[" + newick._ILEGAL_NEWICK_CHARS + "]")
         return cls._TREE_UNSAFE.sub("_", name)
 

@@ -38,7 +38,7 @@ import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, wait
 from .. import __location__
 from . import util
-from ..utils.util import printer
+from .util import printer
 try:
     from rich import print
 except ImportError:

@@ -7,7 +7,7 @@ import helper
 from typing import Optional, Union, List, Any
 import multiprocessing as mp
 # from orthofinder.utils.util import CreateNewWorkingDirectory
-from orthofinder.utils import files
+from orthofinder.utils import file_handler
 from OF_funcs import OrthoFinderTestFuncs
 
 os.environ["ORTHOFINDER_TEST_ISOLATE"] = "1"
@@ -429,12 +429,12 @@ def reset_orthofinder_state():
     """
     attrs_to_clear = ("wd_base_prev", "home_for_results", "wd_base", "wd_current", "wd_trees", "wd1", "wd2", "rd1", "base_dir")
     for attr in attrs_to_clear:
-        if hasattr(files.FileHandler, attr):
-            setattr(files.FileHandler, attr, "")
+        if hasattr(file_handler.FileHandler, attr):
+            setattr(file_handler.FileHandler, attr, "")
     yield 
     for attr in attrs_to_clear:
-        if hasattr(files.FileHandler, attr):
-            setattr(files.FileHandler, attr, "")
+        if hasattr(file_handler.FileHandler, attr):
+            setattr(file_handler.FileHandler, attr, "")
 
 @pytest.fixture(scope="session")
 def of_obj(projects, baseline_arg_dict, baseline_options, species_tree):

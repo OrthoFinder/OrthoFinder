@@ -27,7 +27,7 @@ Search hits  hit_format, read_hit_columns, hit_lines, search_hit_format
     output options, so the layout is worked out from the search command
     (kept in blast_commands.txt next to the results) and columns are read
     by name. Large files are read with pandas (optional), small ones
-    line by line by the caller (blast_file_processor, accelerate).
+    line by line by the caller (blast_file_processor, orthogroups.assign).
 
 All lines are written ending in "\n" (as "\r\n" on Windows, by text mode).
 Readers accept "\n" and "\r\n", so files from older versions, which ended
@@ -361,7 +361,7 @@ def hit_format(path):
     writes next to its results (also for a run restarted from them); the
     standard 12 columns if there is no such file (e.g. results made outside
     OrthoFinder). The layout of the orthogroup-profile searches is passed to
-    their reader instead (accelerate), as they are read in the same run.
+    their reader instead (orthogroups.assign), as they are read in the same run.
     """
     directory = os.path.dirname(os.path.abspath(path))
     if directory not in _hit_format_cache:

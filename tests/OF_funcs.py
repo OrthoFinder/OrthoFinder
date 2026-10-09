@@ -4,27 +4,19 @@ import re
 from collections import defaultdict
 
 import helper
-from orthofinder.utils import files, util, fasta_processor
+from orthofinder.utils import file_handler, util, fasta_processor
 from orthofinder.run import process_args
-from orthofinder.tools import tree, stride
+from orthofinder.phylo import tree
+from orthofinder.species_tree import stride
 from orthofinder.run.process_args import Options
-from orthofinder.file_updates.ogs import OrthoGroupsSet, update_ogs, IDFullDict
-from orthofinder.file_updates.trees import read_tree_file
-from orthofinder.file_updates.file_updates import hogs_converter, read_hog_file, hog_file_over4genes, index_files
-from orthofinder.run.species_info import SpeciesNameDict, ProcessPreviousFiles
-from orthofinder.gene_tree_inference.trees2ologs_of import (
-    GetSpeciesNeighbours, 
-    ReconciliationAndOrthologues, 
-    AllOrthologues
-)
+from orthofinder.hog_orthogroups.convert import OrthoGroupsSet, update_ogs, IDFullDict
+from orthofinder.hog_orthogroups.update_trees import read_tree_file
+from orthofinder.hog_orthogroups.finalise import hogs_converter, read_hog_file, hog_file_over4genes, index_files
+from orthofinder.run.previous_run import SpeciesNameDict, ProcessPreviousFiles
+from orthofinder.orthology.reconciliation import GetSpeciesNeighbours, ReconciliationAndOrthologues, AllOrthologues
 
-from orthofinder.gene_tree_inference.hog_processor import HogWriter
-from orthofinder.gene_tree_inference.tree_processor import (
-    GetLinesForOlogFiles, 
-    CheckAndRootTree, 
-    GeneToSpecies_dash, 
-    GetOrthologues_from_tree, 
-)
+from orthofinder.orthology.hog_writer import HogWriter
+from orthofinder.orthology.tree_analyser import GetLinesForOlogFiles, CheckAndRootTree, GeneToSpecies_dash, GetOrthologues_from_tree
 
 
 class OrthoFinderTestFuncs:
@@ -135,7 +127,7 @@ class OrthoFinderTestFuncs:
         ) = process_args.ProcessArgs(args)
 
         # ---------- Initialise FileHandler to the **current** WD ----------
-        files.InitialiseFileHandler(
+        file_handler.InitialiseFileHandler(
             self.options,
             fastaDir=self.projects,
             continuationDir=continuationDir,
@@ -154,26 +146,26 @@ class OrthoFinderTestFuncs:
     # ---------------- helpers ----------------
     def _snapshot_fh(self):
         return dict(
-            wd_base = list(getattr(files.FileHandler, "wd_base", [])),
-            wd_current= getattr(files.FileHandler, "wd_current", None),
-            rd1 = getattr(files.FileHandler, "rd1", None),
-            wd_trees = getattr(files.FileHandler, "wd_trees", None),
+            wd_base = list(getattr(file_handler.FileHandler, "wd_base", [])),
+            wd_current= getattr(file_handler.FileHandler, "wd_current", None),
+            rd1 = getattr(file_handler.FileHandler, "rd1", None),
+            wd_trees = getattr(file_handler.FileHandler, "wd_trees", None),
         )
 
     def _restore_fh(self, snap):
-        files.FileHandler.wd_base = snap["wd_base"]
-        files.FileHandler.wd_current = snap["wd_current"]
-        files.FileHandler.rd1 = snap["rd1"]
-        files.FileHandler.wd_trees = snap["wd_trees"]
+        file_handler.FileHandler.wd_base = snap["wd_base"]
+        file_handler.FileHandler.wd_current = snap["wd_current"]
+        file_handler.FileHandler.rd1 = snap["rd1"]
+        file_handler.FileHandler.wd_trees = snap["wd_trees"]
 
     @contextlib.contextmanager
     def _use_fh_wds(self, wds):
         wds = [wd if wd.endswith(os.sep) else wd + os.sep for wd in wds]
         snap = self._snapshot_fh()
-        files.FileHandler.wd_base = wds
-        files.FileHandler.wd_current = wds[-1]
-        files.FileHandler.rd1 = os.path.dirname(files.FileHandler.wd_current.rstrip(os.sep))
-        files.FileHandler.wd_trees = files.FileHandler.wd_current
+        file_handler.FileHandler.wd_base = wds
+        file_handler.FileHandler.wd_current = wds[-1]
+        file_handler.FileHandler.rd1 = os.path.dirname(file_handler.FileHandler.wd_current.rstrip(os.sep))
+        file_handler.FileHandler.wd_trees = file_handler.FileHandler.wd_current
         try:
             yield
         finally:

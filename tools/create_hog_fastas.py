@@ -36,9 +36,9 @@ src_dir = os.path.join(repo_root, "src")
 if os.path.isdir(os.path.join(src_dir, "orthofinder")) and src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
-from orthofinder.utils import util, files, run_state
-from orthofinder.tools import trees_msa
-from orthofinder.orthogroups import orthogroups_set
+from orthofinder.utils import util, file_handler, run_state
+from orthofinder.gene_tree import msa_trees
+from orthofinder.mcl_orthogroups import orthogroups_set
 
 
 def _species_ids(species_ids_lines):
@@ -72,7 +72,7 @@ def process_log(logFN):
     earlier_wds = []     # listed after the last WorkingDirectory_Base (this version)
     with open(logFN, 'r') as infile:
         for line in infile:
-            for key in files.EARLIER_WD_KEYS:
+            for key in file_handler.EARLIER_WD_KEYS:
                 if line.startswith(key + ": "):
                     earlier_wds.append(line.rstrip()[len(key) + 2:])
             if line.startswith("Species used:"):
@@ -98,7 +98,7 @@ def process_log(logFN):
     if earlier_wds:
         wd_base_prev = [wd_base_anchor] + earlier_wds
     else:
-        wd_base_prev = files.PreviousFilesLocator_new.GetWDBaseChain(wd_base_anchor)
+        wd_base_prev = file_handler.PreviousFilesLocator_new.GetWDBaseChain(wd_base_anchor)
     return wd_base_prev, _species_ids(species_ids_lines)
 
 
@@ -152,7 +152,7 @@ def create_files_for_node(dres, node_name, dout):
             print("ERROR: Can't find Species%d.fa in any of the Working Directories:" % isp)
             print("\n".join(wd_base_prev))
             util.Fail()
-    fw = trees_msa.FastaWriter(wd_base_prev, i_species)
+    fw = msa_trees.FastaWriter(wd_base_prev, i_species)
     # convert IDs - do on a per species basis to increase likelihood of success
     ids, ids_rev = GetIDs(wd_base_prev, i_species)
     # Convert one at a time in case of error, can continue with rest

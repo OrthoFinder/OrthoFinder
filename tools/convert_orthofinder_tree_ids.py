@@ -41,7 +41,7 @@ src_dir = os.path.join(repo_root, "src")
 if os.path.isdir(os.path.join(src_dir, "orthofinder")) and src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
-from orthofinder.tools import tree
+from orthofinder.phylo import tree
 from orthofinder.utils import util
 
 

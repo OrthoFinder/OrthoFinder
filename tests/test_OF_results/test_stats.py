@@ -2,7 +2,7 @@ from collections import Counter
 import pytest
 import pytest_check as check
 import numpy as np
-from orthofinder.comparative_genomics.stats import add_unassigned_genes, OrthogroupsMatrix
+from orthofinder.orthology.stats import add_unassigned_genes, OrthogroupsMatrix
 
 
 @pytest.mark.skipif(
