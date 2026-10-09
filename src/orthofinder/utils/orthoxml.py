@@ -38,7 +38,7 @@ def read_species_file(species_file):
         with open(species_file) as infile:
             lines = infile.read().splitlines()
     except OSError as e:
-        raise SpeciesFileError("Cannot read the OrthoXML species file %s: %s" % (species_file, e.strerror))
+        raise SpeciesFileError(f"Cannot read the OrthoXML species file {species_file}: {e.strerror}")
     species = {}
     for i_line, line in enumerate(lines, 1):
         if not line.strip():
@@ -46,21 +46,20 @@ def read_species_file(species_file):
         fields = [f.strip() for f in line.split("\t")]
         if len(fields) != N_FIELDS or not all(fields):
             raise SpeciesFileError(
-                "Line %d of the OrthoXML species file %s is not in the format.\n"
-                "Each line should have %d tab-separated fields: %s"
-                % (i_line, species_file, N_FIELDS, FIELDS))
+                f"Line {i_line} of the OrthoXML species file {species_file} is not in the format.\n"
+                f"Each line should have {N_FIELDS} tab-separated fields: {FIELDS}")
         fasta_filename, name, tax_id, database, version = fields
         if not tax_id.isdigit():
             raise SpeciesFileError(
-                "Line %d of the OrthoXML species file %s: the NCBI taxonomy ID should be a number, not '%s'"
-                % (i_line, species_file, tax_id))
+                f"Line {i_line} of the OrthoXML species file {species_file}: "
+                f"the NCBI taxonomy ID should be a number, not '{tax_id}'")
         key = species_key(fasta_filename)
         if key in species:
             raise SpeciesFileError(
-                "The OrthoXML species file %s has more than one line for %s" % (species_file, fasta_filename))
+                f"The OrthoXML species file {species_file} has more than one line for {fasta_filename}")
         species[key] = (name, tax_id, database, version)
     if not species:
-        raise SpeciesFileError("The OrthoXML species file %s is empty" % species_file)
+        raise SpeciesFileError(f"The OrthoXML species file {species_file} is empty")
     return species
 
 
@@ -73,8 +72,8 @@ def species_for_analysis(species_file, species_names_dict, species_to_use):
     species = read_species_file(species_file)
     missing = [species_names_dict[i] for i in species_to_use if species_names_dict[i] not in species]
     if missing:
-        raise SpeciesFileError(
-            "The OrthoXML species file %s has no line for:\n  %s" % (species_file, "\n  ".join(missing)))
+        missing_list = "\n  ".join(missing)
+        raise SpeciesFileError(f"The OrthoXML species file {species_file} has no line for:\n  {missing_list}")
     return [species[species_names_dict[i]] for i in species_to_use]
 
 
@@ -91,27 +90,26 @@ def write_orthoxml(species_xml, ogs, n_seqs_per_species, id_dict, species_to_use
     gene_number = {}  # sequence ID -> the gene's id in the file (unique across species)
     with open(filename, "w") as out:
         out.write('<?xml version="1.0" encoding="utf-8"?>\n')
-        out.write('<orthoXML xmlns=%s xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
-                  'xsi:schemaLocation=%s origin="OrthoFinder" originVersion=%s version="0.3">\n'
-                  % (quoteattr(NAMESPACE), quoteattr(SCHEMA_LOCATION), quoteattr(__version__)))
+        out.write(f'<orthoXML xmlns={quoteattr(NAMESPACE)} xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
+                  f'xsi:schemaLocation={quoteattr(SCHEMA_LOCATION)} origin="OrthoFinder" '
+                  f'originVersion={quoteattr(__version__)} version="0.3">\n')
         for i_species, (name, tax_id, database, version) in zip(species_to_use, species_xml):
-            out.write('  <species name=%s NCBITaxId=%s>\n' % (quoteattr(name), quoteattr(tax_id)))
-            out.write('    <database name=%s version=%s>\n' % (quoteattr(database), quoteattr(version)))
-            out.write('      <genes>\n')
+            out.write(f"  <species name={quoteattr(name)} NCBITaxId={quoteattr(tax_id)}>\n")
+            out.write(f"    <database name={quoteattr(database)} version={quoteattr(version)}>\n")
+            out.write("      <genes>\n")
             for i_seq in range(n_seqs_per_species[i_species]):
-                seq_id = "%d_%d" % (i_species, i_seq)
+                seq_id = f"{i_species}_{i_seq}"
                 gene_number[seq_id] = len(gene_number)
-                out.write('        <gene id="%d" geneId=%s/>\n' % (gene_number[seq_id], quoteattr(id_dict[seq_id])))
-            out.write('      </genes>\n')
-            out.write('    </database>\n')
-            out.write('  </species>\n')
-        out.write('  <groups>\n')
+                out.write(f'        <gene id="{gene_number[seq_id]}" geneId={quoteattr(id_dict[seq_id])}/>\n')
+            out.write("      </genes>\n")
+            out.write("    </database>\n")
+            out.write("  </species>\n")
+        out.write("  <groups>\n")
         for i_og, og in enumerate(ogs):
             if len(og) < 2:
                 continue
-            out.write('    <orthologGroup id="OG%07d">\n' % i_og)
-            for i_gene in sorted(gene_number[seq_id] for seq_id in og):
-                out.write('      <geneRef id="%d"/>\n' % i_gene)
-            out.write('    </orthologGroup>\n')
-        out.write('  </groups>\n')
-        out.write('</orthoXML>\n')
+            out.write(f'    <orthologGroup id="OG{i_og:07d}">\n')
+            out.writelines(f'      <geneRef id="{i_gene}"/>\n' for i_gene in sorted(gene_number[seq_id] for seq_id in og))
+            out.write("    </orthologGroup>\n")
+        out.write("  </groups>\n")
+        out.write("</orthoXML>\n")

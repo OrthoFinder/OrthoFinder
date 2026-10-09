@@ -73,7 +73,7 @@ def test_write_orthoxml(tmp_path):
     orthoxml.write_orthoxml(species_xml, ogs, n_seqs, id_dict, [0, 1], fn)
 
     root = ET.parse(fn).getroot()
-    assert root.tag == "{%s}orthoXML" % orthoxml.NAMESPACE
+    assert root.tag == f"{{{orthoxml.NAMESPACE}}}orthoXML"
     assert root.get("origin") == "OrthoFinder" and root.get("version") == "0.3"
 
     species = root.findall("o:species", NS)
