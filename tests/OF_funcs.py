@@ -16,7 +16,8 @@ from orthofinder.run.previous_run import species_name_dict, process_previous_fil
 from orthofinder.orthology.reconciliation import get_species_neighbours, reconciliation_and_orthologs, get_all_orthologs
 
 from orthofinder.orthology.hog_writer import HogWriter
-from orthofinder.orthology.tree_analyser import get_lines_for_ortholog_files, check_and_root_tree, gene_to_species_dash, get_orthologs_from_tree
+from orthofinder.orthology.tree_analyser import get_lines_for_ortholog_files, gene_to_species_dash, get_orthologs_from_tree
+from orthofinder.orthology.rooting import check_and_root_tree
 from orthofinder.utils import species_info
 from orthofinder.utils import gene_ids
 from orthofinder.phylo import taxa

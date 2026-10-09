@@ -22,6 +22,7 @@ except ImportError:
 
 from ..phylo import tree as tree_lib
 from ..utils import parallel_task_manager
+from .rooting import store_species_sets
     
 def detach_and_cleanup(top, n):
     """
@@ -489,3 +490,14 @@ def resolve(n, M):
 #         parser.add_argument("--no_resolve", action="store_true", help="Only perform species-overlap duplication analysis")
 #         args = parser.parse_args()
 #         Resolve_Main(args.gene_tree, args.out_dir, args.rooted_species_tree, om1.GetGeneToSpeciesMap(args), args.nthreads, not args.no_resolve, False)
+
+
+def resolve_tree(tree, GeneToSpecies):
+    if tree is None:
+        raise ValueError("Resolve got tree=None")
+    store_species_sets(tree, GeneToSpecies)
+    for n in tree.traverse("postorder"):
+        new_tree = resolve(n, GeneToSpecies)
+        if new_tree is not None:
+            tree = new_tree
+    return tree

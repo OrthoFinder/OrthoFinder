@@ -37,6 +37,7 @@ from ..utils import gene_ids
 from ..utils import paths
 from ..phylo import taxa
 from ..orthology import ortholog_writers
+from ..orthology import rooting
 
 if __name__ == "__main__":
     if platform.system() == "Darwin":
@@ -67,7 +68,7 @@ from orthofinder.utils import logging as run_logging
 from ..mcl_orthogroups import mcl
 from ..phylo import tree
 from ..species_tree import astral
-from ..orthology import reconciliation, tree_analyser
+from ..orthology import reconciliation
 from ..gene_tree import infer_trees
 from . import process_args, check_dependencies, previous_run
 from ..search import runner
@@ -292,7 +293,7 @@ def between_core_orthogroups_workflow(
             file_handler.handler.get_core_species_tree_ids_rooted_fn(), format=1
         )
         species_to_speices_map = lambda x: x
-        rooted_species_tree_ids, q_have_support = tree_analyser.check_and_root_tree(
+        rooted_species_tree_ids, q_have_support = rooting.check_and_root_tree(
             species_tree_unrooted_fn, core_rooted_species_tree, species_to_speices_map
         )
 
