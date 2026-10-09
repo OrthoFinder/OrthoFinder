@@ -4,7 +4,7 @@ version 0.3), for other tools, and as pages to look at in a web browser:
 
     Orthogroups/Orthogroups.orthoxml, Orthogroups.html
     Phylogenetic_Hierarchical_Orthogroups/N<i>.orthoxml (one per N<i>.tsv), HOGs.html
-    Orthologs/Orthologs.orthoxml, Orthologs.html
+    Orthologs/Orthologs.orthoxml, Orthologs.html (only with -pof: with many species they are very large)
 
 A gene has the same id in all the OrthoXML files. The species information
 comes from the input FASTA files. OrthoXML requires an NCBI taxonomy ID and a

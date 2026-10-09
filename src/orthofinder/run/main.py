@@ -1108,16 +1108,21 @@ def main(args=None):
             # -x: the HOGs and orthologs as OrthoXML and web pages, from the final
             # results files (the directories are not made if a run removed them)
             orthogroups_orthoxml = file_handler.handler.get_orthogroup_results_fn_base() + ".orthoxml"
+            orthologs_dir = os.path.join(d_results, "Orthologs")
             if os.path.exists(orthogroups_orthoxml):
                 try:
                     orthoxml.write_hogs_and_orthologs(
                         orthogroups_orthoxml,
                         os.path.join(d_results, "Phylogenetic_Hierarchical_Orthogroups"),
-                        os.path.join(d_results, "Orthologs"),
+                        # the orthologs only with -pof: with many species they are very large
+                        None if options.save_space else orthologs_dir,
                     )
                 except (OSError, KeyError, ValueError) as e:
                     print("WARNING: The HOGs and orthologs could not be written in OrthoXML format: "
                           + escape(repr(e)))
+                if options.save_space and os.path.isdir(orthologs_dir) and os.listdir(orthologs_dir):
+                    print("\nAdd -pof to also write the orthologs in OrthoXML format and as a web page "
+                          "(Orthologs/Orthologs.orthoxml, Orthologs.html).")
 
         # printer.print("\nResults:\n    %s" % d_results, style="path")
         if options.q_stop_after_mcl_groups:      # stopped after the orthogroups (-og)

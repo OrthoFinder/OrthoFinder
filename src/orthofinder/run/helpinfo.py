@@ -178,10 +178,10 @@ def print_help(prog_caller):
 
     table_options.add_row(
         "-x",
-        "Also write the orthogroups, HOGs and orthologs in OrthoXML format (.orthoxml) and as "
+        "Also write the orthogroups and HOGs in OrthoXML format (.orthoxml) and as "
         "pages to view in a web browser (.html): Orthogroups.*, "
-        "Phylogenetic_Hierarchical_Orthogroups/N*.orthoxml and HOGs.html, "
-        "Orthologs/Orthologs.*",
+        "Phylogenetic_Hierarchical_Orthogroups/N*.orthoxml and HOGs.html. "
+        "With -pof, also the orthologs: Orthologs/Orthologs.*",
     )
     # print(" -p <dir>                Write the temporary pickle files to <dir>")
     # table_options.add_row(
@@ -248,7 +248,7 @@ def print_help(prog_caller):
         "Don't trim MSAs (columns>=[deep_sky_blue2]90[/deep_sky_blue2]% gap, min. alignment length [deep_sky_blue2]500[/deep_sky_blue2])",
     )
 
-    table_options.add_row("-pof", "Save the pairwise ortholog files")
+    table_options.add_row("-pof", "Save the pairwise ortholog files (with -x, also the orthologs in OrthoXML format and as a web page)")
     table_options.add_row("-rmlg", "Keep the legacy files (WorkingDirectory/Legacy), e.g. the HOGs (with gene names) from before the orthogroups are updated from them")
 
     # print(" -h                      Print this help text")
