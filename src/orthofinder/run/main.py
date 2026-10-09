@@ -111,20 +111,14 @@ OrthoFinder
 
 def orthoxml_species(options, species_info_obj):
     """
-    With -x, the species information for the OrthoXML file, one entry per
-    species in the analysis (checked now, before the analysis runs); else None.
+    With -x, the species information for Orthogroups.orthoxml and
+    Orthogroups.html, one entry per species in the analysis; else None.
     """
-    if not options.species_xml_info_fn:
+    if not options.orthoxml:
         return None
-    try:
-        return orthoxml.species_for_analysis(
-            options.species_xml_info_fn,
-            previous_run.species_name_dict(file_handler.handler.get_species_ids_fn()),
-            species_info_obj.species_to_use,
-        )
-    except orthoxml.SpeciesFileError as e:
-        print("ERROR: " + escape(str(e)))
-        util.fail()
+    return orthoxml.species_for_analysis(
+        file_handler.handler.get_species_ids_fn(), species_info_obj.species_to_use
+    )
 
 
 """

@@ -177,10 +177,9 @@ def print_help(prog_caller):
     # )
 
     table_options.add_row(
-        "-x <[bright_magenta]file[/bright_magenta]>",
-        "Also write the orthogroups in OrthoXML format, with the species information in "
-        "<[bright_magenta]file[/bright_magenta]>: one line per species of five tab-separated fields "
-        "(FASTA filename, species name, NCBI taxonomy ID, source database, database version)",
+        "-x",
+        "Also write the orthogroups in OrthoXML format (Orthogroups.orthoxml) and as a page "
+        "to view in a web browser (Orthogroups.html)",
     )
     # print(" -p <dir>                Write the temporary pickle files to <dir>")
     # table_options.add_row(

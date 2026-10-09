@@ -326,13 +326,13 @@ def post_clustering_orthogroups(
                 results_base_filename,
             )
             if species_xml is not None:  # -x
-                orthoxml.write_orthoxml(
+                orthoxml.write_results(
                     species_xml,
                     ogs,
                     seqs_info.n_seqs_per_species,
                     ids_dict,
                     species_info_obj.species_to_use,
-                    results_base_filename + ".orthoxml",
+                    results_base_filename,
                 )
 
     # Write Orthogroup FASTA files
