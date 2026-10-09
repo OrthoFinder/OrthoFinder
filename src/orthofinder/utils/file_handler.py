@@ -431,7 +431,7 @@ class _FileHandler(object):
     def get_orthologs_directory(self):
         """"Where the directories of species orthologs are"""
         if self.rd1 == None: raise Exception("No rd1")
-        d = os.path.join(self.rd1, "Orthologues") + os.sep
+        d = os.path.join(self.rd1, "Orthologs") + os.sep
         if not os.path.exists(d): os.mkdir(d)
         return d
         
@@ -560,11 +560,11 @@ class _FileHandler(object):
 
             return self.clusters_filename + "_id_pairs.txt"
         
-    """ Orthologues files
+    """ Orthologs files
         ========================================================================================== """
     
     def get_results_seqs_dir_single_copy(self):
-        d = self.rd1 + "Single_Copy_Orthologue_Sequences/"
+        d = self.rd1 + "Single_Copy_Ortholog_Sequences/"
         if not os.path.exists(d): os.mkdir(d)
         return d        
         
@@ -895,7 +895,7 @@ class _FileHandler(object):
         # RefactorDS - need to change where it puts things
         if self.rd1 == None: raise Exception("No rd1") 
         self.wd_trees = self.wd_current
-        d = self.rd1 + "Orthologues/"
+        d = self.rd1 + "Orthologs/"
         if not os.path.exists(d): os.mkdir(d)
         if tree_generation_method == "msa":
             for i, d in enumerate([self.get_results_seqs_dir(), self.wd_current + "Sequences_ids/", self.get_results_align_dir(), self.wd_current + "Alignments_ids/", self.get_results_trees_dir(), self.wd_current + "Trees_ids/"]):

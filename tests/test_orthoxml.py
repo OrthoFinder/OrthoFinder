@@ -80,7 +80,7 @@ def make_results(tmp_path, gz=True):
                                            "N1.HOG0000001\tOG0000001\tn3\ta1\tb1\t\n"
                                            "N1.HOG0000002\tOG0000002\tn5\t\tb2\t\n")  # a single gene
     (hog_dir / "N2.tsv").write_text(head)  # a node without HOGs
-    orth_dir = tmp_path / "Orthologues"
+    orth_dir = tmp_path / "Orthologs"
     orth_dir.mkdir()
     files = {  # each relationship is in both species' files
         "Sp_A": "Orthogroup\tSpecies\tSp_A\tOrthologs\nOG0000000\tSp_B\ta0\tb0\nOG0000000\tSp_C\ta0\tc0\n"
@@ -104,7 +104,7 @@ def test_hogs_and_orthologs(tmp_path, gz):
     _, og_genes, _ = parse(og_xml)
     written = orthoxml.write_hogs_and_orthologs(str(og_xml), str(hog_dir), str(orth_dir))
     assert sorted(p.rsplit("/", 1)[1] for p in written) == [
-        "HOGs.html", "N1.orthoxml", "Orthologues.html", "Orthologues.orthoxml"]  # no N2: it has no HOGs
+        "HOGs.html", "N1.orthoxml", "Orthologs.html", "Orthologs.orthoxml"]  # no N2: it has no HOGs
 
     # HOGs: the groups of N1.tsv (OrthoXML groups have two or more genes), the species of its
     # clade, gene ids as in Orthogroups.orthoxml
@@ -120,14 +120,14 @@ def test_hogs_and_orthologs(tmp_path, gz):
     assert view["rows"][2] == ["N1.HOG0000002", "OG0000002", "n5", 1, [], ["b2"]]  # the page has every HOG
 
     # orthologs: each relationship once, by species pair
-    root, genes, groups = parse(orth_dir / "Orthologues.orthoxml")
+    root, genes, groups = parse(orth_dir / "Orthologs.orthoxml")
     assert all(og_genes[i] == g for i, g in genes.items())
     assert sorted((p["orthogroup"], tuple(g)) for p, g in groups.values()) == [
         ("OG0000000", (("Sp_A", "a0"), ("Sp_B", "b0"))),
         ("OG0000000", (("Sp_A", "a0"), ("Sp_C", "c0"))),
         ("OG0000000", (("Sp_B", "b0"), ("Sp_B", "b1"), ("Sp_C", "c0"))),
         ("OG0000001", (("Sp_A", "a1"), ("Sp_B", "b1")))]
-    views = page_data(orth_dir / "Orthologues.html")["views"]
+    views = page_data(orth_dir / "Orthologs.html")["views"]
     assert [v["name"] for v in views] == ["Sp_A - Sp_B", "Sp_A - Sp_C", "Sp_B - Sp_C"]
     assert views[2]["rows"] == [["OG0000000", "many-to-one", ["b0", "b1"], ["c0"]]]
 
@@ -142,7 +142,7 @@ def test_nothing_to_write(tmp_path):
 def test_pages_script_is_valid_javascript(tmp_path):
     og_xml, hog_dir, orth_dir = make_results(tmp_path)
     orthoxml.write_hogs_and_orthologs(str(og_xml), str(hog_dir), str(orth_dir))
-    for page in (tmp_path / "Orthogroups" / "Orthogroups.html", hog_dir / "HOGs.html", orth_dir / "Orthologues.html"):
+    for page in (tmp_path / "Orthogroups" / "Orthogroups.html", hog_dir / "HOGs.html", orth_dir / "Orthologs.html"):
         js = tmp_path / "page.js"
         js.write_text(page.read_text().split("<script>")[1].split("</script>")[0])
         result = subprocess.run(["node", "--check", str(js)], capture_output=True, text=True, check=False)

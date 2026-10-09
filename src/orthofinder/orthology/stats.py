@@ -30,11 +30,11 @@ def write_orthologs_stats(og_set, NOrthoSp):
     # print( NOrthoSp.n_m21)
     # print(NOrthoSp.n_m2m)
     
-    write_orthologs_matrix(d + "OrthologuesStats_Totals.tsv", NOrthoSp.n, species_to_use, species_dict)
-    write_orthologs_matrix(d + "OrthologuesStats_one-to-one.tsv", NOrthoSp.n_121, species_to_use, species_dict)
-    write_orthologs_matrix(d + "OrthologuesStats_one-to-many.tsv", NOrthoSp.n_12m, species_to_use, species_dict)
-    write_orthologs_matrix(d + "OrthologuesStats_many-to-one.tsv", NOrthoSp.n_m21, species_to_use, species_dict)
-    write_orthologs_matrix(d + "OrthologuesStats_many-to-many.tsv", NOrthoSp.n_m2m, species_to_use, species_dict)
+    write_orthologs_matrix(d + "OrthologsStats_Totals.tsv", NOrthoSp.n, species_to_use, species_dict)
+    write_orthologs_matrix(d + "OrthologsStats_one-to-one.tsv", NOrthoSp.n_121, species_to_use, species_dict)
+    write_orthologs_matrix(d + "OrthologsStats_one-to-many.tsv", NOrthoSp.n_12m, species_to_use, species_dict)
+    write_orthologs_matrix(d + "OrthologsStats_many-to-one.tsv", NOrthoSp.n_m21, species_to_use, species_dict)
+    write_orthologs_matrix(d + "OrthologsStats_many-to-many.tsv", NOrthoSp.n_m2m, species_to_use, species_dict)
     
     # Duplications
     node_count = defaultdict(int)
@@ -187,7 +187,7 @@ def stats(ogs, species_names_dict, i_species, i_results_version, fasta_writer, i
         "" if i_results_version == 0 else "_%d" % i_results_version) + ".tsv"
     filename_overlap = og_stats_results_dir + "Orthogroups_SpeciesOverlaps" + (
         "" if i_results_version == 0 else "_%d" % i_results_version) + ".tsv"
-    filename_single_copy = file_handler.handler.get_orthogroup_results_fn_base() + "_SingleCopyOrthologues.txt"
+    filename_single_copy = file_handler.handler.get_orthogroup_results_fn_base() + "_SingleCopyOrthologs.txt"
     percent_format = "%0.1f"
     with open(filename_sp, util.csv_write_mode) as outfile_species, \
         open(filename_sum, util.csv_write_mode) as outfile_sum:
@@ -343,7 +343,7 @@ def add_unassigned_genes(ogs, all_seq_ids):
 
 
 class NOrthoSp(object):
-    """matrix of number of genes in species i that have orthologues/an ortholog in species j"""
+    """matrix of number of genes in species i that have orthologs/an ortholog in species j"""
 
     def __init__(self, n_sp):
         self.n = np.zeros((n_sp, n_sp))

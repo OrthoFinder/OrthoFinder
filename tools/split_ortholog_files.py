@@ -4,21 +4,21 @@
 Convert compact OrthoFinder ortholog results into pairwise species files.
 
 OrthoFinder runs without ``-pof`` write one compressed file per species in the
-``Orthologues`` directory. This utility recreates the pairwise layout produced
+``Orthologs`` directory. This utility recreates the pairwise layout produced
 by ``-pof``::
 
-    Orthologues/Orthologues_SpeciesA/SpeciesA__v__SpeciesB.tsv
+    Orthologs/Orthologs_SpeciesA/SpeciesA__v__SpeciesB.tsv
 
-INPUT may be either an OrthoFinder results directory or its ``Orthologues``
+INPUT may be either an OrthoFinder results directory or its ``Orthologs``
 directory.
 
 Examples
 --------
 split_ortholog_files Results_*/
 
-split_ortholog_files Results_*/Orthologues/
+split_ortholog_files Results_*/Orthologs/
 
-split_ortholog_files Results_*/ -o PairwiseOrthologues/
+split_ortholog_files Results_*/ -o PairwiseOrthologs/
 
 split_ortholog_files Results_*/ --compress
 """
@@ -38,20 +38,22 @@ def open_text(path, mode):
     return open(path, mode, newline="")
 
 
-def find_orthologues_directory(input_dir):
+def find_orthologs_directory(input_dir):
     input_dir = os.path.abspath(input_dir)
 
     if not os.path.isdir(input_dir):
         raise ValueError(f"input directory does not exist: {input_dir}")
 
-    nested = os.path.join(input_dir, "Orthologues")
-    if os.path.isdir(nested):
-        return nested
+    # "Orthologues" in the results of OrthoFinder versions before 3.2
+    for name in ("Orthologs", "Orthologues"):
+        nested = os.path.join(input_dir, name)
+        if os.path.isdir(nested):
+            return nested
 
     return input_dir
 
 
-def compact_orthologue_files(orthologs_dir):
+def compact_ortholog_files(orthologs_dir):
     files_by_species = {}
 
     for filename in sorted(os.listdir(orthologs_dir)):
@@ -77,7 +79,7 @@ def compact_orthologue_files(orthologs_dir):
 
     if len(files_by_species) < 2:
         raise ValueError(
-            "expected at least two compact .tsv or .tsv.gz orthologue files in: "
+            "expected at least two compact .tsv or .tsv.gz ortholog files in: "
             f"{orthologs_dir}"
         )
 
@@ -90,14 +92,14 @@ def pairwise_output_path(
     suffix = ".tsv.gz" if compress else ".tsv"
     return os.path.join(
         output_dir,
-        "Orthologues_" + source_species,
+        "Orthologs_" + source_species,
         f"{source_species}__v__{target_species}{suffix}",
     )
 
 
 def split_species_file(task):
     source_species, source_file, species_names, targets, output_dir, compress = task
-    source_output_dir = os.path.join(output_dir, "Orthologues_" + source_species)
+    source_output_dir = os.path.join(output_dir, "Orthologs_" + source_species)
     if targets:
         os.makedirs(source_output_dir, exist_ok=True)
 
@@ -163,8 +165,8 @@ def split_ortholog_files(
     force=False,
     processes=None,
 ):
-    orthologs_dir = find_orthologues_directory(input_dir)
-    files_by_species = compact_orthologue_files(orthologs_dir)
+    orthologs_dir = find_orthologs_directory(input_dir)
+    files_by_species = compact_ortholog_files(orthologs_dir)
     species_names = sorted(files_by_species)
 
     if output_dir is None:
@@ -223,13 +225,13 @@ def main(args=None):
     )
     parser.add_argument(
         "input",
-        help="OrthoFinder results directory or its Orthologues directory",
+        help="OrthoFinder results directory or its Orthologs directory",
     )
     parser.add_argument(
         "-o",
         "--output",
         default=None,
-        help="output directory [default: the input Orthologues directory]",
+        help="output directory [default: the input Orthologs directory]",
     )
     parser.add_argument(
         "-c",
@@ -263,9 +265,9 @@ def main(args=None):
     except (OSError, ValueError) as error:
         parser.exit(1, f"ERROR: {error}\n")
 
-    print("Pairwise orthologue files written to:")
+    print("Pairwise ortholog files written to:")
     print(output_dir)
-    print(f"Created {output_count} files containing {row_count} orthologue rows.")
+    print(f"Created {output_count} files containing {row_count} ortholog rows.")
 
 
 if __name__ == "__main__":

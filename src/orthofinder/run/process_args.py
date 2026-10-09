@@ -323,7 +323,7 @@ def get_file_argument(arg: str) -> str:
 def process_args(args):
     """
     Workflow
-    | 1. Fasta Files | 2.  Prepare files    | 3.   Blast    | 4. Orthogroups    | 5.   Gene Trees     | 6.   Reconciliations/Orthologues   |
+    | 1. Fasta Files | 2.  Prepare files    | 3.   Blast    | 4. Orthogroups    | 5.   Gene Trees     | 6.   Reconciliations/Orthologs   |
 
     Options
     Start from:
@@ -383,8 +383,8 @@ def process_args(args):
     """
     -f: store fastaDir
     -b: store workingDir
-    -fg: store orthologuesDir 
-    -ft: store orthologuesDir 
+    -fg: store orthologsDir 
+    -ft: store orthologsDir 
     -x: orthoxml
     """
 

@@ -77,11 +77,11 @@ from ..phylo import taxa
 #     # print( NOrthoSp.n_m21)
 #     # print(NOrthoSp.n_m2m)
     
-#     write_orthologs_matrix(d + "OrthologuesStats_Totals.tsv", NOrthoSp.n, speciesToUse, speciesDict)
-#     write_orthologs_matrix(d + "OrthologuesStats_one-to-one.tsv", NOrthoSp.n_121, speciesToUse, speciesDict)
-#     write_orthologs_matrix(d + "OrthologuesStats_one-to-many.tsv", NOrthoSp.n_12m, speciesToUse, speciesDict)
-#     write_orthologs_matrix(d + "OrthologuesStats_many-to-one.tsv", NOrthoSp.n_m21, speciesToUse, speciesDict)
-#     write_orthologs_matrix(d + "OrthologuesStats_many-to-many.tsv", NOrthoSp.n_m2m, speciesToUse, speciesDict)
+#     write_orthologs_matrix(d + "OrthologsStats_Totals.tsv", NOrthoSp.n, speciesToUse, speciesDict)
+#     write_orthologs_matrix(d + "OrthologsStats_one-to-one.tsv", NOrthoSp.n_121, speciesToUse, speciesDict)
+#     write_orthologs_matrix(d + "OrthologsStats_one-to-many.tsv", NOrthoSp.n_12m, speciesToUse, speciesDict)
+#     write_orthologs_matrix(d + "OrthologsStats_many-to-one.tsv", NOrthoSp.n_m21, speciesToUse, speciesDict)
+#     write_orthologs_matrix(d + "OrthologsStats_many-to-many.tsv", NOrthoSp.n_m2m, speciesToUse, speciesDict)
     
 #     # Duplications
 #     nodeCount = defaultdict(int)
@@ -561,7 +561,7 @@ def infer_orthologs(
         q_fix_negatives=True
     )
     if print_info:
-        util.print_time("Starting reconciliation and orthologues")
+        util.print_time("Starting reconciliation and orthologs")
 
     n_orthologs_sp_pair = reconciliation.reconciliation_and_orthologs(
         recon_method, 
@@ -586,7 +586,7 @@ def infer_orthologs(
     if not write_hog_tree or not fix_files:
         # print("%fs for orthologs etc" % (stop-start))
         stats.write_orthologs_stats(og_set, n_orthologs_sp_pair)
-    #    print("Identified %d orthologs" % nOrthologues)
+    #    print("Identified %d orthologs" % nOrthologs)
 
     file_handler.handler.clean_working_dir2(working_dir=working_dir)
     if print_info:

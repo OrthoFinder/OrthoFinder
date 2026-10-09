@@ -152,9 +152,9 @@ species tree (use the `-s` option).
 
 Now that we are happy with our OrthoFinder run, we can start diving into the results.
 
-- ***Orthologues***<br>
-    We will start by finding orthologues of a gene that we are interested in.
-    In the Orthologues directory there is a sub-directory for each species.
+- ***Orthologs***<br>
+    We will start by finding orthologs of a gene that we are interested in.
+    In the Orthologs directory there is a sub-directory for each species.
 
     Open `{ortholog_path}`, in a spreadsheet program (specifying that it’s tab-delimited
     if necessary). The file has three columns, `Orthogroup`, `{species1}`, and
@@ -163,7 +163,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     `{orthologs}`.
 
 - ***Gene trees***<br>
-    Next, we are going to look at the gene tree to see how these orthologues arose.
+    Next, we are going to look at the gene tree to see how these orthologs arose.
     OrthoFinder infers orthlologues from `resolved` gene trees using a Duplication-Loss-
     Coalescence analysis to identify the more parsimonious interpretation of the tree (see
     the OrthoFinder2 [paper](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1832-y) for more details).
@@ -221,11 +221,11 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
 - ***Orthogroups***<br>
     Often we’re interested in group-wise species comparisons, that is comparisons across a
     clade of species rather than between a pair of species. The generalisation of orthology
-    to multiple species is the orthogroup. Just like orthologues are the genes descended
+    to multiple species is the orthogroup. Just like orthologs are the genes descended
     from a single gene in the last common ancestor of a pair of species an orthogroup is the
     set of genes descended from a single gene in a group of species. Each gene tree from
     OrthoFinder, for example the one above, is for one orthogroup. The orthogroup gene
-    tree is the tree we need to look at if we want it to include all pairwise orthologues. And
+    tree is the tree we need to look at if we want it to include all pairwise orthologs. And
     even though some of the genes within an orthogroup can be paralogs of one another, if
     we tried to take any genes out then we would also be removing orthologs too.
 
@@ -332,8 +332,8 @@ def get_ortholog(target_dir, species1, species2):
     # pick some thing??Mycoplasma_hyopneumoniae v  Mycoplasma_agalactiae
     orthologs_target_path = "/".join([
         target_dir,
-        "Orthologues",
-        "_".join(("Orthologues", species1)),
+        "Orthologs",
+        "_".join(("Orthologs", species1)),
         "__v__".join((species1, species2)) + ".tsv"
     ])
     ## first three columns will also be the same here...Orthogroup	Mycoplasma_hyopneumoniae	Mycoplasma_agalactiae
@@ -441,8 +441,8 @@ if __name__ == "__main__":
         statisitcs_per_species=statisitcs_per_species,
         lowest_percent_species=lowest_percent_species,
         lowest_percent_value=lowest_percent_value,
-        ortholog_path=os.path.join("Orthologues",
-                                    "_".join(("Orthologues", species1)),
+        ortholog_path=os.path.join("Orthologs",
+                                    "_".join(("Orthologs", species1)),
                                     "__v__".join((species1, species2)) + ".tsv"),
         species1=species1,
         species2=species2,

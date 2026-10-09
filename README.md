@@ -240,7 +240,7 @@ Full details on the output files and directories can be found [here](http://orth
 - `Orthogroups.tsv` is the main orthogroup file. Each row contains the genes belonging to a single orthogroup. The genes from each orthogroup are organized into columns, one per species. 
 - `Orthogroups.txt` is a text file with each line showing the genes in a single orthogroup. It differs from Orthogroups.tsv in that it doesn’t show the species which each gene belongs to.
 - `Orthogroups.GeneCount.tsv` is a tab separated text file that contains counts of the number of genes for each species in each orthogroup.
-- `Orthogroups_SingleCopyOrthologues.txt` is a list of orthogroups that contain exactly one gene per species
+- `Orthogroups_SingleCopyOrthologs.txt` is a list of orthogroups that contain exactly one gene per species
 - `Orthogrouops_UnassignedGenes.tsv` is a tab separated text file that contains all of the genes that were not assigned to any orthogroup.
 
 **```/Phylogenetic_Hierarchical_Orthogroups```**
@@ -249,7 +249,7 @@ Full details on the output files and directories can be found [here](http://orth
 - Each species is represented by a single column.
 - `N0.tsv` from the old version is now `Orthogroups/Orthogroups.tsv`
 
-**```/Orthologues```**
+**```/Orthologs```**
 - Each species has a sub-directory that in turn contains a file for each pairwise species comparison, listing the orthologs between that species pair.
 
 **```/Comparative_Genomics_Statistics```**

@@ -26,7 +26,7 @@ def sort_non_hog_output_files(
 
     fns = []
 
-    # Orthologue files.
+    # Ortholog files.
     if fewer_open_files or save_space:
         for sp in species:
             fns.append((
@@ -35,7 +35,7 @@ def sort_non_hog_output_files(
             ))
     else:
         for sp1 in species:
-            d = os.path.join(d_results_orthologs, "Orthologues_" + sp1)
+            d = os.path.join(d_results_orthologs, "Orthologs_" + sp1)
             for sp2 in species:
                 if sp1 == sp2:
                     continue

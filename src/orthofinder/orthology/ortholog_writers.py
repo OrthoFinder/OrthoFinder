@@ -138,7 +138,7 @@ class ParentOutputWriter(object):
             else:
                 d = os.path.join(
                     self.d_results_orthologs,
-                    "Orthologues_" + sp0_name
+                    "Orthologs_" + sp0_name
                 )
                 if not os.path.exists(d):
                     os.mkdir(d)
@@ -194,7 +194,7 @@ class ParentOutputWriter(object):
 
         d = os.path.join(
             self.d_results_orthologs,
-            "Orthologues_" + sp0_name
+            "Orthologs_" + sp0_name
         )
 
         return os.path.join(
@@ -497,7 +497,7 @@ class NonHogAppendWriter(object):
 
     This does not initialise/truncate files.
     It is intended for small 2/3-gene orthogroups after the main
-    tree-based orthologue-writing step has already created the files.
+    tree-based ortholog-writing step has already created the files.
     """
 
     def __init__(
@@ -534,7 +534,7 @@ class NonHogAppendWriter(object):
 
         d = os.path.join(
             self.d_results_orthologs,
-            "Orthologues_" + sp0_name
+            "Orthologs_" + sp0_name
         )
 
         return os.path.join(
@@ -638,7 +638,7 @@ def partition_non_hog_result(
     """
     Split one analysed OG into file-owner payloads for non-HOG output.
 
-    Orthologue, xenologue, and suspect-gene files are owned by source species.
+    Ortholog, xenologue, and suspect-gene files are owned by source species.
     Duplications.tsv is owned by writer 0. Empty writer payloads are omitted.
     """
     if not need_ortholog_output:
@@ -887,7 +887,7 @@ def split_ortholog_files(d_orthologs, q_compress=False):
         for fn in filenames
     ]
     for fn, sp0 in zip(filenames, species):
-        d_out = d_orthologs + "Orthologues_" + sp0 + "/"
+        d_out = d_orthologs + "Orthologs_" + sp0 + "/"
         if not os.path.exists(d_out):
             os.mkdir(d_out)
         file_handles = []

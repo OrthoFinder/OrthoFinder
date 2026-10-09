@@ -428,8 +428,8 @@ def between_core_orthogroups_workflow(
     return clusters_filename_pairs, i_og_restart
 
 
-# def GetOrthologues_FromTrees(options):
-#     orthologues.orthologs_from_trees(
+# def GetOrthologs_FromTrees(options):
+#     orthologs.orthologs_from_trees(
 #         options.min_seq,
 #         options.recon_method,
 #         options.nBlast,
@@ -821,9 +821,9 @@ def main(args=None):
             )
             file_handler.handler.log_species()
             options = process_args.check_options(options, species_info_obj.species_to_use)
-            # GetOrthologues_FromTrees(options)
+            # GetOrthologs_FromTrees(options)
 
-            # orthologues.orthologs_from_trees(
+            # orthologs.orthologs_from_trees(
             #     options.min_seq,
             #     options.recon_method,
             #     options.nBlast,
@@ -1113,7 +1113,7 @@ def main(args=None):
                     orthoxml.write_hogs_and_orthologs(
                         orthogroups_orthoxml,
                         os.path.join(d_results, "Phylogenetic_Hierarchical_Orthogroups"),
-                        os.path.join(d_results, "Orthologues"),
+                        os.path.join(d_results, "Orthologs"),
                     )
                 except (OSError, KeyError, ValueError) as e:
                     print("WARNING: The HOGs and orthologs could not be written in OrthoXML format: "

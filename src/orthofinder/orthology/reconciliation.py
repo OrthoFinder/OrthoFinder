@@ -42,7 +42,7 @@ from ..phylo import taxa
 from . import stats
 
 
-@run_logging.RunLogger.stage("Infer orthologues")
+@run_logging.RunLogger.stage("Infer orthologs")
 def reconciliation_and_orthologs(
         recon_method,
         og_set,
@@ -81,7 +81,7 @@ def reconciliation_and_orthologs(
     recon_trees_renamed_dir = file_handler.handler.get_ogs_recon_tree_dir(True)
 
     if print_info:
-        util.print_time("Inferring orthologues from gene trees")
+        util.print_time("Inferring orthologs from gene trees")
 
     q_no_recon = ("only_overlap" == recon_method)
 
@@ -134,7 +134,7 @@ def reconciliation_and_orthologs(
         )
 
         if print_info:
-            util.print_time("Done of orthologues")
+            util.print_time("Done of orthologs")
 
         two_and_three_gene_hogs(
             og_set,
@@ -398,7 +398,7 @@ def do_orthologs_for_ortho_finder(
                         progressbar.update(task, advance=1)
                         continue
 
-                    n_orthologs_sp_pair += result["n_orthologues"]
+                    n_orthologs_sp_pair += result["n_orthologs"]
                     output_writer.write_result(result)
 
                     progressbar.update(task, advance=1)

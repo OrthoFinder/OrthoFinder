@@ -63,7 +63,7 @@ def check_dependencies(options, user_specified_m, prog_caller, dir_for_temp_file
                                             options.recon_method,
                                             prog_caller, 
                                             options.q_stop_after_alignments):
-            print("Dependencies have been met for inference of orthogroups but not for the subsequent orthologue inference.")
+            print("Dependencies have been met for inference of orthogroups but not for the subsequent ortholog inference.")
             print("Either install the required dependencies or use the option '-og' to stop the analysis after the inference of orthogroups.\n")
             util.fail()
     if q_assign:

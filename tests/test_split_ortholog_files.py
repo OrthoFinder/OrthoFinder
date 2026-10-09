@@ -12,7 +12,7 @@ EXPECTED_RESULTS = Path(__file__).parent / "data" / "proteome_expected_results"
 
 
 def prepare_compressed_results(expected_dir, results_dir):
-    orthologs_dir = results_dir / "Orthologues"
+    orthologs_dir = results_dir / "Orthologs"
     orthologs_dir.mkdir(parents=True)
 
     expected_rows = {}
@@ -46,20 +46,20 @@ def test_split_default_run_matches_famsa_pof_run(tmp_path):
         "test_orthofinder_runs.py to run first"
     )
 
-    split_dir = tmp_path / "Orthologues"
+    split_dir = tmp_path / "Orthologs"
     output_count, row_count, output_dir = split_ortholog_files(
         default_results, output_dir=split_dir, processes=2
     )
 
-    expected_dir = Path(famsa_results) / "Orthologues"
-    expected_files = sorted(expected_dir.glob("Orthologues_*/*.tsv"))
-    actual_files = sorted(split_dir.glob("Orthologues_*/*.tsv"))
+    expected_dir = Path(famsa_results) / "Orthologs"
+    expected_files = sorted(expected_dir.glob("Orthologs_*/*.tsv"))
+    actual_files = sorted(split_dir.glob("Orthologs_*/*.tsv"))
     expected_relative_paths = [
         path.relative_to(expected_dir) for path in expected_files
     ]
     actual_relative_paths = [path.relative_to(split_dir) for path in actual_files]
 
-    assert expected_files, f"No pairwise orthologue files found in {expected_dir}"
+    assert expected_files, f"No pairwise ortholog files found in {expected_dir}"
     assert actual_relative_paths == expected_relative_paths
     assert output_count == len(expected_files)
     assert output_dir == str(split_dir)
@@ -78,7 +78,7 @@ def test_split_default_run_matches_famsa_pof_run(tmp_path):
 
 
 def test_existing_outputs_are_skipped_unless_forced(tmp_path):
-    expected_dir = EXPECTED_RESULTS / "Core" / "orthologues"
+    expected_dir = EXPECTED_RESULTS / "Core" / "orthologs"
     results_dir = tmp_path / "Results_Core"
     prepare_compressed_results(expected_dir, results_dir)
 
@@ -93,7 +93,7 @@ def test_existing_outputs_are_skipped_unless_forced(tmp_path):
 
 
 def test_uncompressed_input_is_preferred_when_both_exist(tmp_path):
-    expected_dir = EXPECTED_RESULTS / "Core" / "orthologues"
+    expected_dir = EXPECTED_RESULTS / "Core" / "orthologs"
     results_dir = tmp_path / "Results_Core"
     orthologs_dir, _ = prepare_compressed_results(expected_dir, results_dir)
 
@@ -103,7 +103,7 @@ def test_uncompressed_input_is_preferred_when_both_exist(tmp_path):
         uncompressed_file.write_text(infile.read())
 
     output_count, _, _ = split_ortholog_files(
-        results_dir, output_dir=tmp_path / "PairwiseOrthologues", processes=1
+        results_dir, output_dir=tmp_path / "PairwiseOrthologs", processes=1
     )
 
     assert output_count > 0

@@ -361,7 +361,7 @@ def resolve(n, M):
 #             else:
 #                 n.name = "S"
 
-# def NumberOfOrthologues(tree, GeneToSpecies):
+# def NumberOfOrthologs(tree, GeneToSpecies):
 #     species = list(set(map(GeneToSpecies, tree.get_leaf_names())))
 #     genes = tree.get_leaf_names()
 #     gDict = {gene:i for i,gene in enumerate(genes)}
@@ -434,7 +434,7 @@ def resolve(n, M):
 #                 # Perform full reconciliation
 #                 for n in tree.traverse("postorder"):
 #                     tree = resolve(n, GeneToSpecies)
-#             # NumberOfOrthologues(tree, GeneToSpecies)
+#             # NumberOfOrthologs(tree, GeneToSpecies)
 #             SpeciesOverlapDuplications(tree, GeneToSpecies)
 #             # print("Done: " + trees_fn)
 #             tree.write(outfile=(out_dir + "/" + os.path.basename(trees_fn) + ".rec.tre"), format=3)

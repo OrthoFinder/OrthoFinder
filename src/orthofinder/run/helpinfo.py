@@ -181,7 +181,7 @@ def print_help(prog_caller):
         "Also write the orthogroups, HOGs and orthologs in OrthoXML format (.orthoxml) and as "
         "pages to view in a web browser (.html): Orthogroups.*, "
         "Phylogenetic_Hierarchical_Orthogroups/N*.orthoxml and HOGs.html, "
-        "Orthologues/Orthologues.*",
+        "Orthologs/Orthologs.*",
     )
     # print(" -p <dir>                Write the temporary pickle files to <dir>")
     # table_options.add_row(

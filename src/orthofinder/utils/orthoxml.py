@@ -4,7 +4,7 @@ version 0.3), for other tools, and as pages to look at in a web browser:
 
     Orthogroups/Orthogroups.orthoxml, Orthogroups.html
     Phylogenetic_Hierarchical_Orthogroups/N<i>.orthoxml (one per N<i>.tsv), HOGs.html
-    Orthologues/Orthologues.orthoxml, Orthologues.html
+    Orthologs/Orthologs.orthoxml, Orthologs.html
 
 A gene has the same id in all the OrthoXML files. The species information
 comes from the input FASTA files. OrthoXML requires an NCBI taxonomy ID and a
@@ -102,7 +102,7 @@ def write_hogs_and_orthologs(orthogroups_orthoxml, hog_dir, orthologs_dir):
     """
     From the final results files: an OrthoXML file for each
     Phylogenetic_Hierarchical_Orthogroups/N<i>.tsv and one for the orthologs
-    (Orthologues/<species>.tsv[.gz]), and a page for each. The species and
+    (Orthologs/<species>.tsv[.gz]), and a page for each. The species and
     the gene ids are those of Orthogroups.orthoxml. Returns the files written.
     """
     species, gene_ids = read_genes(orthogroups_orthoxml)
@@ -207,16 +207,16 @@ def write_orthologs(species, gene_ids, orthologs_dir):
         views.append({"name": f"{names[i]} - {names[j]}",
                       "columns": ["@Orthogroup", "Type", "*" + names[i], "*" + names[j]],
                       "rows": [[og, relationship(a, b), a, b] for og, a, b in rows]})
-    out_xml = os.path.join(orthologs_dir, "Orthologues.orthoxml")
+    out_xml = os.path.join(orthologs_dir, "Orthologs.orthoxml")
     used = sorted({names[k] for pair in pairs for k in pair}, key=index.get)
     write_orthoxml(out_xml, genes_of(species, gene_ids, groups, used), groups,
-                   notes="Orthologs: each group is one ortholog relationship of the Orthologues files, "
+                   notes="Orthologs: each group is one ortholog relationship of the Orthologs files, "
                          "between the genes of two species (genes of the same species are in-paralogs).")
-    out_html = os.path.join(orthologs_dir, "Orthologues.html")
+    out_html = os.path.join(orthologs_dir, "Orthologs.html")
     all_rows = [r for v in views for r in v["rows"]]
     write_page(
         out_html, title="Orthologs",
-        note="The orthologs of the Orthologues files, one species pair at a time (also in Orthologues.orthoxml).",
+        note="The orthologs of the Orthologs files, one species pair at a time (also in Orthologs.orthoxml).",
         stats=[(len(views), "species pairs"), (len(all_rows), "ortholog relationships"),
                (sum(len(r[2]) * len(r[3]) for r in all_rows), "ortholog gene pairs"),
                (sum(r[1] == "one-to-one" for r in all_rows), "one-to-one")],

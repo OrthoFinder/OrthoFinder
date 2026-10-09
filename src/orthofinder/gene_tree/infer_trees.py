@@ -57,7 +57,7 @@ def infer_gene_and_species_trees(
         - read scores
         - run_analysis: Get distance matrices, do trees
     3. Root species tree
-    4. Reconciliation/Orthologues
+    4. Reconciliation/Orthologs
     5. Clean up
     
     Variables:

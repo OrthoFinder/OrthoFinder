@@ -38,7 +38,7 @@ def test_orthologs(of_and_expected_orthologs):
     relocations = []  
 
     for species, expected_ogs in expected.items():
-        assert species in per_species_triplets, f"No orthologues found for species {species}."
+        assert species in per_species_triplets, f"No orthologs found for species {species}."
 
         for og_expected, entries in expected_ogs.items():
             for e in entries:
@@ -61,7 +61,7 @@ def test_orthologs(of_and_expected_orthologs):
                 f"{species} missing triplet from expected {og_exp}: "
                 f"(partner={partner}, A={sorted(a)}, B={sorted(b)})"
             )
-        raise AssertionError("Some expected orthologues were not found:\n" + "\n".join(msgs))
+        raise AssertionError("Some expected orthologs were not found:\n" + "\n".join(msgs))
 
 @pytest.mark.skipif(
     "config.getoption('--skip-of-test')",

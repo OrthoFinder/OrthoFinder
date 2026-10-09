@@ -107,7 +107,7 @@ class TreeAnalyser(object):
 
         If nOrtho_acc (a stats.NOrthoSp) is given, this tree's ortholog
         counts are added to it once the whole tree has been analysed, and the
-        payload's "n_orthologues" is None. Otherwise it holds a dense
+        payload's "n_orthologs" is None. Otherwise it holds a dense
         NOrthoSp for this tree.
         """
         og_name = "OG%07d" % iog
@@ -179,7 +179,7 @@ class TreeAnalyser(object):
 
             return {
                 "iog": iog,
-                "n_orthologues": n_orthologs_sp_pair,
+                "n_orthologs": n_orthologs_sp_pair,
                 "olog_lines": ortholog_lines,
                 "olog_sus_lines": ortholog_sus_lines,
                 "duplications": dups,
@@ -193,7 +193,7 @@ class TreeAnalyser(object):
 
             return {
                 "iog": iog,
-                "n_orthologues": (
+                "n_orthologs": (
                     stats.NOrthoSp(n_species) if n_ortho_acc is None else None
                 ),
                 "olog_lines": empty_ortholog_lines(self.nspecies, self.fewer_open_files),

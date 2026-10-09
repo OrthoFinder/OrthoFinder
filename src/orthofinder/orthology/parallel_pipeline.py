@@ -61,7 +61,7 @@ def worker_run_orthologs_method_pipeline(
     """
     Analyse OGs and route HOG and non-HOG output independently.
 
-    Orthologue counts are accumulated locally and sent once with
+    Ortholog counts are accumulated locally and sent once with
     "worker_done". Sending a dense nspecies x nspecies count object per OG
     is ~40 MB of pickled data per OG at 1,000 species.
     """
@@ -467,7 +467,7 @@ def run_orthologs_parallel_pipeline(
             # They are not stopped for taking long, only warned about.
             try:
                 parallel_task_manager.wait_for_exit(
-                    child_processes, "orthologue pipeline processes", GRACE_PERIOD
+                    child_processes, "ortholog pipeline processes", GRACE_PERIOD
                 )
             except parallel_task_manager.WorkerError as e:
                 report_error("ERROR: %s" % e)
@@ -515,7 +515,7 @@ def run_orthologs_parallel_pipeline(
     if fatal:
         # Raised (not Fail()) so main() records the child's error in checkpoint.txt.
         raise parallel_task_manager.WorkerError(
-            "\n".join(errors) or "Orthologue inference failed."
+            "\n".join(errors) or "Ortholog inference failed."
         )
 
     return n_orthologs_sp_pair
