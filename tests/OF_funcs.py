@@ -9,7 +9,8 @@ from orthofinder.run import process_args
 from orthofinder.phylo import tree
 from orthofinder.species_tree import stride
 from orthofinder.run.process_args import Options
-from orthofinder.hog_orthogroups.convert import OrthogroupSet, update_ogs, id_full_dict
+from orthofinder.hog_orthogroups.convert import HogOrthogroupSet, update_ogs
+from orthofinder.mcl_orthogroups.mcl import id_full_dict
 from orthofinder.hog_orthogroups.update_trees import read_tree_file
 from orthofinder.hog_orthogroups.finalise import hogs_converter, read_hog_file, hog_file_over4genes, index_files
 from orthofinder.run.previous_run import species_name_dict, process_previous_files
@@ -229,7 +230,7 @@ class OrthoFinderTestFuncs:
 
     def get_og_obj(self):
         species_info_obj = self.get_species_info_obj()
-        og_set = OrthogroupSet(
+        og_set = HogOrthogroupSet(
             self.options.min_seq,
             self.active_wd_list[::-1],
             species_info_obj.species_to_use,

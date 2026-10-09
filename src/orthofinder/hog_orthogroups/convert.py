@@ -4,7 +4,8 @@ from operator import itemgetter
 from collections import defaultdict, Counter
 
 from ..gene_tree import msa_trees
-from ..mcl_orthogroups import mcl as MCL
+from ..mcl_orthogroups.mcl import id_full_dict
+from ..mcl_orthogroups.orthogroups_set import Seq
 from ..utils import util, file_handler, file_io
 
 from xml.etree.ElementTree import SubElement  # Y
@@ -43,12 +44,12 @@ def post_hogs_processing(
         for og in new_ogs:
             outfile.write(", ".join(sorted(og, key=species_info.seq_id_key)) + "\n")
 
-    ids_dict = MCL.write_orthogroup_files(
+    ids_dict = HogOrthogroupFiles.write_orthogroup_files(
         new_ogs, [file_handler.handler.get_sequence_ids_fn()], results_base_filename
     )
 
     if not q_incremental:
-        MCL.create_orthogroup_table(
+        HogOrthogroupFiles.create_orthogroup_table(
             new_ogs,
             ids_dict,
             species_names_dict,
@@ -57,7 +58,7 @@ def post_hogs_processing(
         )
 
     # Write Orthogroup FASTA files
-    og_set = OrthogroupSet(
+    og_set = HogOrthogroupSet(
         options.min_seq,
         file_handler.handler.get_working_directory1_read(),
         species_info_obj.species_to_use,
@@ -94,7 +95,7 @@ def post_hogs_processing(
     # if not q_incremental:
     ## stats.Stats(ogs, speciesNamesDict, speciesInfoObj.speciesToUse, files.FileHandler.iResultsVersion)
     # if options.speciesXMLInfoFN:
-    #     MCL.WriteOrthoXML(
+    #     HogOrthogroupFiles.WriteOrthoXML(
     #         speciesXML,
     #         new_ogs,
     #         seqsInfo.nSeqsPerSpecies,
@@ -150,52 +151,10 @@ def read_hogs_to_matrix(input_path):
 #     return iSeq + offset
 
 
-def id_full_dict(ids_filenames, func=gene_ids.FirstWordExtractor):
-
-    full_dict = dict()
-    for ids_filename in ids_filenames:
-        id_extract = func(ids_filename)
-        id_dict = id_extract.get_id_to_name_dict()
-        full_dict.update(id_dict)
-
-    return full_dict
-
-
-class Seq(object):
-    def __init__(self, seq_input):
-        """Constructor takes sequence in any format and returns generators the
-        Seq object accordingly. If performance is really important then can write
-        individual an @classmethod to do that without the checks"""
-        if type(seq_input) is str:
-            a, b = seq_input.split("_")
-            self.i_sp = int(a)
-            self.i_seq = int(b)
-        elif len(seq_input) == 2:
-            if seq_input[0] is str:
-                self.i_sp, self.i_seq = list(map(int, seq_input))
-            else:
-                self.i_sp = seq_input[0]
-                self.i_seq = seq_input[1]
-        else:
-            raise NotImplementedError
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __repr__(self):
-        return self.to_string()
-
-    def to_string(self):
-        return "%d_%d" % (self.i_sp, self.i_seq)
-
-
 # ==============================================================================================================================
 
 
-class OrthogroupSet(object):
+class HogOrthogroupSet(object):
     def __init__(
         self,
         min_seq,
@@ -203,7 +162,7 @@ class OrthogroupSet(object):
         species_to_use,
         n_sp_all,
         q_add_species_to_ids,
-        tree_prgram="fasttree",
+        tree_program="fasttree",
         id_extractor=gene_ids.FirstWordExtractor,
         species_id_fn="",
         sequence_id_fn="",
@@ -239,7 +198,7 @@ class OrthogroupSet(object):
         self.q_add_species_to_ids = q_add_species_to_ids
         self.cached_seq_ids_dict = None
         self.min_seq = min_seq
-        self.tree_program = tree_prgram
+        self.tree_program = tree_program
 
     def sequence_dict(self):
         """returns Dict[str, str]"""
@@ -325,7 +284,7 @@ class OrthogroupSet(object):
         return all_ids
 
 
-class MCL:
+class HogOrthogroupFiles:
     @staticmethod
     def create_ogs(predicted_ogs, output_filename, id_dict):
         with open(output_filename, "w") as output_file:
@@ -393,7 +352,7 @@ class MCL:
     # #                    SubElement(geneNode, 'score')                  # skip
     #     with open(orthoxmlFilename, 'w') as orthoxmlFile:
     # #            ET.ElementTree(root).write(orthoxmlFile)
-    #         orthoxmlFile.write(MCL.prettify(root))
+    #         orthoxmlFile.write(HogOrthogroupFiles.prettify(root))
     #     print("Orthogroups have been written to orthoxml file:\n   %s" % orthoxmlFilename)
 
     @staticmethod
@@ -407,7 +366,7 @@ class MCL:
             #     fullDict.update(idDict)
 
             full_dict = id_full_dict(ids_filenames, func=gene_ids.FirstWordExtractor)
-            MCL.create_ogs(ogs, output_fn, full_dict)
+            HogOrthogroupFiles.create_ogs(ogs, output_fn, full_dict)
         except KeyError as e:
             sys.stderr.write("ERROR: Sequence ID not found in %s\n" % ids_filenames)
             sys.stderr.write(str(e) + "\n")
@@ -430,7 +389,7 @@ class MCL:
                     #     idDict = idExtract.get_id_to_name_dict()
                     #     fullDict.update(idDict)
                     full_dict = id_full_dict(ids_filenames, func=gene_ids.FullAccession)
-                    MCL.create_ogs(ogs, output_fn, full_dict)
+                    HogOrthogroupFiles.create_ogs(ogs, output_fn, full_dict)
                 except:
                     err_text = "ERROR: %s contains a duplicate ID. " % (ids_filenames)
                     file_handler.handler.log_fail_and_exit(err_text)
