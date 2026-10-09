@@ -6,7 +6,7 @@ from collections import defaultdict, Counter
 from ..gene_tree import msa_trees
 from ..mcl_orthogroups.mcl import id_full_dict
 from ..mcl_orthogroups.orthogroups_set import Seq
-from ..utils import util, file_handler, file_io
+from ..utils import util, file_handler, file_io, orthoxml
 
 from xml.etree.ElementTree import SubElement  # Y
 from .. import __version__
@@ -56,6 +56,15 @@ def post_hogs_processing(
             species_info_obj.species_to_use,
             results_base_filename,
         )
+        if species_xml is not None:  # -x
+            orthoxml.write_orthoxml(
+                species_xml,
+                new_ogs,
+                seqs_info.n_seqs_per_species,
+                ids_dict,
+                species_info_obj.species_to_use,
+                results_base_filename + ".orthoxml",
+            )
 
     # Write Orthogroup FASTA files
     og_set = HogOrthogroupSet(
@@ -94,15 +103,6 @@ def post_hogs_processing(
 
     # if not q_incremental:
     ## stats.Stats(ogs, speciesNamesDict, speciesInfoObj.speciesToUse, files.FileHandler.iResultsVersion)
-    # if options.speciesXMLInfoFN:
-    #     HogOrthogroupFiles.WriteOrthoXML(
-    #         speciesXML,
-    #         new_ogs,
-    #         seqsInfo.nSeqsPerSpecies,
-    #         idsDict,
-    #         resultsBaseFilename + ".orthoxml",
-    #         speciesInfoObj.speciesToUse,
-    #     )
     # util.print_time("Done orthogroups")
     # files.FileHandler.log_ogs()
 
@@ -141,14 +141,6 @@ def read_hogs_to_matrix(input_path):
             rows.append((len(genes), line_split[0], line_split[1], line_split[2], set(genes)))
     rows.sort(key=itemgetter(0), reverse=True)
     return rows
-
-
-# def GetSingleID(speciesStartingIndices, seq, speciesToUse):
-#     a, b = seq.split("_")
-#     iSpecies = int(a)
-#     iSeq = int(b)
-#     offset = speciesStartingIndices[speciesToUse.index(iSpecies)]
-#     return iSeq + offset
 
 
 # ==============================================================================================================================
@@ -297,63 +289,6 @@ class HogOrthogroupFiles:
                 output_file.write("\n")
 
     # @staticmethod
-    # def WriteOrthoXML(speciesInfo, predictedOGs, nSequencesDict, idDict, orthoxmlFilename, speciesToUse):
-    #     """ speciesInfo: ordered array for which each element has
-    #         fastaFilename, speciesName, NCBITaxID, sourceDatabaseName, databaseVersionFastaFile
-    #     """
-    #     # Write OrthoXML file
-    #     root = ET.Element("orthoXML")
-    #     root.set('xsi:schemaLocation', "http://orthoXML.org/2011/ http://www.orthoxml.org/0.3/orthoxml.xsd")
-    #     root.set('originVersion', __version__)
-    #     root.set('origin', 'OrthoFinder')
-    #     root.set('version', "0.3")
-    #     root.set('xmlns:xsi', "http://www.w3.org/2001/XMLSchema-instance")
-    #     #notes = SubElement(root, 'notes')
-
-    #     # Species: details of source of genomes and sequences they contain
-    #     speciesStartingIndices = []
-    #     iGene_all = 0
-    #     for iPos, thisSpeciesInfo in enumerate(speciesInfo):
-    #         iSpecies = speciesToUse[iPos]
-    #         nSeqs = nSequencesDict[iSpecies]
-    #         speciesNode = SubElement(root, 'species')
-    #         speciesNode.set('NCBITaxId', thisSpeciesInfo[2])           # required
-    #         speciesNode.set('name', thisSpeciesInfo[1])                # required
-    #         speciesDatabaseNode = SubElement(speciesNode, "database")
-    #         speciesDatabaseNode.set('name', thisSpeciesInfo[3])            # required
-    #         speciesDatabaseNode.set('version', thisSpeciesInfo[4])         # required
-    # #            speciesDatabaseNode.set('geneLink', "")        # skip
-    # #            speciesDatabaseNode.set('protLink', "")        # skip
-    # #            speciesDatabaseNode.set('transcriptLink', "")  # skip
-    #         allGenesNode = SubElement(speciesDatabaseNode, "genes")
-    #         speciesStartingIndices.append(iGene_all)
-    #         for iGene_species in range(nSeqs):
-    #             geneNode = SubElement(allGenesNode, 'gene')
-    #             geneNode.set("geneId", idDict["%d_%d" % (iSpecies , iGene_species)])
-    #             geneNode.set('id', str(iGene_all))       # required
-    # #                geneNode.set("protID", "")  # skip
-    #             iGene_all += 1
-
-    #     # Scores tag - unused
-    # #            scoresNode = SubElement(root, 'scores')        # skip
-
-    #     # Orthogroups
-    #     allGroupsNode = SubElement(root, 'groups')
-    #     for iOg, og in enumerate(predictedOGs):
-    #         groupNode = SubElement(allGroupsNode, 'orthologGroup')
-    #         groupNode.set('id', str(iOg))
-    # #                groupScoreNode = SubElement(groupNode, 'score')    # skip
-    # #                groupScoreNode.set('id', "")                       # skip
-    # #                groupScoreNode.set('value', "")                    # skip
-    # #                SubElement(groupNode, 'property')                  # skip
-    #         for seq in og:
-    #             geneNode = SubElement(groupNode, 'geneRef')
-    #             geneNode.set('id', str(GetSingleID(speciesStartingIndices, seq, speciesToUse)))
-    # #                    SubElement(geneNode, 'score')                  # skip
-    #     with open(orthoxmlFilename, 'w') as orthoxmlFile:
-    # #            ET.ElementTree(root).write(orthoxmlFile)
-    #         orthoxmlFile.write(HogOrthogroupFiles.prettify(root))
-    #     print("Orthogroups have been written to orthoxml file:\n   %s" % orthoxmlFilename)
 
     @staticmethod
     def write_orthogroup_files(ogs, ids_filenames, results_base_filename):

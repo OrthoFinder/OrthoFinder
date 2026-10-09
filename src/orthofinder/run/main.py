@@ -59,7 +59,7 @@ import copy  # Y
 import time  # Y
 import csv  # Y
 import os.path  # Y
-from ..utils import parallel_task_manager, file_handler, util, fasta_processor, file_io, run_state
+from ..utils import parallel_task_manager, file_handler, util, fasta_processor, file_io, run_state, orthoxml
 from ..mcl_orthogroups import infer_orthogroups, orthogroups_set
 from ..mcl_orthogroups import assign as assign
 from orthofinder.utils import logging as run_logging
@@ -107,6 +107,24 @@ sys.setrecursionlimit(10**6)
 OrthoFinder
 -------------------------------------------------------------------------------
 """
+
+
+def orthoxml_species(options, species_info_obj):
+    """
+    With -x, the species information for the OrthoXML file, one entry per
+    species in the analysis (checked now, before the analysis runs); else None.
+    """
+    if not options.species_xml_info_fn:
+        return None
+    try:
+        return orthoxml.species_for_analysis(
+            options.species_xml_info_fn,
+            previous_run.species_name_dict(file_handler.handler.get_species_ids_fn()),
+            species_info_obj.species_to_use,
+        )
+    except orthoxml.SpeciesFileError as e:
+        print("ERROR: " + escape(str(e)))
+        util.fail()
 
 
 """
@@ -605,12 +623,7 @@ def main(args=None):
                 species_info_obj.n_sp_all,
             )
             # 5.
-            # speciesXML = (
-            #     previous_run.GetXMLSpeciesInfo(speciesInfoObj, options)
-            #     if options.speciesXMLInfoFN
-            #     else None
-            # )
-            species_xml = None
+            species_xml = orthoxml_species(options, species_info_obj)
             # 6.
             printing.print_underline("Dividing up work for BLAST for parallel processing")
             runner.create_search_databases(species_info_obj, options, prog_caller)
@@ -655,12 +668,7 @@ def main(args=None):
                 species_info_obj.n_sp_all,
             )
             # 5.
-            # speciesXML = (
-            #     previous_run.GetXMLSpeciesInfo(speciesInfoObj, options)
-            #     if options.speciesXMLInfoFN
-            #     else None
-            # )
-            species_xml = None
+            species_xml = orthoxml_species(options, species_info_obj)
             # 6.
             printing.print_underline("Dividing up work for BLAST for parallel processing")
             runner.create_search_databases(species_info_obj, options, prog_caller)
@@ -750,12 +758,7 @@ def main(args=None):
                 species_info_obj.n_sp_all,
             )
             # 5.
-            # speciesXML = (
-            #     previous_run.GetXMLSpeciesInfo(speciesInfoObj, options)
-            #     if options.speciesXMLInfoFN
-            #     else None
-            # )
-            species_xml = None
+            species_xml = orthoxml_species(options, species_info_obj)
             # 8
             species_names_dict = previous_run.species_name_dict(
                 file_handler.handler.get_species_ids_fn()
@@ -790,12 +793,7 @@ def main(args=None):
             options = process_args.check_options(options, species_info_obj.species_to_use)
 
             ### 9
-            # speciesXML = (
-            #     previous_run.GetXMLSpeciesInfo(speciesInfoObj, options)
-            #     if options.speciesXMLInfoFN
-            #     else None
-            # )
-            species_xml = None
+            species_xml = orthoxml_species(options, species_info_obj)
             ### 8
             species_names_dict = previous_run.species_name_dict(
                 file_handler.handler.get_species_ids_fn()
@@ -877,6 +875,7 @@ def main(args=None):
                 save_space=options.save_space,
                 root_from_previous=False,
                 i_og_restart=i_og_restart_state,
+                species_xml=orthoxml_species(options, species_info_obj),
             )
         elif options.q_start_from_species_trees:
             species_info_obj, _ = previous_run.process_previous_files(
@@ -910,7 +909,7 @@ def main(args=None):
                 options.fewer_open_files,  # Open one ortholog file per species when analysing trees
                 q_split_para_clades=options.q_split_para_clades,
                 i_og_restart=i_og_restart_state,
-                species_xml=None,
+                species_xml=orthoxml_species(options, species_info_obj),
             )
 
         elif options.q_fast_add or assign_resume:
@@ -1000,6 +999,7 @@ def main(args=None):
                 species_info_obj.species_to_use,
                 species_info_obj.n_sp_all,
             )
+            species_xml = orthoxml_species(options, species_info_obj)
             # Add genes to orthogroups
             current_step = "Search orthogroup profiles"
             log.step(current_step, "Started")
@@ -1046,7 +1046,7 @@ def main(args=None):
                     seqs_info,
                     species_names_dict,
                     options,
-                    species_xml=None,
+                    species_xml=species_xml,
                 )
                 if options.species_tree_fn is None:
                     # No user species tree, use the one we've just inferred
@@ -1065,7 +1065,7 @@ def main(args=None):
                     options,
                     prog_caller,
                     i_og_restart,
-                    species_xml=None,
+                    species_xml=species_xml,
                 )
         else:
             raise NotImplementedError

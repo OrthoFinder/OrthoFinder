@@ -1,6 +1,6 @@
 import os
 import re
-from ..utils import util, file_handler, program_caller
+from ..utils import util, file_handler, program_caller, orthoxml
 from ..utils.printing import printer
 from ..orthology import workflow
 from .. import __version__, g_mcl_inflation, n_threads_default, __location__
@@ -10,6 +10,7 @@ import traceback
 from typing import Optional
 import time
 from rich.console import Console
+from rich.markup import escape
 from datetime import datetime
 
 try:
@@ -385,7 +386,7 @@ def process_args(args):
     -b: store workingDir
     -fg: store orthologuesDir 
     -ft: store orthologuesDir 
-    + xml: speciesXMLInfoFN
+    + xml: species_xml_info_fn
     """
 
     while len(args) > 0:
@@ -709,14 +710,20 @@ def process_args(args):
             # HOGs with gene names from before the orthogroups are updated
             options.rm_legacy = False
 
-        # elif arg == "-x" or arg == "--orthoxml":
-        #     if options.speciesXMLInfoFN:
-        #         print("Repeated argument: -x/--orthoxml")
-        #         util.Fail()
-        #     if len(args) == 0:
-        #         print("Missing option for command line argument %s\n" % arg)
-        #         util.Fail()
-        #     options.speciesXMLInfoFN = args.pop(0)
+        elif arg == "-x" or arg == "--orthoxml":
+            if options.species_xml_info_fn:
+                print("Repeated argument: -x/--orthoxml")
+                util.fail()
+            if len(args) == 0:
+                print("Missing option for command line argument %s\n" % arg)
+                util.fail()
+            options.species_xml_info_fn = args.pop(0)
+            # check the file now, not after the analysis has run
+            try:
+                orthoxml.read_species_file(options.species_xml_info_fn)
+            except orthoxml.SpeciesFileError as e:
+                print("ERROR: " + escape(str(e)))
+                util.fail()
 
         elif arg == "-n" or arg == "--name":
             if options.name:

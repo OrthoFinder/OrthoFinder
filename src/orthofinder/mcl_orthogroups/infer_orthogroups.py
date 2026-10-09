@@ -9,7 +9,7 @@ import multiprocessing as mp
 from . import mcl, score_normalisation
 from ..gene_tree import msa_trees
 from . import orthogroups_set
-from ..utils import util, file_handler, matrices, parallel_task_manager
+from ..utils import util, file_handler, matrices, parallel_task_manager, orthoxml
 from ..utils import printing
 from ..utils import gene_ids
 
@@ -325,6 +325,15 @@ def post_clustering_orthogroups(
                 species_info_obj.species_to_use,
                 results_base_filename,
             )
+            if species_xml is not None:  # -x
+                orthoxml.write_orthoxml(
+                    species_xml,
+                    ogs,
+                    seqs_info.n_seqs_per_species,
+                    ids_dict,
+                    species_info_obj.species_to_use,
+                    results_base_filename + ".orthoxml",
+                )
 
     # Write Orthogroup FASTA files
     og_set = orthogroups_set.OrthogroupSet(
@@ -364,8 +373,6 @@ def post_clustering_orthogroups(
 
     if not q_incremental:
         # stats.Stats(ogs, speciesNamesDict, speciesInfoObj.speciesToUse, files.FileHandler.iResultsVersion)
-        # (OrthoXML output, -x, is switched off: the option is not parsed and
-        # MCL.WriteOrthoXML is commented out.)
         # print("")
         util.print_time("Done orthogroups")
         file_handler.handler.log_ogs()

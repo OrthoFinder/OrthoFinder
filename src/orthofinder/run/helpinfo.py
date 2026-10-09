@@ -176,11 +176,12 @@ def print_help(prog_caller):
     #     "Only perform one-way sequence search",
     # )
 
-    # print(" -x <file>               Info for outputting results in OrthoXML format")
-    # table_options.add_row(
-    #     "-x <[bright_magenta]file[/bright_magenta]>",
-    #     "Info for outputting results in OrthoXML format",
-    # )
+    table_options.add_row(
+        "-x <[bright_magenta]file[/bright_magenta]>",
+        "Also write the orthogroups in OrthoXML format, with the species information in "
+        "<[bright_magenta]file[/bright_magenta]>: one line per species of five tab-separated fields "
+        "(FASTA filename, species name, NCBI taxonomy ID, source database, database version)",
+    )
     # print(" -p <dir>                Write the temporary pickle files to <dir>")
     # table_options.add_row(
     #     "-p <[bright_magenta]dir[/bright_magenta]>",
