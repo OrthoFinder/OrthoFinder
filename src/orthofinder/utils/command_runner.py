@@ -267,6 +267,15 @@ def _run_parallel_commands_and_move_results_file(
             )
             futures[fut] = cmd_unit
 
+        recorded = set()
+
+        def record_success(future):
+            recorded.add(future)
+            try:
+                on_success(futures[future][0] if not q_list_of_list else futures[future])
+            except Exception as e:      # recording must not stop the run
+                print("WARNING: could not record a finished command: %s" % e)
+
         try:
             for i, future in enumerate(concurrent.futures.as_completed(futures)):
                 # The first failed command is raised straight away (with
@@ -275,10 +284,7 @@ def _run_parallel_commands_and_move_results_file(
                 if result != 0 and q_print_on_error:
                     print(f"ERROR occurred with command: {futures[future]}")
                 if result == 0 and on_success is not None:
-                    try:
-                        on_success(futures[future][0] if not q_list_of_list else futures[future])
-                    except Exception as e:      # recording must not stop the run
-                        print("WARNING: could not record a finished command: %s" % e)
+                    record_success(future)
                 if (i + 1) % update_cycle == 0:
                     progressbar.update(task, advance=update_cycle)
         except BaseException:
@@ -289,6 +295,16 @@ def _run_parallel_commands_and_move_results_file(
                 fut.cancel()
             parallel_task_manager.kill_running_commands()
             progressbar.stop()
+            if on_success is not None:
+                # Commands that succeeded but were not yet recorded (e.g. they
+                # finished while the batch was being stopped) are recorded too,
+                # so a restart reuses their results rather than running them again.
+                # Leaving the pool waits for the running ones anyway.
+                concurrent.futures.wait(futures)
+                for fut in futures:
+                    if (fut not in recorded and not fut.cancelled()
+                            and fut.exception() is None and fut.result() == 0):
+                        record_success(fut)
             raise
     progressbar.stop()
 
