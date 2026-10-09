@@ -69,7 +69,42 @@ PROGRAM_LOG_KEYS = (("Search program: ", "search_program"), ("MSA program: ", "m
 # or of the analysis it added species to (-b with -f).
 EARLIER_WD_KEYS = ("WorkingDirectory_Core", "WorkingDirectory_Previous")
 
-class _FileHandler(object):    
+
+def rename_earlier_result_names(results_dir):
+    """
+    The results of OrthoFinder before 3.2 used "Orthologue" in some names
+    (Orthologues/, OrthologuesStats_*.tsv, ...). A run that continues in such
+    a results directory (-b, -fg, -fgt, -fst) renames them first, so it
+    updates them in place, as before, and the directory has one set of names.
+    Nothing is renamed if the new name is already there. Returns
+    [(old path, new path)] of what was renamed.
+    """
+    renamed = []
+
+    def rename(old, new):
+        if os.path.exists(old) and not os.path.exists(new):
+            os.rename(old, new)
+            renamed.append((old, new))
+
+    orthologs_dir = os.path.join(results_dir, "Orthologs")
+    rename(os.path.join(results_dir, "Orthologues"), orthologs_dir)
+    if os.path.isdir(orthologs_dir):
+        for name in os.listdir(orthologs_dir):  # -pof: Orthologues_<species>/
+            if name.startswith("Orthologues_"):
+                rename(os.path.join(orthologs_dir, name), os.path.join(orthologs_dir, "Orthologs_" + name[len("Orthologues_"):]))
+    rename(os.path.join(results_dir, "Single_Copy_Orthologue_Sequences"),
+           os.path.join(results_dir, "Single_Copy_Ortholog_Sequences"))
+    for subdir, old_part, new_part in (("Comparative_Genomics_Statistics", "OrthologuesStats_", "OrthologsStats_"),
+                                       ("Orthogroups", "_SingleCopyOrthologues", "_SingleCopyOrthologs")):
+        d = os.path.join(results_dir, subdir)
+        if os.path.isdir(d):
+            for name in os.listdir(d):
+                if old_part in name:
+                    rename(os.path.join(d, name), os.path.join(d, name.replace(old_part, new_part)))
+    return renamed
+
+
+class _FileHandler(object):
     def __init__(self):
         self.reset() 
 
@@ -172,6 +207,7 @@ class _FileHandler(object):
             if clusters_filename_pairs != None: self.clusters_filename = clusters_filename_pairs[:-len("_id_pairs.txt")]
             self.rd1 = os.path.dirname(self.wd_current[:-1]) + os.sep
             os.makedirs(self.wd_current, exist_ok=True)
+            rename_earlier_result_names(self.rd1)  # continuing in an existing results directory
         else:    
             if clusters_filename_pairs != None: self.clusters_filename = clusters_filename_pairs[:-len("_id_pairs.txt")]
             if user_name == None:
@@ -230,6 +266,7 @@ class _FileHandler(object):
             if clusters_filename_pairs != None: self.clusters_filename = clusters_filename_pairs[:-len("_id_pairs.txt")]
             self.rd1 = os.path.dirname(self.wd_current[:-1]) + os.sep
             os.makedirs(self.wd_current, exist_ok=True)
+            rename_earlier_result_names(self.rd1)  # continuing in an existing results directory
         else:    
             if user_name == None:
                 self.rd1 = paths.create_new_working_directory(base + "Results_",
