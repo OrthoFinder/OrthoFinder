@@ -37,7 +37,12 @@ species_tree_alignment
     Write the concatenated alignment of the orthogroups chosen for a species
     tree, from the results of a finished run (e.g. one with -ST astral-pro).
 
-Run any command with --help for detailed usage.
+Run any command with --help for detailed usage. From the OrthoFinder
+directory, without installing OrthoFinder, each can also be run as a
+script: python tools/<command>.py (e.g. python tools/make_ultrametric.py --help),
+and view_results as python tools/view_results/view_results.py. The
+tools/view_results directory also works on its own, e.g. copied or
+downloaded next to the results: it needs Python and ete4, not OrthoFinder.
 
 Examples
 --------

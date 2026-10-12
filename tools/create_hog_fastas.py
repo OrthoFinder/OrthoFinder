@@ -28,8 +28,6 @@ import csv
 import glob
 import argparse
 from collections import Counter
-from orthofinder.utils import gene_ids
-from orthofinder.run import previous_run
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 repo_root = os.path.dirname(script_dir)
@@ -38,6 +36,8 @@ src_dir = os.path.join(repo_root, "src")
 if os.path.isdir(os.path.join(src_dir, "orthofinder")) and src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
+from orthofinder.utils import gene_ids
+from orthofinder.run import previous_run
 from orthofinder.utils import util, file_handler, run_state
 from orthofinder.gene_tree import msa_trees
 from orthofinder.mcl_orthogroups import orthogroups_set

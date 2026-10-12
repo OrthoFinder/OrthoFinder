@@ -33,7 +33,6 @@ import os
 import sys
 import glob
 import argparse
-from orthofinder.utils import gene_ids
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 repo_root = os.path.dirname(script_dir)
@@ -42,6 +41,7 @@ src_dir = os.path.join(repo_root, "src")
 if os.path.isdir(os.path.join(src_dir, "orthofinder")) and src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
+from orthofinder.utils import gene_ids
 from orthofinder.phylo import tree
 from orthofinder.utils import util
 

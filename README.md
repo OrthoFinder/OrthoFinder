@@ -260,6 +260,7 @@ Command-line options for OrthoFinder
   | `--view` | All three pages, linked to each other, and `OrthoFinder_Results.html` to open them, a tab for each (also with two of them). |
 
   - For the results of a finished run: `view_results <Results_dir>` (same options). With many species the pages can be large: each can also be written on its own.
+  - Without OrthoFinder installed: the `tools/view_results` directory works on its own, e.g. downloaded as `view_results.zip` (`make view_results_zip` writes it to `dist/`) next to the results. It needs Python 3 and ete4 (`pip install ete4`): `python view_results/view_results.py <Results_dir>`.
   - The pages work in any recent web browser (Safari, Edge, Chrome, Firefox) on macOS, Windows or Linux, opened from disk. To look at results from a server on your own computer, download the whole results directory, as each page reads its data from the folders next to it.
   - On Linux, open them with `xdg-open <Results_dir>/OrthoFinder_Results.html` (the default browser) or `google-chrome <Results_dir>/OrthoFinder_Results.html 2>/dev/null` (with Chrome already open, it prints errors such as "Broken pipe" that are not about the page).
   - Light or dark colours: **Colours**, at the top right of each page (Auto follows the system).

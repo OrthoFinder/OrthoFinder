@@ -12,6 +12,13 @@ files of a run that has finished (the same pages as a run with --view,
 
 With no option, all three. INPUT is an OrthoFinder results directory.
 
+This directory works on its own, e.g. downloaded as view_results.zip next to
+the results: it has its own copy of OrthoFinder's page code (orthofinder_pages,
+made by make_copies.py), and needs Python 3 and ete4 (pip install ete4), not
+OrthoFinder:
+
+    python view_results/view_results.py Results_*/
+
 Examples
 --------
 view_results Results_*/
@@ -25,8 +32,18 @@ import argparse
 import os
 import sys
 
-from orthofinder.run.views import write_views
-from orthofinder.utils.printing import print_pages
+try:
+    if __package__:  # the view_results command of an OrthoFinder install
+        from .orthofinder_pages.views import write_views
+        from .orthofinder_pages.printing import print_pages
+    else:  # run as a script: python view_results.py
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from orthofinder_pages.views import write_views
+        from orthofinder_pages.printing import print_pages
+except ModuleNotFoundError as e:
+    if e.name != "ete4":
+        raise
+    sys.exit("view_results needs ete4, to read the trees: pip install ete4")
 
 
 def main(args=None):

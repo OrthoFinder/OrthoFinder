@@ -74,7 +74,7 @@ create_hog_fastas = "tools.create_hog_fastas:main"
 ncbi_primary_transcript = "tools.ncbi_primary_transcript:main"
 orthogroup_gene_count = "tools.orthogroup_gene_count:main"
 split_ortholog_files = "tools.split_ortholog_files:main"
-view_results = "tools.view_results:main"
+view_results = "tools.view_results.view_results:main"
 species_tree_alignment = "tools.species_tree_alignment:main"
 
 [tool.semantic_release]

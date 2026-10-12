@@ -24,6 +24,13 @@ import os
 import sys
 import types
 
+script_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root = os.path.dirname(script_dir)
+src_dir = os.path.join(repo_root, "src")
+
+if os.path.isdir(os.path.join(src_dir, "orthofinder")) and src_dir not in sys.path:
+    sys.path.insert(0, src_dir)
+
 from orthofinder.mcl_orthogroups import mcl
 from orthofinder.mcl_orthogroups.orthogroups_set import Seq
 from orthofinder.run import previous_run

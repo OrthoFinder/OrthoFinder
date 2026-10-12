@@ -598,6 +598,12 @@ purge_binaries:
 		echo "$(USER_INSTALL_DIR) does not exist. Nothing to remove."
 	fi
 
+# tools/view_results as a zip file to download: it works on its own next to the
+# results (Python and ete4, not OrthoFinder). The copies of the page code are
+# made current first.
+view_results_zip:
+	python3 tools/view_results/make_copies.py --zip dist/view_results.zip
+
 .PHONY: bin_dir make_usr_bin install_diamond install_mcl install_famsa install_fasttree install_aster \
 	install_fastme install_mafft install_iqtree3 install_mmseqs install_raxml install_raxmlng install_muscle \
 	install_blast install_blast_src install_tools install_all_tools update_package_bin show_versions \
@@ -605,4 +611,4 @@ purge_binaries:
 	conda_install_diamond conda_install_mcl conda_install_famsa conda_install_fasttree conda_install_fastme \
 	conda_install_aster conda_install_mafft conda_install_iqtree3 conda_install_raxml conda_install_raxmlng \
 	conda_install_muscle conda_install_mmseqs conda_install_blast venv install_dependencies install run \
-	clean purge_orthofinder purge_binaries
+	clean purge_orthofinder purge_binaries view_results_zip

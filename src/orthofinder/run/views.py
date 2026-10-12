@@ -1,7 +1,7 @@
 """
 The pages to view a run's results in a web browser (--tree-view, --stats-view,
 --groups-view, or --view for all three), written from the results files: at
-the end of a run, or later for existing results (tools/view_results.py).
+the end of a run, or later for existing results (tools/view_results).
 """
 
 import os
@@ -14,7 +14,7 @@ from ..utils import view_pages
 def write_views(results_dir, trees=False, stats=False, groups=False):
     """
     Write the pages asked for, linked to each other and to those already there
-    (e.g. one written before with tools/view_results.py, which is not written
+    (e.g. one written before with tools/view_results, which is not written
     again): each is told which of the others there are, also those written
     after it.
 
