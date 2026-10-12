@@ -9,6 +9,7 @@ OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and a
 
 ## Table of contents
 
+- [What's new in v3.2](#whats-new-in-v32)
 - [Installation](#installation)
 - [Simple Usage](#simple-usage)
 - [Advanced Usage - Scaling to Thousands of Species](#advanced-usage---scaling-to-thousands-of-species)
@@ -19,6 +20,39 @@ OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and a
 - [System Requirements](#system-requirements)
 
 For more information please visit [our website](https://orthofinder.github.io/OrthoFinder/).
+
+## What's new in v3.2
+
+These changes are in OrthoFinder v3.2 and later. Some of them change the names and files of the results: please check them if you have scripts that read OrthoFinder results.
+
+1. **"Orthologue" is now "ortholog"**, in the names of the results and in the messages:
+
+   | Before v3.2 | From v3.2 |
+   |-------------|-----------|
+   | `Orthologues/` | `Orthologs/` |
+   | `Orthologues/Orthologues_<species>/` | `Orthologs/Orthologs_<species>/` (with `-pof`) |
+   | `Single_Copy_Orthologue_Sequences/` | `Single_Copy_Ortholog_Sequences/` |
+   | `Comparative_Genomics_Statistics/OrthologuesStats_*.tsv` | `Comparative_Genomics_Statistics/OrthologsStats_*.tsv` |
+   | `Orthogroups/Orthogroups_SingleCopyOrthologues.txt` | `Orthogroups/Orthogroups_SingleCopyOrthologs.txt` |
+
+   The contents of the files are unchanged. A restart (`-b`, `-fg`, `-fgt`, `-fst`) in results from an earlier version first renames the old names to the new ones.
+
+2. **With `-ST` (e.g. `-ST astral-pro`), the concatenated alignment is no longer written.** The species tree is then inferred from the gene trees, and the concatenated alignment of the orthogroups is not needed for it. To write it as well, add `--concat-alignment` (it is then in `WorkingDirectory/Alignments_ids/SpeciesTreeAlignment.fa`, with the orthogroups used listed in `Species_Tree/Orthogroups_for_concatenated_alignment.txt`), or for the results of a finished run use `species_tree_alignment <Results_dir>`. Without `-ST` (the default) the concatenated alignment is written as before.
+
+3. **Scoring matrices and gap penalties for DIAMOND searches**: `--matrix` (e.g. `BLOSUM45`, default `BLOSUM62`), `--custom-matrix <file>` for a matrix file of your own, and `-go`/`--gapopen` and `-ge`/`--gapextend` for the gap penalties. A restart or `--assign` from the results uses the same scoring. See [Sequence search scoring options (DIAMOND)](#command-line-options).
+
+4. **Pairwise ortholog files only with `-pof`.** By default, the orthologs are written as one compressed file per species, `Orthologs/<species>.tsv.gz`, which takes far less space and far fewer files with many species. With `-pof`, OrthoFinder writes a file for each pair of species as before, `Orthologs/Orthologs_<species>/<species>__v__<other species>.tsv`. For the results of a run without `-pof`, `split_ortholog_files <Results_dir>` writes the pairwise files afterwards.
+
+5. **The results in a web browser**: `--tree-view` (the species tree, the resolved gene trees with their alignments, and a species tree explorer), `--stats-view` (the statistics, with interactive plots) and `--groups-view` (the genes of each orthogroup and HOG, searchable). `--view` writes all three, linked to each other, and `OrthoFinder_Results.html` to open them, a tab for each. For the results of a finished run: `view_results <Results_dir>`. The pages work offline in any recent browser, in light or dark colours. See [Viewing the results in a web browser](#command-line-options).
+
+6. **Stopping and restarting an analysis at each stage**, also for `--assign`:
+   - Stop after a stage: `-op` (the search commands, written to `WorkingDirectory/blast_commands.txt`, e.g. to run on a cluster), `-og` (orthogroups), `-ogt` (gene trees) or `-ost` (species tree). The end of the run prints the command to continue it.
+   - Restart from a stage: `-b` (search results), `-fg` (orthogroups), `-fgt` (gene trees) or `-fst` (species tree), given the results directory.
+   - A restart continues with the settings of the run (search program, scoring, `-M`, `-A`, `-T`, `-ST`, `-I` etc., kept in `WorkingDirectory/run_state.json`), unless they are given again.
+   - With `-b`, OrthoFinder runs only the searches whose results are missing or incomplete, e.g. after `-op`, or after a run that was interrupted (Ctrl-C, a job time limit) or failed. The finished searches are recorded in `WorkingDirectory/checkpoint.txt`; the results of an interrupted search are moved aside (`.incomplete`) and the search is run again.
+   - With `-op`, the search commands are no longer printed to the terminal: they are written to `WorkingDirectory/blast_commands.txt`. A restart with `-b` reuses the search results that are there, and runs only the missing ones, with the search program of the run. It does not create a new results directory: the results are written to the one created by `-op`.
+
+Earlier change, from v3.1: `N0.tsv` is no longer in `Phylogenetic_Hierarchical_Orthogroups/`; `Orthogroups/Orthogroups.tsv` contains its orthogroups.
 
 ## Installation
 
@@ -265,10 +299,6 @@ Command-line options for OrthoFinder
 
 ## Output files
 
-> - ***From OrthoFinder `v3.2`, pairwise ortholog files are no longer produced by default. To generate these files, include the `-pof` option when running OrthoFinder.*** 
-> - ***When using `-op`, the BLAST commands are no longer printed directly to the terminal. Instead, all commands are written to WorkingDirectory/blast_commands.txt. You can then use `-b` to resume the analysis from the point reached with `-op`. If the required BLAST result files are already present, OrthoFinder will reuse them and will not repeat the all-vs-all sequence search. If any required search results are missing, the sequence search will be triggered automatically using the default search method. Please note that running with `-b` does not create a new results directory. All subsequent output will be written to the existing results directory created by the earlier `-op` run.***
-> - ***From OrthoFinder `v3.1`, `N0.tsv` is removed from `/Phylogenetic_Hierarchical_Orthogroups`. Instead, `Orthogroups/Orthogroups.tsv` contains the orthogroups from `N0.tsv`.***
-
 A standard OrthoFinder run produces a set of files describing the orthogroups, orthologs, gene trees, resolve gene trees, the rooted species tree, gene duplication events, and comparative genomic statistics for the set of species being analysed. These files are located in an intuitive directory structure.
 
 Full details on the output files and directories can be found [here](http://orthofinder.github.io/OrthoFinder/tutorials/guide-to-results/). The directories that are useful for most users are
@@ -287,7 +317,8 @@ Full details on the output files and directories can be found [here](http://orth
 - `N0.tsv` from the old version is now `Orthogroups/Orthogroups.tsv`
 
 **```/Orthologs```**
-- Each species has a sub-directory that in turn contains a file for each pairwise species comparison, listing the orthologs between that species pair.
+- `<species>.tsv.gz` for each species lists its orthologs in all the other species.
+- With `-pof`, each species has a sub-directory, `Orthologs_<species>`, that in turn contains a file for each pairwise species comparison, listing the orthologs between that species pair (`split_ortholog_files` writes them for the results of a run without `-pof`).
 
 **```/Comparative_Genomics_Statistics```**
 - Files containing summary statistics across all orthogroups, as well as comparisons between each pair of species.
