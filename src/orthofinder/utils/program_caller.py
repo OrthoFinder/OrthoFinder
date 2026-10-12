@@ -264,6 +264,7 @@ class ProgramCaller(object):
     def __init__(self, configure_file):
         self.msa = dict()
         self.tree = dict()
+        self.species_tree = dict()  # species tree from gene trees (-ST)
         self.search_db = dict()
         self.search_search = dict()
         # Optional, for a search program OrthoFinder cannot read the output
@@ -317,6 +318,11 @@ class ProgramCaller(object):
                             print(("Tree inference method '%s' has already been defined, skipping config file entry." % name))
                         else:
                             self.tree[name] = Method(name, v)
+                    elif v["program_type"] == "species_tree":
+                        if name in self.species_tree:
+                            print(("Species tree inference method '%s' has already been defined, skipping config file entry." % name))
+                        else:
+                            self.species_tree[name] = Method(name, v)
                     elif v["program_type"] == "search":
                         if ("db_cmd" not in v) or ("search_cmd" not in v):
                             print(("WARNING: Incorrectly formatted configuration file entry: %s" % name))
@@ -336,13 +342,14 @@ class ProgramCaller(object):
                                 )
                     else:
                         print(("WARNING: Incorrectly formatted configuration file entry: %s" % name))
-                        print(("'program_type' should be 'msa' or 'tree', got '%s'" % v["program_type"]))
+                        print(("'program_type' should be 'msa', 'tree', 'species_tree' or 'search', got '%s'" % v["program_type"]))
                 except InvalidEntryException:
                     pass
 
     def add(self, other):
         self.msa.update(other.msa)
         self.tree.update(other.tree)
+        self.species_tree.update(other.species_tree)
         self.search_db.update(other.search_db)
         self.search_search.update(
             other.search_search
@@ -354,6 +361,9 @@ class ProgramCaller(object):
 
     def list_tree_methods(self):
         return [key for key in self.tree]
+
+    def list_species_tree_methods(self):
+        return [key for key in self.species_tree]
 
     def get_search_output_fields(self, method_name):
         """The columns declared with "output_fields" for a search method, or None."""
@@ -399,6 +409,15 @@ class ProgramCaller(object):
             n_seqs=n_seqs,
             method_threads=method_threads,
         )
+
+    def get_species_tree_command(self, method_name, infilename, outfilename, threads):
+        """
+        (cmd, actual_target_fn) for a species tree program (see _get_command):
+        infilename has the gene trees, one per line, their leaves named by
+        species ID; threads fills METHODTHREAD (it runs on its own).
+        """
+        return self._get_command("species_tree", method_name, infilename, outfilename, "SpeciesTree",
+                                 method_threads=str(threads))
 
     def get_search_method_command_db(
         self,
@@ -666,6 +685,11 @@ class ProgramCaller(object):
             "tree", method_name, d_test, method_threads=method_threads
         )
 
+    def test_species_tree_method(self, method_name, d_test, method_threads="1"):
+        return self._test_method(
+            "species_tree", method_name, d_test, method_threads=method_threads
+        )
+
     def test_search_method(
         self,
         method_name,
@@ -782,17 +806,16 @@ class ProgramCaller(object):
                 os.rename(actual, target)
         return stdout, stderr, cmd
 
-    def _should_skip_test(self, method_type, method_name):
-        if method_type == "msa":
-            dictionary = self.msa
-        elif method_type == "tree":
-            dictionary = self.tree
-        elif method_type == "search_db":
-            dictionary = self.search_db
-        elif method_type == "search_search":
-            dictionary = self.search_search
-        else:
+    def _methods(self, method_type):
+        """The configured methods of a type."""
+        methods = {"msa": self.msa, "tree": self.tree, "species_tree": self.species_tree,
+                   "search_db": self.search_db, "search_search": self.search_search}
+        if method_type not in methods:
             raise NotImplementedError
+        return methods[method_type]
+
+    def _should_skip_test(self, method_type, method_name):
+        dictionary = self._methods(method_type)
         if method_name not in dictionary:
             raise Exception(
                 "No %s method called '%s'"
@@ -807,7 +830,10 @@ class ProgramCaller(object):
         if self._should_skip_test(method_type, method_name):
             printer.print(" - test has been manually over-ridden", style="warning")
             return True
-        infn = self._write_test_sequence(d_test)
+        if method_type == "species_tree":
+            infn = self._write_test_gene_trees(d_test)
+        else:
+            infn = self._write_test_sequence(d_test)
         propossed_outfn = infn + f".{method_type}.{method_name}.output.txt"
         stdout, stderr, cmd = self._call_method(
             method_type,
@@ -878,6 +904,8 @@ class ProgramCaller(object):
             return "multiple sequence alignment"
         elif method_type == "tree":
             return "tree"
+        elif method_type == "species_tree":
+            return "species tree"
         elif method_type == "search_db" or method_type == "search_search":
             return "alignment search"
         else:
@@ -906,16 +934,7 @@ class ProgramCaller(object):
                                    otherwise (actual_fn, outfilename_proposed)
         """
 
-        if method_type == "msa":
-            dictionary = self.msa
-        elif method_type == "tree":
-            dictionary = self.tree
-        elif method_type == "search_db":
-            dictionary = self.search_db
-        elif method_type == "search_search":
-            dictionary = self.search_search
-        else:
-            raise NotImplementedError
+        dictionary = self._methods(method_type)
         if method_name not in dictionary:
             raise Exception(
                 "No %s method called '%s'"
@@ -972,6 +991,14 @@ class ProgramCaller(object):
         fn = working_dir + "Species0.fa"
         with open(fn, "w") as outfile:
             outfile.write(shorter_sequence)
+        return fn
+
+    def _write_test_gene_trees(self, working_dir):
+        """Gene trees as a species tree program gets them: one per line, leaves named by species ID."""
+        fn = working_dir + "GeneTrees.nwk"
+        with open(fn, "w") as outfile:
+            for _ in range(20):
+                outfile.write("(((0:1,1:1):2,(2:1,3:1):2,4:3):4);\n")
         return fn
 
     def _write_test_sequence_longer(self, working_dir, fasta_text=None):

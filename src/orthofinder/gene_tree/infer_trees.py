@@ -44,10 +44,11 @@ def infer_gene_and_species_trees(
         root_from_previous = False,
         i_og_restart=0,
         fix_files=True,
-        astral=True,
+        species_tree_program=None,
         dynamic_threads=False,
         n_skip=50,
-        msa_min_seq=10
+        msa_min_seq=10,
+        species_tree_alignment=False,
     ):
     """
     1. Setup:
@@ -108,10 +109,11 @@ def infer_gene_and_species_trees(
             method_threads_small=method_threads_small, 
             threshold=threshold,
             fix_files=fix_files,
-            astral=astral,
+            species_tree_program=species_tree_program,
             dynamic_threads=dynamic_threads,
             n_skip=n_skip,
-            msa_min_seq=msa_min_seq
+            msa_min_seq=msa_min_seq,
+            species_tree_alignment=species_tree_alignment,
         )
         util.print_time("Done MSA/Trees")
         if q_do_msa_species_tree:

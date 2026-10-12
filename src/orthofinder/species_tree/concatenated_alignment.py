@@ -4,7 +4,7 @@ from collections import Counter, defaultdict
 
 import numpy as np
 
-from ..utils import file_handler, util
+from ..utils import file_handler, printing, util
 
 try:
     from rich import print
@@ -133,40 +133,89 @@ def read_alignment(fn):
     return MSA(msa)
 
 
-def create_concatenated_alignment(ogs_to_use_ids, ogs, alignment_filename_function, output_filename, f_single_copy, f_max_gap=0.5):
+def orthogroup_matrix(ogs, min_seq):
+    """
+    (og_matrix, iogs4): the number of genes of each species (columns) in each
+    orthogroup with at least min_seq genes (rows, the orthogroups iogs4).
+    ogs: the orthogroups, lists of genes (with i_sp).
+    """
+    iogs4 = [i for i, og in enumerate(ogs) if len(og) >= min_seq]
+    ogs = [ogs[i] for i in iogs4]
+    i_species = sorted(set([gene.i_sp for og in ogs for gene in og]))
+    species_index_dict = {i_sp: i_col for i_col, i_sp in enumerate(i_species)}
+    # (i, j)-th entry of ogMatrix gives the number of genes from i in orthologous group j
+    og_matrix = np.zeros((len(ogs), len(i_species)))
+    for i_og, og in enumerate(ogs):
+        for gene in og:
+            og_matrix[i_og, species_index_dict[gene.i_sp]] += 1
+    return og_matrix, iogs4
+
+
+def orthogroup_pieces(fn, selected_seqs, all_species):
+    """
+    One orthogroup's piece of each species' row of the concatenated alignment.
+    fn: its alignment; selected_seqs: the IDs of its single-copy genes;
+    all_species: the IDs of all species.
+    Returns ("ok", {species ID: aligned sequence}), or ("different lengths", None)
+    or ("failed", None) if the alignment cannot be used.
+    """
+    try:
+        alignment = read_alignment(fn)
+        # This orthogroup's piece of each species' row, added only once the
+        # whole alignment is known to be usable, so the rows stay in step.
+        pieces = {}
+        for name, al in alignment.seqs.items():
+            if name.split()[0] in selected_seqs:
+                i_sp = name.split("_")[0]
+                pieces[i_sp] = al.replace('*', '-')  # this allows for the MSA method to have failed to put the sequence in the MSA
+        if any(len(al) != alignment.length for al in pieces.values()):
+            # A malformed MSA (rows of different lengths) would shift the
+            # columns of every species after it.
+            return "different lengths", None
+        # now put blanks for the missing species, in a fixed order (set
+        # order differs between runs, and sets the rows' order)
+        for i_sp in sorted(all_species.difference(pieces), key=int):
+            pieces[i_sp] = "-"*(alignment.length)
+        return "ok", pieces
+    except IndexError:
+        # allow empty MSA (could fail for unknown reason)
+        return "failed", None
+
+
+def create_concatenated_alignment(ogs_to_use_ids, ogs, alignment_filename_function, output_filename, f_single_copy, f_max_gap=0.5,
+                                  q_progress=False, species_names=None):
+    """
+    q_progress: show a progress bar
+    species_names: {species ID: name} to name the rows (by default their species IDs)
+    """
     all_species = {str(gene.i_sp) for og in ogs for gene in og}
+    if q_progress:
+        progressbar, task = printing.get_progressbar(len(ogs_to_use_ids))
+        progressbar.start()
+    results = []
+    try:
+        for i_og in ogs_to_use_ids:
+            species_counts = Counter([gene.i_sp for gene in ogs[i_og]])
+            selected_seqs = {gene.to_string() for gene in ogs[i_og] if species_counts[gene.i_sp] == 1}
+            fn = alignment_filename_function(i_og)
+            results.append((fn, orthogroup_pieces(fn, selected_seqs, all_species)))
+            if q_progress:
+                progressbar.update(task, advance=1)
+    finally:
+        if q_progress:
+            progressbar.stop()
     # Each species' alignment is collected as a list of pieces and joined once:
     # appending to a growing string copies it every time.
     concatentaed_alignments = defaultdict(list)
-    for i_og in ogs_to_use_ids:
-        try:
-            species_counts = Counter([gene.i_sp for gene in ogs[i_og]])
-            selected_seqs = {gene.to_string() for gene in ogs[i_og] if species_counts[gene.i_sp] == 1}
-            alignment = read_alignment(alignment_filename_function(i_og))
-            # This orthogroup's piece of each species' row, added only once the
-            # whole alignment is known to be usable, so the rows stay in step.
-            pieces = {}
-            for name, al in alignment.seqs.items():
-                if name.split()[0] in selected_seqs:
-                    i_sp = name.split("_")[0]
-                    pieces[i_sp] = al.replace('*', '-')  # this allows for the MSA method to have failed to put the sequence in the MSA
-            if any(len(al) != alignment.length for al in pieces.values()):
-                # A malformed MSA (rows of different lengths) would shift the
-                # columns of every species after it.
-                print("WARNING: The sequences of an MSA have different lengths, it is not used for the species tree: %s"
-                      % alignment_filename_function(i_og))
-                continue
-            # now put blanks for the missing species, in a fixed order (set
-            # order differs between runs, and sets the rows' order)
-            for i_sp in sorted(all_species.difference(pieces), key=int):
-                pieces[i_sp] = "-"*(alignment.length)
+    for fn, (status, pieces) in results:
+        if status == "different lengths":
+            print("WARNING: The sequences of an MSA have different lengths, it is not used for the species tree: %s" % fn)
+        elif status == "failed":
+            print("WARNING: An MSA failed for an unknown reason: %s" % fn)
+            print("No tree or orthologs will be inferred for this orthogroup. To correct the issue, identify & correct the problematic gene sequence and rerun.")
+        else:
             for i_sp, al in pieces.items():
                 concatentaed_alignments[i_sp].append(al)
-        except IndexError:
-            # allow empty MSA (could fail for unknown reason)
-            print("WARNING: An MSA failed for an unknown reason: %s" % alignment_filename_function(i_og))
-            print("No tree or orthologs will be inferred for this orthogroup. To correct the issue, identify & correct the problematic gene sequence and rerun.")
-            pass
     concatentaed_alignments = {i_sp: "".join(parts) for i_sp, parts in concatentaed_alignments.items()}
     # Trim the completed alignment: to 50% of fraction of species present
     max_gap = (1.-f_max_gap*f_single_copy)*len(all_species)
@@ -175,6 +224,7 @@ def create_concatenated_alignment(ogs_to_use_ids, ogs, alignment_filename_functi
         print("Please correct the error and re-run.")
         util.fail()
     names = list(concatentaed_alignments.keys())
+    row_name = (lambda i_sp: i_sp) if species_names is None else (lambda i_sp: species_names[i_sp])
     n_char = 80
     try:
         # one byte per position (a character array takes 4, and building it
@@ -188,7 +238,7 @@ def create_concatenated_alignment(ogs_to_use_ids, ogs, alignment_filename_functi
         M = M[:, (M == ord("-")).sum(axis=0) <= max_gap]
         with open(output_filename, 'w') as outfile:
             for i_seq, name in enumerate(names):
-                outfile.write(">%s\n" % name)
+                outfile.write(">%s\n" % row_name(name))
                 seq = M[i_seq].tobytes().decode("latin-1")
                 for i in range(0, len(seq), n_char):
                     outfile.write(seq[i:i+n_char] + "\n")
@@ -199,7 +249,7 @@ def create_concatenated_alignment(ogs_to_use_ids, ogs, alignment_filename_functi
     M = M[:, i_keep]
     with open(output_filename, 'w') as outfile:
         for i_seq, name in enumerate(names):
-            outfile.write(">%s\n" % name)
+            outfile.write(">%s\n" % row_name(name))
             seq = M[i_seq,:].tolist()[0]
             for i in range(0, len(seq), n_char):
                 outfile.write("".join(seq[i:i+n_char]) + "\n")

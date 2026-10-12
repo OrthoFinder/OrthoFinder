@@ -50,6 +50,11 @@ def make_results(d):
         "Orthogroup\tSpecies Tree Node\tGene Tree Node\tSupport\tType\tGenes 1\tGenes 2\n"
         "OG0000000\tSp_A\tn1\t1.0\tTerminal\tSp_A_a1\tSp_A_a2\n"
         "OG0000000\tN0\tn0\t0.4\tNon-Terminal\tSp_A_a1, Sp_A_a2\tSp_B_b1\n")
+    (d / "Phylogenetic_Hierarchical_Orthogroups").mkdir()
+    (d / "Phylogenetic_Hierarchical_Orthogroups" / "N0.tsv").write_text(
+        "HOG\tOG\tGene Tree Parent Clade\tSp_A\tSp_B\n"
+        "N0.HOG0000000\tOG0000000\tn0\ta1, a2\tb1\n"
+        "N0.HOG0000001\tOG0000001\tn0\ta3\tb2, b3\n")
     (d / "MultipleSequenceAlignments").mkdir()  # OG0000001 has none
     (d / "MultipleSequenceAlignments" / "OG0000000.fa").write_text(
         ">Sp_B_b1\nMK-L\nV\n>Sp_A_a2\nMKAL-\n>Sp_A_a1\nM--LV\n")
@@ -70,8 +75,9 @@ def test_write_tree_pages(tmp_path, capsys):
     make_results(tmp_path)
     assert tree_pages.write_tree_pages(str(tmp_path)) == 2
     assert "1 gene trees could not be read" in capsys.readouterr().out
+    # each gene tree; the explorer's HOGs of each species tree node and genes of each species
     assert sorted(p.name for p in (tmp_path / "Resolved_Gene_Trees" / "Tree_Data").iterdir()) == \
-        ["OG0000000.js", "OG0000001.js"]
+        ["All_Orthogroups.js", "HOGs_N0.js", "OG0000000.js", "OG0000001.js", "Species_0.js", "Species_1.js"]
     colour = dict(zip(["Sp_A", "Sp_B"], tree_pages.PALETTE))
 
     data = page_data(tmp_path)
@@ -96,7 +102,7 @@ def test_tree_data(tmp_path):
     assert og0 == {"og": "OG0000000",
                    "genes": [["Sp_A: a1", 0], ["Sp_A: a2", 0], ["Sp_B: b1", 1]],
                    "nodes": [[-1, 0, "n0"], [0, 0.3, "n1"], [1, 0.1, 0], [1, 0.2, 1], [0, 0.4, 2]],
-                   "dups": [["n1", 1.0], ["n0", 0.4]],
+                   "dups": [["n1", 1.0, "Sp_A"], ["n0", 0.4, "N0"]],
                    "seqs": ["M--LV", "MKAL-", "MK-LV"]}
     og1 = tree_data(tmp_path, "OG0000001")
     assert "seqs" not in og1 and og1["dups"] == []
@@ -156,13 +162,75 @@ def test_command(tmp_path, capsys):
     assert (tmp_path / "Resolved_Gene_Trees" / "Resolved_Gene_Trees.html").exists()
 
 
-def test_link_to_the_stats_page(tmp_path):
+def test_links_to_the_other_pages(tmp_path):
     make_results(tmp_path)
     tree_pages.write_tree_pages(str(tmp_path))
-    assert page_data(tmp_path)["stats_page"] is None  # no statistics page (--stats-view)
-    tree_pages.write_tree_pages(str(tmp_path), link_stats_page=True)  # as a run with --stats-view: written after this page
-    assert page_data(tmp_path)["stats_page"] == "../Comparative_Genomics_Statistics/Statistics.html"
+    data = page_data(tmp_path)
+    assert data["stats_page"] is None and data["groups_page"] is None  # no other pages
+    assert data["nav"] == [["Gene trees", "../Resolved_Gene_Trees/Resolved_Gene_Trees.html", 1, "trees"]]
+    # as a run with --view: the other pages are written after this one
+    tree_pages.write_tree_pages(str(tmp_path), {"trees", "stats", "groups"})
+    data = page_data(tmp_path)
+    assert data["stats_page"] == "../Comparative_Genomics_Statistics/Statistics.html"
+    assert data["groups_page"] == "../Orthogroups/Groups.html"
+    assert [name for name, _, _, _ in data["nav"]] == ["Gene trees", "Statistics", "Orthogroups & HOGs"]
+    # the command, for results with a statistics page
     (tmp_path / "Comparative_Genomics_Statistics").mkdir()
     (tmp_path / "Comparative_Genomics_Statistics" / "Statistics.html").write_text("")
-    tree_pages.write_tree_pages(str(tmp_path))  # the command, for results with a statistics page
-    assert page_data(tmp_path)["stats_page"] == "../Comparative_Genomics_Statistics/Statistics.html"
+    tree_pages.write_tree_pages(str(tmp_path))
+    data = page_data(tmp_path)
+    assert data["stats_page"] == "../Comparative_Genomics_Statistics/Statistics.html" and data["groups_page"] is None
+
+
+def data_file(d, name, callback):
+    text = (d / "Resolved_Gene_Trees" / "Tree_Data" / name).read_text()
+    assert text.startswith(callback + "(") and text.endswith(");\n")
+    return json.loads(text[len(callback) + 1:-len(");\n")])
+
+
+def test_explorer_data(tmp_path):
+    make_results(tmp_path)
+    tree_pages.write_tree_pages(str(tmp_path))
+    data = page_data(tmp_path)
+    assert data["hog_nodes"] == [["N0", 2]]
+    assert data["species_genes"] == [4, 3]  # assigned and unassigned
+    # each HOG's genes by species number, as in the HOG file
+    assert data_file(tmp_path, "HOGs_N0.js", "hogsLoaded") == {"node": "N0", "hogs": [
+        ["N0.HOG0000000", "OG0000000", "n0", [[0, ["a1", "a2"]], [1, ["b1"]]]],
+        ["N0.HOG0000001", "OG0000001", "n0", [[0, ["a3"]], [1, ["b2", "b3"]]]]]}
+    assert data_file(tmp_path, "Species_0.js", "speciesLoaded") == {
+        "k": 0, "orthogroups": [["OG0000000", ["a1", "a2"]], ["OG0000001", ["a3"]]], "unassigned": ["a4"]}
+    assert data_file(tmp_path, "Species_1.js", "speciesLoaded") == {
+        "k": 1, "orthogroups": [["OG0000000", ["b1"]], ["OG0000001", ["b2", "b3"]]], "unassigned": []}
+
+
+def test_explorer_without_hogs(tmp_path):
+    make_results(tmp_path)
+    shutil.rmtree(tmp_path / "Phylogenetic_Hierarchical_Orthogroups")  # e.g. -og
+    tree_pages.write_tree_pages(str(tmp_path))
+    assert page_data(tmp_path)["hog_nodes"] == []
+
+
+def test_reconcile_duplication_and_losses():
+    # A duplication at the root: one copy goes on to A and B (lost in C), the other to A and C (lost in B)
+    s_nodes, s_names = tree_pages.flat_tree(Tree("((A:1,B:1)N1:1,C:1)N0;", parser=1))
+    number = {"A": 0, "B": 1, "C": 2}
+    smap = tree_pages.SpeciesTreeMap(s_nodes, [number[n] for n in s_names])
+    g_nodes, g_names = tree_pages.flat_tree(Tree("((A_a1,B_b1)n1,(A_a2,C_c1)n2)n0;", parser=1))
+    copies, losses, root = tree_pages.reconcile(g_nodes, [number[n[0]] for n in g_names], smap)
+    node = {(s_names[x] if isinstance(x, int) else x): k for k, (_, _, x) in enumerate(s_nodes)}
+    assert root == node["N0"]
+    assert {name: copies[k] for name, k in node.items()} == {"N0": 1, "N1": 2, "A": 2, "B": 1, "C": 1}
+    assert {name: losses[k] for name, k in node.items()} == {"N0": 0, "N1": 0, "A": 0, "B": 1, "C": 1}
+
+
+def test_all_orthogroups(tmp_path):
+    make_results(tmp_path)
+    tree_pages.write_tree_pages(str(tmp_path))
+    # species tree nodes: N0, Sp_A, Sp_B; both gene trees are a speciation at N0 (duplications within species)
+    assert page_data(tmp_path)["all_orthogroups"] == {
+        "n_trees": 2, "n_orthogroups": 2, "copies": [2, 2, 2], "losses": [0, 0, 0], "gains": [2, 0, 0],
+        "dups": [[1, 0], [1, 1], [0, 0]]}  # from Duplications.tsv: n0 at N0 (support 0.4), n1 at Sp_A
+    assert data_file(tmp_path, "All_Orthogroups.js", "allOrthogroupsLoaded") == {
+        "gained": [["OG0000000", "OG0000001"], [], []], "lost": [[], [], []],
+        "duplicated": [[["OG0000000", 1]], [["OG0000000", 1]], []]}

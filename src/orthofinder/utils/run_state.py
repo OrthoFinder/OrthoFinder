@@ -33,7 +33,10 @@ settings a restart needs.
               "i_og_restart": the first orthogroup whose gene tree is still to
               be inferred (the others were inferred to find the clades).
   settings    the settings a restart continues with (SETTINGS), unless given
-              again on its command line.
+              again on its command line. A custom scoring matrix
+              (--custom-matrix) is the copy in the working directory that
+              the searches used, so a restart needs neither the file given
+              nor --custom-matrix again.
 
 Paths inside the results directory are kept relative to it, so a results
 directory that is copied or moved keeps working; others are absolute.
@@ -41,6 +44,8 @@ directory that is copied or moved keeps working; others are absolute.
 import json
 import os
 import shutil
+
+from ..search import diamond_scoring
 
 VERSION = 1
 STATE_FN = "run_state.json"
@@ -195,10 +200,18 @@ def assign_info(results_dir, state):
     return info
 
 
+# The scoring of DIAMOND searches is one setting: if any of these options is
+# given again, none of the matrix and gap penalties is restored.
+SCORING_FLAGS = ("--matrix", "--custom-matrix", "-go", "--gapopen", "-ge", "--gapextend")
+SCORING_SETTINGS = ("score_matrix", "gapopen", "gapextend")
+
 # The settings a restart continues with (a run's, unless given again): name
 # in options, and the command-line options that set it.
 SETTINGS = (
     ("search_program", ("-S", "--search")),
+    ("score_matrix", SCORING_FLAGS),
+    ("gapopen", SCORING_FLAGS),
+    ("gapextend", SCORING_FLAGS),
     ("dna", ("-d", "--dna")),
     ("q_double_blast", ("-1",)),
     ("v2_scores", ("--scores-v2",)),
@@ -209,28 +222,60 @@ SETTINGS = (
     ("min_seq", ("-ms", "--min-seq")),
     ("msa_min_seq", ("--msa-min-seq",)),
     ("q_trim", ("-z",)),
-    ("astral", ("-ST", "--species-tree-program")),
+    ("species_tree_program", ("-ST", "--species-tree-program")),
     ("n_skip", ("-nk",)),
     ("q_split_para_clades", ("-y",)),
     ("q_add_species_to_ids", ("-X",)),
 )
 
 
+def _is_path(name, value):
+    """Whether a setting is a path: a custom scoring matrix (a file, not one of DIAMOND's)."""
+    return name == "score_matrix" and isinstance(value, str) and diamond_scoring.is_custom_matrix(value)
+
+
 def save_settings(results_dir, options):
     """Keep the settings of this run (see SETTINGS)."""
-    update(results_dir, "settings", **{name: getattr(options, name) for name, _ in SETTINGS})
+    settings = {name: getattr(options, name) for name, _ in SETTINGS}
+    settings = {name: _record(results_dir, v) if _is_path(name, v) else v for name, v in settings.items()}
+    update(results_dir, "settings", **settings)
 
 
-def restore_settings(state, options, args):
+def _saved_settings(state, results_dir):
+    """The settings kept in a state, with paths absolute (results_dir: where the state is; None: as kept)."""
+    saved = dict(state.get("settings", {}))
+    if results_dir is not None:
+        saved = {name: _resolve(results_dir, v) if _is_path(name, v) else v for name, v in saved.items()}
+    return saved
+
+
+def restore_settings(state, options, args, names=None, results_dir=None):
     """
     Set the options to those of the run being continued, except those given
-    on this command line (args). Returns [(name, value)] of those changed.
+    on this command line (args), or only those in names. results_dir: the
+    results directory of the state (find), for its paths. Returns
+    [(name, value)] of those changed.
     """
     given = set(args)
-    saved = state.get("settings", {})
+    saved = _saved_settings(state, results_dir)
+    if "astral" in saved and "species_tree_program" not in saved:
+        # runs before -ST named a configured program: ASTRAL-Pro or the default
+        saved["species_tree_program"] = "astral-pro" if saved["astral"] else None
     changed = []
     for name, flags in SETTINGS:
+        if names is not None and name not in names:
+            continue
         if name in saved and not given.intersection(flags) and getattr(options, name) != saved[name]:
             setattr(options, name, saved[name])
             changed.append((name, saved[name]))
     return changed
+
+
+def scoring_differences(state, options, results_dir=None):
+    """
+    The scoring settings given that differ from those of the run being
+    continued, as [(name, its value, this run's value)] ([] if it has none).
+    """
+    saved = _saved_settings(state, results_dir)
+    return [(name, saved[name], getattr(options, name)) for name in SCORING_SETTINGS
+            if name in saved and str(saved[name]) != str(getattr(options, name))]

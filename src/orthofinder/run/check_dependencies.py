@@ -1,5 +1,6 @@
 from ..utils import util, program_caller, file_handler, parallel_task_manager
 from ..gene_tree import msa_trees
+from . import process_args
 import os
 import subprocess
 from .. import __location__
@@ -16,21 +17,35 @@ def can_run_mcl():
         printer.print("Please check MCL is installed and in the system path. See information above.\n", style="error")
         return False
 
-def can_run_astral():
-    d_deps_test = file_handler.handler.get_dependencies_check_dir()
-    fn_test = d_deps_test + "astral.input.nwk"
-    with open(fn_test, 'w') as outfile:
-        for _ in range(20):
-            outfile.write("(((A:1,B:1):2,(C:1,D:1):2,E:3):4);i\n")
-    fn_output = d_deps_test + "astral.output.nwk"
-    cmd = " ".join(["astral-pro", "-i", fn_test, "-o", fn_output, "-t", "2"])
-    if parallel_task_manager.can_run_command(cmd, q_allow_stderr=True, q_require_stdout=False, q_check_return_code=True):
-        return True
-    else:
-        printer.print("ERROR: Cannot run astral-pro", style="error")
-        program_caller.ProgramCaller.print_dependency_check_failure(cmd)
-        printer.print("Please check astral-pro is installed and that the executables are in the system path\n", style="error")
+def can_run_species_tree_program(prog_caller, program):
+    """Whether the species tree program (-ST) runs, on a few small gene trees."""
+    if program not in prog_caller.list_species_tree_methods():
+        # e.g. restored for a restart, from a config file no longer given
+        printer.print('ERROR: The species tree program "%s" is not configured (program_type "species_tree" in '
+                      'config.json or a file given with --config)\n' % program, style="error")
         return False
+    d_deps_test = file_handler.handler.get_dependencies_check_dir()
+    result = prog_caller.test_species_tree_method(program, d_deps_test, method_threads="2")
+    if result is True:   # not tested: "skip_check" in its config entry
+        return True
+    success, stdout, stderr, cmd = result
+    if success:
+        return True
+    printer.print("ERROR: Cannot run %s" % program, style="error")
+    prog_caller.print_dependency_check_failure(cmd)
+    printer.print("Please check %s is installed and that the executables are in the system path\n" % program, style="error")
+    return False
+
+
+def species_tree_program_to_check(options, q_assign):
+    """The species tree program the analysis will run (-ST, or for --assign ASTRAL-Pro), or None."""
+    if q_assign:
+        return process_args.assign_species_tree_program(options)
+    q_species_tree = not (options.q_stop_after_prepare or options.q_stop_after_groups or options.q_stop_after_mcl_groups
+                          or options.q_start_from_trees or options.q_start_from_species_trees or options.species_tree_fn)
+    if options.species_tree_program is not None and options.q_msa_trees and q_species_tree:
+        return options.species_tree_program
+    return None
 
 def check_dependencies(options, user_specified_m, prog_caller, dir_for_temp_files, q_assign=False):
     """q_assign: an --assign analysis (also when continued with -b)"""
@@ -66,9 +81,9 @@ def check_dependencies(options, user_specified_m, prog_caller, dir_for_temp_file
             print("Dependencies have been met for inference of orthogroups but not for the subsequent ortholog inference.")
             print("Either install the required dependencies or use the option '-og' to stop the analysis after the inference of orthogroups.\n")
             util.fail()
-    if q_assign:
-        if not can_run_astral():
-            util.fail()
+    species_tree_program = species_tree_program_to_check(options, q_assign)
+    if species_tree_program is not None and not can_run_species_tree_program(prog_caller, species_tree_program):
+        util.fail()
 
 def write_test_distances_file(test_fn):
     with open(test_fn, 'w') as outfile:

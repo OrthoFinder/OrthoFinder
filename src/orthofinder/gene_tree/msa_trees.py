@@ -41,7 +41,7 @@ except ImportError:
 from ..utils import util, parallel_task_manager
 from ..utils import file_handler
 from . import trim
-from ..species_tree import astral as astral_pro
+from ..species_tree import from_gene_trees
 from ..utils import printing
 from ..phylo import taxa
 from ..utils import command_runner
@@ -131,6 +131,55 @@ def trim_fn(fn, msa_min_seq):
 -----------------------------------------------------------------------------
 """    
      
+class SpeciesTreeFirstProgress(object):
+    """
+    The progress of the alignments and trees, shown as two progress bars: one
+    for the orthogroups for the species tree, then one for the rest. They run
+    as one batch: the second bar starts with those of the rest already done.
+    n_rest includes the tree of the concatenated alignment, added later.
+    """
+
+    def __init__(self, species_tree_units, n_rest):
+        self.waiting_for = {id(unit) for unit in species_tree_units}
+        self.species_tree_bar = command_runner.Progress(len(species_tree_units))
+        self.rest_bar = None
+        self.n_rest = n_rest
+        self.n_rest_done = 0
+
+    def start(self):
+        self.species_tree_bar.start()
+
+    def done(self, cmd_unit):
+        if id(cmd_unit) in self.waiting_for:
+            self.waiting_for.discard(id(cmd_unit))
+            self.species_tree_bar.done(cmd_unit)
+            if not self.waiting_for:
+                self.species_tree_bar.stop()
+        elif self.rest_bar is None:
+            self.n_rest_done += 1
+        else:
+            self.rest_bar.done(cmd_unit)
+
+    def species_tree_done(self):
+        return not self.waiting_for
+
+    def started_rest(self):
+        return self.rest_bar is not None
+
+    def start_rest(self):
+        self.rest_bar = command_runner.Progress(self.n_rest)
+        self.rest_bar.start()
+        self.rest_bar.advance(self.n_rest_done)
+
+    def added(self, n):
+        pass    # the tree of the concatenated alignment is in n_rest already
+
+    def stop(self):
+        self.species_tree_bar.stop()
+        if self.rest_bar is not None:
+            self.rest_bar.stop()
+
+
 class TreesForOrthogroups(object):
     def __init__(self, program_caller, msa_program, tree_program):
         self.program_caller = program_caller
@@ -212,11 +261,19 @@ class TreesForOrthogroups(object):
             method_threads_small=None, 
             threshold=None,
             fix_files=True,
-            astral=False,
+            species_tree_program=None,
             dynamic_threads=False,
             n_skip=50,
             msa_min_seq=10,
+            species_tree_alignment=False,
         ):
+        """
+        species_tree_program: the species tree from the gene trees with this
+            program (-ST), instead of from the concatenated alignment
+        species_tree_alignment: with species_tree_program, also write the
+            concatenated alignment (it is always written without it)
+        """
+        q_from_gene_trees = species_tree_program is not None
 
         print_on_error = True
         id_dict.update(species_id_dict) # same code will then also convert concatenated alignment for species tree
@@ -280,7 +337,7 @@ class TreesForOrthogroups(object):
                 dynamic_threads=dynamic_threads
             )
             if q_do_species_tree:
-                if not astral:
+                if not q_from_gene_trees:
                     create_concatenated_alignment(
                         i_ogs_for_species_tree, 
                         ogs, 
@@ -304,11 +361,11 @@ class TreesForOrthogroups(object):
             
             return results_dirs_full_path[:2]
         
-        # Otherwise, alignments and trees
-        # Strategy is
-        # 1. Do alignments (and trees) require for species tree
-        # 2. Create concatenated alignment
-        # 3. Create second list of commands [speciestree] + [remaining alignments and trees]
+        # Otherwise, alignments and trees, as one batch:
+        # 1. Alignments (and trees) of the orthogroups for the species tree, first
+        # 2. The other alignments and trees, largest orthogroups first
+        # 3. When the orthogroups for the species tree are done, the concatenated
+        #    alignment is created and its tree is started ahead of those still queued
         alignment_files_to_use = [self.get_alignment_filename(i) for i in iogs_align]
 
         orig_tree_commands_and_filenames, orig_iogs_tree = \
@@ -319,101 +376,77 @@ class TreesForOrthogroups(object):
                 method_threads=None  # filled in when run, which reserves that many cores (command_runner.fill_method_threads)
         )
 
-        tree_commands_and_filenames = copy.deepcopy(orig_tree_commands_and_filenames)
-        iogs_tree = copy.deepcopy(orig_iogs_tree)
-        commands_and_filenames = []
-        tree_tasksize = None
-        if q_do_species_tree:
-            if not astral:
-                print(("Species tree: Using %d orthogroups with minimum of %0.1f%% of species having single-copy genes in any orthogroup" % (len(i_ogs_for_species_tree), 100.*f_single_copy)))
-            printing.print_underline("Inferring multiple sequence alignments for species tree") 
-            # util.print_time("This may take some time...")
-            # Do required alignments and trees
-            species_tree_fn_ids = file_handler.handler.get_species_tree_unrooted_fn()
-            orig_commands_and_filenames = []
-            if q_trim:
-                for i in i_ogs_for_species_tree:
-                    orig_commands_and_filenames.append([align_commands_and_filenames[i], 
-                                                (trim_fn, (alignment_files_to_use[i], msa_min_seq)), 
-                                                tree_commands_and_filenames[i]])
-            else:
-                for i in i_ogs_for_species_tree:
-                    orig_commands_and_filenames.append([align_commands_and_filenames[i],
-                                                   tree_commands_and_filenames[i]])
-            commands_and_filenames = copy.deepcopy(orig_commands_and_filenames)        
-            if cmd_order == "ascending":
-                # tree_tasksize = [len(og) for og in tree_filtered_ogs[::-1]]
-                orig_commands_and_filenames = orig_commands_and_filenames[::-1]
-                tree_tasksize = [
-                        os.stat(item).st_size
-                        for cmd in orig_commands_and_filenames
-                        for item in cmd[0][0].split() if os.path.isfile(item) and os.path.exists(item)
-                    ]
-                
-            command_runner.run_parallel_commands_and_move_results_file(
-                n_processes, 
-                orig_commands_and_filenames, 
-                True, 
-                tasksize=tree_tasksize,
-                method_threads=method_threads,
-                method_threads_large=method_threads_large,
-                method_threads_small=method_threads_small, 
-                threshold=threshold,
-                cmd_order=cmd_order,
-                q_trim=q_trim,
-                q_print_on_error=print_on_error,
-                dynamic_threads=dynamic_threads
-            )
-            create_concatenated_alignment(i_ogs_for_species_tree, ogs, self.get_alignment_filename, concatenated_algn_fn, f_single_copy)
-            # write OGs used to file
-            d_species_tree = os.path.split(file_handler.handler.get_species_tree_results_fn(0, True))[0] + "/"
-            with open(d_species_tree + "Orthogroups_for_concatenated_alignment.txt", 'w') as outfile:
-                for iog in i_ogs_for_species_tree: outfile.write("OG%07d\n" % iog)
-            # Add species tree to list of commands to run
-            if not astral:
-                util.print_time("Scheduling species tree inference from concatenated alignment")
-                commands_and_filenames = [
-                    self.program_caller.get_tree_commands(
-                            self.tree_program, 
-                            [concatenated_algn_fn], 
-                            [species_tree_fn_ids], 
-                            ["SpeciesTree"],
-                            method_threads=None  # filled in when run, which reserves that many cores (command_runner.fill_method_threads)
-                        )
-                    ]
-            printing.print_underline("Inferring remaining multiple sequence alignments and gene trees") 
-        else:
-            printing.print_underline("Inferring multiple sequence alignments and gene trees")
-        # util.print_time("This may take some time...")
-        # Now continue as before
-        i_ogs_for_species_tree = set(i_ogs_for_species_tree)
-        iog_to_align_index = {iog: index for index, iog in enumerate(iogs_align)}
-        for i, iog in enumerate(iogs_tree):
-            if iog in i_ogs_for_species_tree: 
-                continue
-            if q_trim:
-                commands_and_filenames.append([align_commands_and_filenames[iog_to_align_index[iog]],
-                                              (trim_fn, (alignment_files_to_use[iog_to_align_index[iog]], msa_min_seq)),
-                                              tree_commands_and_filenames[i]])
-            else:
-                commands_and_filenames.append([align_commands_and_filenames[iog_to_align_index[iog]],
-                                              tree_commands_and_filenames[i]])
-        for iog in set(iogs_align).difference(iogs_tree):
-            if iog in i_ogs_for_species_tree: 
-                continue
-            commands_and_filenames.append([align_commands_and_filenames[iog_to_align_index[iog]]])
-        
+        iog_to_align = dict(zip(iogs_align, align_commands_and_filenames))
+        iog_to_tree = dict(zip(orig_iogs_tree, orig_tree_commands_and_filenames))
+        iog_to_alignment_fn = dict(zip(iogs_align, alignment_files_to_use))
+
+        def commands_for_og(iog):
+            commands = [iog_to_align[iog]]
+            if iog in iog_to_tree:
+                if q_trim:
+                    commands.append((trim_fn, (iog_to_alignment_fn[iog], msa_min_seq)))
+                commands.append(iog_to_tree[iog])
+            return commands
+
+        i_ogs_for_species_tree_set = set(i_ogs_for_species_tree)
+        species_tree_units = [commands_for_og(i) for i in i_ogs_for_species_tree if i in iog_to_align]
+        commands_and_filenames = species_tree_units + \
+            [commands_for_og(i) for i in iogs_align if i not in i_ogs_for_species_tree_set]
         if cmd_order == "ascending":
             commands_and_filenames = commands_and_filenames[::-1]
-            tree_tasksize = [
-                        os.stat(item).st_size
-                        for cmd in orig_commands_and_filenames
-                        for item in cmd[0][0].split() if os.path.isfile(item) and os.path.exists(item)
-                    ]
+
+        follow_up = None
+        progress = None
+        if q_do_species_tree:
+            if not q_from_gene_trees:
+                print(("Species tree: Using %d orthogroups with minimum of %0.1f%% of species having single-copy genes in any orthogroup" % (len(i_ogs_for_species_tree), 100.*f_single_copy)))
+            printing.print_underline("Inferring multiple sequence alignments for species tree") 
+            species_tree_fn_ids = file_handler.handler.get_species_tree_unrooted_fn()
+
+            def write_concatenated_alignment(q_progress=False):
+                create_concatenated_alignment(i_ogs_for_species_tree, ogs, self.get_alignment_filename, concatenated_algn_fn, f_single_copy,
+                                              q_progress=q_progress)
+                # write OGs used to file
+                d_species_tree = os.path.split(file_handler.handler.get_species_tree_results_fn(0, True))[0] + "/"
+                with open(d_species_tree + "Orthogroups_for_concatenated_alignment.txt", 'w') as outfile:
+                    for iog in i_ogs_for_species_tree: outfile.write("OG%07d\n" % iog)
+
+            def species_tree_commands():
+                """The commands for the tree of the concatenated alignment, which is created first (none with -ST)."""
+                commands = []
+                if not q_from_gene_trees:
+                    write_concatenated_alignment()
+                    util.print_time("Scheduling species tree inference from concatenated alignment")
+                    commands = [
+                        self.program_caller.get_tree_commands(
+                                self.tree_program, 
+                                [concatenated_algn_fn], 
+                                [species_tree_fn_ids], 
+                                ["SpeciesTree"],
+                                method_threads=None  # filled in when run, which reserves that many cores (command_runner.fill_method_threads)
+                            )
+                        ]
+                printing.print_underline("Inferring remaining multiple sequence alignments and gene trees") 
+                return commands
+
+            if species_tree_units:
+                n_rest = len(commands_and_filenames) - len(species_tree_units) + (0 if q_from_gene_trees else 1)
+                progress = SpeciesTreeFirstProgress(species_tree_units, n_rest)
+
+                def follow_up(unit):
+                    # Once, when the orthogroups for the species tree are all done
+                    if not progress.species_tree_done() or progress.started_rest():
+                        return []
+                    commands = species_tree_commands()
+                    progress.start_rest()
+                    return commands
+            else:
+                commands_and_filenames = species_tree_commands() + commands_and_filenames
+        else:
+            printing.print_underline("Inferring multiple sequence alignments and gene trees")
         command_runner.run_parallel_commands_and_move_results_file(n_processes, 
                                                  commands_and_filenames, 
                                                  True, 
-                                                 tasksize=tree_tasksize,
                                                  method_threads=method_threads,
                                                  method_threads_large=method_threads_large,
                                                  method_threads_small=method_threads_small, 
@@ -421,7 +454,9 @@ class TreesForOrthogroups(object):
                                                  cmd_order=cmd_order,
                                                  q_trim=q_trim,
                                                  q_print_on_error=print_on_error,
-                                                 dynamic_threads=dynamic_threads
+                                                 dynamic_threads=dynamic_threads,
+                                                 follow_up=follow_up,
+                                                 progress=progress,
                                                  )
         
         # # Convert ids to accessions for MSA
@@ -441,19 +476,18 @@ class TreesForOrthogroups(object):
 
         # Add concatenated Alignment
         if q_do_species_tree:
-            if astral:
-                printing.print_underline("Inferring unrooted species tree using Astral-Pro.") 
-                astral_fn = file_handler.handler.get_core_astral_filename()
-                astral_pro.create_input_file(file_handler.handler.get_ogs_tree_dir(), astral_fn, n_skip=n_skip)
+            if q_from_gene_trees and species_tree_alignment:
+                # Not needed for the species tree: after the alignments and trees
+                printing.print_underline("Creating concatenated alignment for species tree")
+                print(("Species tree: Using %d orthogroups with minimum of %0.1f%% of species having single-copy genes in any orthogroup" % (len(i_ogs_for_species_tree), 100.*f_single_copy)))
+                # a separate step here (after the gene trees): with a progress bar
+                write_concatenated_alignment(q_progress=True)
+            if q_from_gene_trees:
+                printing.print_underline("Inferring unrooted species tree using %s" % species_tree_program)
                 species_tree_fn_ids = file_handler.handler.get_species_tree_unrooted_fn()
-                parallel_task_manager.run_command(
-                    astral_pro.get_astral_command(
-                        astral_fn, species_tree_fn_ids, n_processes
-                    ),
-                    # ASTRAL-Pro writes its progress log to stderr: only show it if it fails.
-                    q_print_stderr=False,
-                    raise_on_error=True,
-                )
+                from_gene_trees.infer_species_tree(
+                    self.program_caller, species_tree_program, file_handler.handler.get_ogs_tree_dir(),
+                    file_handler.handler.get_core_astral_filename(), species_tree_fn_ids, n_processes, n_skip=n_skip)
 
             q_have_support = taxa.have_support_values(species_tree_fn_ids)
             if os.path.exists(species_tree_fn_ids):

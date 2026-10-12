@@ -5,6 +5,7 @@ from rich.markup import escape
 from orthofinder.utils import logging as run_logging
 
 from .. import __version__
+from ..search import diamond_scoring
 from ..utils import file_handler, file_io, printing, run_state
 from ..utils.printing import printer
 from . import check_dependencies, previous_run, process_args
@@ -40,20 +41,30 @@ def start_run(ctx, args, input_args):
     # reported and recorded agree with the settings the restart runs with.
     i_og_restart_state = 0
     state = {}
+    state_dir = None  # the results directory of state, for its paths
     changed = []
     q_restart = ((options.q_start_from_blast and not options.q_start_from_fasta) or options.q_start_from_groups
                  or options.q_start_from_trees or options.q_start_from_species_trees)
     if q_restart and continuation_dir is not None:
-        _, state = run_state.find(continuation_dir)
+        state_dir, state = run_state.find(continuation_dir)
         if not state:
             # no run_state.json (older versions, or the file removed): what
             # Log.txt records, read before this run rewrites it
             state = previous_run.state_from_log(continuation_dir)
         i_og_restart_state = state.get("assign", {}).get("i_og_restart", 0)
-        changed = run_state.restore_settings(state, options, input_args)
+        changed = run_state.restore_settings(state, options, input_args, results_dir=state_dir)
         # the run's search program (restored above, or the same as the default)
         options.search_program_from_run = ("search_program" in state.get("settings", {})
                                            and not options.search_program_given)
+    core_scoring = []
+    if options.q_fast_add and continuation_dir is not None:
+        # --assign: the new species' searches are scored as the core
+        # analysis' were, unless --matrix etc. are given
+        state_dir, state = run_state.find(continuation_dir)
+        core_scoring = run_state.restore_settings(state, options, input_args, names=run_state.SCORING_SETTINGS,
+                                                  results_dir=state_dir)
+    # --matrix etc. that differ from the run being continued (or the core analysis)
+    scoring_changes = run_state.scoring_differences(state, options, state_dir) if options.score_matrix_given else []
 
     # "-S blast" is blastn or blastp (-d). Before the file handler is set
     # up, as it logs the search program.
@@ -66,6 +77,10 @@ def start_run(ctx, args, input_args):
         results_dir_non_default,
         pickle_dir_non_default,
     )
+    if diamond_scoring.is_custom_matrix(options.score_matrix):
+        # searched with a copy in the working directory, kept with the results
+        options.score_matrix = diamond_scoring.copy_custom_matrix(
+            options.score_matrix, file_handler.handler.get_working_directory_write())
 
 
     # A restart keeps the record of the stages it continues from, not of
@@ -109,6 +124,17 @@ def start_run(ctx, args, input_args):
     # -s is given), and its point for restarting gene-tree inference
     # (--assign); its settings were restored above.
     results_dir = file_handler.handler.get_results_directory1()
+    if core_scoring:
+        printer.print("Scoring the searches as the core analysis did: %s"
+                      % escape(", ".join("%s=%s" % c for c in core_scoring)))
+        file_handler.handler.write_to_log("Settings of the core analysis: %s\n"
+                                          % ", ".join("%s=%s" % c for c in core_scoring))
+    if scoring_changes:
+        text = ("NOTE: the searches of this run are scored differently from those of the %s: %s"
+                % ("core analysis" if options.q_fast_add else "run being continued",
+                   ", ".join("%s %s (was %s)" % (name, now, earlier) for name, earlier, now in scoring_changes)))
+        printer.print(escape(text))
+        file_handler.handler.write_to_log(text + "\n")
     if q_restart:
         if changed:
             printer.print("Continuing with the settings of the run being continued: %s"

@@ -214,3 +214,4 @@ testdata
 *.fa*
 primary_*
 problematic_database/
+tests/_archive/

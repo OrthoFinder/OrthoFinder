@@ -49,9 +49,9 @@ The following commands provide three ways to download the source code of OrthoFi
 # Download via git 
 git clone https://github.com/OrthoFinder/OrthoFinder.git
 
-# or download the orthofinder-linux-intel-3.1.6.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine
+# or download the orthofinder-linux-intel-3.2.tar.gz and unzip it into OrthoFinder if you are on a Linux Intel machine
 mkdir OrthoFinder && \
-  wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.6/orthofinder-linux-intel-3.1.6.tar.gz | \
+  wget -qO- https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.2/orthofinder-linux-intel-3.2.tar.gz | \
   tar -xz --strip-components=1 -C OrthoFinder
 ```
 
@@ -76,7 +76,7 @@ To activate the virtual environment you have created, run:
 ```
 ### Test your installation
 
-Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.6/ExampleData.tar.gz).
+Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.2/ExampleData.tar.gz).
 
 ```bash
 orthofinder --help # Print out help informatioin
@@ -111,7 +111,7 @@ OrthoFinder requires one FASTA file for each species. Each file should contain t
 
 If your proteomes contain multiple transcript isoforms per gene, we provide the script `primary_transcript.py` to retain only the longest isoform for each gene. This script should be run before running OrthoFinder.
 
-If you are using OrthoFinder v3.1.6 or later, and installed OrthoFinder into your environment, the script is installed automatically and can be run directly as `primary_transcript`. It accepts:
+If you are using OrthoFinder v3.2 or later, and installed OrthoFinder into your environment, the script is installed automatically and can be run directly as `primary_transcript`. It accepts:
 
 - a single FASTA file
 - a directory containing FASTA files
@@ -177,7 +177,29 @@ Command-line options for OrthoFinder
   | `-S`      | Sequence search program                   | `diamond` | `diamond`, `diamond_ultra_sens`, `blastp`, `mmseqs`, `blastn` |
   | `-A`      | MSA program, requires `-M msa`            | `famsa`   | `famsa`, `mafft`, `muscle`,                                                          |
   | `-T`      | Tree inference method, requires `-M msa`  | `fasttree`| `fasttree`, `fasttree_fastest`, `raxml`, `iqtree`                               |
+  | `-ST`     | Species tree program, from the gene trees, requires `-M msa` | a tree of the concatenated alignment | `astral-pro`; others can be added to `config.json` (`"program_type": "species_tree"`) |
   | `-I`      | MCL inflation parameter                   | `1.2`     | `1-10`                                                                                         |
+
+- **Sequence search scoring options (DIAMOND)**<br>
+  | Parameter        | Description                                                               |
+  |------------------|---------------------------------------------------------------------------|
+  | `--matrix`       | Scoring matrix of the DIAMOND searches (default `BLOSUM62`): `BLOSUM45`, `BLOSUM50`, `BLOSUM62`, `BLOSUM80`, `BLOSUM90`, `PAM250`, `PAM70` or `PAM30`. |
+  | `--custom-matrix` | A scoring matrix file for the DIAMOND searches (see below); requires `--gapopen` and `--gapextend`. |
+  | `-go`, `--gapopen` | Gap open penalty of the DIAMOND searches (default: the matrix's, `11` for `BLOSUM62`), as DIAMOND allows for the matrix. |
+  | `-ge`, `--gapextend` | Gap extend penalty of the DIAMOND searches (default: the matrix's, `1` for `BLOSUM62`), as DIAMOND allows for the matrix. |
+
+  **Custom scoring matrices (`--custom-matrix`)**: a text file in the format of NCBI's matrices, e.g. any file from https://ftp.ncbi.nlm.nih.gov/blast/matrices/ as it is:
+  ```
+  # comment lines start with #
+     A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  Z  X  *
+  A  4 -1 -2 -2  0 -1 -1  0 -2 -1 -1 -1 -1 -2 -1  1  0 -3 -2  0 -2 -1  0 -4
+  R -1  5  0 -2 -3  1  0 -2  0 -3 -2  2 -1 -3 -2 -1 -1 -3 -2 -3 -1  0 -1 -4
+  ...
+  ```
+  - The first line is the one-letter amino acid codes; then, for each code in that order, a line of the code and its integer score with each code of the first line.
+  - The 20 standard amino acids are needed (DIAMOND would otherwise find no hits); others, such as `B`, `Z`, `X` and `*`, are optional.
+  - DIAMOND has no default gap penalties for a custom matrix, so `--gapopen` and `--gapextend` are needed. Not every pair works with every matrix: if DIAMOND cannot compute its statistics for them ("The ALP library failed to compute the statistical parameters for this matrix"), try others.
+  - The file can be anywhere: give its path with `--custom-matrix`. OrthoFinder checks it before the run starts, and keeps a copy with the results (`WorkingDirectory/custom_scoring_matrix.txt`) that the searches use. A restart from those results (e.g. `-b` or `--assign`) uses the same matrix without `--custom-matrix` being given again, even if the original file has since been moved or changed.
 
 - **Input options**<br>
   | Parameter | Description                               |
@@ -192,8 +214,21 @@ Command-line options for OrthoFinder
   | `-n <txt>`      | Name to append to the results directory.                                    |
   | `-o <txt>`      | Specify a non-default results directory.                                    |
   | `-pof`    | Save the pairwise ortholog files.                                           |
-  | `--tree-view` | Also write a page to view the species tree and the resolved gene trees in a web browser, with each gene tree's alignment (`Resolved_Gene_Trees/Resolved_Gene_Trees.html`). |
+  | `--orthoxml` | Also write the orthogroups and HOGs in OrthoXML format, for other tools. |
+  | `--concat-alignment` | With `-ST`, also write the concatenated alignment of the orthogroups chosen for a species tree, as a run without `-ST` does (`WorkingDirectory/Alignments_ids/SpeciesTreeAlignment.fa`, `Species_Tree/Orthogroups_for_concatenated_alignment.txt`). For the results of a finished run: `species_tree_alignment <Results_dir>` (`-o <dir>` to write them elsewhere, `--species-names` to name the rows by species). |
+
+- **Viewing the results in a web browser**<br>
+  | Parameter | Description |
+  |-----------|-------------|
+  | `--tree-view` | Also write a page to view the species tree and the resolved gene trees in a web browser, with each gene tree's alignment, and a species tree explorer: the HOGs at each node, an orthogroup's duplications and losses on the species tree, each species' genes; and all genes on the species tree, each orthogroup's gene tree where it was gained (`Resolved_Gene_Trees/Resolved_Gene_Trees.html`). |
   | `--stats-view` | Also write a page of the run's statistics with interactive plots (`Comparative_Genomics_Statistics/Statistics.html`). |
+  | `--groups-view` | Also write a page of the genes of each orthogroup and HOG, searchable (`Orthogroups/Groups.html`). |
+  | `--view` | All three pages, linked to each other, and `OrthoFinder_Results.html` to open them, a tab for each (also with two of them). |
+
+  - For the results of a finished run: `view_results <Results_dir>` (same options). With many species the pages can be large: each can also be written on its own.
+  - The pages work in any recent web browser (Safari, Edge, Chrome, Firefox) on macOS, Windows or Linux, opened from disk. To look at results from a server on your own computer, download the whole results directory, as each page reads its data from the folders next to it.
+  - On Linux, open them with `xdg-open <Results_dir>/OrthoFinder_Results.html` (the default browser) or `google-chrome <Results_dir>/OrthoFinder_Results.html 2>/dev/null` (with Chrome already open, it prints errors such as "Broken pipe" that are not about the page).
+  - Light or dark colours: **Colours**, at the top right of each page (Auto follows the system).
 
 - **Parallel processing options**<br>
   | Parameter | Description                                 | Default |
@@ -230,7 +265,7 @@ Command-line options for OrthoFinder
 
 ## Output files
 
-> - ***From OrthoFinder `v3.1.6`, pairwise ortholog files are no longer produced by default. To generate these files, include the `-pof` option when running OrthoFinder.*** 
+> - ***From OrthoFinder `v3.2`, pairwise ortholog files are no longer produced by default. To generate these files, include the `-pof` option when running OrthoFinder.*** 
 > - ***When using `-op`, the BLAST commands are no longer printed directly to the terminal. Instead, all commands are written to WorkingDirectory/blast_commands.txt. You can then use `-b` to resume the analysis from the point reached with `-op`. If the required BLAST result files are already present, OrthoFinder will reuse them and will not repeat the all-vs-all sequence search. If any required search results are missing, the sequence search will be triggered automatically using the default search method. Please note that running with `-b` does not create a new results directory. All subsequent output will be written to the existing results directory created by the earlier `-op` run.***
 > - ***From OrthoFinder `v3.1`, `N0.tsv` is removed from `/Phylogenetic_Hierarchical_Orthogroups`. Instead, `Orthogroups/Orthogroups.tsv` contains the orthogroups from `N0.tsv`.***
 

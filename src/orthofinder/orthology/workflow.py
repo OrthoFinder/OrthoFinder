@@ -200,10 +200,11 @@ def orthologs_workflow(
         root_from_previous, 
         i_og_restart,
         options.fix_files,
-        options.astral,
+        options.species_tree_program,
         options.dynamic_threads,
         n_skip=options.n_skip,
-        msa_min_seq=options.msa_min_seq
+        msa_min_seq=options.msa_min_seq,
+        species_tree_alignment=options.species_tree_alignment,
     )
     
     file_handler.handler.log_working_directory_trees()

@@ -68,6 +68,67 @@ def read_fasta(file_path):
     return genes_dict
 
 
+FASTA_LINE_LENGTH = 80
+
+
+def trim_end_gaps(alignment, gap="-", line_length=FASTA_LINE_LENGTH):
+    """
+    The alignment {gene: aligned sequence} without the columns at its start and
+    end that are gaps in every sequence (left when some of an orthogroup's
+    sequences are taken for a HOG). Whitespace in the sequences is ignored:
+    their line breaks (read_fasta keeps them) and any other, such as the space
+    gene_tree/trim.py leaves after an alignment it does not trim. They are
+    returned in lines of line_length.
+
+    The first and last residue of each sequence are found with lstrip/rstrip,
+    which stop at the first residue, so the time is that of the gap blocks.
+    """
+    seqs = {gene: "".join(seq.split()) for gene, seq in alignment.items()}
+    if not seqs:
+        return alignment
+    start = min(len(seq) - len(seq.lstrip(gap)) for seq in seqs.values())
+    end = max(len(seq.rstrip(gap)) for seq in seqs.values())
+    if end <= start:  # no residues at all: nothing to keep columns for
+        start, end = 0, max(len(seq) for seq in seqs.values())
+
+    return {gene: _fasta_lines(seq[start:end], line_length) for gene, seq in seqs.items()}
+
+
+def trim_gap_columns(alignment, gap="-", line_length=FASTA_LINE_LENGTH):
+    """
+    The alignment {gene: aligned sequence} without the columns that are gaps in
+    every sequence, wherever they are (left when some of an orthogroup's
+    sequences are taken for a HOG), in lines of line_length. Whitespace is
+    ignored, as in trim_end_gaps.
+
+    The sequences are one array of bytes, a row each, so finding the columns
+    is a single pass in numpy. Sequences of different lengths (not an
+    alignment) or with characters outside Latin-1 are left to trim_end_gaps.
+    """
+    seqs = {gene: "".join(seq.split()) for gene, seq in alignment.items()}
+    if not seqs:
+        return alignment
+    n_cols = len(next(iter(seqs.values())))
+    if any(len(seq) != n_cols for seq in seqs.values()):
+        return trim_end_gaps(alignment, gap, line_length)
+    try:
+        data = "".join(seqs.values()).encode("latin-1")
+    except UnicodeEncodeError:
+        return trim_end_gaps(alignment, gap, line_length)
+    cols = np.frombuffer(data, dtype=np.uint8).reshape(len(seqs), n_cols)
+    keep = (cols != ord(gap)).any(axis=0)
+    if keep.any() and not keep.all():  # none kept: no residues at all, nothing to keep columns for
+        kept = cols[:, keep]
+        n_cols = kept.shape[1]
+        text = kept.tobytes().decode("latin-1")
+        seqs = {gene: text[i * n_cols:(i + 1) * n_cols] for i, gene in enumerate(seqs)}
+    return {gene: _fasta_lines(seq, line_length) for gene, seq in seqs.items()}
+
+
+def _fasta_lines(seq, line_length):
+    return "".join(seq[i:i + line_length] + "\n" for i in range(0, len(seq), line_length))
+
+
 def write_fasta(align_dir, hog_name, sequences, id_dict):
     try:
         fasta_path = os.path.join(align_dir, hog_name + ".fa")
@@ -291,7 +352,8 @@ def process_task(
                
                 pruned_alignments = None
                 if gene_dict:
-                    pruned_alignments = {g: gene_dict[g] for g in valid_leaves if g in gene_dict}
+                    # without the columns that are gaps in all of the HOG's genes
+                    pruned_alignments = trim_gap_columns({g: gene_dict[g] for g in valid_leaves if g in gene_dict})
                 try:
                     newick = subtree.write(outfile=None, parser=5)
                 except Exception:

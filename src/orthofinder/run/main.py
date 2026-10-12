@@ -67,7 +67,6 @@ from orthofinder.utils import logging as run_logging
 
 from ..mcl_orthogroups import mcl
 from ..phylo import tree, tree_pages
-from ..species_tree import astral
 from ..orthology import reconciliation
 from ..gene_tree import infer_trees
 from . import process_args, check_dependencies, previous_run

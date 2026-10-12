@@ -281,7 +281,7 @@ def copy_tiny_alignments(align_id_dir, align_dir, name_dictionary, id_dict):
 
             for row in entries:
                 if len(row) >= 3 and row[2].strip() == '-':
-                    genes_dict = update_trees.read_fasta(entry.path)
+                    genes_dict = update_trees.trim_gap_columns(update_trees.read_fasta(entry.path))
                     update_trees.write_fasta(align_dir, row[0], genes_dict, id_dict)
                     break
 

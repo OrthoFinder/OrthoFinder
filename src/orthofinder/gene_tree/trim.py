@@ -4,66 +4,54 @@ import os
 import sys
 import shutil
 # import argparse
-import itertools
-import subprocess
 import numpy as np
-import scipy.sparse
 try:
     from rich import print
 except ImportError:
     ...
 
 class MSA(object):
+    """
+    An alignment as one array: a row of characters per sequence (np.frombuffer
+    of the sequences' bytes), so the columns' counts and the trimming are
+    single passes in numpy rather than loops over the characters.
+    Gaps are "-" and "*" (as in the counts; "*" is written as "-").
+    """
     def __init__(self, fn):
         self.names = []         # list of names
-        self.non_gap_pos = []   # list of list of non-gaps positions
-        self.non_gaps = []      # list of list of non-gaps 
-        self.n = 0              # number of sequences   
-        self.length = None         # number of columns in MSA
-        current_length = 0
+        seqs = []
         with open(fn, 'r') as infile:
             for line in infile:
                 line = line.rstrip()
                 if line.startswith(">"):
-                    if len(self.names) > 1 and current_length != self.length:
-                        print("Error: sequence %d has length %d, previous was %d" % (len(self.names), current_length, self.length))
-                        sys.exit()
-                    self.length = current_length
-                    current_length = 0   
                     self.names.append(line[1:])
-                    self.non_gap_pos.append([])
-                    self.non_gaps.append([])
+                    seqs.append([])
                 else:
-                    # process this bit of sequence
-                    # the index arithmetic current_length + i works for base 0 indexing
-                    self.non_gap_pos[-1].extend([current_length + i for i,c in enumerate(line) if (c != "*" and c != "-")])
-                    self.non_gaps[-1].extend([c for c in line if (c != "*" and c != "-")])
-                    current_length += len(line)  
-        self.n = len(self.names)
-        if self.n >= 2 and current_length != self.length:
-            print("Error: Last sequence length is %d, previous was %d" % (current_length, self.length))
-            sys.exit()
-        self.length = current_length   # could just be one sequence in file
-        self.length = 0 if self.length is None else self.length
-        # create a sparse matrix so less of the subsequent analysis code has to change
-        # Quite possibly this is the fastest way to do it too
-        row_ind = [i_seq for i_seq, ngp in enumerate(self.non_gap_pos) for _ in range(len(ngp))]
-        self.n_non_gaps = sum([len(ngp) for ngp in self.non_gap_pos])
-        col_ind = list(itertools.chain.from_iterable(self.non_gap_pos))
-        data = [1 for _ in range(self.n_non_gaps)]
-        self.M = scipy.sparse.csr_matrix((data, (row_ind, col_ind)), shape=(self.n, self.length))
-    
+                    seqs[-1].append(line)
+        seqs = ["".join(parts) for parts in seqs]
+        self.n = len(self.names)    # number of sequences
+        self.length = len(seqs[0]) if seqs else 0   # number of columns in MSA
+        for i, seq in enumerate(seqs[1:], 2):
+            if len(seq) != self.length:
+                print("Error: sequence %d has length %d, previous was %d" % (i, len(seq), self.length))
+                sys.exit()
+        # one byte a character; other characters (not Latin-1) as 4-byte code points
+        try:
+            self.encoding, dtype = "latin-1", np.uint8
+            data = "".join(seqs).encode(self.encoding)
+        except UnicodeEncodeError:
+            self.encoding, dtype = "utf-32-le", np.uint32
+            data = "".join(seqs).encode(self.encoding)
+        self.M = np.frombuffer(data, dtype=dtype).reshape(self.n, self.length)
+        self.residues = (self.M != ord("-")) & (self.M != ord("*"))   # non-gap characters
+
     def write_msa(self, i_cols, outfn, n_char = 80):
+        kept = np.where(self.residues[:, i_cols], self.M[:, i_cols], ord("-")).astype(self.M.dtype)
         with open(outfn, 'w') as outfile:
-            for name, posn, chars in zip(self.names, self.non_gap_pos, self.non_gaps):
+            for name, row in zip(self.names, kept):
+                seq = row.tobytes().decode(self.encoding)
                 outfile.write(">" + name + "\n")
-                seq = ("-" * posn[0]) + chars[0]
-                for ipos, ipos_m1, c in zip(posn[1:], posn[:-1], chars[1:]):
-                    seq += "-" * (ipos - ipos_m1 - 1) + c
-                seq += "-" * (self.length - posn[-1] -1)
-                seq = "".join([seq[i] for i in i_cols])
-                for i in range(0, len(seq), n_char):
-                    outfile.write(seq[i:i+n_char] + "\n")
+                outfile.write("".join(seq[i:i+n_char] + "\n" for i in range(0, len(seq), n_char)))
 
 def main(infn, outfn, msa_min_seq=10, f=0.1, n_min=500, c=0.75, exe=False):
     # if exe:
@@ -95,6 +83,8 @@ def run_in_process(infn, outfn, msa_min_seq, f, n_min, c):
         closely related and don't have a gap in that column. For this reason the 
         c parameter is included which specifies the minimum total fraction of the 
         original non-gap characters that must be preserved.
+        An alignment is not trimmed (it is copied) if a sequence would be left
+        with no residues.
     """
     if not os.path.exists(infn):
         print("ERROR, input file does not exist: %s" % infn)
@@ -109,58 +99,33 @@ def run_in_process(infn, outfn, msa_min_seq, f, n_min, c):
 
     msa = MSA(infn)   
     n = msa.n
-    # print(infn)
     if msa.length <= n_min or n <= msa_min_seq:
         copy_input_to_output(infn, outfn)
         # print("Already below min length: %d" % msa.length)
         return
-    # vectorised is far quicker
-    # M = np.array([list(seq) for seq in msa.seqs.values()])
-    # drop msa at this point
 
     length = msa.length
     max_gap = (1.-f)*n
-    aa_counts = msa.M.sum(axis=0)[0]   # per column
-    aa_counts = np.squeeze(np.asarray(aa_counts))
-    gap_counts = n- aa_counts
-    aa_before = msa.M.nnz
+    aa_counts = msa.residues.sum(axis=0)   # per column
+    gap_counts = n - aa_counts
+    aa_before = int(aa_counts.sum())
     i_keep = np.where(gap_counts <= max_gap)
     n_keep = i_keep[0].size     # it's an I, J tuple
-    aa_after = sum(aa_counts[i_keep])
+    aa_after = aa_counts[i_keep].sum()
     # Check we have kept enough columns and characters
-
     if n_keep < n_min or aa_after < c*aa_before:
         # print("%0.3f: %d columns, %0.1f%% of characters retained" % (f, n_keep, 100.*aa_after/aa_before))
         f, i_keep = get_satifactory_f(gap_counts, aa_counts, n, f, n_min, c)
-        
-    #print(msa.M)
-    #print(n)
-    trim = False
-    seq_data = msa.M
+
     to_keep = i_keep[0]
-    ### This will take to long for large alignments...
-    for i in range(0,n):
-        index = (seq_data[i,].tocoo().col)
-        if True in np.isin(index, to_keep):
-            trim = True
-        else:
-            trim  = False
-            break
-
+    # trimmed only if every sequence keeps a residue
+    trim = bool(msa.residues[:, to_keep].any(axis=1).all())
     n_keep = to_keep.size
-    if n_keep == length or trim == False:
+    if n_keep == length or not trim:
         copy_input_to_output(infn, outfn)
-    # M = M[:, i_keep[0]]
-    # s,t = M.shape
-    # aa_after = s * t - (M == '-').sum()
-    #msa.write_msa(np.arange(0,length), outfn)
-    if trim == True:
-        msa.write_msa(i_keep[0], outfn)
-        #f, i_keep = get_satifactory_f(gap_counts, aa_counts, n, 1/n, n_min, c)
-        #msa.write_msa(i_keep[0], outfn)       
-
-    # write_msa(M, names, outfn)
-    # print("%0.3f: %d->%d, %0.1f%% characters retained. Trimmed %s" % (f, length, i_keep[0].size, 100.*aa_after/aa_before, infn))
+    if trim:
+        msa.write_msa(to_keep, outfn)
+    # print("%0.3f: %d->%d, %0.1f%% characters retained. Trimmed %s" % (f, length, to_keep.size, 100.*aa_after/aa_before, infn))
 
 def get_satifactory_f(gap_counts, aa_counts, N, f_orig, n_min, c, tol = 0.001):
     """
@@ -178,7 +143,7 @@ def get_satifactory_f(gap_counts, aa_counts, N, f_orig, n_min, c, tol = 0.001):
         up - upper bound on non-gap character percentage
     """
     # binary search 
-    aa_before = sum(aa_counts)
+    aa_before = aa_counts.sum()
     up = f_orig
     down = 0.
     x_prev = f_orig
@@ -187,7 +152,7 @@ def get_satifactory_f(gap_counts, aa_counts, N, f_orig, n_min, c, tol = 0.001):
         max_gap = (1.-x)*N
         i_keep = np.where(gap_counts <= max_gap)
         n_keep = i_keep[0].size
-        aa_new = sum(aa_counts[i_keep])
+        aa_new = aa_counts[i_keep].sum()
         # print("%0.3f: %d columns, %0.1f%% of characters retained" % (x, n_keep, 100.*aa_new/aa_before))
         if n_keep < n_min or aa_new < c*aa_before:
             up = x
@@ -202,7 +167,7 @@ def get_satifactory_f(gap_counts, aa_counts, N, f_orig, n_min, c, tol = 0.001):
     x = down
     max_gap = (1.-x)*N
     i_keep = np.where(gap_counts <= max_gap)
-    aa_new = sum(aa_counts[i_keep])
+    aa_new = aa_counts[i_keep].sum()
     # print("%0.3f: %d columns, %0.1f%% characters retained" % (x, n_keep, 100.*aa_new/aa_before))
     return x, i_keep
 

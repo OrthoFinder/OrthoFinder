@@ -124,7 +124,8 @@ def test_command(tmp_path, capsys):
 
 
 @pytest.mark.skipif(shutil.which("orthofinder") is None, reason="needs the orthofinder command")
-def test_options_in_the_help():
+def test_options_in_the_help():  # the pages and --view
     result = subprocess.run(["orthofinder", "-h"], capture_output=True, text=True, check=False,
                             env={**os.environ, "COLUMNS": "200"})
-    assert "--tree-view" in result.stdout and "--stats-view" in result.stdout
+    for option in ("--tree-view", "--stats-view", "--groups-view", "--view", "--orthoxml"):
+        assert option in result.stdout

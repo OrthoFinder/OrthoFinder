@@ -74,6 +74,8 @@ create_hog_fastas = "tools.create_hog_fastas:main"
 ncbi_primary_transcript = "tools.ncbi_primary_transcript:main"
 orthogroup_gene_count = "tools.orthogroup_gene_count:main"
 split_ortholog_files = "tools.split_ortholog_files:main"
+view_results = "tools.view_results:main"
+species_tree_alignment = "tools.species_tree_alignment:main"
 
 [tool.semantic_release]
 branch = "main"
@@ -120,6 +122,7 @@ exclude_lines = ["pragma: no cover", "if __name__ == .__main__.:"]
 # addopts = "--cov=orthofinder"
 addopts = "--cov=orthofinder --cov-config=pyproject.toml"
 testpaths = ["tests"]
+norecursedirs = ["tests/_archive"]  # tests set aside, not run
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "disabled: marks tests as disabled (deselect with '-m \"not disabled\"')",

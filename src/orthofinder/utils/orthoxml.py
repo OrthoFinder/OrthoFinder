@@ -1,11 +1,12 @@
 """
-With -x: OrthoFinder's results in OrthoXML format (http://orthoxml.org,
-version 0.3), for other tools, and as pages to look at in a web browser:
+With --orthoxml: the orthogroups and HOGs in OrthoXML format
+(http://orthoxml.org, version 0.3), for other tools:
 
-    Orthogroups/Orthogroups.orthoxml, Orthogroups.html
-    Phylogenetic_Hierarchical_Orthogroups/N<i>.orthoxml (one per N<i>.tsv), HOGs.html
-    Orthologs/Orthologs.orthoxml, Orthologs.html                     } only with -pof: with many
-    Putative_Xenologs/Putative_Xenologs.orthoxml, Putative_Xenologs.html } species they are very large
+    Orthogroups/Orthogroups.orthoxml
+    Phylogenetic_Hierarchical_Orthogroups/N<i>.orthoxml (one per N<i>.tsv)
+
+(To look at the orthogroups and HOGs in a web browser: --groups-view,
+orthology/groups_page.py.)
 
 A gene has the same id in all the OrthoXML files. The species information
 comes from the input FASTA files. OrthoXML requires an NCBI taxonomy ID and a
@@ -15,19 +16,18 @@ is 0 (unknown) and the database is the FASTA file.
 
 import csv
 import glob
-import gzip
-import json
 import os
 import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape, quoteattr
 
 from .. import __version__
 
+GENE_SEP = ", "
+
 NAMESPACE = "http://orthoXML.org/2011/"
 SCHEMA_LOCATION = "http://orthoXML.org/2011/ http://www.orthoxml.org/0.3/orthoxml.xsd"
 UNKNOWN_TAX_ID = "0"
 UNKNOWN_VERSION = "NA"
-GENE_SEP = ", "
 
 
 def species_for_analysis(species_ids_fn, species_to_use):
@@ -51,7 +51,7 @@ def species_for_analysis(species_ids_fn, species_to_use):
 
 def write_results(species, ogs, n_seqs_per_species, id_dict, species_to_use, results_base_filename):
     """
-    Write <results_base_filename>.orthoxml and <results_base_filename>.html.
+    Write <results_base_filename>.orthoxml.
 
     species: from species_for_analysis, one entry per species in species_to_use
     ogs: the orthogroups, sets of sequence IDs ("<species>_<sequence>"); orthogroup
@@ -72,49 +72,19 @@ def write_results(species, ogs, n_seqs_per_species, id_dict, species_to_use, res
     groups = ((f"OG{i_og:07d}", sorted(gene_number[s] for s in og), ()) for i_og, og in multi)
     write_orthoxml(results_base_filename + ".orthoxml", species_genes, groups)
 
-    column = {i_species: i for i, i_species in enumerate(species_to_use)}
-    rows = []
-    n_assigned = [0] * len(species)
-    for i_og, og in multi:
-        per_species = [[] for _ in species]
-        for seq_id in sorted(og, key=lambda s: tuple(map(int, s.split("_")))):
-            i_col = column[int(seq_id.split("_")[0])]
-            per_species[i_col].append(id_dict[seq_id])
-            n_assigned[i_col] += 1
-        rows.append([f"OG{i_og:07d}", len(og)] + per_species)
-    n_genes = [n_seqs_per_species[i] for i in species_to_use]
-    write_page(
-        results_base_filename + ".html",
-        title="Orthogroups",
-        note="The orthogroups of Orthogroups.tsv (also in Orthogroups.orthoxml).",
-        stats=[(len(species), "species"), (len(rows), "orthogroups"), (sum(n_genes), "genes"),
-               (percent(sum(n_assigned), sum(n_genes)), "genes in orthogroups")],
-        info={"title": "Species", "columns": ["Species", "FASTA file", "#Genes", "#In orthogroups"],
-              "rows": [[name, fasta, n, percent(a, n)] for (name, fasta), n, a in zip(species, n_genes, n_assigned)]},
-        views=[{"name": "Orthogroups",
-                "columns": ["@Orthogroup", "#Genes"] + ["*" + name for name, _ in species],
-                "rows": rows}],
-    )
 
+# --- HOGs, from the results files ---------------------------------------------------
 
-# --- HOGs and orthologs, from the results files ----------------------------------
-
-def write_hogs_and_orthologs(orthogroups_orthoxml, hog_dir, orthologs_dir, xenologs_dir=None):
+def write_hog_files(orthogroups_orthoxml, hog_dir):
     """
     From the final results files: an OrthoXML file for each
-    Phylogenetic_Hierarchical_Orthogroups/N<i>.tsv and one for the orthologs
-    (Orthologs/<species>.tsv[.gz]), and a page for each. The species and
-    the gene ids are those of Orthogroups.orthoxml. Returns the files written.
+    Phylogenetic_Hierarchical_Orthogroups/N<i>.tsv. The species and the gene
+    ids are those of Orthogroups.orthoxml. Returns the files written.
     """
+    if not hog_dir or not os.path.isdir(hog_dir):
+        return []
     species, gene_ids = read_genes(orthogroups_orthoxml)
-    written = []
-    if hog_dir and os.path.isdir(hog_dir):
-        written += write_hogs(species, gene_ids, hog_dir)
-    if orthologs_dir and os.path.isdir(orthologs_dir):
-        written += write_orthologs(species, gene_ids, orthologs_dir)
-    if xenologs_dir and os.path.isdir(xenologs_dir):
-        written += write_xenologs(species, gene_ids, xenologs_dir)
-    return written
+    return write_hogs(species, gene_ids, hog_dir)
 
 
 def read_genes(orthoxml_fn):
@@ -140,7 +110,7 @@ def node_number(fn):
 
 
 def write_hogs(species, gene_ids, hog_dir):
-    written, views = [], []
+    written = []
     for fn in sorted(glob.glob(os.path.join(hog_dir, "N*.tsv")), key=node_number):
         node = os.path.basename(fn)[:-4]
         with open(fn, newline="") as infile:
@@ -152,13 +122,11 @@ def write_hogs(species, gene_ids, hog_dir):
         # the species of this node's clade: those with genes in its HOGs
         clade = [j for j in range(len(sp_cols)) if any(row[3 + j] for row in rows)]
         clade_names = [sp_cols[j] for j in clade]
-        groups, page_rows = [], []
+        groups = []
         for row in rows:
-            per_species = [split_genes(row[3 + j]) for j in clade]
-            genes = sorted(gene_ids[sp_cols[j]][g] for j, gs in zip(clade, per_species) for g in gs)
+            genes = sorted(gene_ids[sp_cols[j]][g] for j in clade for g in split_genes(row[3 + j]))
             if len(genes) >= 2:  # an OrthoXML group has at least two genes
                 groups.append((row[0], genes, (("orthogroup", row[1]), ("gene tree parent clade", row[2]))))
-            page_rows.append([row[0], row[1], row[2], len(genes)] + per_species)
         if groups:
             out = fn[:-4] + ".orthoxml"
             write_orthoxml(
@@ -167,135 +135,7 @@ def write_hogs(species, gene_ids, hog_dir):
                       f"({', '.join(clade_names)}), as in {os.path.basename(fn)}, "
                       f"except the HOGs of a single gene.")
             written.append(out)
-        views.append({"name": f"{node}: {', '.join(clade_names)}",
-                      "columns": ["@HOG", "Orthogroup", "Gene tree parent clade", "#Genes"]
-                                 + ["*" + name for name in clade_names],
-                      "rows": page_rows})
-    if views:
-        out = os.path.join(hog_dir, "HOGs.html")
-        write_page(
-            out, title="Hierarchical orthogroups (HOGs)",
-            note="The HOGs of the N<i>.tsv files, one species tree node at a time (also in N<i>.orthoxml, "
-                 "without the HOGs of a single gene). The orthogroups are the HOGs at the root, N0.",
-            stats=[(len(views), "species tree nodes"), (sum(len(v["rows"]) for v in views), "HOGs")],
-            views=views)
-        written.append(out)
     return written
-
-
-def write_orthologs(species, gene_ids, orthologs_dir):
-    names = [name for name, _ in species]
-    index = {name: i for i, name in enumerate(names)}
-    pairs = {}  # (i, j), i < j -> rows [orthogroup, genes of i, genes of j]
-    for i, name in enumerate(names):
-        fn = os.path.join(orthologs_dir, name + ".tsv.gz")  # the results file, or with -pof
-        if not os.path.exists(fn):
-            fn = fn[:-3]
-        if not os.path.exists(fn):
-            continue
-        with (gzip.open(fn, "rt", newline="") if fn.endswith(".gz") else open(fn, newline="")) as infile:
-            reader = csv.reader(infile, delimiter="\t")
-            next(reader, None)  # Orthogroup, Species, <this species>, Orthologs
-            for og, other, genes, orthologs in reader:
-                j = index[other]
-                if i < j:  # each relationship is in both species' files: keep it once
-                    pairs.setdefault((i, j), []).append([og, split_genes(genes), split_genes(orthologs)])
-    if not pairs:
-        return []
-    groups, views = [], []
-    for (i, j), rows in sorted(pairs.items()):
-        for og, genes_i, genes_j in rows:
-            genes = sorted([gene_ids[names[i]][g] for g in genes_i] + [gene_ids[names[j]][g] for g in genes_j])
-            groups.append((str(len(groups) + 1), genes, (("orthogroup", og),)))
-        views.append({"name": f"{names[i]} - {names[j]}",
-                      "columns": ["@Orthogroup", "Type", "*" + names[i], "*" + names[j]],
-                      "rows": [[og, relationship(a, b), a, b] for og, a, b in rows]})
-    out_xml = os.path.join(orthologs_dir, "Orthologs.orthoxml")
-    used = sorted({names[k] for pair in pairs for k in pair}, key=index.get)
-    write_orthoxml(out_xml, genes_of(species, gene_ids, groups, used), groups,
-                   notes="Orthologs: each group is one ortholog relationship of the Orthologs files, "
-                         "between the genes of two species (genes of the same species are in-paralogs).")
-    out_html = os.path.join(orthologs_dir, "Orthologs.html")
-    all_rows = [r for v in views for r in v["rows"]]
-    write_page(
-        out_html, title="Orthologs",
-        note="The orthologs of the Orthologs files, one species pair at a time (also in Orthologs.orthoxml).",
-        stats=[(len(views), "species pairs"), (len(all_rows), "ortholog relationships"),
-               (sum(len(r[2]) * len(r[3]) for r in all_rows), "ortholog gene pairs"),
-               (sum(r[1] == "one-to-one" for r in all_rows), "one-to-one")],
-        views=views)
-    return [out_xml, out_html]
-
-
-def write_xenologs(species, gene_ids, xenologs_dir):
-    """
-    Putative_Xenologs/<species>.tsv (Orthogroup, <species>, Other): each
-    putative xenolog relationship is in the files of both its species, and the
-    other species is not named. It is the species whose file has the same
-    relationship the other way round (or, failing that, the only species with
-    all the genes of the Other column). OrthoXML has no xenologs: they are
-    ortholog groups with the property "type" "putative xenolog".
-    """
-    names = [name for name, _ in species]
-    index = {name: i for i, name in enumerate(names)}
-    rows = {}  # species index -> [(orthogroup, genes, other genes)]
-    for i, name in enumerate(names):
-        fn = os.path.join(xenologs_dir, name + ".tsv")
-        if not os.path.exists(fn):
-            fn += ".gz"
-        if not os.path.exists(fn):
-            continue
-        with (gzip.open(fn, "rt", newline="") if fn.endswith(".gz") else open(fn, newline="")) as infile:
-            reader = csv.reader(infile, delimiter="\t")
-            next(reader, None)
-            rows[i] = [(og, tuple(split_genes(a)), tuple(split_genes(b))) for og, a, b in reader]
-    as_seen_by = {i: {(og, frozenset(a), frozenset(b)) for og, a, b in r} for i, r in rows.items()}
-    pairs, n_unplaced = {}, 0
-    for i, species_rows in rows.items():
-        for og, genes, others in species_rows:
-            mirror = (og, frozenset(others), frozenset(genes))
-            candidates = [j for j in as_seen_by if j != i and mirror in as_seen_by[j]]
-            if len(candidates) != 1:
-                candidates = [j for j in range(len(names)) if j != i and all(g in gene_ids[names[j]] for g in others)]
-            if len(candidates) != 1:
-                n_unplaced += 1
-                continue
-            j = candidates[0]
-            if i < j:  # each relationship is in both species' files: keep it once
-                pairs.setdefault((i, j), []).append([og, list(genes), list(others)])
-            elif mirror not in as_seen_by.get(j, ()):  # only in this file: keep it from here
-                pairs.setdefault((j, i), []).append([og, list(others), list(genes)])
-    if n_unplaced:
-        print(f"WARNING: {n_unplaced} putative xenolog rows could not be matched to a species "
-              "and are not in Putative_Xenologs.orthoxml")
-    if not pairs:
-        return []
-    groups, views = [], []
-    for (i, j), prs in sorted(pairs.items()):
-        for og, genes_i, genes_j in prs:
-            genes = sorted([gene_ids[names[i]][g] for g in genes_i] + [gene_ids[names[j]][g] for g in genes_j])
-            groups.append((str(len(groups) + 1), genes, (("orthogroup", og), ("type", "putative xenolog"))))
-        views.append({"name": f"{names[i]} - {names[j]}",
-                      "columns": ["@Orthogroup", "*" + names[i], "*" + names[j]],
-                      "rows": prs})
-    out_xml = os.path.join(xenologs_dir, "Putative_Xenologs.orthoxml")
-    used = sorted({names[k] for pair in pairs for k in pair}, key=index.get)
-    write_orthoxml(out_xml, genes_of(species, gene_ids, groups, used), groups,
-                   notes="Putative xenologs: each group is one putative xenolog relationship of the "
-                         "Putative_Xenologs files, between the genes of two species. OrthoXML has no "
-                         "xenologs, so they are ortholog groups with the property type = putative xenolog.")
-    out_html = os.path.join(xenologs_dir, "Putative_Xenologs.html")
-    write_page(
-        out_html, title="Putative xenologs",
-        note="The putative xenologs of the Putative_Xenologs files, one species pair at a time "
-             "(also in Putative_Xenologs.orthoxml).",
-        stats=[(len(views), "species pairs"), (len(groups), "putative xenolog relationships")],
-        views=views)
-    return [out_xml, out_html]
-
-
-def relationship(genes_a, genes_b):
-    return f"{'one' if len(genes_a) == 1 else 'many'}-to-{'one' if len(genes_b) == 1 else 'many'}"
 
 
 def genes_of(species, gene_ids, groups, species_names):
@@ -311,10 +151,6 @@ def genes_of(species, gene_ids, groups, species_names):
 
 
 # --- writing -----------------------------------------------------------------
-
-def percent(a, b):
-    return f"{100 * a / b:.1f}%" if b else "-"
-
 
 def write_orthoxml(filename, species_genes, groups, notes=None):
     """
@@ -344,112 +180,3 @@ def write_orthoxml(filename, species_genes, groups, notes=None):
             out.write("    </orthologGroup>\n")
         out.write("  </groups>\n")
         out.write("</orthoXML>\n")
-
-
-def write_page(filename, title, note, stats, views, info=None):
-    """
-    A standalone page (the data is in the page) for a web browser.
-
-    stats: [(value, label)] shown at the top
-    info: an optional table {"title", "columns", "rows"} shown before the views
-    views: [{"name", "columns", "rows"}], one shown at a time (a selector if
-           there are several). A column label's first character gives its kind:
-           "@" an id, "#" a number, "*" a list of genes; otherwise text.
-    """
-    data = {"title": title, "note": note, "version": __version__,
-            "stats": [[v if isinstance(v, str) else f"{v:,}", label] for v, label in stats],
-            "info": info, "views": views}
-    with open(filename, "w") as out:
-        out.write(HTML.replace("__TITLE__", escape(title))
-                  .replace("__DATA__", json.dumps(data, separators=(",", ":")).replace("</", "<\\/")))
-
-
-HTML = """<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>__TITLE__</title>
-<style>
-:root { --bg:#fff; --fg:#1d1d1f; --muted:#6b6b70; --line:#e3e3e8; --head:#f5f5f7; --accent:#2f6fde; --chip:#eef3fd; }
-@media (prefers-color-scheme: dark) { :root { --bg:#161618; --fg:#ececf0; --muted:#9a9aa2; --line:#2e2e33; --head:#1f1f23; --accent:#7aa7ff; --chip:#1e2a40; } }
-* { box-sizing:border-box; }
-body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-main { max-width:1200px; margin:0 auto; padding:24px 16px 48px; }
-h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:15px; margin:28px 0 8px; }
-.sub { color:var(--muted); font-size:12px; }
-.stats { display:flex; gap:12px; flex-wrap:wrap; margin:16px 0; }
-.stat { border:1px solid var(--line); border-radius:8px; padding:10px 14px; min-width:120px; }
-.stat b { display:block; font-size:20px; font-variant-numeric:tabular-nums; } .stat span { color:var(--muted); font-size:12px; }
-.wrap { overflow-x:auto; border:1px solid var(--line); border-radius:8px; }
-table { border-collapse:collapse; width:100%; }
-th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
-th { background:var(--head); font-weight:600; white-space:nowrap; }
-td.num, th.num { font-variant-numeric:tabular-nums; text-align:right; }
-tr:last-child td { border-bottom:none; }
-.id { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; color:var(--accent); white-space:nowrap; }
-td.text { white-space:nowrap; }
-.gene { display:inline-block; background:var(--chip); border-radius:4px; padding:1px 6px; margin:1px 3px 1px 0;
-        font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; }
-.tools { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
-input, select { font:inherit; padding:7px 10px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); }
-input { width:min(380px,100%); } select { max-width:100%; }
-button { font:inherit; padding:6px 12px; border:1px solid var(--line); border-radius:6px; background:var(--head); color:var(--fg); cursor:pointer; }
-button:disabled { opacity:.4; cursor:default; } .muted { color:var(--muted); font-size:12px; }
-details { display:inline; } summary { display:inline; cursor:pointer; color:var(--accent); font-size:12px; white-space:nowrap; }
-</style></head><body><main>
-<h1 id="title"></h1>
-<div class="sub" id="sub"></div>
-<div class="stats" id="stats"></div>
-<div id="info"></div>
-<h2 id="views_title"></h2>
-<div class="tools">
-  <select id="view"></select>
-  <input id="q" placeholder="Search an ID or gene name" autocomplete="off">
-  <button id="prev">Previous</button><button id="next">Next</button><span class="muted" id="count"></span>
-</div>
-<div class="wrap"><table id="table"></table></div>
-</main>
-<script>
-const D = __DATA__;
-const PAGE = 100, SHOW = 6;
-const $ = id => document.getElementById(id);
-const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const kind = c => ({"@": "id", "#": "num", "*": "genes"})[c[0]] || "text";
-const label = c => kind(c) === "text" ? c : c.slice(1);
-const chips = gs => gs.map(g => `<span class="gene">${esc(g)}</span>`).join("");
-const genes = gs => gs.length <= SHOW ? chips(gs)
-  : chips(gs.slice(0, SHOW)) + `<details><summary>+${gs.length - SHOW} more</summary>${chips(gs.slice(SHOW))}</details>`;
-const th = c => `<th${kind(c) === "num" ? " class='num'" : ""}>${esc(label(c))}</th>`;
-const td = (c, v) => kind(c) === "genes" ? `<td>${genes(v)}</td>`
-  : kind(c) === "num" ? `<td class='num'>${typeof v === "number" ? v.toLocaleString() : esc(v)}</td>`
-  : kind(c) === "id" ? `<td class='id'>${esc(v)}</td>` : `<td class='text'>${esc(v)}</td>`;
-$("title").textContent = D.title;
-$("sub").textContent = "OrthoFinder " + D.version + ". " + D.note;
-$("stats").innerHTML = D.stats.map(([v, l]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");
-if (D.info) $("info").innerHTML = `<h2>${esc(D.info.title)}</h2><div class="wrap"><table>` +
-  "<tr>" + D.info.columns.map(th).join("") + "</tr>" +
-  D.info.rows.map(r => "<tr>" + r.map((v, i) => td(D.info.columns[i], v)).join("") + "</tr>").join("") + "</table></div>";
-$("views_title").textContent = D.views.length > 1 ? "Show" : D.views[0].name;
-$("view").innerHTML = D.views.map((v, i) => `<option value="${i}">${esc(v.name)} (${v.rows.length.toLocaleString()})</option>`).join("");
-$("view").style.display = D.views.length > 1 ? "" : "none";
-const text = r => r.map(v => Array.isArray(v) ? v.join(" ") : String(v)).join(" ").toLowerCase();
-let view = D.views[0], rows = view.rows, page = 0;
-function draw() {
-  const start = page * PAGE;
-  $("table").innerHTML = "<tr>" + view.columns.map(th).join("") + "</tr>" +
-    rows.slice(start, start + PAGE).map(r => "<tr>" + r.map((v, i) => td(view.columns[i], v)).join("") + "</tr>").join("");
-  $("count").textContent = rows.length
-    ? `${(start + 1).toLocaleString()}-${Math.min(start + PAGE, rows.length).toLocaleString()} of ${rows.length.toLocaleString()}` : "no matches";
-  $("prev").disabled = page === 0;
-  $("next").disabled = start + PAGE >= rows.length;
-}
-function filter() {
-  const q = $("q").value.trim().toLowerCase();
-  rows = q ? view.rows.filter(r => text(r).includes(q)) : view.rows;
-  page = 0; draw();
-}
-$("view").addEventListener("change", e => { view = D.views[+e.target.value]; filter(); });
-$("q").addEventListener("input", filter);
-$("prev").onclick = () => { page--; draw(); };
-$("next").onclick = () => { page++; draw(); };
-draw();
-</script></body></html>
-"""

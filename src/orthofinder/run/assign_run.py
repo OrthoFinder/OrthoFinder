@@ -13,13 +13,12 @@ from ..mcl_orthogroups import infer_orthogroups, mcl, orthogroups_set
 from ..orthology import rooting
 from ..phylo import taxa, tree
 from ..search import runner
-from ..species_tree import astral
+from ..species_tree import from_gene_trees
 from ..utils import (
     fasta_processor,
     file_handler,
     file_io,
     gene_ids,
-    parallel_task_manager,
     printing,
     run_state,
     species_info,
@@ -143,19 +142,11 @@ def between_core_orthogroups_workflow(
         )
 
         # Infer species tree
-        astral_fn = file_handler.handler.get_astral_filename()
-        astral.create_input_file(
-            file_handler.handler.get_ogs_tree_dir(), astral_fn, n_skip=options.n_skip
-        )
         species_tree_unrooted_fn = file_handler.handler.get_species_tree_unrooted_fn()
-        parallel_task_manager.run_command(
-            astral.get_astral_command(
-                astral_fn, species_tree_unrooted_fn, options.n_blast
-            ),
-            # ASTRAL-Pro writes its progress log to stderr: only show it if it fails.
-            q_print_stderr=False,
-            raise_on_error=True,
-        )
+        from_gene_trees.infer_species_tree(
+            prog_caller, process_args.assign_species_tree_program(options), file_handler.handler.get_ogs_tree_dir(),
+            file_handler.handler.get_astral_filename(), species_tree_unrooted_fn, options.n_blast,
+            n_skip=options.n_skip)
 
         # Root it
         core_rooted_species_tree = tree.Tree(

@@ -1,12 +1,5 @@
-"""-x: the orthogroups, HOGs and orthologs as OrthoXML and as web pages."""
-import gzip
-import json
-import re
-import shutil
-import subprocess
+"""--orthoxml (-x): the orthogroups and HOGs as OrthoXML."""
 import xml.etree.ElementTree as ET
-
-import pytest
 
 from orthofinder.utils import orthoxml
 
@@ -16,12 +9,6 @@ SPECIES = [("Species_A", "Species_A.faa"), ("Species B", "Species B.fa")]
 N_SEQS = {0: 3, 1: 2, 5: 9}  # species 5 is not in the analysis
 ID_DICT = {"0_0": "a0", "0_1": "a1&x", "0_2": "a2</script>", "1_0": "b0", "1_1": "b1", "5_0": "unused"}
 OGS = [{"0_0", "1_1"}, {"0_1"}, {"0_2", "1_0", "0_1"}]  # OG0000001 has one gene: not a group
-
-
-def page_data(path):
-    page = path.read_text()
-    assert page.count("</script>") == 1  # a gene name cannot end the page's script
-    return json.loads(re.search(r"const D = (.*);\n", page).group(1))
 
 
 def parse(path):
@@ -57,16 +44,11 @@ def test_orthogroups(tmp_path):
     # the orthogroups, named as in Orthogroups.tsv; single-gene orthogroups are not groups
     assert {k: sorted(g for _, g in v) for k, (_, v) in groups.items()} == {
         "OG0000000": ["a0", "b1"], "OG0000002": ["a1&x", "a2</script>", "b0"]}
-
-    data = page_data(tmp_path / "Orthogroups.html")
-    view = data["views"][0]
-    assert view["columns"] == ["@Orthogroup", "#Genes", "*Species_A", "*Species B"]
-    assert view["rows"] == [["OG0000000", 2, ["a0"], ["b1"]], ["OG0000002", 3, ["a1&x", "a2</script>"], ["b0"]]]
-    assert data["info"]["rows"] == [["Species_A", "Species_A.faa", 3, "100.0%"], ["Species B", "Species B.fa", 2, "100.0%"]]
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["Orthogroups.orthoxml"]  # only the OrthoXML
 
 
-def make_results(tmp_path, gz=True):
-    """Orthogroups.orthoxml and small HOG and ortholog files, as OrthoFinder writes them."""
+def make_results(tmp_path):
+    """Orthogroups.orthoxml and small HOG files, as OrthoFinder writes them."""
     species = [("Sp_A", "Sp_A.fa"), ("Sp_B", "Sp_B.fa"), ("Sp_C", "Sp_C.fa")]
     ids = {"0_0": "a0", "0_1": "a1", "1_0": "b0", "1_1": "b1", "1_2": "b2", "2_0": "c0"}
     og_dir = tmp_path / "Orthogroups"
@@ -80,31 +62,14 @@ def make_results(tmp_path, gz=True):
                                            "N1.HOG0000001\tOG0000001\tn3\ta1\tb1\t\n"
                                            "N1.HOG0000002\tOG0000002\tn5\t\tb2\t\n")  # a single gene
     (hog_dir / "N2.tsv").write_text(head)  # a node without HOGs
-    orth_dir = tmp_path / "Orthologs"
-    orth_dir.mkdir()
-    files = {  # each relationship is in both species' files
-        "Sp_A": "Orthogroup\tSpecies\tSp_A\tOrthologs\nOG0000000\tSp_B\ta0\tb0\nOG0000000\tSp_C\ta0\tc0\n"
-                "OG0000001\tSp_B\ta1\tb1\n",
-        "Sp_B": "Orthogroup\tSpecies\tSp_B\tOrthologs\nOG0000000\tSp_A\tb0\ta0\nOG0000001\tSp_A\tb1\ta1\n"
-                "OG0000000\tSp_C\tb0, b1\tc0\n",
-        "Sp_C": "Orthogroup\tSpecies\tSp_C\tOrthologs\nOG0000000\tSp_A\tc0\ta0\nOG0000000\tSp_B\tc0\tb0, b1\n",
-    }
-    for name, text in files.items():
-        if gz:
-            with gzip.open(orth_dir / f"{name}.tsv.gz", "wt") as f:
-                f.write(text)
-        else:
-            (orth_dir / f"{name}.tsv").write_text(text)
-    return og_dir / "Orthogroups.orthoxml", hog_dir, orth_dir
+    return og_dir / "Orthogroups.orthoxml", hog_dir
 
 
-@pytest.mark.parametrize("gz", [True, False])
-def test_hogs_and_orthologs(tmp_path, gz):
-    og_xml, hog_dir, orth_dir = make_results(tmp_path, gz)
+def test_hogs(tmp_path):
+    og_xml, hog_dir = make_results(tmp_path)
     _, og_genes, _ = parse(og_xml)
-    written = orthoxml.write_hogs_and_orthologs(str(og_xml), str(hog_dir), str(orth_dir))
-    assert sorted(p.rsplit("/", 1)[1] for p in written) == [
-        "HOGs.html", "N1.orthoxml", "Orthologs.html", "Orthologs.orthoxml"]  # no N2: it has no HOGs
+    written = orthoxml.write_hog_files(str(og_xml), str(hog_dir))
+    assert [p.rsplit("/", 1)[1] for p in written] == ["N1.orthoxml"]  # no N2: it has no HOGs
 
     # HOGs: the groups of N1.tsv (OrthoXML groups have two or more genes), the species of its
     # clade, gene ids as in Orthogroups.orthoxml
@@ -114,109 +79,9 @@ def test_hogs_and_orthologs(tmp_path, gz):
     assert groups == {
         "N1.HOG0000000": ({"orthogroup": "OG0000000", "gene tree parent clade": "n0"}, [("Sp_A", "a0"), ("Sp_B", "b0")]),
         "N1.HOG0000001": ({"orthogroup": "OG0000001", "gene tree parent clade": "n3"}, [("Sp_A", "a1"), ("Sp_B", "b1")])}
-    view = page_data(hog_dir / "HOGs.html")["views"][0]
-    assert view["name"] == "N1: Sp_A, Sp_B"
-    assert view["rows"][0] == ["N1.HOG0000000", "OG0000000", "n0", 2, ["a0"], ["b0"]]
-    assert view["rows"][2] == ["N1.HOG0000002", "OG0000002", "n5", 1, [], ["b2"]]  # the page has every HOG
-
-    # orthologs: each relationship once, by species pair
-    root, genes, groups = parse(orth_dir / "Orthologs.orthoxml")
-    assert all(og_genes[i] == g for i, g in genes.items())
-    assert sorted((p["orthogroup"], tuple(g)) for p, g in groups.values()) == [
-        ("OG0000000", (("Sp_A", "a0"), ("Sp_B", "b0"))),
-        ("OG0000000", (("Sp_A", "a0"), ("Sp_C", "c0"))),
-        ("OG0000000", (("Sp_B", "b0"), ("Sp_B", "b1"), ("Sp_C", "c0"))),
-        ("OG0000001", (("Sp_A", "a1"), ("Sp_B", "b1")))]
-    views = page_data(orth_dir / "Orthologs.html")["views"]
-    assert [v["name"] for v in views] == ["Sp_A - Sp_B", "Sp_A - Sp_C", "Sp_B - Sp_C"]
-    assert views[2]["rows"] == [["OG0000000", "many-to-one", ["b0", "b1"], ["c0"]]]
 
 
 def test_nothing_to_write(tmp_path):
-    og_xml, _, _ = make_results(tmp_path)
-    # e.g. after -og, which removes the HOG and ortholog directories
-    assert orthoxml.write_hogs_and_orthologs(str(og_xml), str(tmp_path / "none"), str(tmp_path / "none2")) == []
-
-
-@pytest.mark.skipif(shutil.which("node") is None, reason="needs node to check the pages' script")
-def test_pages_script_is_valid_javascript(tmp_path):
-    og_xml, hog_dir, orth_dir = make_results(tmp_path)
-    orthoxml.write_hogs_and_orthologs(str(og_xml), str(hog_dir), str(orth_dir))
-    for page in (tmp_path / "Orthogroups" / "Orthogroups.html", hog_dir / "HOGs.html", orth_dir / "Orthologs.html"):
-        js = tmp_path / "page.js"
-        js.write_text(page.read_text().split("<script>")[1].split("</script>")[0])
-        result = subprocess.run(["node", "--check", str(js)], capture_output=True, text=True, check=False)
-        assert result.returncode == 0, (page, result.stderr)
-
-
-def write_xenologs(d, files):
-    d.mkdir(exist_ok=True)
-    for name, rows in files.items():
-        (d / f"{name}.tsv").write_text(f"Orthogroup\t{name}\tOther\n" + "".join("\t".join(r) + "\n" for r in rows))
-
-
-def test_xenologs(tmp_path, capsys):
-    og_xml, _, _ = make_results(tmp_path)
-    _, og_genes, _ = parse(og_xml)
-    xen_dir = tmp_path / "Putative_Xenologs"
-    write_xenologs(xen_dir, {  # each relationship is in both species' files, the other species not named
-        "Sp_A": [("OG0000000", "a0", "c0"), ("OG0000001", "a1", "b1, b2")],
-        "Sp_B": [("OG0000001", "b1, b2", "a1"), ("OG0000003", "b0", "zz")],  # zz: not a gene of any species
-        "Sp_C": [("OG0000000", "c0", "a0")],
-    })
-    written = orthoxml.write_hogs_and_orthologs(str(og_xml), None, None, str(xen_dir))
-    assert sorted(p.rsplit("/", 1)[1] for p in written) == ["Putative_Xenologs.html", "Putative_Xenologs.orthoxml"]
-    assert "1 putative xenolog rows could not be matched" in capsys.readouterr().out
-
-    _, genes, groups = parse(xen_dir / "Putative_Xenologs.orthoxml")
-    assert all(og_genes[i] == g for i, g in genes.items())
-    assert sorted((p["orthogroup"], p["type"], tuple(g)) for p, g in groups.values()) == [
-        ("OG0000000", "putative xenolog", (("Sp_A", "a0"), ("Sp_C", "c0"))),
-        ("OG0000001", "putative xenolog", (("Sp_A", "a1"), ("Sp_B", "b1"), ("Sp_B", "b2")))]
-    views = page_data(xen_dir / "Putative_Xenologs.html")["views"]
-    assert [(v["name"], v["rows"]) for v in views] == [
-        ("Sp_A - Sp_B", [["OG0000001", ["a1"], ["b1", "b2"]]]),
-        ("Sp_A - Sp_C", [["OG0000000", ["a0"], ["c0"]]])]
-
-
-def test_xenologs_species_from_the_mirror_row(tmp_path):
-    # two species with a gene of the same name: the row the other way round tells which one
-    species = [("X", "X.fa"), ("Y", "Y.fa"), ("Z", "Z.fa")]
-    ids = {"0_0": "x1", "1_0": "g1", "2_0": "g1"}
-    (tmp_path / "Orthogroups").mkdir()
-    orthoxml.write_results(species, [{"0_0", "1_0", "2_0"}], {0: 1, 1: 1, 2: 1}, ids, [0, 1, 2],
-                           str(tmp_path / "Orthogroups" / "Orthogroups"))
-    xen_dir = tmp_path / "Putative_Xenologs"
-    write_xenologs(xen_dir, {"X": [("OG0000000", "x1", "g1")], "Z": [("OG0000000", "g1", "x1")], "Y": []})
-    orthoxml.write_hogs_and_orthologs(str(tmp_path / "Orthogroups" / "Orthogroups.orthoxml"), None, None, str(xen_dir))
-    _, _, groups = parse(xen_dir / "Putative_Xenologs.orthoxml")
-    assert [g for _, g in groups.values()] == [[("X", "x1"), ("Z", "g1")]]
-
-
-def test_xenologs_in_one_file_only_kept_once(tmp_path):
-    og_xml, _, _ = make_results(tmp_path)
-    xen_dir = tmp_path / "Putative_Xenologs"
-    write_xenologs(xen_dir, {"Sp_B": [("OG0000000", "b0", "c0")], "Sp_A": [], "Sp_C": []})
-    orthoxml.write_hogs_and_orthologs(str(og_xml), None, None, str(xen_dir))
-    _, _, groups = parse(xen_dir / "Putative_Xenologs.orthoxml")
-    assert [g for _, g in groups.values()] == [[("Sp_B", "b0"), ("Sp_C", "c0")]]
-
-
-def test_no_xenologs_nothing_written(tmp_path):
-    og_xml, _, _ = make_results(tmp_path)
-    xen_dir = tmp_path / "Putative_Xenologs"
-    write_xenologs(xen_dir, {"Sp_A": [], "Sp_B": [], "Sp_C": []})  # as on ExampleData
-    assert orthoxml.write_hogs_and_orthologs(str(og_xml), None, None, str(xen_dir)) == []
-    assert sorted(p.name for p in xen_dir.iterdir()) == ["Sp_A.tsv", "Sp_B.tsv", "Sp_C.tsv"]
-
-
-@pytest.mark.skipif(shutil.which("node") is None, reason="needs node to check the page's script")
-def test_xenologs_page_script_is_valid_javascript(tmp_path):
-    og_xml, _, _ = make_results(tmp_path)
-    xen_dir = tmp_path / "Putative_Xenologs"
-    write_xenologs(xen_dir, {"Sp_A": [("OG0000000", "a0", "c0")], "Sp_C": [("OG0000000", "c0", "a0")]})
-    orthoxml.write_hogs_and_orthologs(str(og_xml), None, None, str(xen_dir))
-    js = tmp_path / "page.js"
-    js.write_text((xen_dir / "Putative_Xenologs.html").read_text().split("<script>")[1].split("</script>")[0])
-    result = subprocess.run(["node", "--check", str(js)], capture_output=True, text=True, check=False)
-    assert result.returncode == 0, result.stderr
+    og_xml, _ = make_results(tmp_path)
+    # e.g. after -og, which removes the HOG directory
+    assert orthoxml.write_hog_files(str(og_xml), str(tmp_path / "none")) == []

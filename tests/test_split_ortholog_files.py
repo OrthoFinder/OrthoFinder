@@ -1,6 +1,5 @@
 import csv
 import gzip
-import os
 from collections import Counter
 from pathlib import Path
 
@@ -37,14 +36,10 @@ def read_tsv(path):
 
 
 @pytest.mark.order(6)
-def test_split_default_run_matches_famsa_pof_run(tmp_path):
-    default_results = os.environ.get("ORTHOFINDER_TEST_RESULTS_default")
-    famsa_results = os.environ.get("ORTHOFINDER_TEST_RESULTS_famsa")
-
-    assert default_results and famsa_results, (
-        "This comparison requires the default and famsa cases from "
-        "test_orthofinder_runs.py to run first"
-    )
+def test_split_default_run_matches_famsa_pof_run(tmp_path, orthofinder_results):
+    # famsa is the default run with -pof: its pairwise files are those to expect
+    default_results = orthofinder_results("default")
+    famsa_results = orthofinder_results("famsa")
 
     split_dir = tmp_path / "Orthologs"
     output_count, row_count, output_dir = split_ortholog_files(

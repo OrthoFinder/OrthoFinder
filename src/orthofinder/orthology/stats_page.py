@@ -31,6 +31,7 @@ from ete4 import Tree
 
 from .. import __version__
 from ..phylo.tree_pages import PALETTE, flat_tree
+from ..utils import view_pages
 
 STATS_DIR = "Comparative_Genomics_Statistics"
 DATA_DIR = "Statistics_Data"
@@ -39,7 +40,7 @@ ORTHOLOG_KINDS = ["Totals", "one-to-one", "one-to-many", "many-to-one", "many-to
 
 def read_rows(filename):
     """The rows of a tab-separated file, split only on tabs (cells may be very long)."""
-    with open(filename) as infile:
+    with open(filename, encoding="utf-8", errors="replace") as infile:
         return [line.rstrip("\r\n").split("\t") for line in infile]
 
 
@@ -119,7 +120,7 @@ def read_hogs(filename, species_index):
     [genes of each species]]), from Phylogenetic_Hierarchical_Orthogroups/<node>.tsv.
     """
     hogs = []
-    with open(filename) as infile:
+    with open(filename, encoding="utf-8", errors="replace") as infile:
         header = infile.readline().rstrip("\r\n").split("\t")
         columns = [(k, species_index[sp]) for k, sp in enumerate(header) if sp in species_index]
         n = len(species_index)
@@ -158,11 +159,12 @@ def sizes_histogram(sizes):
     return [[label, c] for label, c in zip(labels, counts)]
 
 
-def write_stats_page(results_dir):
+def write_stats_page(results_dir, written=None):
     """
     Write the statistics page of a results directory (and the data of its
-    HOGs). Returns the page's filename, or None if the results have no
-    orthogroups yet.
+    HOGs). written: the pages a run is writing, to link to (view_pages.present;
+    None: the pages that are there). Returns the page's filename, or None if
+    the results have no orthogroups yet.
     """
     stats_dir = os.path.join(results_dir, STATS_DIR)
     gene_count_fn = os.path.join(results_dir, "Orthogroups", "Orthogroups.GeneCount.tsv")
@@ -187,12 +189,14 @@ def write_stats_page(results_dir):
         for row in read_rows(fn)[1:]:
             if len(row) >= 3:
                 dups[row[0]] = [number(row[1]), number(row[2])]
-    tree_page = os.path.join(results_dir, "Resolved_Gene_Trees", "Resolved_Gene_Trees.html")
     with_trees = set()
-    if os.path.exists(tree_page):
-        with open(os.path.join(results_dir, "Resolved_Gene_Trees", "Resolved_Gene_Trees.txt")) as infile:
+    trees_fn = os.path.join(results_dir, "Resolved_Gene_Trees", "Resolved_Gene_Trees.txt")
+    if view_pages.link(results_dir, "trees", written) and os.path.exists(trees_fn):
+        with open(trees_fn, encoding="utf-8", errors="replace") as infile:
             with_trees = {line.split(":", 1)[0] for line in infile if ":" in line}
-        data["tree_page"] = "../Resolved_Gene_Trees/Resolved_Gene_Trees.html"  # --tree-view
+        data["tree_page"] = view_pages.link(results_dir, "trees", written)  # --tree-view
+    data["groups_page"] = view_pages.link(results_dir, "groups", written)  # --groups-view
+    data["nav"] = view_pages.nav(results_dir, "stats", written)
     # [orthogroup, [genes of each species], duplications, those with support >= 0.5, 1 if it has a tree page]
     data["orthogroups"] = [[og, c, *dups.get(og, [0, 0]), int(og in with_trees)] for og, c in counts]
     data["og_sizes"] = sizes_histogram([sum(c) for _, c in counts])
@@ -208,7 +212,7 @@ def write_stats_page(results_dir):
                                      for row in read_rows(fn)[1:] if len(row) >= 3}
     species_tree_fn = os.path.join(results_dir, "Species_Tree", "SpeciesTree_rooted_node_labels.txt")
     if os.path.exists(species_tree_fn):
-        with open(species_tree_fn) as infile:
+        with open(species_tree_fn, encoding="utf-8", errors="replace") as infile:
             nodes, names = flat_tree(Tree(infile.read().strip(), parser=1))
         data["species_tree"] = {"genes": [[name, species_index.get(name, -1)] for name in names], "nodes": nodes}
 
@@ -221,23 +225,26 @@ def write_stats_page(results_dir):
         hogs = read_hogs(os.path.join(hog_dir, fn), species_index)
         data["hogs"].append(hog_summary(node, hogs))
         os.makedirs(os.path.join(stats_dir, DATA_DIR), exist_ok=True)
-        with open(os.path.join(stats_dir, DATA_DIR, f"HOGs_{node}.js"), "w") as out:
+        with open(os.path.join(stats_dir, DATA_DIR, f"HOGs_{node}.js"), "w", encoding="utf-8") as out:
             out.write(f"hogsLoaded({json.dumps({'node': node, 'hogs': hogs}, separators=(',', ':'))});\n")
 
     os.makedirs(stats_dir, exist_ok=True)
     page = os.path.join(stats_dir, "Statistics.html")
-    with open(page, "w") as out:
-        out.write(HTML.replace("__DATA__", json.dumps(data, separators=(",", ":")).replace("</", "<\\/")))
+    with open(page, "w", encoding="utf-8") as out:
+        out.write(HTML.replace("__NAV_CSS__", view_pages.NAV_CSS).replace("__NAV_HTML__", view_pages.NAV_HTML)
+                  .replace("__NAV_JS__", view_pages.NAV_JS).replace("__THEME_JS__", view_pages.THEME_JS)
+                  .replace("__DATA__", json.dumps(data, separators=(",", ":")).replace("</", "<\\/")))
     return page
 
 
 HTML = r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OrthoFinder statistics</title>
+__THEME_JS__
 <style>
 :root { color-scheme:light; --page:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781; --grid:#e1e0d9;
   --axis:#c3c2b7; --ring:rgba(11,11,11,0.10); --s1:#2a78d6; --s2:#eb6834; --heat-lo:#cde2fb; --heat-hi:#104281; --zero:#f0efec;
-  --accent:#2a78d6; --head:#f1f0ec; }
+  --accent:#2a78d6; --head:#f1f0ec; --pagenav-line:var(--grid); }
 @media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) { color-scheme:dark; --page:#0d0d0d; --surface:#1a1a19; --ink:#ffffff;
   --ink2:#c3c2b7; --muted:#898781; --grid:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,0.10); --s1:#3987e5; --s2:#d95926;
   --heat-lo:#184f95; --heat-hi:#b7d3f6; --zero:#2a2a28; --accent:#6da7ec; --head:#242422; } }
@@ -246,12 +253,12 @@ HTML = r"""<!doctype html>
   --zero:#2a2a28; --accent:#6da7ec; --head:#242422; }
 * { box-sizing:border-box; }
 body { margin:0; background:var(--page); color:var(--ink); font:14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-main { max-width:1200px; margin:0 auto; padding:24px 16px 48px; }
-h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:15px; margin:0; } h3 { font-size:13px; margin:0; font-weight:600; }
+main { max-width:1400px; margin:0 auto; padding:24px clamp(16px, 2vw, 32px) 48px; }
+h1 { font-size:32px; margin:0 0 6px; } h2 { font-size:18px; margin:0 0 2px; } h3 { font-size:15px; margin:0; font-weight:600; }
 .sub, .muted { color:var(--ink2); font-size:12px; }
-nav { display:flex; gap:4px; flex-wrap:wrap; margin:16px 0; border-bottom:1px solid var(--grid); }
-nav button { border:0; background:none; color:var(--ink2); font:inherit; padding:8px 12px; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
-nav button[aria-selected="true"] { color:var(--ink); border-bottom-color:var(--accent); font-weight:600; }
+nav#tabs { display:flex; gap:4px; flex-wrap:wrap; margin:16px 0; border-bottom:1px solid var(--grid); }
+nav#tabs button { border:0; background:none; color:var(--ink2); font:inherit; padding:8px 12px; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
+nav#tabs button[aria-selected="true"] { color:var(--ink); border-bottom-color:var(--accent); font-weight:600; }
 section[hidden] { display:none; }
 .tiles { display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:10px; margin-bottom:14px; }
 .tile { background:var(--surface); border:1px solid var(--ring); border-radius:10px; padding:12px 14px; }
@@ -278,6 +285,8 @@ td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
 .tag { display:inline-block; padding:0 6px; border-radius:8px; border:1px solid var(--axis); color:var(--ink2); font-size:11px; margin-right:4px; white-space:nowrap; }
 a { color:var(--accent); }
 .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--ink2); margin-bottom:6px; align-items:center; }
+.genes-link { font-size:11px; margin-left:4px; }
+.species-key { font-size:13px; color:var(--ink); margin:12px 0 0; }
 .ramp { display:inline-block; width:90px; height:9px; border-radius:2px; vertical-align:-1px; margin:0 6px; }
 #tip { position:fixed; z-index:10; pointer-events:none; background:var(--surface); color:var(--ink); border:1px solid var(--ring);
   border-radius:8px; padding:7px 10px; font-size:12px; box-shadow:0 4px 14px rgba(0,0,0,.15); max-width:320px; }
@@ -285,10 +294,12 @@ a { color:var(--accent); }
 .hov { opacity:.75; }
 details summary { cursor:pointer; color:var(--ink2); font-size:13px; margin:4px 0; }
 .empty { color:var(--muted); font-size:13px; padding:12px 0; }
+__NAV_CSS__
 </style></head><body><main>
+__NAV_HTML__
 <h1>OrthoFinder statistics</h1>
 <div class="sub" id="sub"></div>
-<div class="sub" id="links" hidden></div>
+<div class="legend species-key" id="species-key"></div>
 <nav id="tabs" role="tablist"></nav>
 <section id="tab-overview"></section>
 <section id="tab-species" hidden></section>
@@ -310,10 +321,9 @@ const sum = a => a.reduce((x, y) => x + y, 0);
 $("sub").textContent = `OrthoFinder ${D.version}. Made from the results files (Comparative_Genomics_Statistics, Orthogroups, `
   + `Phylogenetic_Hierarchical_Orthogroups, Species_Tree). Point at a plot for its numbers; "table" shows them as a table.`;
 
-if (D.tree_page) {
-  $("links").hidden = false;
-  $("links").innerHTML = `See also the <a href="${esc(D.tree_page)}">gene trees</a> (each resolved gene tree with its alignment); an orthogroup's ID links to its tree.`;
-}
+// the species' colours, as on the tree page (and in the genes per species cells)
+$("species-key").innerHTML = D.species.map(([sp, c]) => `<span><span class="sw" style="background:${c}"></span>${esc(sp)}</span>`).join("");
+__NAV_JS__
 
 // ---- tooltip: any element with data-tv (the value) and data-tl (what it is) ----
 const tip = $("tip");
@@ -471,14 +481,28 @@ function heatmap(el, M, {unit, diagonal}) {
     + `(${fmt(min)} to ${fmt(max)} ${esc(unit)}; 0 in grey; rows → columns)</div><svg width="${Math.max(W, labelW + NS * cell + 10)}" height="${H}" role="img">${out.join("")}</svg>`;
 }
 
-// the genes of each species of an orthogroup or HOG, as a strip of cells (darker = more genes)
+// the genes of each species of an orthogroup or HOG, as a strip of cells: a cell for each
+// species in its colour, stronger for more genes (grey: none), with the number when it fits
 let stripMax = 1;
+const STRIP_NUMBERS = NS <= 20, STRIP_CW = STRIP_NUMBERS ? 22 : NS <= 60 ? 6 : 3, STRIP_H = STRIP_NUMBERS ? 16 : 12;
+function stripColour(k, c) {
+  return c ? mix(tok("--surface"), D.species[k][1], 0.3 + 0.7 * Math.log1p(c) / Math.log1p(stripMax)) : tok("--zero");
+}
 function strip(genes) {
-  const cw = NS <= 20 ? 11 : NS <= 60 ? 5 : 3, total = sum(genes);
+  const total = sum(genes);
   const lines = genes.map((c, k) => [c, k]).filter(([c]) => c).sort((a, b) => b[0] - a[0]);
   const tl = lines.slice(0, 14).map(([c, k]) => `${S[k]}: ${c}`).join("\n") + (lines.length > 14 ? `\n+ ${lines.length - 14} more species` : "");
-  return `<svg width="${NS * cw}" height="12" ${tipAttrs(`${fmt(total)} genes, ${lines.length} species`, tl)}>`
-    + genes.map((c, k) => `<rect x="${k * cw}" y="0" width="${cw - 1}" height="12" fill="${c ? mix(tok("--heat-lo"), tok("--heat-hi"), Math.log1p(c) / Math.log1p(stripMax)) : tok("--zero")}"/>`).join("") + `</svg>`;
+  return `<svg width="${NS * STRIP_CW}" height="${STRIP_H}" ${tipAttrs(`${fmt(total)} genes, ${lines.length} species`, tl)}>`
+    + genes.map((c, k) => {
+      const bg = stripColour(k, c), x = k * STRIP_CW;
+      return `<rect x="${x}" y="0" width="${STRIP_CW - 2}" height="${STRIP_H}" rx="2" fill="${bg}"/>`
+        + (STRIP_NUMBERS && c ? `<text x="${x + (STRIP_CW - 2) / 2}" y="${STRIP_H / 2}" dy="0.35em" text-anchor="middle" font-size="10" fill="${inkOn(bg)}">${c > 999 ? compact(c) : c}</text>` : "");
+    }).join("") + `</svg>`;
+}
+// the column's heading: the species of the cells, in their colours (point at one for its name)
+function stripHead() {
+  return `Genes per species<br><svg width="${NS * STRIP_CW}" height="10" style="margin-top:3px">`
+    + S.map((sp, k) => `<rect x="${k * STRIP_CW}" y="0" width="${STRIP_CW - 2}" height="8" rx="2" fill="${D.species[k][1]}"><title>${esc(sp)}</title></rect>`).join("") + `</svg>`;
 }
 
 // a table of many rows, sortable and in pages
@@ -490,7 +514,7 @@ function dataTable(el, {cols, rows, pageSize = 50, sortCol = null, sortDesc = tr
   function render() {
     const n = order.length, pages = Math.max(1, Math.ceil(n / pageSize)), p0 = page * pageSize, view = order.slice(p0, p0 + pageSize);
     el.innerHTML = `<div class="tablewrap"><table><thead><tr>` + cols.map((c, k) =>
-      `<th${c.num ? ' class="num"' : ""}${c.key ? ` data-sort="${k}"` : ""}>${esc(c.label)}${sortCol === k ? (sortDesc ? " ▾" : " ▴") : ""}</th>`).join("")
+      `<th${c.num ? ' class="num"' : ""}${c.key ? ` data-sort="${k}"` : ""}>${c.head || esc(c.label)}${sortCol === k ? (sortDesc ? " ▾" : " ▴") : ""}</th>`).join("")
       + `</tr></thead><tbody>` + (view.length ? view.map(r => `<tr>${cols.map(c => `<td${c.num ? ' class="num"' : ""}>${c.html(r)}</td>`).join("")}</tr>`).join("")
         : `<tr><td colspan="${cols.length}" class="empty">Nothing matches.</td></tr>`)
       + `</tbody></table></div><div class="tools" style="margin-top:8px"><button class="btn" data-p="-1"${page ? "" : " disabled"}>Previous</button>`
@@ -506,6 +530,9 @@ function dataTable(el, {cols, rows, pageSize = 50, sortCol = null, sortDesc = tr
   return {setRows(r) { rows = r; if (sortCol !== null) sortBy(sortCol, sortDesc); else { order = r; page = 0; } render(); }};
 }
 const treeLink = og => D.tree_page ? `<a href="${esc(D.tree_page)}#${encodeURIComponent(og)}" title="Its gene tree and alignment">${esc(og)}</a>` : esc(og);
+// an orthogroup's ID: a link to its tree (if it has one), and to its genes (--groups-view)
+const ogLinks = (og, hasTree) => (hasTree ? treeLink(og) : esc(og))
+  + (D.groups_page ? ` <a class="genes-link" href="${esc(D.groups_page)}#orthogroups/${encodeURIComponent(og)}" title="Its genes">genes</a>` : "");
 
 // ---- the tabs ----
 const TABS = [["overview", "Overview"], ["species", "Species"], ["orthogroups", "Orthogroups"], ["duplications", "Duplications"], ["hogs", "HOGs"]];
@@ -590,12 +617,13 @@ renderers.orthogroups = () => {
     + `<option value="one">Species-specific (one species)</option><option value="dup">With gene duplications</option><option value="tree">With a gene tree</option></select>`
     + `<select id="og-sp"><option value="-1">Any species</option>${S.map((s, k) => `<option value="${k}">With ${esc(s)}</option>`).join("")}</select>`
     + `<button class="btn" id="og-dl">Download as TSV</button></div><div class="card"><div id="og-table"></div></div>`
-    + `<div class="muted">Genes per species: a cell for each species (${S.length}), in the order of the legend on the Species tab; darker = more genes. Point at it for the numbers.</div>`;
+    + `<div class="muted">Genes per species: a cell for each species (${S.length}), in its colour (as in the column's heading; point at a colour there for its species), `
+    + `stronger for more genes, grey for none${STRIP_NUMBERS ? "; the number of genes in it" : ""}. Point at a row's cells for all its numbers.</div>`;
   const cols = [
-    {label: "Orthogroup", key: r => r[0], html: r => r[4] ? treeLink(r[0]) : esc(r[0])},
+    {label: "Orthogroup", key: r => r[0], html: r => ogLinks(r[0], r[4])},
     {label: "Genes", key: r => sum(r[1]), html: r => fmt(sum(r[1])), num: true},
     {label: "Species", key: r => r[1].filter(c => c).length, html: r => `${r[1].filter(c => c).length} of ${NS}`, num: true},
-    {label: "Genes per species", html: r => strip(r[1])},
+    {label: "Genes per species", head: stripHead(), html: r => strip(r[1])},
     {label: "Duplications (support ≥ 0.5)", key: r => r[3], html: r => fmt(r[3]), num: true},
     {label: "", html: r => (r[1].every(c => c === 1) ? `<span class="tag">single-copy</span>` : r[1].every(c => c) ? `<span class="tag">all species</span>` : "")
       + (r[1].filter(c => c).length === 1 ? `<span class="tag">species-specific</span>` : "")},
@@ -706,7 +734,7 @@ function loadHogs(node) {
   if (hogData[node]) return showHogs(node);
   const s = document.createElement("script");
   s.src = `${D.data}/HOGs_${encodeURIComponent(node)}.js`;
-  s.onerror = () => { if (hogWanted === node) $("hog-table").innerHTML = `<div class="empty">The HOGs of ${esc(node)} could not be loaded (${esc(s.src)}).</div>`; };
+  s.onerror = () => { if (hogWanted === node) $("hog-table").innerHTML = `<div class="empty">The HOGs of ${esc(node)} could not be loaded (${esc(s.src)}). The page needs its folder ${esc(D.data)} next to it: copy (or download) them together, e.g. the whole results directory.</div>`; };
   document.head.appendChild(s);
 }
 function showHogs(node) {
@@ -720,11 +748,11 @@ function showHogs(node) {
   setTable(c2, [["Species", 0], ["HOGs", 1]], bySp);
   const cols = [
     {label: "HOG", key: r => r[0], html: r => esc(r[0])},
-    {label: "Orthogroup", key: r => r[1], html: r => OG_TREE.has(r[1]) ? treeLink(r[1]) : esc(r[1])},
+    {label: "Orthogroup", key: r => r[1], html: r => ogLinks(r[1], OG_TREE.has(r[1]))},
     {label: "Gene tree clade", key: r => r[2], html: r => esc(r[2])},
     {label: "Genes", key: r => sum(r[3]), html: r => fmt(sum(r[3])), num: true},
     {label: "Species", key: r => r[3].filter(c => c).length, html: r => fmt(r[3].filter(c => c).length), num: true},
-    {label: "Genes per species", html: r => strip(r[3])},
+    {label: "Genes per species", head: stripHead(), html: r => strip(r[3])},
   ];
   hogTable = dataTable($("hog-table"), {cols, rows: hogs});
   $("hog-q").oninput = () => { const q = $("hog-q").value.trim().toLowerCase(); hogTable.setRows(q ? hogs.filter(h => h[0].toLowerCase().includes(q) || h[1].toLowerCase().includes(q)) : hogs); };
@@ -736,9 +764,14 @@ let resizeTimer = null;
 const redrawAll = () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => Object.values(onResize).forEach(f => f()), 150); };
 window.addEventListener("resize", redrawAll);
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redrawAll);
-const [startTab, startOg] = decodeURIComponent(location.hash.slice(1)).split("/");
-openTab(startTab || "overview");
-if (startTab === "orthogroups" && startOg) { $("og-q").value = startOg; $("og-q").dispatchEvent(new Event("input")); }
+window.addEventListener("orthofinder-theme", redrawAll);  // Colours: Light, Dark or Auto
+function goToHash() {  // Statistics.html#species, #orthogroups/OG0000003
+  const [tab, og] = decodeURIComponent(location.hash.slice(1)).split("/");
+  openTab(tab || "overview");
+  if (tab === "orthogroups" && og) { $("og-q").value = og; $("og-q").dispatchEvent(new Event("input")); }
+}
+goToHash();
+window.addEventListener("hashchange", goToHash);  // e.g. sent here from another page in OrthoFinder_Results.html
 </script></body></html>
 """
 

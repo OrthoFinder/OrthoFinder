@@ -225,9 +225,22 @@ def _run_parallel_commands_and_move_results_file(
     q_always_print_stderr=False,
     dynamic_threads=False,
     on_success=None,
+    follow_up=None,
+    progress=None,
 ):
     """
     Calls the commands in parallel and if required moves the results file to the required new filename
+
+    The commands are started in the order given, at most n_processes at a
+    time. A python function in a list of commands (e.g. trimming) is run in a
+    separate process, not in this one, where the commands' threads would hold it up.
+
+    follow_up: called in this process with each command (or list of commands)
+    that succeeds; it returns the commands that can now run (e.g. a tree that
+    needed it), which are started before the remaining ones.
+
+    progress: what shows the progress (see Progress), by default a progress bar
+    for the whole batch.
     Args:
         nProcess - the number of parallel process to use
         commands_and_filenames : tuple (cmd, actual_target_fn) where actual_target_fn = None if no move is required
@@ -240,32 +253,43 @@ def _run_parallel_commands_and_move_results_file(
                       of the inner list need to be run in the order they appear.
         q_print_on_error - If error code returend print stdout & stederr
     """
-    total_commands = len(commands_and_filenames)
+    queued = collections.deque(cmd_unit for cmd_unit in commands_and_filenames if cmd_unit is not None)
+    total_commands = len(queued)
     if method_threads is None:
         method_threads = "1"
 
 
     n_processes = max(1, min((n_processes, len(commands_and_filenames), TOTAL_CORES * 4)))
 
-    progressbar, task = printing.get_progressbar(total_commands)
-    progressbar.start()
-    update_cycle = 1 #10 if total_commands <= 200 else 100 if total_commands <= 2000 else 1000
+    # Started before the threads and the progress bar: forking a process
+    # while another thread holds a lock can leave the child stuck on it.
+    function_pool = _start_function_pool(queued, q_list_of_list)
+
+    if progress is None:
+        progress = Progress(total_commands)
+    progress.start()
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=n_processes) as executor:
         futures = {}
-        for cmd_unit in commands_and_filenames:
-            if cmd_unit is None:
-                continue
-            fut = executor.submit(
-                worker_run_commands_and_move,
-                cmd_unit,
-                method_threads,
-                q_list_of_list,
-                q_print_on_error,
-                q_always_print_stderr,
-                dynamic_threads=dynamic_threads
-            )
-            futures[fut] = cmd_unit
+        running = set()
+
+        def start_queued():
+            # Only n_processes are handed to the pool at a time, so that commands
+            # returned by follow_up can still go ahead of the queued ones.
+            while queued and len(running) < n_processes:
+                cmd_unit = queued.popleft()
+                fut = executor.submit(
+                    worker_run_commands_and_move,
+                    cmd_unit,
+                    method_threads,
+                    q_list_of_list,
+                    q_print_on_error,
+                    q_always_print_stderr,
+                    dynamic_threads=dynamic_threads,
+                    function_pool=function_pool,
+                )
+                futures[fut] = cmd_unit
+                running.add(fut)
 
         recorded = set()
 
@@ -277,24 +301,35 @@ def _run_parallel_commands_and_move_results_file(
                 print("WARNING: could not record a finished command: %s" % e)
 
         try:
-            for i, future in enumerate(concurrent.futures.as_completed(futures)):
-                # The first failed command is raised straight away (with
-                # its stdout/stderr, which main() writes to checkpoint.txt).
-                result = future.result()
-                if result != 0 and q_print_on_error:
-                    print(f"ERROR occurred with command: {futures[future]}")
-                if result == 0 and on_success is not None:
-                    record_success(future)
-                if (i + 1) % update_cycle == 0:
-                    progressbar.update(task, advance=update_cycle)
+            start_queued()
+            while running:
+                done, _ = concurrent.futures.wait(running, return_when=concurrent.futures.FIRST_COMPLETED)
+                for future in done:
+                    running.discard(future)
+                    # The first failed command is raised straight away (with
+                    # its stdout/stderr, which main() writes to checkpoint.txt).
+                    result = future.result()
+                    if result != 0 and q_print_on_error:
+                        print(f"ERROR occurred with command: {futures[future]}")
+                    if result == 0 and on_success is not None:
+                        record_success(future)
+                    progress.done(futures[future])
+                    if result == 0 and follow_up is not None:
+                        next_units = list(follow_up(futures[future]))
+                        queued.extendleft(reversed(next_units))
+                        progress.added(len(next_units))
+                start_queued()
         except BaseException:
             # A command failed or we were interrupted: don't start queued
             # commands and stop running ones, otherwise leaving the pool
             # would wait for all of them to finish.
+            queued.clear()
             for fut in futures:
                 fut.cancel()
             parallel_task_manager.kill_running_commands()
-            progressbar.stop()
+            if function_pool is not None:
+                function_pool.stop()
+            progress.stop()
             if on_success is not None:
                 # Commands that succeeded but were not yet recorded (e.g. they
                 # finished while the batch was being stopped) are recorded too,
@@ -306,7 +341,80 @@ def _run_parallel_commands_and_move_results_file(
                             and fut.exception() is None and fut.result() == 0):
                         record_success(fut)
             raise
-    progressbar.stop()
+    progress.stop()
+    if function_pool is not None:
+        function_pool.close()
+
+
+class Progress(object):
+    """
+    A progress bar for a batch of commands. Another object with the same
+    methods can be given to run_parallel_commands_and_move_results_file to
+    show the progress differently.
+    """
+
+    def __init__(self, total):
+        self.total = total
+        self.bar, self.task = printing.get_progressbar(total)
+
+    def start(self):
+        self.bar.start()
+
+    def done(self, cmd_unit):
+        """A command (or list of commands) has finished."""
+        self.advance(1)
+
+    def advance(self, n):
+        self.bar.update(self.task, advance=n)
+
+    def added(self, n):
+        """n commands were added to the batch (by follow_up)."""
+        if n:
+            self.total += n
+            self.bar.update(self.task, total=self.total)
+
+    def stop(self):
+        self.bar.stop()
+
+
+# Processes for the python functions in a batch (trimming). They take a small
+# share of the time, so a few are enough, and each is a copy of this process.
+N_FUNCTION_PROCESSES = 4
+
+
+class FunctionPool(object):
+    """Runs python functions in a few separate processes, each with a core reserved."""
+
+    def __init__(self, n_processes):
+        self.pool = concurrent.futures.ProcessPoolExecutor(max_workers=n_processes)
+        # Only as many functions as processes take a core: the others wait
+        # here without holding one.
+        self.slots = threading.BoundedSemaphore(n_processes)
+        # With fork, the first task starts all the processes.
+        self.pool.submit(int).result()
+
+    def run(self, fn, args):
+        with self.slots:
+            TOKENS.acquire(1)
+            try:
+                return self.pool.submit(fn, *args).result()
+            finally:
+                TOKENS.release(1)
+
+    def close(self):
+        self.pool.shutdown(wait=True)
+
+    def stop(self):
+        parallel_task_manager.terminate_processes(list(getattr(self.pool, "_processes", {}).values()))
+        self.pool.shutdown(wait=False, cancel_futures=True)
+
+
+def _start_function_pool(cmd_units, q_list_of_list):
+    """A FunctionPool for the python functions among the commands; None if there are none."""
+    if not q_list_of_list or not any(isinstance(command, types.FunctionType)
+                                     for cmd_unit in cmd_units for command, _ in cmd_unit):
+        return None
+    return FunctionPool(min(N_FUNCTION_PROCESSES, TOTAL_CORES))
 
 
 def run_parallel_commands_and_move_results_file(*args, **kwargs):
@@ -330,9 +438,10 @@ def worker_run_commands_and_move(
     command_fns_list, 
     method_threads, 
     q_list_of_lists, 
-    q_print_on_error, 
-    q_always_print_stderr, 
+    q_print_on_error,
+    q_always_print_stderr,
     dynamic_threads,
+    function_pool=None,
 ):
     """
     Continuously takes commands that need to be run from the cmd_and_filename_queue until the queue is empty. If required, moves
@@ -363,9 +472,11 @@ def worker_run_commands_and_move(
         return_code = 1
         for command, fns in command_fns_list:
             if isinstance(command, types.FunctionType):
-                # This will block the process, but it is ok for trimming, it takes minimal time
                 fn = command
-                fn(*fns)
+                if function_pool is None:
+                    fn(*fns)
+                else:
+                    function_pool.run(fn, fns)
                 return_code = 0
             else:
                 if not isinstance(command, str):

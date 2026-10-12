@@ -1,7 +1,7 @@
 #! /bin/bash 
 er=0;
 myself=`dirname "$0"`/`basename "$0"`; export myself
-version="v7.511 (2022/Dec/15)"; export version
+version="v7.526 (2024/Apr/26)"; export version
 LANG=C; export LANG
 os=`uname`
 progname=`basename "$0"`
@@ -36,7 +36,7 @@ fi
 if [ "$MAFFT_BINARIES" ]; then
 	prefix="$MAFFT_BINARIES"
 else
-	prefix=/usr/libexec/mafft
+	prefix=/tmp/tmp.8XzfrO4LA6/prefix/libexec/mafft
 fi
 export prefix # iranai
 
@@ -217,7 +217,9 @@ contrafold=$defaultcontrafold
 progressfile="/dev/stderr"
 anchorfile="/dev/null"
 anchoropt=""
-maxanchorseparation=1000
+#maxanchorseparation=1000
+#maxanchorseparation=-1 # 2023/Jan/11
+terminalmargin=100 # 2024/Mar
 debug=0
 sw=0
 algopt=$defaultalgopt
@@ -242,6 +244,7 @@ partorderopt=" -x "
 treeout=0
 nodeout=0
 distout=0
+distformat="hat2"
 treein=0
 topin=0
 treeinopt="  "
@@ -400,6 +403,10 @@ if [ $# -gt 0 ]; then
 			treeout=1
 		elif [ "$1" = "--distout" ]; then 
 			distout=1
+			distformat="hat2"
+		elif [ "$1" = "--distoutclustalo" ]; then 
+			distout=1
+			distformat="clodist"
 		elif [ "$1" = "--fastswpair" ]; then
 			distance="fasta"
 			pairspecified=1
@@ -574,13 +581,13 @@ if [ $# -gt 0 ]; then
 		elif [ "$1" = "--out" ]; then 
 			shift   
 			outputfile="$1"
-		elif [ "$1" = "--skipanchorsremoterthan" ]; then 
+		elif [ "$1" = "--terminalmargin" ]; then 
 			shift   
 			if ! expr "$1" : "[0-9]" > /dev/null ; then
-				echo "Specify maximum gap length between anchors." 1>&2
+				echo "set --terminalmargin (int)." 1>&2
 				exit
 			fi
-			maxanchorseparation=`expr "$1" - 0` 
+			terminalmargin=`expr "$1" - 0` 
 		elif [ "$1" = "--anchors" ]; then 
 			shift
 			anchorfile="$1"
@@ -680,6 +687,11 @@ if [ $# -gt 0 ]; then
 			addarg0="-K -I"
 			addfile="$1"
 			fragment=-3
+		elif [ "$1" = "--addtoroot" ]; then 
+			shift   
+			addarg0="-K -I"
+			addfile="$1"
+			fragment=-4
 		elif [ "$1" = "--smoothing" ]; then 
 			add2ndhalfarg=$add2ndhalfarg" -p "
 		elif [ "$1" = "--keeplength" ]; then 
@@ -1786,7 +1798,7 @@ $ownlist"
 			parttreeoutopt=" "
 		fi
 		if [ $distout -eq 1 ]; then
-			distoutopt="-y -T"
+			distoutopt="-y ${distformat} -T"
 			if [ $treeout -eq 0 ]; then
 				treeoutopt=""
 			fi
@@ -1807,7 +1819,7 @@ $ownlist"
 			treeoutopt=" "
 		fi
 		if [ $distout -eq 1 ]; then
-			distoutopt="-y"
+			distoutopt="-y ${distformat}"
 		fi
 	fi
 #
@@ -2050,6 +2062,11 @@ $ownlist"
 		elif [ $fragment -eq "-3" ]; then
 			addarg="$addarg0 $nadd"
 			addsinglearg="-x"       # add to top, 2021/12/31
+			cycle=1 # chuui 2014Aug25
+			iterate=0
+		elif [ $fragment -eq "-4" ]; then
+			addarg="$addarg0 $nadd"
+			addsinglearg="-s"       # add to root, 2023/2/11
 			cycle=1 # chuui 2014Aug25
 			iterate=0
 		else
@@ -2596,7 +2613,7 @@ $ownlist"
 				"$prefix/tbfast" -W $minimumweight -V "-"$gopdist -s $unalignlevel $legacygapopt $mergearg $termgapopt $outnum $addarg $add2ndhalfarg -C $numthreadstb $rnaopt $weightopt $treeinopt $treeoutopt $distoutopt $seqtype $model -f "-"$gop -Q $spfactor -h $aof  $param_fft $localparam   $algopt $treealg $scoreoutarg < infile   > /dev/null 2>>"$progressfile" || exit 1
 			fi
 		elif [ $distance = "lastmulti" ]; then
-			"$prefix/dndpre" $model -M 2 $addarg -C $numthreads $seqtype $model -g $lexp -f $lgop -Q $spfactor -h $laof < infile > /dev/null 2>>"$progressfile"      || exit 1
+			"$prefix/dndpre" -y $distformat $model -M 2 $addarg -C $numthreads $seqtype $model -g $lexp -f $lgop -Q $spfactor -h $laof < infile > /dev/null 2>>"$progressfile"      || exit 1
 			mv hat2 hat2i
 			"$prefix/pairlocalalign" $addarg   -C $numthreads $seqtype $model -e $last_e -w $last_m -g $lexp -f $lgop -Q $spfactor -h $laof -r $last_subopt $last_once -d "$prefix" < infile > /dev/null  2>>"$progressfile"      || exit 1
 			cat hat3.seed hat3 > hatx
@@ -2609,7 +2626,7 @@ $ownlist"
 				exit 1
 			fi
 		elif [ $distance = "multi" ]; then
-			"$prefix/dndpre" $model -M 2 $addarg -C $numthreads $seqtype $model -g $lexp -f $lgop -h $laof  $usenaivepairscore < infile > /dev/null 2>>"$progressfile"      || exit 1
+			"$prefix/dndpre" -y $distformat $model -M 2 $addarg -C $numthreads $seqtype $model -g $lexp -f $lgop -h $laof  $usenaivepairscore < infile > /dev/null 2>>"$progressfile"      || exit 1
 			mv hat2 hat2i
 			"$prefix/pairlocalalign" $localparam $addarg   -C $numthreads $seqtype $model  -g $lexp -f $lgop -Q $spfactor -h $laof -Y $usenaivepairscore < infile > /dev/null  2>>"$progressfile"      || exit 1
 			cat hat3.seed hat3 > hatx
@@ -2638,7 +2655,7 @@ $ownlist"
 			"$prefix/splittbfast" $legacygapopt $algopt $splitopt $partorderopt $parttreeoutopt $memopt $seqtype $model -f "-"$gop -Q $spfactor -h $aof -p $partsize -s $groupsize $treealg $outnum -i infile   > pre 2>>"$progressfile" || exit 1
 			mv hat3.seed hat3
 		elif [ $distance = "ktuplesmulti" ]; then
-#			"$prefix/dndpre" $model -M 1 $addarg -C $numthreads $seqtype $model -g $lexp -f $lgop -h $laof < infile > /dev/null 2>>"$progressfile"      || exit 1
+#			"$prefix/dndpre" -y $distformat $model -M 1 $addarg -C $numthreads $seqtype $model -g $lexp -f $lgop -h $laof < infile > /dev/null 2>>"$progressfile"      || exit 1
 #			mv hat2 hat2i
 #			"$prefix/disttbfast" -E 1 -s $unalignlevel $legacygapopt -W $tuplesize $termgapopt $outnum $addarg $add2ndhalfarg -C $numthreads-$numthreadstb $memopt $weightopt $treeinopt $treeoutopt -T -y $seqtype $model -f "-"$gop -Q $spfactor -h $aof  $param_fft $algopt $treealg $scoreoutarg < infile   > /dev/null 2>>"$progressfile" || exit 1
 #			mv hat2 hat2n
@@ -2653,7 +2670,7 @@ $ownlist"
 			if [ $fragment -ne 0 ]; then 
 				"$prefix/addsingle" $codonposopt $codonscoreopt -Q 100 $legacygapopt -W $tuplesize -O $outnum $addsinglearg $addarg $add2ndhalfarg -C $numthreads $memopt $weightopt $treeinopt $treeoutopt $distoutopt $seqtype $model -f "-"$gop  -h $aof  $param_fft $localparam   $algopt $treealg < infile   > /dev/null 2>>"$progressfile" || exit 1
 			else
-				"$prefix/disttbfast" -q $npickup -E $cycledisttbfast -V "-"$gopdist  -s $unalignlevel $legacygapopt $mergearg -W $tuplesize $termgapopt $outnum $addarg $add2ndhalfarg -C $numthreads-$numthreadstb $memopt $weightopt $treeinopt $treeoutopt $distoutopt $seqtype $model -g $gexp -f "-"$gop -Q $spfactor -h $aof  $param_fft $algopt $treealg $scoreoutarg $anchoropt -x $maxanchorseparation $oneiterationopt < infile   > pre 2>>"$progressfile" || exit 1
+				"$prefix/disttbfast" -q $npickup -E $cycledisttbfast -V "-"$gopdist  -s $unalignlevel $legacygapopt $mergearg -W $tuplesize $termgapopt $outnum $addarg $add2ndhalfarg -C $numthreads-$numthreadstb $memopt $weightopt $treeinopt $treeoutopt $distoutopt $seqtype $model -g $gexp -f "-"$gop -Q $spfactor -h $aof  $param_fft $algopt $treealg $scoreoutarg $anchoropt -x $terminalmargin $oneiterationopt < infile   > pre 2>>"$progressfile" || exit 1
 				mv hat3.seed hat3
 			fi
 		fi
@@ -2671,7 +2688,7 @@ $ownlist"
 		done
 		if [ $iterate -gt 0 ]; then
 			if [ $distance = "ktuples" ]; then
-			    "$prefix/dndpre" $seqtype $model -M 2 -C $numthreads < pre     > /dev/null 2>>"$progressfile" || exit 1
+			    "$prefix/dndpre" -y $distformat $seqtype $model -M 2 -C $numthreads < pre     > /dev/null 2>>"$progressfile" || exit 1
 			fi
 			"$prefix/dvtditr" -W $minimumweight $bunkatsuopt -E $fixthreshold -s $unalignlevel  $legacygapopt $mergearg $outnum -C $numthreadsit -t $randomseed $rnaoptit $memopt $scorecalcopt $localparam -z 50 $seqtype $model -f "-"$gop -Q $spfactor -h $aof  -I $iterate $weightopt $treeinopt $algoptit $treealg -p $parallelizationstrategy  $scoreoutarg  -K $nadd < pre     > /dev/null 2>>"$progressfile" || exit 1
 		fi
@@ -2806,7 +2823,7 @@ $ownlist"
 	fi
 
 	if [ $distout -eq 1 ]; then
-		cp "$TMPFILE/hat2" "$infilename.hat2"
+		cp "$TMPFILE/${distformat}" "$infilename.${distformat}"
 	fi
 
 	if [ $npickup -ne 0 ]; then

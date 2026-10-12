@@ -58,6 +58,11 @@
         "cmd_line": "iqtree3 -s INPUT --prefix PATH/IDENTIFIER -T METHODTHREAD -quiet",
         "output_filename": "PATH/IDENTIFIER.treefile"
     },
+    "__comment": "Species tree programs (-ST): INPUT is the gene trees, one per line, their leaves named by species ID; OUTPUT the species tree they write (Newick); METHODTHREAD is the number of threads (-t), as the program runs on its own.",
+    "astral-pro": {
+        "program_type": "species_tree",
+        "cmd_line": "astral-pro -i INPUT -o OUTPUT -t METHODTHREAD"
+    },
     "diamond": {
         "program_type": "search",
         "db_cmd": "diamond makedb --ignore-warnings --in INPUT -d OUTPUT",

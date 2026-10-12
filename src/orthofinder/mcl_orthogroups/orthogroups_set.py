@@ -25,8 +25,6 @@
 # For any enquiries send an email to David Emms
 # david_emms@hotmail.comhor: david
 
-import numpy as np
-
 try:
     from rich import print
 except ImportError:
@@ -35,6 +33,7 @@ from . import mcl as MCL
 from ..utils import file_handler
 from ..utils import species_info
 from ..utils import gene_ids
+from ..species_tree import concatenated_alignment
 
 
 class Seq(object):
@@ -186,19 +185,7 @@ class OrthogroupSet(object):
     def orthogroup_matrix(self):
         """qReduce give a matrix with only as many columns as species for cases when
         clustering has been performed on a subset of species"""
-        ogs = self.get_ogs_all()
-        iogs4 = self.get_i_ogs4()
-        ogs = [ogs[i] for i in iogs4]
-        i_species = sorted(set([gene.i_sp for og in ogs for gene in og]))
-        species_index_dict = {i_sp: i_col for i_col, i_sp in enumerate(i_species)}
-        n_species = len(i_species)
-        n_groups = len(ogs)
-        # (i, j)-th entry of ogMatrix gives the number of genes from i in orthologous group j
-        og_matrix = np.zeros((n_groups, n_species))
-        for i_og, og in enumerate(ogs):
-            for gene in og:
-                og_matrix[i_og, species_index_dict[gene.i_sp]] += 1
-        return og_matrix, iogs4
+        return concatenated_alignment.orthogroup_matrix(self.get_ogs_all(), self.min_seq)
 
     def all_used_sequence_ids(self):
         ids_dict = self.sequence_dict()
