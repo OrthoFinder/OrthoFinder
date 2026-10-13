@@ -143,11 +143,16 @@ def write_explorer_data(results_dir, data_dir, species, species_number):
     return hog_nodes, n_genes
 
 
-def leaf_species(leaf_name, species_by_length, gene_species):
-    """(species, gene name) of a gene tree leaf: "<species>_<gene>", or "<gene>" (-X)."""
-    for sp in species_by_length:
-        if leaf_name.startswith(sp + "_"):
-            return sp, leaf_name[len(sp) + 1:]
+def leaf_species(leaf_name, species_set, gene_species):
+    """
+    (species, gene name) of a gene tree leaf: "<species>_<gene>" (the longest
+    species that is a prefix of it), or "<gene>" (-X).
+    """
+    i = leaf_name.rfind("_")
+    while i > 0:
+        if leaf_name[:i] in species_set:
+            return leaf_name[:i], leaf_name[i + 1:]
+        i = leaf_name.rfind("_", 0, i)
     return gene_species.get(leaf_name), leaf_name
 
 
@@ -374,7 +379,7 @@ def write_tree_pages(results_dir, written=None):
         return 0
     species, gene_species = species_and_genes(os.path.join(results_dir, "Orthogroups"))
     colour = {sp: PALETTE[i % len(PALETTE)] for i, sp in enumerate(species)}
-    species_by_length = sorted(species, key=len, reverse=True)
+    species_set = set(species)
     species_number = {sp: k for k, sp in enumerate(species)}
     msa_dir = os.path.join(results_dir, "MultipleSequenceAlignments")
     duplications = read_duplications(os.path.join(results_dir, "Gene_Duplication_Events", "Duplications.tsv"))
@@ -382,7 +387,7 @@ def write_tree_pages(results_dir, written=None):
 
     def label_of(name):
         """["<species>: <gene>" or "<gene>", species number or -1] of a gene."""
-        sp, gene = leaf_species(name, species_by_length, gene_species)
+        sp, gene = leaf_species(name, species_set, gene_species)
         return [f"{sp}: {gene}" if sp else gene, species_number.get(sp, -1)]
 
     species_tree, all_ogs = None, None
@@ -423,7 +428,7 @@ def write_tree_pages(results_dir, written=None):
                 stats["alignment"] = alignment_stats(aln)
         os.makedirs(data_dir, exist_ok=True)
         write_tree_data(os.path.join(data_dir, og + ".js"), data)
-        trees.append([og, sorted({leaf_species(n, species_by_length, gene_species)[1] for n in leaf_names}), stats])
+        trees.append([og, sorted({leaf_species(n, species_set, gene_species)[1] for n in leaf_names}), stats])
         if all_ogs:
             all_ogs.add(og, nodes, [sp for _, sp in genes], og_dups, node_index)
     if n_failed:

@@ -23,6 +23,18 @@ PAGES = {  # key: (name, path in the results directory)
 }
 
 
+def orthogroups_file(results_dir, suffix=".tsv"):
+    """
+    Orthogroups/Orthogroups<suffix>, or without it (e.g. after -og)
+    MCL_Orthogroups<suffix>, the MCL orthogroups; None if neither is there.
+    """
+    for name in ("Orthogroups", "MCL_Orthogroups"):
+        path = os.path.join(results_dir, "Orthogroups", name + suffix)
+        if os.path.exists(path):
+            return path
+    return None
+
+
 def present(results_dir, written=None):
     """
     The pages of a results directory: written, the keys of the pages a run is

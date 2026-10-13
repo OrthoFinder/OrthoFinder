@@ -57,9 +57,10 @@ def write_groups_page(results_dir, written=None):
     Returns the page's filename, or None if the results have no orthogroups.
     """
     og_dir = os.path.join(results_dir, "Orthogroups")
-    og_fn = os.path.join(og_dir, "Orthogroups.tsv")
-    if not os.path.exists(og_fn):
+    og_fn = view_pages.orthogroups_file(results_dir)   # or the MCL orthogroups (e.g. -og)
+    if og_fn is None:
         return None
+    q_mcl = os.path.basename(og_fn).startswith("MCL_")
     header, og_rows = read_table(og_fn)
     species = header[1:]
     n = len(species)
@@ -75,7 +76,8 @@ def write_groups_page(results_dir, written=None):
             for r in og_rows]
     write_table(data_dir, "Orthogroups", [{"name": "Orthogroup", "kind": "og"}, {"name": "Genes", "kind": "num"}]
                 + [genes_column(k) for k in range(n)], rows)
-    tabs.append({"id": "orthogroups", "name": "Orthogroups", "note": "The orthogroups of Orthogroups.tsv.",
+    tabs.append({"id": "orthogroups", "name": "MCL orthogroups" if q_mcl else "Orthogroups",
+                 "note": f"The orthogroups of {os.path.basename(og_fn)}.",
                  "views": [{"name": "All orthogroups", "key": "Orthogroups", "rows": len(rows)}]})
 
     # the HOGs, a table for each species tree node (the species of its clade)

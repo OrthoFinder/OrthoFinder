@@ -6,7 +6,7 @@ from collections import defaultdict, Counter
 from ..gene_tree import msa_trees
 from ..mcl_orthogroups.mcl import id_full_dict
 from ..mcl_orthogroups.orthogroups_set import Seq
-from ..utils import util, file_handler, file_io, orthoxml
+from ..utils import util, file_handler, file_io
 
 from xml.etree.ElementTree import SubElement  # Y
 from .. import __version__
@@ -20,7 +20,6 @@ def post_hogs_processing(
     seqs_info,
     species_names_dict,
     options,
-    species_xml,
     q_incremental=False,
 ):
     """
@@ -56,15 +55,6 @@ def post_hogs_processing(
             species_info_obj.species_to_use,
             results_base_filename,
         )
-        if species_xml is not None:  # -x
-            orthoxml.write_results(
-                species_xml,
-                new_ogs,
-                seqs_info.n_seqs_per_species,
-                ids_dict,
-                species_info_obj.species_to_use,
-                results_base_filename,
-            )
 
     # Write Orthogroup FASTA files
     og_set = HogOrthogroupSet(

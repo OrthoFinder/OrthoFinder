@@ -24,6 +24,7 @@
 # For any enquiries send an email to David Emms
 # david_emms@hotmail.com
 from __future__ import absolute_import
+import os
 import sys
 from typing import List, Set
 try:
@@ -140,15 +141,20 @@ def id_full_dict(ids_filenames, func=gene_ids.FirstWordExtractor):
 class MCL:
     @staticmethod
     def create_ogs(predicted_ogs, output_filename, orthogroups_id_fn, id_dict):
-        with open(output_filename, 'w') as output_file, open(orthogroups_id_fn, "w") as outputid_file:
-            for i_og, og in enumerate(predicted_ogs):
-                output_file.write("OG%07d: " % i_og)
-                accessions = sorted([id_dict[seq] for seq in og])
-                output_file.write(" ".join(accessions))
-                output_file.write("\n")
-                outputid_file.write("OG%07d: " % i_og)
-                outputid_file.write(" ".join(sorted([seq for seq in og])))
-                outputid_file.write("\n")
+        """Orthogroups.txt-like files: output_filename with the gene names, orthogroups_id_fn
+        with the sequence IDs (either may be None: not written)."""
+        if output_filename is not None:
+            with open(output_filename, 'w') as output_file:
+                for i_og, og in enumerate(predicted_ogs):
+                    output_file.write("OG%07d: " % i_og)
+                    output_file.write(" ".join(sorted([id_dict[seq] for seq in og])))
+                    output_file.write("\n")
+        if orthogroups_id_fn is not None:
+            with open(orthogroups_id_fn, "w") as outputid_file:
+                for i_og, og in enumerate(predicted_ogs):
+                    outputid_file.write("OG%07d: " % i_og)
+                    outputid_file.write(" ".join(sorted([seq for seq in og])))
+                    outputid_file.write("\n")
 
     # @staticmethod
 
@@ -163,10 +169,15 @@ class MCL:
             ogs, 
             ids_filenames, 
             results_base_filename, 
-            clusters_filename_pairs
+            clusters_filename_pairs,
+            write_ids=True,
         ):
-        output_fn = results_base_filename + ".txt"
-        orthogroups_id_fn = file_handler.handler.ogs_id_fn(extension=".txt")
+        """
+        <results_base_filename>.txt (None: not written) and, with write_ids, the
+        orthogroups as sequence IDs in the working directory. Returns {sequence ID: gene name}.
+        """
+        output_fn = None if results_base_filename is None else results_base_filename + ".txt"
+        orthogroups_id_fn = file_handler.handler.ogs_id_fn(extension=".txt") if write_ids else None
         try:
             # fullDict = dict()
             # for idsFilename in idsFilenames:
@@ -206,8 +217,11 @@ class MCL:
         id_to_name_dict,
         species_names_dict,
         species_to_use,
-        results_base_filename
+        results_base_filename,
+        write_ids=True,
     ):
+        """<results_base_filename>.tsv, .GeneCount.tsv, _UnassignedGenes.tsv and, with
+        write_ids, the orthogroups as sequence IDs in the working directory."""
 
         n_species = len(species_names_dict)
         
@@ -216,7 +230,7 @@ class MCL:
         ogs_ints = [[list(map(int, sequence.split("_"))) for sequence in og] for og in ogs]
 
         # write out
-        orthogroups_id_fn = file_handler.handler.ogs_id_fn()
+        orthogroups_id_fn = file_handler.handler.ogs_id_fn() if write_ids else os.devnull
         output_filename = results_base_filename + ".tsv"
         output_filename_counts = results_base_filename + ".GeneCount.tsv"
         single_gene_filename = results_base_filename + "_UnassignedGenes.tsv"

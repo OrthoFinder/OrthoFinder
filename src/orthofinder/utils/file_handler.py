@@ -112,7 +112,8 @@ class _FileHandler(object):
         self.base_og_format = "OG%07d"
         self.wd_base = []               # Base: blast, species & sequence IDs, species fasta files - should not request this and then write here
         self.wd_current = None          # Location to write out any new files
-        self.wd_trees = None            # Location of working dir containing tree files 
+        self.wd_trees = None            # Location of working dir containing tree files
+        self.n0_in_results = False      # N0.tsv (the HOGs of N0) in the results: only with --no-fix-files 
         self.rd1 = None
         self.file_identifier_string = "OrthoFinder"
         self.clusters_filename = None
@@ -683,6 +684,29 @@ class _FileHandler(object):
         else:
             return self.wd_current + "Alignments_ids/SpeciesTreeAlignment.fa"  
         
+    CONCAT_ORTHOGROUPS_FN = "Orthogroups_for_concatenated_alignment.txt"
+
+    def get_concat_orthogroups_fn(self):
+        """The orthogroups of the concatenated alignment for the species tree (working directory)."""
+        return os.path.join(self.wd_current, "Alignments_ids", self.CONCAT_ORTHOGROUPS_FN)
+
+    def copy_concat_orthogroups_to_results(self):
+        """
+        With the results species tree: Species_Tree/Orthogroups_for_concatenated_alignment.txt,
+        from the working directory of the run that made the alignment (also for a restart).
+        Not from the base working directories: those of the core run for --assign, whose
+        species tree is not from a concatenated alignment.
+        """
+        for d in [self.wd_current, self.wd_trees]:
+            if d is None:
+                continue
+            fn = os.path.join(d, "Alignments_ids", self.CONCAT_ORTHOGROUPS_FN)
+            if os.path.isfile(fn):
+                out_dir = os.path.join(self.rd1, "Species_Tree")
+                os.makedirs(out_dir, exist_ok=True)
+                shutil.copy2(fn, os.path.join(out_dir, self.CONCAT_ORTHOGROUPS_FN))
+                return
+
     def get_species_tree_matrix_fn(self, q_put_in_working_dir = False):
         if q_put_in_working_dir:
             return self.wd_current + "SpeciesMatrix.phy"
@@ -729,6 +753,8 @@ class _FileHandler(object):
         return {k:v.rsplit(".",1)[0] for k,v in d.items()}
 
     def get_hierarchical_orthogroups_fn(self, sp_node_name, q_results=True, extension=""):
+        if sp_node_name == "N0" and not extension:
+            return self.hierarchical_orthogroups_fn_n0()
         if q_results and not extension:
             hog_dir = os.path.join(self.rd1, "Phylogenetic_Hierarchical_Orthogroups/")
             if not os.path.exists(hog_dir):
@@ -752,10 +778,16 @@ class _FileHandler(object):
         return os.path.join(self.get_legacy_dir(), "N0.tsv")
     
     def hierarchical_orthogroups_fn_n0(self):
+        """
+        N0.tsv, the HOGs of N0 with gene names: in the working directory, as the
+        orthogroups (Orthogroups.tsv) are made from it, but in the results with
+        --no-fix-files (n0_in_results), whose results they are.
+        """
+        if not self.n0_in_results:
+            return os.path.join(self.get_working_directory_write(), "N0.tsv")
         hog_dir = os.path.join(self.rd1, "Phylogenetic_Hierarchical_Orthogroups/")
         if not os.path.exists(hog_dir):
             os.makedirs(hog_dir, exist_ok=True)
-
         return os.path.join(hog_dir, "N0.tsv")
     
     def ogs_all_id_fn(self):
@@ -952,6 +984,11 @@ class _FileHandler(object):
         if not os.path.exists(d): os.mkdir(d)
         return d + "Orthogroups" + ("" if self.i_results_version == 0 else "_%d" % self.i_results_version)
     
+    def get_mcl_orthogroup_results_fn_base(self):
+        """Orthogroups/MCL_Orthogroups: the MCL orthogroups (run.finish.write_mcl_orthogroups)."""
+        d, name = os.path.split(self.get_orthogroup_results_fn_base())
+        return os.path.join(d, "MCL_" + name)
+
     def get_orthogroup_results_dir(self):
         d = self.rd1 + "Orthogroups/"
         if not os.path.exists(d): os.mkdir(d)

@@ -9,7 +9,7 @@ import multiprocessing as mp
 from . import mcl, score_normalisation
 from ..gene_tree import msa_trees
 from . import orthogroups_set
-from ..utils import util, file_handler, matrices, parallel_task_manager, orthoxml
+from ..utils import util, file_handler, matrices, parallel_task_manager
 from ..utils import printing
 from ..utils import gene_ids
 
@@ -128,7 +128,6 @@ def do_orthogroups(
         species_info_obj,
         seqs_info,
         species_names_dict,
-        species_xml=None,
         i_unassigned=None,
         GRACE_PERIOD = 10.,
         STALL_TIMEOUT = 200.
@@ -272,7 +271,6 @@ def do_orthogroups(
             seqs_info,
             species_names_dict,
             options,
-            species_xml,
         )
     return clusters_filename_pairs
 
@@ -304,7 +302,6 @@ def post_clustering_orthogroups(
         seqs_info,
         species_names_dict,
         options,
-        species_xml,
         q_incremental=False,
     ):
     """
@@ -313,52 +310,30 @@ def post_clustering_orthogroups(
         q_incremental - These are not the final orthogroups, don't write results
     """
     ogs = mcl.get_predicted_ogs(clusters_filename_pairs)
-    results_base_filename = file_handler.handler.get_orthogroup_results_fn_base()
-    if (not options.fix_files or options.q_stop_after_mcl_groups) and not q_incremental:
-        # these are the final orthogroups (-og, --no-fix-files): every gene must be
-        # in Orthogroups.tsv or Orthogroups_UnassignedGenes.tsv
+    # The MCL orthogroups are the results (Orthogroups.*) only with --no-fix-files; else
+    # they are written as MCL_Orthogroups.* at the end of the run if wanted (-og, -mog,
+    # the other stop options, or a failed run: run.finish.write_mcl_orthogroups)
+    q_results_ogs = not options.fix_files and not q_incremental
+    if q_results_ogs or (options.q_stop_after_mcl_groups and not q_incremental):
+        # every gene must be in an orthogroup (or Orthogroups_UnassignedGenes.tsv)
         add_unclustered_genes(ogs, species_info_obj.species_to_use, seqs_info.n_seqs_per_species)
+    results_base_filename = file_handler.handler.get_orthogroup_results_fn_base() if q_results_ogs else None
 
-    # if not options.fix_files:
-    if not options.q_stop_after_trees:
-        printing.print_underline("Writing orthogroups to file")
-        ids_dict = mcl.MCL.write_orthogroup_files(
+    printing.print_underline("Writing orthogroups to file")
+    ids_dict = mcl.MCL.write_orthogroup_files(
+        ogs,
+        [file_handler.handler.get_sequence_ids_fn()],
+        results_base_filename,
+        clusters_filename_pairs,
+    )
+    if q_results_ogs:
+        mcl.MCL.create_orthogroup_table(
             ogs,
-            [file_handler.handler.get_sequence_ids_fn()],
+            ids_dict,
+            species_names_dict,
+            species_info_obj.species_to_use,
             results_base_filename,
-            clusters_filename_pairs,
         )
-    else:
-        try:
-            ids_dict = mcl.id_full_dict(
-                [file_handler.handler.get_sequence_ids_fn()], 
-                func=gene_ids.FirstWordExtractor
-            )
-        except:
-            ids_dict = mcl.id_full_dict(
-                [file_handler.handler.get_sequence_ids_fn()], 
-                func=gene_ids.FullAccession
-            )
-    
-    ## --------- this doesn't need to run at this point with the new process --------
-    if not options.fix_files or options.q_stop_after_mcl_groups:
-        if not q_incremental:
-            mcl.MCL.create_orthogroup_table(
-                ogs,
-                ids_dict,
-                species_names_dict,
-                species_info_obj.species_to_use,
-                results_base_filename,
-            )
-            if species_xml is not None:  # -x
-                orthoxml.write_results(
-                    species_xml,
-                    ogs,
-                    seqs_info.n_seqs_per_species,
-                    ids_dict,
-                    species_info_obj.species_to_use,
-                    results_base_filename,
-                )
 
     # Write Orthogroup FASTA files
     og_set = orthogroups_set.OrthogroupSet(
@@ -387,8 +362,10 @@ def post_clustering_orthogroups(
     if not os.path.exists(d_seqs_id):
         os.mkdir(d_seqs_id)
 
+    # Orthogroup_Sequences/ only if these are the final orthogroups (--no-fix-files); the
+    # MCL orthogroups' sequences (e.g. -og) are written by tools/mcl_orthogroup_sequences.py
     q_results=False
-    if not options.fix_files or options.q_stop_after_mcl_groups:
+    if not options.fix_files:
         d_seqs = file_handler.handler.get_results_seqs_dir()
         if not os.path.exists(d_seqs):
             os.mkdir(d_seqs)

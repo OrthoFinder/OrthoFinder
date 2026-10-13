@@ -5,8 +5,19 @@ import sys
 from ._version import __version__
 
 
-# Find the total number of threads on the host machine
-n_threads_default = mp.cpu_count()
+def _available_cores():
+    """The cores this process may use (e.g. a job's allocation), else all of the machine's."""
+    try:
+        return len(os.sched_getaffinity(0))
+    except AttributeError:   # not on every platform (e.g. macOS)
+        return mp.cpu_count()
+
+
+# The cores available, the most threads -t and -a can be
+n_cores = _available_cores()
+# The default number of search threads (-t): half the cores, so that the machine
+# (and other programs on it) still has some
+n_threads_default = max(1, n_cores // 2)
 
 # MCL inflation parameter
 g_mcl_inflation = 1.2

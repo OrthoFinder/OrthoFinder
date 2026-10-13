@@ -20,7 +20,6 @@ def update_output_files(
         seqs_info,
         species_names_dict,
         options,
-        species_xml,
         nprocess,
         q_incremental=False,
         i_og_restart=0,
@@ -52,7 +51,6 @@ def update_output_files(
         seqs_info,
         species_names_dict,
         options,
-        species_xml,
         q_incremental=q_incremental,
     )
 

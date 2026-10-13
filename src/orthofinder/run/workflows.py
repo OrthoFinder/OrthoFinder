@@ -10,21 +10,10 @@ from rich.markup import escape
 from ..mcl_orthogroups import infer_orthogroups
 from ..orthology import workflow
 from ..search import runner
-from ..utils import fasta_processor, file_handler, orthoxml, printing, species_info
+from ..utils import fasta_processor, file_handler, printing, species_info
 from ..utils.printing import printer
 from . import previous_run, process_args
 
-
-def orthoxml_species(options, species_info_obj):
-    """
-    With -x, the species information for Orthogroups.orthoxml and
-    Orthogroups.html, one entry per species in the analysis; else None.
-    """
-    if not options.orthoxml:
-        return None
-    return orthoxml.species_for_analysis(
-        file_handler.handler.get_species_ids_fn(), species_info_obj.species_to_use
-    )
 
 def get_orthologs(
     seqs_info,
@@ -33,7 +22,6 @@ def get_orthologs(
     options,
     prog_caller,
     i_og_restart=0,
-    species_xml=None,
 ):
     printing.print_underline("Analysing Orthogroups", True)
     workflow.orthologs_workflow(
@@ -70,7 +58,6 @@ def get_orthologs(
         save_space=options.save_space,
         root_from_previous=False,
         i_og_restart=i_og_restart,
-        species_xml=species_xml,
     )
 
 def add_species(ctx):
@@ -96,23 +83,22 @@ def from_fasta(ctx):
 def _from_new_fasta(ctx, species_info_obj):
     """-f, -f -b: from the FASTA files of the species, now in the working directory"""
     file_handler.handler.log_species()
-    options, seqs_info, species_xml = _prepare(ctx.options, species_info_obj)
+    options, seqs_info = _prepare(ctx.options, species_info_obj)
     _search(ctx, options, species_info_obj, seqs_info)
-    species_names_dict = _orthogroups_and_orthologs(ctx, options, species_info_obj, seqs_info, species_xml)
+    species_names_dict = _orthogroups_and_orthologs(ctx, options, species_info_obj, seqs_info)
     ctx.options = options  # check_options may make new options
     return species_info_obj, species_names_dict
 
 
 def _prepare(options, species_info_obj):
-    """The options for these species, their sequences, and their -x information."""
+    """The options for these species and their sequences."""
     options = process_args.check_options(options, species_info_obj.species_to_use)
     seqs_info = species_info.get_seqs_info(
         file_handler.handler.get_working_directory1_read(),
         species_info_obj.species_to_use,
         species_info_obj.n_sp_all,
     )
-    species_xml = orthoxml_species(options, species_info_obj)
-    return options, seqs_info, species_xml
+    return options, seqs_info
 
 
 def _search(ctx, options, species_info_obj, seqs_info):
@@ -123,14 +109,14 @@ def _search(ctx, options, species_info_obj, seqs_info):
         runner.run_search(options, species_info_obj, seqs_info, ctx.prog_caller)
 
 
-def _orthogroups_and_orthologs(ctx, options, species_info_obj, seqs_info, species_xml):
+def _orthogroups_and_orthologs(ctx, options, species_info_obj, seqs_info):
     """The orthogroups from the search results, then (unless -og, --no-fix-files) the orthologs."""
     species_names_dict = previous_run.species_name_dict(
         file_handler.handler.get_species_ids_fn()
     )
     with ctx.step("Infer orthogroups"):
         infer_orthogroups.do_orthogroups(
-            options, species_info_obj, seqs_info, species_names_dict, species_xml
+            options, species_info_obj, seqs_info, species_names_dict
         )
     if options.fix_files and not options.q_stop_after_mcl_groups:
         get_orthologs(
@@ -139,7 +125,6 @@ def _orthogroups_and_orthologs(ctx, options, species_info_obj, seqs_info, specie
             species_info_obj,
             options,
             ctx.prog_caller,
-            species_xml=species_xml,
         )
     return species_names_dict
 
@@ -194,8 +179,8 @@ def from_blast(ctx):
         "\nUsing the sequence search results in [dark_cyan]%s[/dark_cyan]"
         % escape(file_handler.handler.get_working_directory1_read()[0])
     )
-    options, seqs_info, species_xml = _prepare(options, species_info_obj)
-    species_names_dict = _orthogroups_and_orthologs(ctx, options, species_info_obj, seqs_info, species_xml)
+    options, seqs_info = _prepare(options, species_info_obj)
+    species_names_dict = _orthogroups_and_orthologs(ctx, options, species_info_obj, seqs_info)
     ctx.options = options  # check_options may make new options
     return species_info_obj, species_names_dict
 
@@ -214,8 +199,6 @@ def from_groups(ctx):
     file_handler.handler.log_species()
     options = process_args.check_options(options, species_info_obj.species_to_use)
 
-    ### 9
-    species_xml = orthoxml_species(options, species_info_obj)
     ### 8
     species_names_dict = previous_run.species_name_dict(
         file_handler.handler.get_species_ids_fn()
@@ -237,7 +220,6 @@ def from_groups(ctx):
         options,
         prog_caller,
         i_og_restart=i_og_restart_state,
-        species_xml=species_xml,
     )
     ctx.options = options  # check_options may make new options
     return species_info_obj, species_names_dict
@@ -302,7 +284,6 @@ def from_gene_trees(ctx):
         save_space=options.save_space,
         root_from_previous=False,
         i_og_restart=i_og_restart_state,
-        species_xml=orthoxml_species(options, species_info_obj),
     )
     ctx.options = options  # check_options may make new options
     return species_info_obj, species_names_dict
@@ -343,7 +324,6 @@ def from_species_trees(ctx):
         options.fewer_open_files,  # Open one ortholog file per species when analysing trees
         q_split_para_clades=options.q_split_para_clades,
         i_og_restart=i_og_restart_state,
-        species_xml=orthoxml_species(options, species_info_obj),
     )
     ctx.options = options  # check_options may make new options
     return species_info_obj, species_names_dict

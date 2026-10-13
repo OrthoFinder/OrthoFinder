@@ -99,14 +99,30 @@ def read_matrix(filename, species):
 
 
 def shared_orthogroups(counts, n_species):
-    """The number of orthogroups with genes of both species, for each pair of species."""
+    """
+    The number of orthogroups with genes of both species, for each pair of
+    species: from a bitmask of the orthogroups of each species, so the time
+    goes with species x species, not with the species of each orthogroup squared.
+    """
+    bits = [[] for _ in range(n_species)]  # the orthogroups (row numbers) of each species
+    for i, (_, row) in enumerate(counts):
+        for k, c in enumerate(row):
+            if c:
+                bits[k].append(i)
+    masks = [int.from_bytes(bitmap(b), "little") for b in bits]
     shared = [[0] * n_species for _ in range(n_species)]
-    for _, row in counts:
-        present = [k for k, c in enumerate(row) if c]
-        for a in present:
-            for b in present:
-                shared[a][b] += 1
+    for a in range(n_species):
+        for b in range(a, n_species):
+            shared[a][b] = shared[b][a] = (masks[a] & masks[b]).bit_count()
     return shared
+
+
+def bitmap(numbers):
+    """The bytes of a bitmask with the bits of numbers set (little-endian)."""
+    out = bytearray(max(numbers, default=-1) // 8 + 1)
+    for i in numbers:
+        out[i >> 3] |= 1 << (i & 7)
+    return bytes(out)
 
 
 def node_number(name):
@@ -167,8 +183,8 @@ def write_stats_page(results_dir, written=None):
     the results have no orthogroups yet.
     """
     stats_dir = os.path.join(results_dir, STATS_DIR)
-    gene_count_fn = os.path.join(results_dir, "Orthogroups", "Orthogroups.GeneCount.tsv")
-    if not os.path.exists(gene_count_fn):
+    gene_count_fn = view_pages.orthogroups_file(results_dir, ".GeneCount.tsv")   # or the MCL orthogroups
+    if gene_count_fn is None:
         return None
     species, counts = read_gene_counts(gene_count_fn)
     species_index = {sp: k for k, sp in enumerate(species)}
@@ -292,6 +308,7 @@ a { color:var(--accent); }
   border-radius:8px; padding:7px 10px; font-size:12px; box-shadow:0 4px 14px rgba(0,0,0,.15); max-width:320px; }
 #tip .v { font-weight:600; font-size:13px; } #tip .l { color:var(--ink2); white-space:pre-line; }
 .hov { opacity:.75; }
+.heat-cv.hov { opacity:1; }
 details summary { cursor:pointer; color:var(--ink2); font-size:13px; margin:4px 0; }
 .empty { color:var(--muted); font-size:13px; padding:12px 0; }
 __NAV_CSS__
@@ -318,6 +335,9 @@ const tok = name => getComputedStyle(document.documentElement).getPropertyValue(
 const S = D.species.map(s => s[0]), NS = S.length;
 const swatch = k => k >= 0 ? `<span class="sw" style="background:${D.species[k][1]}"></span>` : "";
 const sum = a => a.reduce((x, y) => x + y, 0);
+// Math.max(...a) throws for more than about 125k values (e.g. the orthogroups): a loop
+const maxOf = (a, start = -Infinity) => a.reduce((x, y) => y > x ? y : x, start);
+const minOf = (a, start = Infinity) => a.reduce((x, y) => y < x ? y : x, start);
 $("sub").textContent = `OrthoFinder ${D.version}. Made from the results files (Comparative_Genomics_Statistics, Orthogroups, `
   + `Phylogenetic_Hierarchical_Orthogroups, Species_Tree). Point at a plot for its numbers; "table" shows them as a table.`;
 
@@ -366,15 +386,17 @@ function card(parent, title, note, id) {
   return c;
 }
 function setTable(c, head, rows) {  // the table view of a chart: head [[label, numeric]], rows of cells
+  // built when first shown (that of a species x species matrix can be large)
   const tv = c.querySelector(".tableview");
-  tv.innerHTML = `<div class="tablewrap"><table><thead><tr>${head.map(([h, n]) => `<th${n ? ' class="num"' : ""}>${esc(h)}</th>`).join("")}</tr></thead><tbody>`
-    + rows.map(r => `<tr>${r.map((v, k) => `<td${head[k][1] ? ' class="num"' : ""}>${typeof v === "number" ? fmt(v) : v}</td>`).join("")}</tr>`).join("") + `</tbody></table></div>`;
+  tv.build = () => { tv.build = null; tv.innerHTML = `<div class="tablewrap"><table><thead><tr>${head.map(([h, n]) => `<th${n ? ' class="num"' : ""}>${esc(h)}</th>`).join("")}</tr></thead><tbody>`
+    + rows.map(r => `<tr>${r.map((v, k) => `<td${head[k][1] ? ' class="num"' : ""}>${typeof v === "number" ? fmt(v) : v}</td>`).join("")}</tr>`).join("") + `</tbody></table></div>`; };
+  if (!tv.hidden) tv.build();
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-table]");
   if (!b) return;
   const tv = b.closest(".card").querySelector(".tableview"), ch = b.closest(".card").querySelector(".chart");
-  tv.hidden = !tv.hidden; ch.hidden = !tv.hidden; b.textContent = tv.hidden ? "table" : "chart";
+  tv.hidden = !tv.hidden; if (!tv.hidden && tv.build) tv.build(); ch.hidden = !tv.hidden; b.textContent = tv.hidden ? "table" : "chart";
 });
 
 // a column chart of counts in ordered bins: bins [[label, value]]
@@ -452,12 +474,17 @@ function stacked(el, rows, names) {
     + `<svg width="${W}" height="${H}" role="img">${out.join("")}</svg>`;
 }
 
-// a species x species heatmap
+// a species x species heatmap: in SVG, or above HEAT_SVG_MAX species (an SVG of NS x NS cells
+// is too slow) on a canvas, a cell for each pair of species, named by pointing at it
+const HEAT_SVG_MAX = 80;
 function heatmap(el, M, {unit, diagonal}) {
+  const vals = M.flatMap((r, a) => r.filter((v, b) => (a !== b || diagonal) && typeof v === "number" && v > 0));
+  const min = vals.length ? minOf(vals) : 0, max = vals.length ? maxOf(vals) : 1;
+  const legend = `<div class="legend">fewer<span class="ramp" style="background:linear-gradient(90deg, ${tok("--heat-lo")}, ${tok("--heat-hi")})"></span>more `
+    + `(${fmt(min)} to ${fmt(max)} ${esc(unit)}; 0 in grey; rows → columns${NS > HEAT_SVG_MAX ? "; point at a cell for its species" : ""})</div>`;
+  if (NS > HEAT_SVG_MAX) return heatCanvas(el, M, {unit, diagonal, min, max, legend});
   const W = Math.max(300, el.clientWidth), labelW = Math.min(220, Math.max(...S.map(s => textW(s) + 16))) + 8;
   const cell = Math.max(12, Math.min(52, Math.floor((W - labelW - 20) / NS))), colH = Math.min(150, Math.max(...S.map(s => textW(s, 11))) * 0.72 + 14);
-  const vals = M.flatMap((r, a) => r.filter((v, b) => (a !== b || diagonal) && typeof v === "number" && v > 0));
-  const min = vals.length ? Math.min(...vals) : 0, max = vals.length ? Math.max(...vals) : 1;
   const showValues = cell >= 34, out = [], top = colH;
   S.forEach((s, b) => {
     const x = labelW + b * cell + cell / 2;
@@ -477,8 +504,41 @@ function heatmap(el, M, {unit, diagonal}) {
     });
   });
   const H = top + NS * cell + 6;
-  el.innerHTML = `<div class="legend">fewer<span class="ramp" style="background:linear-gradient(90deg, ${tok("--heat-lo")}, ${tok("--heat-hi")})"></span>more `
-    + `(${fmt(min)} to ${fmt(max)} ${esc(unit)}; 0 in grey; rows → columns)</div><svg width="${Math.max(W, labelW + NS * cell + 10)}" height="${H}" role="img">${out.join("")}</svg>`;
+  el.innerHTML = legend + `<svg width="${Math.max(W, labelW + NS * cell + 10)}" height="${H}" role="img">${out.join("")}</svg>`;
+}
+function heatCanvas(el, M, {unit, diagonal, min, max, legend}) {
+  // a pixel for each cell, scaled up unsmoothed; the species' colours along the top and the left
+  const W = Math.max(300, el.clientWidth), bar = 6, at = bar + 2;
+  const cell = Math.max(1, Math.min(12, Math.floor((W - at - 4) / NS))), side = at + NS * cell;
+  const lo = hex(tok("--heat-lo")), hi = hex(tok("--heat-hi")), zero = hex(tok("--zero"));
+  const img = new ImageData(NS, NS), px = img.data;
+  for (let a = 0; a < NS; a++) for (let b = 0; b < NS; b++) {
+    const v = M[a][b], i = 4 * (a * NS + b), t = max > min ? (v - min) / (max - min) : 1;
+    const c = (a === b && !diagonal) || typeof v !== "number" || v <= 0 ? null : t;
+    for (let j = 0; j < 3; j++) px[i + j] = c === null ? zero[j] : Math.round(lo[j] + (hi[j] - lo[j]) * c);
+    px[i + 3] = 255;
+  }
+  const small = document.createElement("canvas");
+  small.width = small.height = NS; small.getContext("2d").putImageData(img, 0, 0);
+  const dpr = window.devicePixelRatio || 1, cv = document.createElement("canvas");
+  cv.width = cv.height = Math.round(side * dpr); cv.style.width = cv.style.height = side + "px";
+  cv.className = "heat-cv"; cv.tabIndex = 0; cv.setAttribute("role", "img");
+  const ctx = cv.getContext("2d");
+  ctx.scale(dpr, dpr); ctx.imageSmoothingEnabled = false;
+  D.species.forEach(([, c], k) => { ctx.fillStyle = c; ctx.fillRect(at + k * cell, 0, cell, bar); ctx.fillRect(0, at + k * cell, bar, cell); });
+  ctx.drawImage(small, at, at, NS * cell, NS * cell);
+  // the tooltip (pointermove on the document, after this): the cell's (or the colour's) species
+  cv.addEventListener("pointermove", e => {
+    const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    const b = Math.floor((x - at) / cell), a = Math.floor((y - at) / cell), ok = k => k >= 0 && k < NS;
+    let tv = null, tl = "";
+    if (ok(a) && ok(b)) { const v = M[a][b]; tv = (a === b && !diagonal) || typeof v !== "number" ? "—" : `${fmt(v)} ${unit}`; tl = `${S[a]} → ${S[b]}`; }
+    else if (y < bar && ok(b)) [tv, tl] = [S[b], "column"];
+    else if (x < bar && ok(a)) [tv, tl] = [S[a], "row"];
+    if (tv === null) { delete cv.dataset.tv; delete cv.dataset.tl; } else Object.assign(cv.dataset, {tv, tl});
+  });
+  el.innerHTML = legend + `<div class="tablewrap"></div>`;
+  el.lastChild.appendChild(cv);
 }
 
 // the genes of each species of an orthogroup or HOG, as a strip of cells: a cell for each
@@ -611,7 +671,7 @@ renderers.species = () => {
 // Orthogroups
 renderers.orthogroups = () => {
   const sec = $("tab-orthogroups");
-  stripMax = Math.max(1, ...OGS.map(o => Math.max(...o[1])));
+  stripMax = maxOf(OGS.map(o => maxOf(o[1])), 1);
   sec.innerHTML = `<div class="tools"><input id="og-q" placeholder="Search an orthogroup ID" autocomplete="off">`
     + `<select id="og-kind"><option value="">All orthogroups</option><option value="all">With all species</option><option value="single">Single-copy (one gene in each species)</option>`
     + `<option value="one">Species-specific (one species)</option><option value="dup">With gene duplications</option><option value="tree">With a gene tree</option></select>`
@@ -739,7 +799,7 @@ function loadHogs(node) {
 }
 function showHogs(node) {
   const hogs = hogData[node];
-  stripMax = Math.max(1, ...hogs.map(h => Math.max(...h[3])));
+  stripMax = maxOf(hogs.map(h => maxOf(h[3])), 1);
   const bySp = Array.from({length: NS}, (_, k) => [String(k + 1), 0]);
   hogs.forEach(h => { const n = h[3].filter(c => c).length; if (n) bySp[n - 1][1]++; });
   const c2 = $("hog-grid").lastElementChild;

@@ -38,6 +38,8 @@ def print_help(prog_caller):
     print("")
 
     for group in cli_options.OPTION_GROUPS:
+        if group.get("hidden"):   # e.g. the development options
+            continue
         table = Table(show_header=False, box=None, expand=False)
         table.add_column("Option", justify="left", width=width, no_wrap=False, overflow="fold")
         table.add_column("Description", justify="left", overflow="fold")

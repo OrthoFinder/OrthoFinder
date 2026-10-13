@@ -163,7 +163,6 @@ def orthologs_workflow(
         save_space=False,
         root_from_previous=False,
         i_og_restart=0,
-        species_xml=None,
     ):
     og_set = orthogroups_set.OrthogroupSet(
         options.min_seq,
@@ -212,15 +211,8 @@ def orthologs_workflow(
     if q_stop_after_trees:
         print()
         print(f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] stopped after gene tree...")
-        shutil.rmtree(file_handler.handler.get_results_seqs_dir())
-        shutil.rmtree(file_handler.handler.get_orthogroup_results_dir())
-        # shutil.rmtree(files.FileHandler.get_results_species_tree_dir())
-        # shutil.rmtree(files.FileHandler.get_result_hog_dir())
-        # shutil.rmtree(files.FileHandler.get_putative_xenelogs_dir())
-        shutil.rmtree(file_handler.handler.get_orthologs_directory())
-        shutil.rmtree(file_handler.handler.get_results_align_dir())
-        # shutil.rmtree(files.FileHandler.get_results_duplications_dir())
-        
+        # (the empty results directories are removed as the run ends: finish.remove_empty_results_dirs)
+
         printing.print_run_end(file_handler.handler.get_results_directory1(), "-fgt", "its gene trees")
         util.success()
     
@@ -249,10 +241,7 @@ def orthologs_workflow(
     if q_stop_after_species_trees:
         print()
         print(f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] stopped after species tree...")
-        shutil.rmtree(file_handler.handler.get_results_seqs_dir())
-        shutil.rmtree(file_handler.handler.get_orthogroup_results_dir())
-        shutil.rmtree(file_handler.handler.get_orthologs_directory())
-        shutil.rmtree(file_handler.handler.get_results_align_dir())
+        # (the empty results directories are removed as the run ends: finish.remove_empty_results_dirs)
         printing.print_run_end(file_handler.handler.get_results_directory1(), "-fst", "its species tree")
         util.success()
 
@@ -264,7 +253,7 @@ def orthologs_workflow(
         og_set, rooted_sp_tree, fn_rooted_sp_tree, q_multiple_roots, q_species_tree_supports, stride_dups,
         seqs_info, species_names_dict, species_info_obj, options, species_to_use, recon_method,
         n_high_parallel, n_low_parallel, fewer_open_files, user_species_tree, q_phyldog,
-        q_split_para_clades, root_from_previous, i_og_restart=i_og_restart, species_xml=species_xml,
+        q_split_para_clades, root_from_previous, i_og_restart=i_og_restart,
     )
 
 
@@ -272,7 +261,7 @@ def infer_orthologs_and_write_results(
         og_set, rooted_sp_tree, fn_rooted_sp_tree, q_multiple_roots, q_species_tree_supports, stride_dups,
         seqs_info, species_names_dict, species_info_obj, options, species_to_use, recon_method,
         n_high_parallel, n_low_parallel, fewer_open_files, user_species_tree, q_phyldog,
-        q_split_para_clades, root_from_previous, i_og_restart=0, species_xml=None, prev_wd=None,
+        q_split_para_clades, root_from_previous, i_og_restart=0, prev_wd=None,
     ):
     """
     From the rooted species tree to the results: orthologs and HOGs, then
@@ -282,6 +271,8 @@ def infer_orthologs_and_write_results(
     so that both give the same results.
     """
     save_space = options.save_space
+    # N0.tsv is in the results only with --no-fix-files (else it is made into Orthogroups.tsv)
+    file_handler.handler.n0_in_results = not options.fix_files
 
     write_hog_tree = False
     write_to_rd = True
@@ -337,7 +328,6 @@ def infer_orthologs_and_write_results(
             seqs_info,
             species_names_dict,
             options,
-            species_xml,
             options.n_process_alg,
             q_incremental=False,
             i_og_restart=i_og_restart,
@@ -500,6 +490,7 @@ def root_species_tree(
             taxa.rename_tree_taxa(species_tree_fn, results_species_trees[-1], og_set.species_dict(), q_support=q_species_tree_supports, q_fix_negatives=True)
             labeled_tree_fn = file_handler.handler.get_species_tree_results_node_labels_fn()
             taxa.rename_tree_taxa(species_tree_fn, labeled_tree_fn, og_set.species_dict(), q_support=False, q_fix_negatives=True, label='N')
+        file_handler.handler.copy_concat_orthogroups_to_results()
         id_dict = og_set.spec_seq_dict()
         q_have_support = None 
         for iog in og_set.get_i_ogs4():
@@ -554,6 +545,7 @@ def infer_orthologs(
     if (not user_species_tree) and (not q_phyldog) and len(og_set.seqs_info.species_to_use) != 2:
         if print_info:
             print(("Outgroup: " + (", ".join([og_set.species_dict()[s] for s in rooted_sp_tree]))))
+    file_handler.handler.copy_concat_orthogroups_to_results()
     taxa.rename_tree_taxa(
         species_tree_fn, 
         results_species_trees[-1], 
@@ -620,7 +612,6 @@ def orthologs_from_gene_trees(
         save_space=False,
         root_from_previous=False,
         i_og_restart=0,
-        species_xml=None,
 ):
     """
     Restart from the gene trees (-fgt): the gene trees of a run stopped after
@@ -673,7 +664,7 @@ def orthologs_from_gene_trees(
         og_set, rooted_sp_tree, fn_rooted_sp_tree, q_multiple_roots, q_species_tree_supports, stride_dups,
         seqs_info, species_names_dict, species_info_obj, options, species_to_use, recon_method,
         n_high_parallel, n_low_parallel, fewer_open_files, user_species_tree, q_phyldog,
-        q_split_para_clades, root_from_previous, i_og_restart=i_og_restart, species_xml=species_xml,
+        q_split_para_clades, root_from_previous, i_og_restart=i_og_restart,
         prev_wd=prev_wd,
     )
 
@@ -693,7 +684,6 @@ def orthologs_from_gene_species_trees(
         fewer_open_files,  # Open one ortholog file per species when analysing trees
         q_split_para_clades=False,
         i_og_restart=0,
-        species_xml=None,
 ):
     """
     Restart from the species tree (-fst): the gene trees and the (unrooted)
@@ -743,5 +733,5 @@ def orthologs_from_gene_species_trees(
         og_set, rooted_sp_tree, fn_rooted_sp_tree, q_multiple_roots, q_species_tree_supports, stride_dups,
         seqs_info, species_names_dict, species_info_obj, options, species_to_use, recon_method,
         n_high_parallel, n_low_parallel, fewer_open_files, user_species_tree_fn, options.q_phyldog,
-        q_split_para_clades, False, i_og_restart=i_og_restart, species_xml=species_xml, prev_wd=prev_wd,
+        q_split_para_clades, False, i_og_restart=i_og_restart, prev_wd=prev_wd,
     )

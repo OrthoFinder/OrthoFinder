@@ -346,8 +346,8 @@ class TreesForOrthogroups(object):
                         f_single_copy
                     )
                     # write OGs used to file
-                    d_species_tree = os.path.split(file_handler.handler.get_species_tree_results_fn(0, True))[0] + "/"
-                    with open(d_species_tree + "Orthogroups_for_concatenated_alignment.txt", 'w') as outfile:
+                    # in the working directory; copied to Species_Tree/ with the species tree
+                    with open(file_handler.handler.get_concat_orthogroups_fn(), 'w') as outfile:
                         for iog in i_ogs_for_species_tree: outfile.write("OG%07d\n" % iog)
             
             # ------------------ this section is not needed at this stage for the new procedure -------------
@@ -407,8 +407,8 @@ class TreesForOrthogroups(object):
                 create_concatenated_alignment(i_ogs_for_species_tree, ogs, self.get_alignment_filename, concatenated_algn_fn, f_single_copy,
                                               q_progress=q_progress)
                 # write OGs used to file
-                d_species_tree = os.path.split(file_handler.handler.get_species_tree_results_fn(0, True))[0] + "/"
-                with open(d_species_tree + "Orthogroups_for_concatenated_alignment.txt", 'w') as outfile:
+                # in the working directory; copied to Species_Tree/ with the species tree
+                with open(file_handler.handler.get_concat_orthogroups_fn(), 'w') as outfile:
                     for iog in i_ogs_for_species_tree: outfile.write("OG%07d\n" % iog)
 
             def species_tree_commands():

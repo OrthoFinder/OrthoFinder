@@ -5,21 +5,22 @@ from orthofinder.utils import orthoxml
 
 NS = {"o": orthoxml.NAMESPACE}
 
-SPECIES = [("Species_A", "Species_A.faa"), ("Species B", "Species B.fa")]
-N_SEQS = {0: 3, 1: 2, 5: 9}  # species 5 is not in the analysis
-ID_DICT = {"0_0": "a0", "0_1": "a1&x", "0_2": "a2</script>", "1_0": "b0", "1_1": "b1", "5_0": "unused"}
-OGS = [{"0_0", "1_1"}, {"0_1"}, {"0_2", "1_0", "0_1"}]  # OG0000001 has one gene: not a group
-
 
 def parse(path):
     root = ET.parse(path).getroot()
     assert root.tag == f"{{{orthoxml.NAMESPACE}}}orthoXML"
     genes = {g.get("id"): (s.get("name"), g.get("geneId"))
              for s in root.findall("o:species", NS) for g in s.iterfind("o:database/o:genes/o:gene", NS)}
-    groups = {g.get("id"): ({p.get("name"): p.get("value") for p in g.findall("o:property", NS)},
-                            sorted(genes[r.get("id")] for r in g.findall("o:geneRef", NS)))
-              for g in root.findall("o:groups/o:orthologGroup", NS)}
-    return root, genes, groups
+    return root, genes
+
+
+def write_table(path, species, rows, first="OG", start=0):
+    """An Orthogroups.tsv-like table: a row for each list of genes, a gene in the column of its species."""
+    lines = ["Orthogroup\t" + "\t".join(name for name, _ in species)]
+    for i, genes in enumerate(rows, start):
+        lines.append(f"{first}{i:07d}\t" + "\t".join(
+            ", ".join(g for g in genes if g.startswith(prefix)) for _, prefix in species))
+    path.write_text("\n".join(lines) + "\n")
 
 
 def test_species_for_analysis(tmp_path):
@@ -30,58 +31,115 @@ def test_species_for_analysis(tmp_path):
 
 
 def test_orthogroups(tmp_path):
-    base = str(tmp_path / "Orthogroups")
-    orthoxml.write_results(SPECIES, OGS, N_SEQS, ID_DICT, [0, 1], base)
-
-    root, genes, groups = parse(base + ".orthoxml")
-    assert root.get("origin") == "OrthoFinder" and root.get("version") == "0.3"
-    species = root.findall("o:species", NS)
-    assert [(s.get("name"), s.get("NCBITaxId")) for s in species] == [("Species_A", "0"), ("Species B", "0")]
-    databases = [s.find("o:database", NS) for s in species]
-    assert [(d.get("name"), d.get("version")) for d in databases] == [("Species_A.faa", "NA"), ("Species B.fa", "NA")]
-    # every gene of the species used, once, with a unique id
-    assert {i: g for i, (_, g) in genes.items()} == {"0": "a0", "1": "a1&x", "2": "a2</script>", "3": "b0", "4": "b1"}
-    # the orthogroups, named as in Orthogroups.tsv; single-gene orthogroups are not groups
-    assert {k: sorted(g for _, g in v) for k, (_, v) in groups.items()} == {
-        "OG0000000": ["a0", "b1"], "OG0000002": ["a1&x", "a2</script>", "b0"]}
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["Orthogroups.orthoxml"]  # only the OrthoXML
-
-
-def make_results(tmp_path):
-    """Orthogroups.orthoxml and small HOG files, as OrthoFinder writes them."""
-    species = [("Sp_A", "Sp_A.fa"), ("Sp_B", "Sp_B.fa"), ("Sp_C", "Sp_C.fa")]
-    ids = {"0_0": "a0", "0_1": "a1", "1_0": "b0", "1_1": "b1", "1_2": "b2", "2_0": "c0"}
+    """Without the HOGs (e.g. -og): a group for each orthogroup of Orthogroups.tsv."""
     og_dir = tmp_path / "Orthogroups"
     og_dir.mkdir()
-    orthoxml.write_results(species, [{"0_0", "1_0", "2_0"}, {"0_1", "1_1"}], {0: 2, 1: 3, 2: 1}, ids, [0, 1, 2],
-                           str(og_dir / "Orthogroups"))
+    columns = [("Species_A", "a"), ("Species B", "b")]
+    write_table(og_dir / "Orthogroups.tsv", columns, [["a0", "b1"], ["a2</script>", "b0", "a1&x"], ["a3"]])
+    write_table(og_dir / "Orthogroups_UnassignedGenes.tsv", columns, [["b2"]], start=3)
+    species = [("Species_A", "Species_A.faa"), ("Species B", "Species B.fa")]
+
+    out = orthoxml.write_results(str(tmp_path), species)
+    assert out == str(og_dir / "Orthogroups.orthoxml")
+    root, genes = parse(out)
+    assert root.get("origin") == "OrthoFinder" and root.get("version") == "0.3"
+    assert root.find("o:taxonomy", NS) is None
+    species_el = root.findall("o:species", NS)
+    assert [(s.get("name"), s.get("NCBITaxId")) for s in species_el] == [("Species_A", "0"), ("Species B", "0")]
+    databases = [s.find("o:database", NS) for s in species_el]
+    assert [(d.get("name"), d.get("version")) for d in databases] == [("Species_A.faa", "NA"), ("Species B.fa", "NA")]
+    # every gene, also those in no orthogroup, once, with a unique id
+    assert sorted(genes.values()) == sorted([("Species_A", g) for g in ("a0", "a2</script>", "a1&x", "a3")]
+                                            + [("Species B", g) for g in ("b0", "b1", "b2")])
+    # the orthogroups, named as in Orthogroups.tsv; single-gene orthogroups are not groups
+    groups = {g.get("id"): sorted(genes[r.get("id")][1] for r in g.findall("o:geneRef", NS))
+              for g in root.findall("o:groups/o:orthologGroup", NS)}
+    assert groups == {"OG0000000": ["a0", "b1"], "OG0000001": ["a1&x", "a2</script>", "b0"]}
+
+
+def test_no_orthogroups(tmp_path):
+    """No Orthogroups.tsv in the results (e.g. -ogt, -ost): nothing is written."""
+    assert orthoxml.write_results(str(tmp_path), []) is None
+    assert list(tmp_path.iterdir()) == []
+
+
+def hog_results(tmp_path):
+    """Results with a species tree ((Sp_A,Sp_B)N1,Sp_C)N0: Orthogroups.tsv and N1.tsv."""
+    columns = [("Sp_A", "a"), ("Sp_B", "b"), ("Sp_C", "c")]
+    og_dir = tmp_path / "Orthogroups"
+    og_dir.mkdir()
+    write_table(og_dir / "Orthogroups.tsv", columns,
+                [["a0", "a1", "b0", "b1", "c0"],   # a duplication on the branch to N1
+                 ["a2", "b2", "c1", "c2"],         # in-paralogs in Sp_C
+                 ["a3", "b3"],                     # genes of N1 only
+                 ["a4", "c3"],                     # no HOG at N1 (e.g. no gene tree)
+                 ["c4", "c5"]])                    # genes of Sp_C only, in-paralogs
+    write_table(og_dir / "Orthogroups_UnassignedGenes.tsv", columns, [["b4"]], start=5)
+    (tmp_path / "Species_Tree").mkdir()
+    (tmp_path / "Species_Tree" / "SpeciesTree_rooted_node_labels.txt").write_text("((Sp_A:1,Sp_B:1)N1:1,Sp_C:1)N0;\n")
     hog_dir = tmp_path / "Phylogenetic_Hierarchical_Orthogroups"
     hog_dir.mkdir()
-    head = "HOG\tOG\tGene Tree Parent Clade\tSp_A\tSp_B\tSp_C\n"
-    (hog_dir / "N1.tsv").write_text(head + "N1.HOG0000000\tOG0000000\tn0\ta0\tb0\t\n"
-                                           "N1.HOG0000001\tOG0000001\tn3\ta1\tb1\t\n"
-                                           "N1.HOG0000002\tOG0000002\tn5\t\tb2\t\n")  # a single gene
-    (hog_dir / "N2.tsv").write_text(head)  # a node without HOGs
-    return og_dir / "Orthogroups.orthoxml", hog_dir
+    (hog_dir / "N1.tsv").write_text("HOG\tOG\tGene Tree Parent Clade\tSp_A\tSp_B\tSp_C\n"
+                                     "N1.HOG0000000\tOG0000000\tn1\ta0\tb0\t\n"
+                                     "N1.HOG0000001\tOG0000000\tn2\ta1\tb1\t\n"
+                                     "N1.HOG0000002\tOG0000001\tn1\ta2\tb2\t\n"
+                                     "N1.HOG0000003\tOG0000002\tn0\ta3\tb3\t\n")
+    return [(name, name + ".fa") for name, _ in columns]
 
 
-def test_hogs(tmp_path):
-    og_xml, hog_dir = make_results(tmp_path)
-    _, og_genes, _ = parse(og_xml)
-    written = orthoxml.write_hog_files(str(og_xml), str(hog_dir))
-    assert [p.rsplit("/", 1)[1] for p in written] == ["N1.orthoxml"]  # no N2: it has no HOGs
-
-    # HOGs: the groups of N1.tsv (OrthoXML groups have two or more genes), the species of its
-    # clade, gene ids as in Orthogroups.orthoxml
-    root, genes, groups = parse(hog_dir / "N1.orthoxml")
-    assert [s.get("name") for s in root.findall("o:species", NS)] == ["Sp_A", "Sp_B"]
-    assert all(og_genes[i] == g for i, g in genes.items())
-    assert groups == {
-        "N1.HOG0000000": ({"orthogroup": "OG0000000", "gene tree parent clade": "n0"}, [("Sp_A", "a0"), ("Sp_B", "b0")]),
-        "N1.HOG0000001": ({"orthogroup": "OG0000001", "gene tree parent clade": "n3"}, [("Sp_A", "a1"), ("Sp_B", "b1")])}
+def shape(el, genes, taxa):
+    """A group as (tag, id, taxon name, {score: value}, {property: value}, [members]), a gene as its name."""
+    tag = el.tag.split("}")[1]
+    if tag == "geneRef":
+        return genes[el.get("id")][1]
+    members = [shape(m, genes, taxa) for m in el if m.tag.split("}")[1] in ("geneRef", "orthologGroup", "paralogGroup")]
+    scores = {s.get("id"): float(s.get("value")) for s in el.findall("o:score", NS)}
+    properties = {p.get("name"): p.get("value") for p in el.findall("o:property", NS)}
+    return tag, el.get("id"), taxa.get(el.get("taxonId")), scores, properties, members
 
 
-def test_nothing_to_write(tmp_path):
-    og_xml, _ = make_results(tmp_path)
-    # e.g. after -og, which removes the HOG directory
-    assert orthoxml.write_hog_files(str(og_xml), str(tmp_path / "none")) == []
+def test_with_hogs(tmp_path):
+    species = hog_results(tmp_path)
+    out = orthoxml.write_results(str(tmp_path), species)
+    assert out == str(tmp_path / "Orthogroups" / "Orthogroups.orthoxml")
+    assert sorted(p.name for p in (tmp_path / "Orthogroups").iterdir()) == [
+        "Orthogroups.orthoxml", "Orthogroups.tsv", "Orthogroups_UnassignedGenes.tsv"]
+
+    root, genes = parse(out)
+    assert root.get("version") == "0.5"
+    assert ("Sp_B", "b4") in genes.values()   # every gene, also those in no orthogroup
+    # the species tree as the taxonomy, the species with their taxon
+    taxa = {t.get("id"): t.get("name") for t in root.iter(f"{{{orthoxml.NAMESPACE}}}taxon")}
+    assert sorted(taxa.values()) == ["N0", "N1", "Sp_A", "Sp_B", "Sp_C"]
+    assert [taxa[s.get("taxonId")] for s in root.findall("o:species", NS)] == ["Sp_A", "Sp_B", "Sp_C"]
+    assert [d.get("id") for d in root.findall("o:scores/o:scoreDef", NS)] == ["CompletenessScore"]
+
+    groups = [shape(g, genes, taxa) for g in root.find("o:groups", NS)]
+    complete = {"CompletenessScore": 1.0}
+    n1 = lambda hog, clade, *members: ("orthologGroup", hog, "N1", complete,
+                                       {"TaxRange": "N1", "gene tree parent clade": clade}, list(members))
+    n0 = {"TaxRange": "N0"}
+    paralogs = lambda *members: ("paralogGroup", None, None, {}, {}, list(members))
+    assert groups == [
+        ("orthologGroup", "OG0000000", "N0", complete, n0, [
+            paralogs(n1("N1.HOG0000000", "n1", "a0", "b0"), n1("N1.HOG0000001", "n2", "a1", "b1")),
+            "c0"]),
+        ("orthologGroup", "OG0000001", "N0", complete, n0, [n1("N1.HOG0000002", "n1", "a2", "b2"), paralogs("c1", "c2")]),
+        # a single member: the HOG of N1, with the orthogroup's id and its own as "HOG"
+        ("orthologGroup", "OG0000002", "N1", complete,
+         {"TaxRange": "N1", "gene tree parent clade": "n0", "HOG": "N1.HOG0000003"}, ["a3", "b3"]),
+        # not in a HOG of N1: in the orthogroup's group directly; 2 of the 3 species
+        ("orthologGroup", "OG0000003", "N0", {"CompletenessScore": 0.6667}, n0, ["c3", "a4"]),
+        # a root HOG is an orthologGroup, also of a single member (as in OMA and orthoxml-tools)
+        ("orthologGroup", "OG0000004", "N0", {"CompletenessScore": 0.3333}, n0, [paralogs("c4", "c5")]),
+    ]
+
+
+def test_without_species_tree(tmp_path):
+    """HOG files but no species tree: the orthogroups only."""
+    species = hog_results(tmp_path)
+    (tmp_path / "Species_Tree" / "SpeciesTree_rooted_node_labels.txt").unlink()
+    root, _ = parse(orthoxml.write_results(str(tmp_path), species))
+    assert root.get("version") == "0.3" and root.find("o:taxonomy", NS) is None
+    assert [g.get("id") for g in root.findall("o:groups/o:orthologGroup", NS)] == [
+        "OG0000000", "OG0000001", "OG0000002", "OG0000003", "OG0000004"]

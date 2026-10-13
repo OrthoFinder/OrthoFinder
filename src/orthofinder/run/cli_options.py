@@ -2,17 +2,19 @@
 The command-line options of OrthoFinder, in groups: process_args reads them,
 helpinfo prints them (a section for each group, in this order).
 
-A group: {"title": its section in the help, "options": [option, ...]}. An option:
+A group: {"title": its section in the help, "options": [option, ...]}, with "hidden": True
+not in the help (DEVELOPMENT_OPTIONS). An option:
     "names":   its names, e.g. ("-t", "--threads"); the first is shown in the help
-    "help":    its text in the help (rich markup); None: not in the help
-    "value":   what it takes, shown in the help ("int", "txt", "dir", "file"); absent: a flag
+    "help":    its text in the help (rich markup); None: not in the help (development-only
+               options go in DEVELOPMENT_OPTIONS, hidden, with a help text for developers)
+    "value":   what it takes, shown in the help ("int", "num", "txt", "dir", "file"); absent: a flag
     "set":     (a flag) {Options attribute: the value it sets}
     "read":    (with a value) the reader of process_args that reads it (READERS)
     "field":   the Options attribute a reader sets, "what": what it is, in messages
     "choices": a function(prog_caller): the values listed under it in the help
 --config <file> is read before the others (process_args.program_caller_with_configs).
 """
-from .. import g_mcl_inflation, n_threads_default
+from .. import g_mcl_inflation, n_cores, n_threads_default
 from ..search import diamond_scoring
 
 OF = "[dark_goldenrod]OrthoFinder[/dark_goldenrod]"
@@ -20,6 +22,16 @@ OF = "[dark_goldenrod]OrthoFinder[/dark_goldenrod]"
 
 def _dir(text):
     return text.replace("<dir>", "<[bright_magenta]dir[/bright_magenta]>")
+
+
+def _path(path):
+    """A path in the results."""
+    return "[medium_purple]%s[/medium_purple]" % path
+
+
+def _link(url):
+    """A web address, in the colour of the links of the citations, and clickable."""
+    return "[dark_cyan][link=%s]%s[/link][/dark_cyan]" % (url, url)
 
 
 INPUT_OPTIONS = {
@@ -33,7 +45,7 @@ INPUT_OPTIONS = {
         {"names": ("--core",), "value": "dir", "read": "core",
          "help": _dir("The results directory of the finished analysis, for [dark_cyan]--assign[/dark_cyan]")},
         {"names": ("-d", "--dna"), "set": {"dna": True},
-         "help": "Input is DNA sequences (searched with BLAST+ blastn by default, or -S mmseqs; DIAMOND cannot be used)."},
+         "help": "Input is DNA sequences (searched with [dark_cyan]BLAST+ blastn[/dark_cyan] by default, or [dark_cyan]-S mmseqs[/dark_cyan]; [dark_cyan]DIAMOND[/dark_cyan] cannot be used)."},
         {"names": ("-s", "--speciestree"), "value": "file", "read": "species_tree",
          "help": "User-specified rooted species tree"},
     ],
@@ -57,15 +69,13 @@ METHOD_OPTIONS = {
          "choices": lambda pc: [m for m in pc.list_tree_methods() if m != "raxml-ng"]},
         {"names": ("-ST", "--species-tree-program"), "value": "txt", "read": "species_tree_program",
          "help": 'Species tree program, from the gene trees, requires [dark_cyan]"-M msa"[/dark_cyan] '
-                 "[Default = a tree of the concatenated alignment of single-copy orthogroups]",
+                 "[Default = a tree of the concatenated alignment of single-copy orthogroups; "
+                 "with --assign, [dark_cyan]astral-pro[/dark_cyan]]",
          "choices": lambda pc: pc.list_species_tree_methods()},
-        {"names": ("-I", "--inflation"), "value": "int", "read": "float", "field": "mcl_inflation",
+        {"names": ("-I", "--inflation"), "value": "num", "read": "float", "field": "mcl_inflation",
          "what": "MCL inflation parameter",
-         "help": f"MCL inflation parameter [Default = [deep_sky_blue2]{g_mcl_inflation:0.1f}[/deep_sky_blue2]]"},
-        {"names": ("-ms", "--min-seq"), "value": "int", "read": "min_seq", "help": None},
-        {"names": ("--msa-min-seq",), "value": "int", "read": "msa_min_seq", "help": None},
-        {"names": ("-nk",), "value": "int", "read": "int", "field": "n_skip", "what": "-nk", "help": None},
-        {"names": ("--scores-v2",), "set": {"v2_scores": True}, "help": None},
+         "help": f"[dark_cyan]MCL[/dark_cyan] inflation parameter, usually [deep_sky_blue2]1.2[/deep_sky_blue2]-[deep_sky_blue2]5[/deep_sky_blue2]; larger values give smaller orthogroups "
+                 f"[Default = [deep_sky_blue2]{g_mcl_inflation:0.1f}[/deep_sky_blue2]]"},
     ],
 }
 
@@ -73,11 +83,13 @@ PARALLEL_OPTIONS = {
     "title": "PARALLEL PROCESSING OPTIONS",
     "options": [
         {"names": ("-t", "--threads"), "value": "int", "read": "threads", "field": "n_blast", "what": "BLAST threads",
-         "help": f"Number of parallel sequence search threads [Default = [deep_sky_blue2]{n_threads_default}[/deep_sky_blue2]]"},
+         "help": f"Number of parallel sequence search threads [Default = half the CPU cores available, "
+                 f"here [deep_sky_blue2]{n_threads_default}[/deep_sky_blue2] of [deep_sky_blue2]{n_cores}[/deep_sky_blue2]]"},
         {"names": ("-a", "--algthreads"), "value": "int", "read": "threads", "field": "n_process_alg",
-         "what": "OrthoFinder threads", "help": "Number of parallel analysis threads"},
-        {"names": ("-mt", "--method-threads"), "value": "int", "read": "method_threads", "help": None},
-        {"names": ("-fd",), "value": "txt", "read": "fd_limit", "help": None},
+         "what": "OrthoFinder threads",
+         "help": "Number of parallel analysis threads [Default = an eighth of [dark_cyan]-t[/dark_cyan], "
+                 "from [deep_sky_blue2]1[/deep_sky_blue2] to [deep_sky_blue2]16[/deep_sky_blue2], "
+                 f"here [deep_sky_blue2]{min(16, max(1, n_threads_default // 8))}[/deep_sky_blue2]]"},
     ],
 }
 
@@ -89,42 +101,34 @@ OUTPUT_OPTIONS = {
         {"names": ("-X",), "set": {"q_add_species_to_ids": False}, "help": "Don't add species names to sequence IDs"},
         {"names": ("-pof", "--pairwise-ortholog-files"), "set": {"save_space": False},
          "help": "Save the pairwise ortholog files"},
-        {"names": ("-efn", "--extended-filename"), "set": {"extended_filename": True}, "help": None},
-        {"names": ("--no-fix-files",), "set": {"fix_files": False}, "help": None},
-        {"names": ("-rmgt", "--rm-gene-trees"), "set": {"rm_gene_trees": False}, "help": None},
-        {"names": ("-rmrgt", "--rm-resolved-gene-trees"), "set": {"rm_resolved_gene_trees": False}, "help": None},
-        # keep the legacy files (they are removed by default), incl. the HOGs
-        # with gene names from before the orthogroups are updated
-        {"names": ("-rmlg",), "set": {"rm_legacy": False}, "help": None},
-        {"names": ("--no-print-info",), "set": {"print_info": False}, "help": None},
+        {"names": ("--orthoxml", "-x"), "set": {"orthoxml": True},
+         "help": "The orthogroups in OrthoXML format, for other tools, with their HOGs nested in them: " +
+                 _path("Orthogroups/Orthogroups.orthoxml")},
+        {"names": ("-mog", "--mcl-orthogroups"), "set": {"mcl_orthogroups": True},
+         "help": "Also keep the [dark_cyan]MCL[/dark_cyan] orthogroups (before the HOGs): " +
+                 _path("Orthogroups/MCL_Orthogroups.tsv") + " etc. (with [dark_cyan]--orthoxml[/dark_cyan] also " +
+                 _path("MCL_Orthogroups.orthoxml") + "). They are always written with a stop option "
+                 "([dark_cyan]-og[/dark_cyan], [dark_cyan]-ogt[/dark_cyan], [dark_cyan]-ost[/dark_cyan]) "
+                 "or if the run fails"},
     ],
 }
 
 ADDITIONAL_OUTPUT_OPTIONS = {
     "title": "ADDITIONAL OUTPUT OPTIONS",
     "options": [
-        {"names": ("--orthoxml", "-x"), "set": {"orthoxml": True},
-         "help": "The orthogroups and HOGs in OrthoXML format, for other tools: Orthogroups.orthoxml and "
-                 "Phylogenetic_Hierarchical_Orthogroups/N*.orthoxml"},
-        {"names": ("--concat-alignment",), "set": {"species_tree_alignment": True},
-         "help": "With [dark_cyan]-ST[/dark_cyan], also write the concatenated alignment of the orthogroups "
-                 "chosen for a species tree (as a run without [dark_cyan]-ST[/dark_cyan] does): "
-                 "WorkingDirectory/Alignments_ids/SpeciesTreeAlignment.fa and "
-                 "Species_Tree/Orthogroups_for_concatenated_alignment.txt. For the results of a finished run: "
-                 "[dark_cyan]species_tree_alignment[/dark_cyan] <[bright_magenta]dir[/bright_magenta]>"},
         {"names": ("--tree-view",), "set": {"tree_view": True},
          "help": "A page to view the trees in a web browser: each resolved gene tree with its "
                  "alignment (clades can be collapsed, a tree saved as SVG), a species tree explorer "
                  "(the HOGs at each node, an orthogroup's duplications and losses, each species' "
-                 "genes) and all genes on the species tree: Resolved_Gene_Trees/Resolved_Gene_Trees.html"},
+                 "genes) and all genes on the species tree: " + _path("Resolved_Gene_Trees/Resolved_Gene_Trees.html")},
         {"names": ("--stats-view",), "set": {"stats_view": True},
          "help": "A page of the run's statistics with interactive plots (overall, species, "
-                 "orthogroups, duplications, HOGs): Comparative_Genomics_Statistics/Statistics.html"},
+                 "orthogroups, duplications, HOGs): " + _path("Comparative_Genomics_Statistics/Statistics.html")},
         {"names": ("--groups-view",), "set": {"groups_view": True},
-         "help": "A page of the genes of each orthogroup and HOG, searchable: Orthogroups/Groups.html"},
+         "help": "A page of the genes of each orthogroup and HOG, searchable: " + _path("Orthogroups/Groups.html")},
         {"names": ("--view",), "set": {"tree_view": True, "stats_view": True, "groups_view": True},
          "help": "All three pages ([dark_cyan]--tree-view[/dark_cyan], [dark_cyan]--stats-view[/dark_cyan], "
-                 "[dark_cyan]--groups-view[/dark_cyan]), linked to each other, and OrthoFinder_Results.html to "
+                 "[dark_cyan]--groups-view[/dark_cyan]), linked to each other, and " + _path("OrthoFinder_Results.html") + " to "
                  "open them, a tab for each (also with two of them). With many species they can be large: each "
                  "can also be written on its own. For the results of a finished run: "
                  "[dark_cyan]view_results[/dark_cyan] <[bright_magenta]dir[/bright_magenta]>"},
@@ -135,9 +139,8 @@ STOPPING_OPTIONS = {
     "title": "WORKFLOW STOPPING OPTIONS",
     "options": [
         {"names": ("-op", "--only-prepare"), "set": {"q_stop_after_prepare": True},
-         "help": "Stop after preparing input files for BLAST"},
-        {"names": ("-og", "--only-groups"), "set": {"q_stop_after_mcl_groups": True}, "help": "Stop after MCL Orthogroups"},
-        {"names": ("-ogh", "--only-hierarchical-groups"), "set": {"q_stop_after_groups": True}, "help": None},
+         "help": "Stop after preparing input files for [dark_cyan]BLAST[/dark_cyan]"},
+        {"names": ("-og", "--only-groups"), "set": {"q_stop_after_mcl_groups": True}, "help": "Stop after the [dark_cyan]MCL[/dark_cyan] orthogroups (no gene trees, species tree or HOGs)"},
         {"names": ("-ogt", "--only-trees"), "set": {"q_stop_after_trees": True}, "help": "Stop after gene trees"},
         {"names": ("-ost", "--only-species-trees"), "set": {"q_stop_after_species_trees": True},
          "help": "Stop after species trees"},
@@ -150,7 +153,7 @@ RESTART_OPTIONS = {
         {"names": ("-b", "--blast"), "value": "dir", "read": "start", "field": "q_start_from_blast",
          "help": _dir(f"Restart {OF} from pre-computed sequence search results in <dir>")},
         {"names": ("-fg", "--from-groups"), "value": "dir", "read": "start", "field": "q_start_from_groups",
-         "help": _dir(f"Restart {OF} from MCL Orthogroups results in <dir>")},
+         "help": _dir(f"Restart {OF} from [dark_cyan]MCL[/dark_cyan] orthogroups results in <dir>")},
         {"names": ("-fgt", "--from-trees"), "value": "dir", "read": "start", "field": "q_start_from_trees",
          "help": _dir(f"Restart {OF} from gene trees results in <dir>")},
         {"names": ("-fst", "--from-species-trees"), "value": "dir", "read": "start", "field": "q_start_from_species_trees",
@@ -166,23 +169,66 @@ OTHER_OPTIONS = {
         {"names": ("-z",), "set": {"q_trim": False},
          "help": "Don't trim MSAs (columns>=[deep_sky_blue2]90[/deep_sky_blue2]% gap, min. alignment length "
                  "[deep_sky_blue2]500[/deep_sky_blue2])"},
-        {"names": ("-1",), "set": {"q_double_blast": False}, "help": None},
         {"names": ("--matrix",), "value": "txt", "read": "scoring",
-         "help": "Scoring matrix of the DIAMOND searches [Default = [dark_cyan]BLOSUM62[/dark_cyan]]",
+         "help": "Scoring matrix of the [dark_cyan]DIAMOND[/dark_cyan] searches [Default = [dark_cyan]BLOSUM62[/dark_cyan]]",
          "choices": lambda pc: list(diamond_scoring.DIAMOND_MATRICES)},
         {"names": ("--custom-matrix",), "value": "file", "read": "scoring",
-         "help": "A scoring matrix file for the DIAMOND searches, requires [dark_cyan]--gapopen[/dark_cyan] and "
+         "help": "A scoring matrix file for the [dark_cyan]DIAMOND[/dark_cyan] searches, requires [dark_cyan]--gapopen[/dark_cyan] and "
                  "[dark_cyan]--gapextend[/dark_cyan]\n"
-                 "In NCBI's format (e.g. the files at https://ftp.ncbi.nlm.nih.gov/blast/matrices/): a line of "
+                 "In NCBI's format (e.g. the files at " + _link("https://ftp.ncbi.nlm.nih.gov/blast/matrices/") + "): a line of "
                  "one-letter amino acid codes, then for each code, in that order, a line of the code and its integer "
                  "scores. The 20 standard amino acids are needed; lines starting with # are comments."},
         {"names": ("-go", "--gapopen"), "value": "int", "read": "scoring",
-         "help": "Gap open penalty of the DIAMOND searches, [dark_cyan]--gapopen[/dark_cyan] "
+         "help": "Gap open penalty of the [dark_cyan]DIAMOND[/dark_cyan] searches, [dark_cyan]--gapopen[/dark_cyan] "
                  "[Default = the matrix's, e.g. [deep_sky_blue2]11[/deep_sky_blue2] for BLOSUM62]"},
         {"names": ("-ge", "--gapextend"), "value": "int", "read": "scoring",
-         "help": "Gap extend penalty of the DIAMOND searches, [dark_cyan]--gapextend[/dark_cyan] "
+         "help": "Gap extend penalty of the [dark_cyan]DIAMOND[/dark_cyan] searches, [dark_cyan]--gapextend[/dark_cyan] "
                  "[Default = the matrix's, e.g. [deep_sky_blue2]1[/deep_sky_blue2] for BLOSUM62]"},
         {"names": ("-h", "--help"), "read": "help", "help": "Print this help text"},
+    ],
+}
+
+DEVELOPMENT_OPTIONS = {
+    "title": "DEVELOPMENT OPTIONS",
+    "hidden": True,   # not in the help (-h)
+    "options": [
+        {"names": ("-ms", "--min-seq"), "value": "int", "read": "min_seq",
+         "help": "Minimum number of genes in an orthogroup for a gene tree "
+                 "[Default = [deep_sky_blue2]4[/deep_sky_blue2]]"},
+        {"names": ("--msa-min-seq",), "value": "int", "read": "msa_min_seq",
+         "help": "Minimum number of sequences in an alignment for it to be trimmed "
+                 "[Default = [deep_sky_blue2]10[/deep_sky_blue2]]"},
+        {"names": ("-nk",), "value": "int", "read": "int", "field": "n_skip", "what": "-nk",
+         "help": "With [dark_cyan]-ST[/dark_cyan], leave out the gene trees of the largest <int> orthogroups "
+                 "[Default = [deep_sky_blue2]50[/deep_sky_blue2]]"},
+        {"names": ("--scores-v2",), "set": {"v2_scores": True},
+         "help": "Normalise the sequence search scores as normalised bit scores (v2)"},
+        {"names": ("-1",), "set": {"q_double_blast": False},
+         "help": "Search each pair of species in one direction only"},
+        {"names": ("-mt", "--method-threads"), "value": "int", "read": "method_threads",
+         "help": "Threads for each alignment and tree command that takes a thread count "
+                 "[Default = [deep_sky_blue2]1[/deep_sky_blue2]]"},
+        {"names": ("-fd",), "value": "txt", "read": "fd_limit",
+         "help": "The soft and hard limits on the number of open files, e.g. "
+                 "[deep_sky_blue2]10000,20000[/deep_sky_blue2]"},
+        {"names": ("-efn", "--extended-filename"), "set": {"extended_filename": True},
+         "help": "Add the scoring and the search, MSA and tree programs to the results directory name"},
+        {"names": ("--no-fix-files",), "set": {"fix_files": False},
+         "help": "Don't update the results files to the HOG-based orthogroups (one pass of ortholog inference)"},
+        {"names": ("-ogh", "--only-hierarchical-groups"), "set": {"q_stop_after_groups": True},
+         "help": "Stop after the HOG-based orthogroups"},
+        {"names": ("-rmgt", "--rm-gene-trees"), "set": {"rm_gene_trees": False},
+         "help": "Keep the gene trees in the working directory (removed by default)"},
+        {"names": ("-rmrgt", "--rm-resolved-gene-trees"), "set": {"rm_resolved_gene_trees": False},
+         "help": "Keep the resolved gene trees as separate files in the working directory (removed by default)"},
+        {"names": ("-rmlg",), "set": {"rm_legacy": False},
+         "help": "Keep the legacy files (removed by default), incl. the HOGs with gene names from before "
+                 "the orthogroups are updated"},
+        {"names": ("--no-print-info",), "set": {"print_info": False},
+         "help": "Don't print the progress messages of the ortholog inference"},
+        {"names": ("--concat-alignment",), "set": {"species_tree_alignment": True},
+         "help": "With [dark_cyan]-ST[/dark_cyan], also write the concatenated alignment of the orthogroups "
+                 "for the species tree: " + _path("WorkingDirectory/Alignments_ids/SpeciesTreeAlignment.fa")},
     ],
 }
 
@@ -203,6 +249,7 @@ OPTION_GROUPS = (
     RESTART_OPTIONS,
     OTHER_OPTIONS,
     ADDITIONAL_OUTPUT_OPTIONS,
+    DEVELOPMENT_OPTIONS,
     VERSION_OPTIONS,
 )
 

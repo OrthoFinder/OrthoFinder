@@ -76,6 +76,7 @@ orthogroup_gene_count = "tools.orthogroup_gene_count:main"
 split_ortholog_files = "tools.split_ortholog_files:main"
 view_results = "tools.view_results.view_results:main"
 species_tree_alignment = "tools.species_tree_alignment:main"
+mcl_orthogroup_sequences = "tools.mcl_orthogroup_sequences:main"
 
 [tool.semantic_release]
 branch = "main"

@@ -22,7 +22,7 @@ import re
 import shutil
 import time
 
-from .. import __version__, g_mcl_inflation, n_threads_default, __location__
+from .. import __version__, g_mcl_inflation, n_cores, n_threads_default, __location__
 from ..search import diamond_scoring
 from ..utils import util, file_handler, program_caller, printing
 from ..utils.printing import printer
@@ -97,8 +97,9 @@ class Options(object):
         self.rm_gene_trees = True
         self.rm_resolved_gene_trees = True
         self.rm_legacy = True
-        self.orthoxml = False  # --orthoxml (-x, not in the help): also write the orthogroups and HOGs as OrthoXML
+        self.orthoxml = False  # --orthoxml (-x): also write the orthogroups and HOGs as OrthoXML
         self.species_tree_alignment = False  # --concat-alignment: with -ST, also write the concatenated alignment
+        self.mcl_orthogroups = False  # -mog: also keep the MCL orthogroups (MCL_Orthogroups.*)
         # pages to look at the results in a web browser (--view: all three)
         self.tree_view = False  # --tree-view: the trees
         self.stats_view = False  # --stats-view: the statistics, with plots
@@ -184,10 +185,10 @@ def _int_value(arg, args, what):
 def _threads_value(arg, args, what):
     """A number of threads, at most the number of cores."""
     n = _int_value(arg, args, "number of %s" % what)
-    if n > n_threads_default:
-        print("WARNING: The specified number of %s exceed the number of cores: %d" % (what, n_threads_default))
-        print("The number of %s is reset to %d" % (what, n_threads_default))
-        n = n_threads_default
+    if n > n_cores:
+        print("WARNING: The specified number of %s exceed the number of cores: %d" % (what, n_cores))
+        print("The number of %s is reset to %d" % (what, n_cores))
+        n = n_cores
     return n
 
 

@@ -26,7 +26,7 @@ from ..utils import (
 )
 from ..utils.printing import printer
 from . import previous_run, process_args
-from .workflows import get_orthologs, orthoxml_species
+from .workflows import get_orthologs
 
 try:
     from rich import print
@@ -112,7 +112,6 @@ def between_core_orthogroups_workflow(
             seqs_info,
             species_names_dict,
             options,
-            species_xml=None,
             q_incremental=True,
         )
 
@@ -258,7 +257,6 @@ def between_core_orthogroups_workflow(
             species_info_clade,
             seqs_info_clade,
             species_names_dict,
-            species_xml=None,
             i_unassigned=i_clade,
         )
         clusters_filename_pairs_unassigned_all.append(clusters_filename_pairs_unassigned)
@@ -368,7 +366,6 @@ def run_assign(ctx):
         species_info_obj.species_to_use,
         species_info_obj.n_sp_all,
     )
-    species_xml = orthoxml_species(options, species_info_obj)
     # Add genes to orthogroups
     with ctx.step("Search orthogroup profiles"):
         results_files, results_layout = runner.run_search_assign(
@@ -409,7 +406,6 @@ def run_assign(ctx):
             seqs_info,
             species_names_dict,
             options,
-            species_xml=species_xml,
         )
         if options.species_tree_fn is None:
             # No user species tree, use the one we've just inferred
@@ -428,7 +424,6 @@ def run_assign(ctx):
             options,
             prog_caller,
             i_og_restart,
-            species_xml=species_xml,
         )
     ctx.options = options  # check_options may make new options
     return species_info_obj, species_names_dict

@@ -55,6 +55,7 @@ import glob
 # os.environ["OPENBLAS_NUM_THREADS"] = "1"    # fix issue with numpy/openblas. Will mean that single threaded options aren't automatically parallelised
 
 import time
+import signal
 import copy  # Y
 import time  # Y
 import csv  # Y
@@ -110,7 +111,26 @@ OrthoFinder
 """
 
 
+class Terminated(KeyboardInterrupt):
+    """SIGTERM (e.g. the time limit of a job): the run ends as after Ctrl-C."""
+
+
+def _sigterm_handler(main_pid):
+    def handler(signum, frame):
+        if os.getpid() != main_pid:
+            # a child process (it inherited the handler): end as by default
+            signal.signal(signal.SIGTERM, signal.SIG_DFL)
+            os.kill(os.getpid(), signal.SIGTERM)
+            return
+        raise Terminated()
+    return handler
+
+
 def main(args=None):
+    try:
+        previous_sigterm = signal.signal(signal.SIGTERM, _sigterm_handler(os.getpid()))
+    except ValueError:   # not the main thread
+        previous_sigterm = None
     file_handler.handler.reset()
     file_io.clear_caches()   # main() may run more than once in a process (e.g. tests)
     t_start = time.perf_counter()
@@ -162,30 +182,40 @@ def main(args=None):
                     printer.console.print(f"{stream}:\n{output}", markup=False, highlight=False)
         import traceback
         traceback.print_exception(type(e), e, e.__traceback__)
+        finish.clean_up_at_exit(ctx.options, q_failed=True)
         # ptm = parallel_task_manager.ParallelTaskManagerSingleton()
         ptm.stop()
         sys.exit(1)
 
-    except KeyboardInterrupt:
+    except KeyboardInterrupt as e:
         ctx.current_step = run_logging.RunLogger.failed_stage(ctx.current_step)
         exit_code = 1
+        terminated = isinstance(e, Terminated)
         if ctx.log is not None:
-            ctx.log.step(ctx.current_step, "Interrupted by user", level="WARNING")
-        printer.print("\nProgram terminated by user.", style="error")
+            ctx.log.step(ctx.current_step, "Terminated (SIGTERM)" if terminated else "Interrupted by user",
+                         level="WARNING")
+        printer.print("\nProgram terminated (SIGTERM)." if terminated else "\nProgram terminated by user.",
+                      style="error")
+        finish.clean_up_at_exit(ctx.options, q_failed=True)
         sys.exit(1)
 
     except SystemExit as e:
         ctx.current_step = run_logging.RunLogger.failed_stage(ctx.current_step)
         exit_code = e.code
+        q_failed = not (e.code is None or e.code == 0)
         if ctx.log is not None:
-            if e.code is None or e.code == 0:
+            if not q_failed:
                 ctx.log.step(ctx.current_step, "Workflow stopped normally before the full analysis finished")
             else:
                 ctx.log.log("ERROR: Workflow exited with status %s", e.code,
                         step=ctx.current_step, level="ERROR", exc_info=True)
+        # a stop option (-ogt, -ost, ...) or a failure: the MCL orthogroups, no empty directories
+        finish.clean_up_at_exit(ctx.options, q_failed=q_failed)
         raise
 
     finally:
+        if previous_sigterm is not None:
+            signal.signal(signal.SIGTERM, previous_sigterm)
         run_logging.RunLogger.set_logger(None)
         if ctx.log is not None:
             ctx.log.close()

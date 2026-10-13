@@ -7,6 +7,9 @@
 
 OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and analyzes the gene trees to identify the rooted species tree. The method subsequently identifies all gene duplication events in the complete set of gene trees, and analyses them at both gene tree and species tree level. OrthoFinder further analyzes all of this phylogenetic information to identify the complete set of orthologs between all species, and provides extensive comparative genomics statistics.
 
+> [!IMPORTANT]
+> **From v3.1, `N0.tsv` is no longer in `Phylogenetic_Hierarchical_Orthogroups/`.** Its orthogroups are in `Orthogroups/Orthogroups.tsv`. If your scripts read `N0.tsv`, read `Orthogroups/Orthogroups.tsv` instead.
+
 ## Table of contents
 
 - [What's new in v3.2](#whats-new-in-v32)
@@ -15,7 +18,6 @@ OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and a
 - [Advanced Usage - Scaling to Thousands of Species](#advanced-usage---scaling-to-thousands-of-species)
 - [Command line Options](#command-line-options)
 - [Output files](#output-files)
-- [Latest additions](#latest-additions)
 - [Citation](#citation)
 - [System Requirements](#system-requirements)
 
@@ -25,7 +27,18 @@ For more information please visit [our website](https://orthofinder.github.io/Or
 
 These changes are in OrthoFinder v3.2 and later. Some of them change the names and files of the results: please check them if you have scripts that read OrthoFinder results.
 
-1. **"Orthologue" is now "ortholog"**, in the names of the results and in the messages:
+1. **Stopping and restarting an analysis at each stage**, also for `--assign`:
+   - Stop after a stage: `-op` (the search commands, written to `WorkingDirectory/blast_commands.txt`, e.g. to run on a cluster), `-og` (the MCL orthogroups, before the gene trees and the phylogenetic hierarchical orthogroups), `-ogt` (gene trees) or `-ost` (species tree). The end of the run prints the command to continue it.
+   - The MCL orthogroups (before the HOGs) are written as `Orthogroups/MCL_Orthogroups.tsv` (and `.txt`, `.GeneCount.tsv`, `_UnassignedGenes.tsv`) when a run stops after a stage, or if it fails or is interrupted (Ctrl-C, a job time limit) after them. In a full run they are kept only with `-mog`. `Orthogroups.tsv` etc. are the final orthogroups, from the HOGs. Their sequences, a FASTA file for each, can be written with `mcl_orthogroup_sequences <Results_dir>`.
+   - Restart from a stage: `-b` (search results), `-fg` (the MCL orthogroups: after `-og`, or from a run that went further (after `-ogt` or `-ost`, or a complete run), to infer the alignments and gene trees again, e.g. with other `-A`/`-T`), `-fgt` (gene trees) or `-fst` (species tree), given the results directory.
+   - A restart writes its results to the results directory it is given, the one of the stopped run: it does not create a new one. `--assign` is different: it always creates a new results directory, next to the core run's (`--core`), and leaves the core run's results as they are. That directory can in turn be the core of another `--assign` run, to add species in several stages (e.g. `--assign <new species 2> --core <results of the first --assign>`). An `--assign` run that stopped is restarted from its new directory, and continues in it.
+   - A restart continues with the settings of the run (search program, scoring, `-M`, `-A`, `-T`, `-ST`, `-I` etc., kept in `WorkingDirectory/run_state.json`), unless they are given again.
+   - With `-b`, OrthoFinder runs only the searches whose results are missing or incomplete, e.g. after `-op`, or after a run that was interrupted (Ctrl-C, a job time limit) or failed. The finished searches are recorded in `WorkingDirectory/checkpoint.txt`; the results of an interrupted search are moved aside (`.incomplete`) and the search is run again.
+   - With `-op`, the search commands are no longer printed to the terminal: they are written to `WorkingDirectory/blast_commands.txt`. A restart with `-b` reuses the search results that are there, and runs only the missing ones, with the search program of the run.
+
+2. **Pairwise ortholog files only with `-pof`.** By default, the orthologs are written as one compressed file per species, `Orthologs/<species>.tsv.gz`, which takes far less space and far fewer files with many species. With `-pof`, OrthoFinder writes a file for each pair of species as before, `Orthologs/Orthologs_<species>/<species>__v__<other species>.tsv`. For the results of a run without `-pof`, `split_ortholog_files <Results_dir>` writes the pairwise files afterwards.
+
+3. **"Orthologue" is now "ortholog"**, in the names of the results and in the messages:
 
    | Before v3.2 | From v3.2 |
    |-------------|-----------|
@@ -37,22 +50,13 @@ These changes are in OrthoFinder v3.2 and later. Some of them change the names a
 
    The contents of the files are unchanged. A restart (`-b`, `-fg`, `-fgt`, `-fst`) in results from an earlier version first renames the old names to the new ones.
 
-2. **With `-ST` (e.g. `-ST astral-pro`), the concatenated alignment is no longer written.** The species tree is then inferred from the gene trees, and the concatenated alignment of the orthogroups is not needed for it. To write it as well, add `--concat-alignment` (it is then in `WorkingDirectory/Alignments_ids/SpeciesTreeAlignment.fa`, with the orthogroups used listed in `Species_Tree/Orthogroups_for_concatenated_alignment.txt`), or for the results of a finished run use `species_tree_alignment <Results_dir>`. Without `-ST` (the default) the concatenated alignment is written as before.
+4. **The default species tree differs between the core run and `--assign`.** A core run (`-f`) infers the species tree from the concatenated alignment of the single-copy orthogroups. An `--assign` run infers it from the gene trees with ASTRAL-Pro. `-ST` (e.g. `-ST astral-pro`) makes a core run infer it from the gene trees as well; the concatenated alignment is then not needed, and these two files of a core run are not written: `WorkingDirectory/Alignments_ids/SpeciesTreeAlignment.fa` (the concatenated alignment) and `Species_Tree/Orthogroups_for_concatenated_alignment.txt` (the orthogroups used for it). If you need them, write them afterwards from the results with the `species_tree_alignment` tool (in [`tools/`](tools/species_tree_alignment.py)): `species_tree_alignment <Results_dir>` (`-o <dir>` to write them elsewhere, `--species-names` to name the rows by species).
 
-3. **Scoring matrices and gap penalties for DIAMOND searches**: `--matrix` (e.g. `BLOSUM45`, default `BLOSUM62`), `--custom-matrix <file>` for a matrix file of your own, and `-go`/`--gapopen` and `-ge`/`--gapextend` for the gap penalties. A restart or `--assign` from the results uses the same scoring. See [Sequence search scoring options (DIAMOND)](#command-line-options).
+5. **Scoring matrices and gap penalties for DIAMOND searches**: `--matrix` (e.g. `BLOSUM45`, default `BLOSUM62`), `--custom-matrix <file>` for a matrix file of your own, and `-go`/`--gapopen` and `-ge`/`--gapextend` for the gap penalties. A restart or `--assign` from the results uses the same scoring. See [Sequence search scoring options (DIAMOND)](#command-line-options).
 
-4. **Pairwise ortholog files only with `-pof`.** By default, the orthologs are written as one compressed file per species, `Orthologs/<species>.tsv.gz`, which takes far less space and far fewer files with many species. With `-pof`, OrthoFinder writes a file for each pair of species as before, `Orthologs/Orthologs_<species>/<species>__v__<other species>.tsv`. For the results of a run without `-pof`, `split_ortholog_files <Results_dir>` writes the pairwise files afterwards.
+6. **The results in a web browser**: `--tree-view` (the species tree, the resolved gene trees with their alignments, and a species tree explorer), `--stats-view` (the statistics, with interactive plots) and `--groups-view` (the genes of each orthogroup and HOG, searchable). `--view` writes all three, linked to each other, and `OrthoFinder_Results.html` to open them, a tab for each. For the results of a finished run: `view_results <Results_dir>`. The pages work offline in any recent browser, in light or dark colours. See [Viewing the results in a web browser](#command-line-options).
 
-5. **The results in a web browser**: `--tree-view` (the species tree, the resolved gene trees with their alignments, and a species tree explorer), `--stats-view` (the statistics, with interactive plots) and `--groups-view` (the genes of each orthogroup and HOG, searchable). `--view` writes all three, linked to each other, and `OrthoFinder_Results.html` to open them, a tab for each. For the results of a finished run: `view_results <Results_dir>`. The pages work offline in any recent browser, in light or dark colours. See [Viewing the results in a web browser](#command-line-options).
-
-6. **Stopping and restarting an analysis at each stage**, also for `--assign`:
-   - Stop after a stage: `-op` (the search commands, written to `WorkingDirectory/blast_commands.txt`, e.g. to run on a cluster), `-og` (orthogroups), `-ogt` (gene trees) or `-ost` (species tree). The end of the run prints the command to continue it.
-   - Restart from a stage: `-b` (search results), `-fg` (orthogroups), `-fgt` (gene trees) or `-fst` (species tree), given the results directory.
-   - A restart continues with the settings of the run (search program, scoring, `-M`, `-A`, `-T`, `-ST`, `-I` etc., kept in `WorkingDirectory/run_state.json`), unless they are given again.
-   - With `-b`, OrthoFinder runs only the searches whose results are missing or incomplete, e.g. after `-op`, or after a run that was interrupted (Ctrl-C, a job time limit) or failed. The finished searches are recorded in `WorkingDirectory/checkpoint.txt`; the results of an interrupted search are moved aside (`.incomplete`) and the search is run again.
-   - With `-op`, the search commands are no longer printed to the terminal: they are written to `WorkingDirectory/blast_commands.txt`. A restart with `-b` reuses the search results that are there, and runs only the missing ones, with the search program of the run. It does not create a new results directory: the results are written to the one created by `-op`.
-
-Earlier change, from v3.1: `N0.tsv` is no longer in `Phylogenetic_Hierarchical_Orthogroups/`; `Orthogroups/Orthogroups.tsv` contains its orthogroups.
+7. **The orthogroups in OrthoXML format**, for other tools: `--orthoxml` writes `Orthogroups/Orthogroups.orthoxml`, the orthogroups with their HOGs nested in them: the species tree as the taxonomy, and gene duplications as paralog groups. The MCL orthogroups (e.g. with `-og`) are written as `Orthogroups/MCL_Orthogroups.orthoxml`. See [Output options](#command-line-options).
 
 ## Installation
 
@@ -169,7 +173,7 @@ done
 
 ## Advanced Usage - Scaling to Thousands of Species
 
-If you are analysing >100 species, we recommend that you use the scalable implementation. 
+If you are analysing >100 species, we recommend that you use the scalable implementation. The `--core --assign` workflow uses the [SHOOT](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02652-8) algorithm to create profiles for previously computed orthogroups, and adds new genes to these orthogroups without requiring a costly all-versus-all sequence search. Genes that cannot be assigned using the SHOOT approach are analysed using a standard OrthoFinder workflow.
 
 Add the files for 64 species into one directory `<core>`
 Add the remaining files into another directory `<additional>`
@@ -187,6 +191,8 @@ orthofinder [options] --assign <additional> --core <Results_Dir>
 ```
 
 To choose which 64 species to include in the core, aim to capture a broad range of the evolutionary diversity of your species.
+
+The core run infers the species tree from the concatenated alignment of single-copy orthogroups; the `--assign` run infers it from the gene trees with ASTRAL-Pro (`-ST` chooses another species tree program).
 
 <p align="center">
   <img src="assets/images/core_assign_figure.jpg" alt="core_assign_figure" width="800"/>
@@ -211,8 +217,8 @@ Command-line options for OrthoFinder
   | `-S`      | Sequence search program                   | `diamond` | `diamond`, `diamond_ultra_sens`, `blastp`, `mmseqs`, `blastn` |
   | `-A`      | MSA program, requires `-M msa`            | `famsa`   | `famsa`, `mafft`, `muscle`,                                                          |
   | `-T`      | Tree inference method, requires `-M msa`  | `fasttree`| `fasttree`, `fasttree_fastest`, `raxml`, `iqtree`                               |
-  | `-ST`     | Species tree program, from the gene trees, requires `-M msa` | a tree of the concatenated alignment | `astral-pro`; others can be added to `config.json` (`"program_type": "species_tree"`) |
-  | `-I`      | MCL inflation parameter                   | `1.2`     | `1-10`                                                                                         |
+  | `-ST`     | Species tree program, from the gene trees, requires `-M msa` | a tree of the concatenated alignment; `astral-pro` with `--assign` | `astral-pro` |
+  | `-I`      | MCL inflation parameter                   | `1.2`     | usually `1.2`–`5` (larger values give smaller orthogroups; see the [MCL manual](https://micans.org/mcl/man/mcl.html)) |
 
 - **Sequence search scoring options (DIAMOND)**<br>
   | Parameter        | Description                                                               |
@@ -248,8 +254,8 @@ Command-line options for OrthoFinder
   | `-n <txt>`      | Name to append to the results directory.                                    |
   | `-o <txt>`      | Specify a non-default results directory.                                    |
   | `-pof`    | Save the pairwise ortholog files.                                           |
-  | `--orthoxml` | Also write the orthogroups and HOGs in OrthoXML format, for other tools. |
-  | `--concat-alignment` | With `-ST`, also write the concatenated alignment of the orthogroups chosen for a species tree, as a run without `-ST` does (`WorkingDirectory/Alignments_ids/SpeciesTreeAlignment.fa`, `Species_Tree/Orthogroups_for_concatenated_alignment.txt`). For the results of a finished run: `species_tree_alignment <Results_dir>` (`-o <dir>` to write them elsewhere, `--species-names` to name the rows by species). |
+  | `--orthoxml` | Also write the orthogroups in [OrthoXML](https://orthoxml.org) format, for other tools, with their HOGs nested in them: `Orthogroups/Orthogroups.orthoxml`. The MCL orthogroups are written as `Orthogroups/MCL_Orthogroups.orthoxml`. |
+  | `-mog` | Also keep the MCL orthogroups (before the HOGs) in a full run: `Orthogroups/MCL_Orthogroups.tsv` etc. They are always written with `-og`, `-ogt` or `-ost`, or if the run fails. |
 
 - **Viewing the results in a web browser**<br>
   | Parameter | Description |
@@ -275,7 +281,7 @@ Command-line options for OrthoFinder
   | Parameter | Description                                                                 |
   |-----------|-----------------------------------------------------------------------------|
   | `-op`     | Stop after preparing input files for BLAST.                                 |
-  | `-og`     | Stop after MCL Orthogroups.                                                 |
+  | `-og`     | Stop after the MCL orthogroups (no gene trees, species tree or HOGs): `Orthogroups/MCL_Orthogroups.tsv` etc. |
   | `-ogt`    | Stop after gene trees.                                                      |
   | `-ost`    | Stop after species trees.                                                   |
 
@@ -310,12 +316,21 @@ Full details on the output files and directories can be found [here](http://orth
 - `Orthogroups.GeneCount.tsv` is a tab separated text file that contains counts of the number of genes for each species in each orthogroup.
 - `Orthogroups_SingleCopyOrthologs.txt` is a list of orthogroups that contain exactly one gene per species
 - `Orthogrouops_UnassignedGenes.tsv` is a tab separated text file that contains all of the genes that were not assigned to any orthogroup.
+- With `--orthoxml`, `Orthogroups.orthoxml` has the orthogroups in OrthoXML format, each with its HOGs nested in it.
+- `MCL_Orthogroups.tsv` etc. are the MCL orthogroups, before the HOGs: written by a run that stops early (e.g. `-og`) or fails, or with `-mog`.
 
 **```/Phylogenetic_Hierarchical_Orthogroups```**
+
+OrthoFinder extends its phylogenetic approach to orthogroups, defining orthogroups for each node within the species tree. This increases the accuracy of orthogroups, and lets you perform orthogroup analyses for any clade of species in the species tree.
+
+<p align="center">
+  <img src="assets/images/HOG_figure.png" alt="HOGs" width="400"/>
+</p>
+
 - Each file is a phylogenetic hierarchical orthogroup (HOG) for a different node of the species tree.
 - Each row of a file contain the genes belonging to a single orthogroup.
 - Each species is represented by a single column.
-- `N0.tsv` from the old version is now `Orthogroups/Orthogroups.tsv`
+- From v3.1, there is no `N0.tsv`: its orthogroups are in `Orthogroups/Orthogroups.tsv`
 
 **```/Orthologs```**
 - `<species>.tsv.gz` for each species lists its orthologs in all the other species.
@@ -338,21 +353,6 @@ Full details on the output files and directories can be found [here](http://orth
 **```/Orthogroup_Sequences```**
 - A FASTA file for each orthogroup giving the amino acid sequences for each gene in the orthogroup.
 
-
-## Latest additions
-The current version of OrthoFinder has several major changes compared to OrthoFinder version 2 ([Emms & Kelly 2019]((https://img.shields.io/badge/DOI-10.1186%2Fs13059--019--1832--y-blue))).
-
-**New workflow for scalability**
-
-The ``--core --assign`` workflow uses the [SHOOT](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02652-8) algorithm to create profiles for previously computed orthogroups, and adds new genes to these orthogroups without requiring a costly all-versus-all sequence search. Genes that cannot be assigned using the SHOOT approach are analysed using a standard OrthoFinder workflow. 
-
-**Phylogenetic Hierarchical Orthogroups**
-
-OrthoFinder has now extended its phylogenetic approach to orthogroups, allowing orthogroups to be defined for each node within the species tree. This significantly increases the accuracy of orthogroups, and enables users to perform orthogroup analyses for any clade of species in the species tree. 
-
-<p align="center">
-  <img src="assets/images/HOG_figure.png" alt="HOGs" width="400"/>
-</p>
 
 ## Citation
 

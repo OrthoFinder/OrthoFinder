@@ -24,8 +24,8 @@ def write_views(results_dir, trees=False, stats=False, groups=False):
     the pages there ([(what, path)]).
     """
     there = view_pages.present(results_dir)
-    stats = stats and os.path.exists(os.path.join(results_dir, "Orthogroups", "Orthogroups.GeneCount.tsv"))
-    groups = groups and os.path.exists(os.path.join(results_dir, "Orthogroups", "Orthogroups.tsv"))
+    stats = stats and view_pages.orthogroups_file(results_dir, ".GeneCount.tsv") is not None
+    groups = groups and view_pages.orthogroups_file(results_dir) is not None
     linked = there | ({"stats"} if stats else set()) | ({"groups"} if groups else set())
     written = {}  # key: (what, path)
     if trees:
