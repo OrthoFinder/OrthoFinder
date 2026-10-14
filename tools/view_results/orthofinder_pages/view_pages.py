@@ -14,6 +14,8 @@ the parent page: a page opened from disk cannot reach into another).
 
 import json
 import os
+import re
+import sys
 
 from . import __version__
 
@@ -55,6 +57,132 @@ def nav(results_dir, current, written=None):
     """[[name, link, 1 if it is this page, key]] of the pages, for the bar at the top of each."""
     keys = present(results_dir, written) | {current}
     return [[name, "../" + path, int(key == current), key] for key, (name, path) in PAGES.items() if key in keys]
+
+
+# ---- the pages' data ----
+# A page holds a summary; the rest is in data files, each a script the page loads when it is needed (a page
+# opened from disk may load scripts, but not read other files): <data dir>/<name>.js, which calls ofData(name,
+# value) (DATA_JS). Large tables are split into chunks, so that a page loads the rows it shows, and genes are
+# found with an index (write_gene_index), so that thousands of species need not be loaded to find one gene.
+
+def write_data(data_dir, name, value):
+    """<data_dir>/<name>.js: a data file, which gives value to the page (loadData(name), DATA_JS)."""
+    with open(os.path.join(data_dir, name + ".js"), "w", encoding="utf-8") as out:
+        out.write(f"ofData({json.dumps(name)},{json.dumps(value, separators=(',', ':'))});\n")
+
+
+NON_EMPTY = re.compile(r"[^\t\r\n]+")
+
+
+def sparse_cells(line):
+    """
+    (column, text) of the non-empty cells of a line of a tab-separated file
+    (column 0 the first), found without splitting the line at every tab: a
+    row of thousands of species (Orthogroups.tsv, the HOG files) is mostly
+    empty cells.
+    """
+    col, last = 0, 0
+    for m in NON_EMPTY.finditer(line):
+        col += line.count("\t", last, m.start())
+        last = m.start()
+        yield col, m.group()
+
+
+def compact_ids(ids):
+    """
+    IDs for a page: {"prefix", "width", "n"} if they are <prefix><0, 1, 2, ...
+    zero-padded to width> in order (OG0000000, OG0000001, ...; N3.HOG0000000,
+    ...), which the page makes again (expandIds, DATA_JS), else the list.
+    """
+    if ids:
+        m = re.match(r"(.*?)(\d+)$", ids[0])
+        if m and int(m.group(2)) == 0:
+            prefix, width = m.group(1), len(m.group(2))
+            if all(x == f"{prefix}{i:0{width}d}" for i, x in enumerate(ids)):
+                return {"prefix": prefix, "width": width, "n": len(ids)}
+    return list(ids)
+
+
+def write_chunks(data_dir, prefix, rows, weight, limit=50000):
+    """
+    rows in data files <prefix>_<c>, each of rows of about limit in weight
+    (weight(row): e.g. its genes), so that the page loads the rows it shows
+    (chunkRows, DATA_JS). Returns the first row of each chunk.
+    """
+    starts, total = [0], 0
+    for i, row in enumerate(rows):
+        w = weight(row) + 1
+        if total and total + w > limit:
+            starts.append(i)
+            total = 0
+        total += w
+    for c, start in enumerate(starts):
+        end = starts[c + 1] if c + 1 < len(starts) else len(rows)
+        write_data(data_dir, f"{prefix}_{c}", rows[start:end])
+    return starts
+
+
+def write_gene_index(data_dir, genes, shard=20000):
+    """
+    An index of gene names, to find genes by the start of their name
+    (findGenes, DATA_JS): genes [(gene, value)], e.g. the orthogroup each is in,
+    sorted (ignoring case) into data files Genes_<i> of shard genes each.
+    Returns the first gene (in lower case) of each, for the page.
+    """
+    genes = sorted(genes, key=lambda g: g[0].lower())
+    index = []
+    for i in range(0, len(genes), shard):
+        write_data(data_dir, f"Genes_{len(index)}", [list(g) for g in genes[i:i + shard]])
+        index.append(genes[i][0].lower())
+    return index
+
+
+# The script for the data files: in a page, after D (its data, with D.data its data directory) is set.
+DATA_JS = r"""// ---- data files (view_pages.write_data): scripts, each loaded once, when first needed ----
+const dataCache = {}, dataWaiting = {};
+window.ofData = (name, value) => { dataCache[name] = value; (dataWaiting[name] || []).forEach(w => w.resolve(value)); delete dataWaiting[name]; };
+function loadData(name) {
+  if (name in dataCache) return Promise.resolve(dataCache[name]);
+  return new Promise((resolve, reject) => {
+    if (!dataWaiting[name]) {
+      dataWaiting[name] = [];
+      const s = document.createElement("script");
+      s.src = `${D.data}/${encodeURIComponent(name)}.js`;
+      s.onerror = () => {
+        const e = new Error(`could not be loaded (${s.src}). The page needs its folder ${D.data} next to it: copy (or download) them together, e.g. the whole results directory`);
+        (dataWaiting[name] || []).forEach(w => w.reject(e)); delete dataWaiting[name];
+      };
+      document.head.appendChild(s);
+    }
+    dataWaiting[name].push({resolve, reject});
+  });
+}
+// IDs (compact_ids): the list, or {prefix, width, n} for <prefix>0000, <prefix>0001, ...
+const expandIds = ids => Array.isArray(ids) ? ids : Array.from({length: ids.n}, (_, i) => ids.prefix + String(i).padStart(ids.width, "0"));
+// rows in chunks (write_chunks): the chunk of a row, and the data of some rows (a Map: row -> data)
+function chunkOf(starts, row) { let lo = 0, hi = starts.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (starts[m] <= row) lo = m; else hi = m - 1; } return lo; }
+async function chunkRows(prefix, starts, rows) {
+  const chunks = [...new Set(rows.map(r => chunkOf(starts, r)))];
+  await Promise.all(chunks.map(c => loadData(`${prefix}_${c}`)));
+  return new Map(rows.map(r => { const c = chunkOf(starts, r); return [r, dataCache[`${prefix}_${c}`][r - starts[c]]]; }));
+}
+// genes (write_gene_index; index: the first gene of each file): [[gene, value], ...] of the genes whose
+// name starts with q (in any case), at most limit
+async function findGenes(index, q, limit = 1000) {
+  q = q.toLowerCase();
+  if (!index || !index.length || !q) return [];
+  let s = 0;
+  while (s + 1 < index.length && index[s + 1] < q) s++;  // (a gene's name can be in two files: in two species)
+  const out = [];
+  for (; s < index.length; s++) {
+    for (const e of await loadData(`Genes_${s}`)) {
+      const g = e[0].toLowerCase();
+      if (g.startsWith(q)) { out.push(e); if (out.length >= limit) return out; }
+      else if (g > q) return out;
+    }
+  }
+  return out;
+}"""
 
 
 HUB = "OrthoFinder_Results.html"
@@ -205,6 +333,120 @@ open(cut < 0 ? start : start.slice(0, cut), cut < 0 ? "" : start.slice(cut + 1))
 """
 
 
+# ---- serving the pages ----
+# For results on another computer (e.g. a cluster): the pages served over HTTP, to open in a browser on this
+# one, e.g. through an ssh tunnel. The pages are the same files; the server only sends them, compressed (the
+# data files are text that compresses ~5-10x), and only the files of the results directory.
+
+COMPRESS = {".html", ".js", ".json", ".css", ".svg", ".tsv", ".txt"}
+
+
+def start_page(results_dir):
+    """The page to open first: OrthoFinder_Results.html, else the one page there; None if there are none."""
+    if os.path.exists(os.path.join(results_dir, HUB)):
+        return HUB
+    return next((path for _, path in PAGES.values() if os.path.exists(os.path.join(results_dir, path))), None)
+
+
+def make_server(results_dir, host="127.0.0.1", port=8000, tries=20):
+    """
+    An HTTP server of the files of results_dir (not a list of them), at the first port free from port on
+    (tries of them; port 0: any). Call its serve_forever().
+    """
+    import gzip
+    import http.server
+    from collections import OrderedDict
+
+    root = os.path.abspath(results_dir)
+    first = start_page(root)
+    compressed = OrderedDict()  # (path, modified, size): gzip, the most recent last
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory=root, **kwargs)
+
+        def send_head(self):
+            if self.path.split("?")[0] in ("", "/"):
+                self.send_response(302)
+                self.send_header("Location", "/" + (first or ""))
+                self.end_headers()
+                return None
+            if self.path == "/favicon.ico":  # asked for by browsers: none
+                self.send_response(204)
+                self.end_headers()
+                return None
+            path = self.translate_path(self.path)
+            if os.path.isdir(path):
+                self.send_error(404, "Not a page")  # no lists of the files
+                return None
+            ext = os.path.splitext(path)[1].lower()
+            if ext not in COMPRESS or "gzip" not in self.headers.get("Accept-Encoding", "") or not os.path.isfile(path):
+                return super().send_head()
+            st = os.stat(path)
+            key = (path, st.st_mtime_ns, st.st_size)
+            body = compressed.pop(key, None)
+            if body is None:
+                with open(path, "rb") as f:
+                    body = gzip.compress(f.read(), compresslevel=5)
+            compressed[key] = body
+            while len(compressed) > 200:
+                compressed.popitem(last=False)
+            self.send_response(200)
+            self.send_header("Content-Type", self.guess_type(path))
+            self.send_header("Content-Encoding", "gzip")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-cache")  # pages written again are seen at once
+            self.end_headers()
+            if self.command == "GET":
+                self.wfile.write(body)
+            return None
+
+        def log_request(self, code="-", size="-"):  # quiet: only the requests that failed
+            if isinstance(code, int) and code >= 400:
+                super().log_request(code, size)
+
+    for p in [0] if port == 0 else range(port, port + tries):
+        try:
+            return http.server.ThreadingHTTPServer((host, p), Handler)
+        except OSError:
+            continue
+    raise OSError(f"no free port from {port} to {port + tries - 1}")
+
+
+def serve(results_dir, host="127.0.0.1", port=8000):
+    """Serve the pages of results_dir until stopped (Ctrl-C), with how to open them."""
+    import socket
+    server = make_server(results_dir, host, port)
+    port = server.server_address[1]
+    page = start_page(results_dir) or ""
+    print(f"Serving the pages of {results_dir} (Ctrl-C to stop):")
+    if host in ("127.0.0.1", "localhost"):
+        print(f"  on this computer:     http://localhost:{port}/{page}")
+        print(f"  from another one:     ssh -N -L {port}:localhost:{port} {os.environ.get('USER', 'you')}@{socket.gethostname()}"
+              f"\n                        then open http://localhost:{port}/{page}")
+    else:
+        print(f"  http://{socket.gethostname()}:{port}/{page}")
+        print("  WARNING: anyone who can reach this computer on this port can read these results")
+    sys.stdout.flush()  # before waiting (e.g. the output going to a file)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("Stopped")
+    finally:
+        server.server_close()
+
+
+def add_serve_options(parser):
+    """--serve, --port and --host, for the commands that write the pages."""
+    parser.add_argument("--serve", action="store_true",
+                        help="then serve the pages over HTTP, to open them in a browser (e.g. results on a "
+                             "cluster, through an ssh tunnel) until stopped with Ctrl-C")
+    parser.add_argument("--port", type=int, default=8000, help="with --serve: the port (default 8000, or the next free one)")
+    parser.add_argument("--host", default="127.0.0.1",
+                        help="with --serve: the address to serve on (default 127.0.0.1, only this computer; "
+                             "0.0.0.0: every computer that can reach it, with no password)")
+
+
 def main(args=None):
     """python -m orthofinder.utils.view_pages <results directory>: OrthoFinder_Results.html for its pages."""
     import argparse
@@ -213,13 +455,16 @@ def main(args=None):
         description="Write OrthoFinder_Results.html for OrthoFinder results: a tab for each of the pages "
                     "that are there (written with --tree-view, --stats-view, --groups-view or their commands).")
     parser.add_argument("results_dir", help="an OrthoFinder results directory (Results_<name>)")
-    results_dir = parser.parse_args(args).results_dir
-    keys = present(results_dir)
+    add_serve_options(parser)
+    a = parser.parse_args(args)
+    keys = present(a.results_dir)
     if not keys:
-        print(f"No pages in {results_dir} (see --tree-view, --stats-view, --groups-view)")
+        print(f"No pages in {a.results_dir} (see --tree-view, --stats-view, --groups-view)")
         return 1
     print(f"OrthoFinder results page ({', '.join(PAGES[k][0] for k in PAGES if k in keys)}): "
-          f"{write_hub(results_dir, keys)}")
+          f"{write_hub(a.results_dir, keys)}")
+    if a.serve:
+        serve(a.results_dir, a.host, a.port)
     return 0
 
 

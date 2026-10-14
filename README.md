@@ -17,6 +17,7 @@ OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and a
 - [Simple Usage](#simple-usage)
 - [Advanced Usage - Scaling to Thousands of Species](#advanced-usage---scaling-to-thousands-of-species)
 - [Command line Options](#command-line-options)
+- [Viewing the results in a web browser](#viewing-the-results-in-a-web-browser)
 - [Output files](#output-files)
 - [Citation](#citation)
 - [System Requirements](#system-requirements)
@@ -54,7 +55,7 @@ These changes are in OrthoFinder v3.2 and later. Some of them change the names a
 
 5. **Scoring matrices and gap penalties for DIAMOND searches**: `--matrix` (e.g. `BLOSUM45`, default `BLOSUM62`), `--custom-matrix <file>` for a matrix file of your own, and `-go`/`--gapopen` and `-ge`/`--gapextend` for the gap penalties. A restart or `--assign` from the results uses the same scoring. See [Sequence search scoring options (DIAMOND)](#command-line-options).
 
-6. **The results in a web browser**: `--tree-view` (the species tree, the resolved gene trees with their alignments, and a species tree explorer), `--stats-view` (the statistics, with interactive plots) and `--groups-view` (the genes of each orthogroup and HOG, searchable). `--view` writes all three, linked to each other, and `OrthoFinder_Results.html` to open them, a tab for each. For the results of a finished run: `view_results <Results_dir>`. The pages work offline in any recent browser, in light or dark colours. See [Viewing the results in a web browser](#command-line-options).
+6. **The results in a web browser**: `--tree-view` (the species tree, the resolved gene trees with their alignments, and a species tree explorer), `--stats-view` (the statistics, with interactive plots) and `--groups-view` (the genes of each orthogroup and HOG, searchable). `--view` writes all three, linked to each other, and `OrthoFinder_Results.html` to open them, a tab for each. For the results of a finished run: `view_results <Results_dir>`. The pages work offline in any recent browser, in light or dark colours. See [Viewing the results in a web browser](#viewing-the-results-in-a-web-browser).
 
 7. **The orthogroups in OrthoXML format**, for other tools: `--orthoxml` writes `Orthogroups/Orthogroups.orthoxml`, the orthogroups with their HOGs nested in them: the species tree as the taxonomy, and gene duplications as paralog groups. The MCL orthogroups (e.g. with `-og`) are written as `Orthogroups/MCL_Orthogroups.orthoxml`. See [Output options](#command-line-options).
 
@@ -265,11 +266,7 @@ Command-line options for OrthoFinder
   | `--groups-view` | Also write a page of the genes of each orthogroup and HOG, searchable (`Orthogroups/Groups.html`). |
   | `--view` | All three pages, linked to each other, and `OrthoFinder_Results.html` to open them, a tab for each (also with two of them). |
 
-  - For the results of a finished run: `view_results <Results_dir>` (same options). With many species the pages can be large: each can also be written on its own.
-  - Without OrthoFinder installed: the `tools/view_results` directory works on its own, e.g. downloaded as `view_results.zip` (`make view_results_zip` writes it to `dist/`) next to the results. It needs Python 3 and ete4 (`pip install ete4`): `python view_results/view_results.py <Results_dir>`.
-  - The pages work in any recent web browser (Safari, Edge, Chrome, Firefox) on macOS, Windows or Linux, opened from disk. To look at results from a server on your own computer, download the whole results directory, as each page reads its data from the folders next to it.
-  - On Linux, open them with `xdg-open <Results_dir>/OrthoFinder_Results.html` (the default browser) or `google-chrome <Results_dir>/OrthoFinder_Results.html 2>/dev/null` (with Chrome already open, it prints errors such as "Broken pipe" that are not about the page).
-  - Light or dark colours: **Colours**, at the top right of each page (Auto follows the system).
+  See [Viewing the results in a web browser](#viewing-the-results-in-a-web-browser) for finished runs and results on a server.
 
 - **Parallel processing options**<br>
   | Parameter | Description                                 | Default |
@@ -303,6 +300,49 @@ Command-line options for OrthoFinder
   | `-y`             | Split paralogous clades below the root of a HOG into separate HOGs.        |
   | `-h`             | Print this help text.                                                     |
   | `-v`             | Print version.                                                     |
+
+## Viewing the results in a web browser
+
+OrthoFinder can write three linked pages to explore the results, plus `OrthoFinder_Results.html` to open them in tabs:
+
+| Page | What it shows |
+|------|---------------|
+| `Resolved_Gene_Trees/Resolved_Gene_Trees.html` | The species tree, each resolved gene tree with its alignment, and a species tree explorer (HOGs per node, duplications and losses) |
+| `Comparative_Genomics_Statistics/Statistics.html` | The run's statistics, with interactive plots |
+| `Orthogroups/Groups.html` | The genes of each orthogroup and HOG, searchable |
+
+The pages work offline in any recent browser and scale to thousands of species: each loads only the data it shows. Gene search matches the start of a gene name.
+
+**Write the pages**
+
+```bash
+orthofinder -f <proteomes_dir> --view            # during a run (or --tree-view, --stats-view, --groups-view)
+view_results <Results_dir>                       # for a finished run (same options)
+```
+
+**Open them**
+
+- On your own computer: open `<Results_dir>/OrthoFinder_Results.html` (Linux: `xdg-open <Results_dir>/OrthoFinder_Results.html`). Keep the results directory together: each page reads its data from the folders next to it.
+- On a server or cluster: serve them and open them through an SSH tunnel:
+
+  ```bash
+  view_results <Results_dir> --serve               # on the server: prints the address and the ssh command
+  ssh -N -L 8000:localhost:8000 <user>@<server>    # on your computer, then open http://localhost:8000
+  ```
+
+  `--port` sets the port (default 8000, or the next free one). The server listens only on the server itself; `--host 0.0.0.0` makes it reachable by anyone on the network, with no password.
+
+**Without OrthoFinder installed**
+
+`tools/view_results` works on its own and needs only Python 3 and ete4 (`pip install ete4`). Copy it (or `view_results.zip`, written by `make view_results_zip` to `dist/`) next to the results:
+
+```bash
+python view_results/view_results.py <Results_dir> [--serve]
+python -m view_results <Results_dir> [--serve]               # the same, from the directory that holds view_results
+python tools/view_results/view_results.py <Results_dir>      # from the OrthoFinder source directory
+```
+
+Light or dark colours: **Colours**, at the top right of each page.
 
 ## Output files
 

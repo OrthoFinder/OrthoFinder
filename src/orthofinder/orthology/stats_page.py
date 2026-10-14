@@ -3,7 +3,7 @@
 web browser, with interactive plots:
 
     Comparative_Genomics_Statistics/Statistics.html
-    Comparative_Genomics_Statistics/Statistics_Data/HOGs_<node>.js
+    Comparative_Genomics_Statistics/Statistics_Data/*.js
 
 Overview (the headline numbers, orthogroup sizes, species per orthogroup),
 Species (genes in orthogroups, orthogroups and orthologs shared by each pair of
@@ -18,9 +18,12 @@ tree), so it can be written again for existing results:
     python -m orthofinder.orthology.stats_page <results directory>
 
 The page draws its plots itself (plain JavaScript, nothing to install, no
-internet needed). The HOGs of each species tree node are written as a script
-the page loads when the node is chosen: a page opened from disk may load
-scripts, but not read other files.
+internet needed). It holds a summary of each orthogroup; the genes of each
+species in them, the orthogroups of each species, the species x species
+matrices and the HOGs of each species tree node are in data files the page
+loads when they are needed (view_pages.write_data), so that it stays small and
+quick for thousands of species: a page opened from disk may load scripts, but
+not read other files.
 """
 
 import json
@@ -80,21 +83,40 @@ def read_per_species(filename, species):
             for row in block[1:]]
 
 
+COUNT = re.compile(r"(?:^|\t)([1-9][0-9]*)(?=[\t\r\n]|$)")  # a cell of a number other than 0
+
+
 def read_gene_counts(filename):
-    """The species and [[orthogroup, [genes of each species]], ...] from Orthogroups.GeneCount.tsv."""
-    rows = read_rows(filename)
-    header = rows[0]
-    n = len(header) - 2 if header[-1] == "Total" else len(header) - 1
-    species = header[1:1 + n]
-    return species, [[row[0], [int(x) for x in row[1:1 + n]]] for row in rows[1:] if row and row[0]]
+    """
+    The species and [[orthogroup, [species, genes, species, genes, ...]], ...]
+    (the species with genes) from Orthogroups.GeneCount.tsv: only its cells
+    other than 0 are read, as most are 0 for many species.
+    """
+    with open(filename, encoding="utf-8", errors="replace") as infile:
+        header = infile.readline().rstrip("\r\n").split("\t")
+        n = len(header) - 2 if header[-1] == "Total" else len(header) - 1
+        rows = []
+        for line in infile:
+            cut = line.find("\t")
+            if cut <= 0:
+                continue
+            pairs, col, last = [], 0, 0
+            for m in COUNT.finditer(line, cut):
+                col += line.count("\t", last, m.start(1))
+                last = m.start(1)
+                if col <= n:
+                    pairs += [col - 1, int(m.group(1))]
+            rows.append([line[:cut], pairs])
+    return header[1:1 + n], rows
 
 
 def read_matrix(filename, species):
-    """A species x species matrix (OrthologsStats_*.tsv), in the order of species."""
+    """A species x species matrix (OrthologsStats_*.tsv), in the order of species (12.0 as 12: smaller for the page)."""
     rows = read_rows(filename)
     column = {sp: k for k, sp in enumerate(rows[0][1:], 1)}
     by_row = {row[0]: row for row in rows[1:] if row and row[0]}
-    return [[number(by_row[a][column[b]]) if a in by_row and b in column else None for b in species]
+    whole = lambda v: int(v) if isinstance(v, float) and v.is_integer() else v
+    return [[whole(number(by_row[a][column[b]])) if a in by_row and b in column else None for b in species]
             for a in species]
 
 
@@ -105,10 +127,9 @@ def shared_orthogroups(counts, n_species):
     goes with species x species, not with the species of each orthogroup squared.
     """
     bits = [[] for _ in range(n_species)]  # the orthogroups (row numbers) of each species
-    for i, (_, row) in enumerate(counts):
-        for k, c in enumerate(row):
-            if c:
-                bits[k].append(i)
+    for i, (_, pairs) in enumerate(counts):
+        for k in pairs[::2]:
+            bits[k].append(i)
     masks = [int.from_bytes(bitmap(b), "little") for b in bits]
     shared = [[0] * n_species for _ in range(n_species)]
     for a in range(n_species):
@@ -133,28 +154,28 @@ def node_number(name):
 def read_hogs(filename, species_index):
     """
     The HOGs of a species tree node ([HOG, orthogroup, gene tree parent clade,
-    [genes of each species]]), from Phylogenetic_Hierarchical_Orthogroups/<node>.tsv.
+    [species, genes, species, genes, ...]]), from Phylogenetic_Hierarchical_
+    Orthogroups/<node>.tsv: only its non-empty cells are read.
     """
     hogs = []
     with open(filename, encoding="utf-8", errors="replace") as infile:
         header = infile.readline().rstrip("\r\n").split("\t")
-        columns = [(k, species_index[sp]) for k, sp in enumerate(header) if sp in species_index]
-        n = len(species_index)
+        column = {k: species_index[sp] for k, sp in enumerate(header) if sp in species_index}
         for line in infile:
-            row = line.rstrip("\r\n").split("\t")
-            if len(row) < 3:
+            fields = line.split("\t", 3)
+            if len(fields) < 3:
                 continue
-            genes = [0] * n
-            for k, sp in columns:
-                if k < len(row) and row[k].strip():
-                    genes[sp] = row[k].count(", ") + 1
-            hogs.append([row[0], row[1], row[2], genes])
+            pairs = []
+            for k, text in view_pages.sparse_cells(line):
+                if k in column and k >= 3:
+                    pairs += [column[k], text.count(", ") + 1]
+            hogs.append([fields[0], fields[1], fields[2].rstrip("\r\n"), pairs])
     return hogs
 
 
 def hog_summary(node, hogs):
-    sizes = [sum(h[3]) for h in hogs]
-    n_species = [sum(1 for c in h[3] if c) for h in hogs]
+    sizes = [sum(h[3][1::2]) for h in hogs]
+    n_species = [len(h[3]) // 2 for h in hogs]
     return {"node": node, "hogs": len(hogs), "genes": sum(sizes),
             "multi_species": sum(1 for k in n_species if k > 1),
             "sizes": sizes_histogram(sizes)}
@@ -177,8 +198,8 @@ def sizes_histogram(sizes):
 
 def write_stats_page(results_dir, written=None):
     """
-    Write the statistics page of a results directory (and the data of its
-    HOGs). written: the pages a run is writing, to link to (view_pages.present;
+    Write the statistics page of a results directory and its data files.
+    written: the pages a run is writing, to link to (view_pages.present;
     None: the pages that are there). Returns the page's filename, or None if
     the results have no orthogroups yet.
     """
@@ -188,6 +209,8 @@ def write_stats_page(results_dir, written=None):
         return None
     species, counts = read_gene_counts(gene_count_fn)
     species_index = {sp: k for k, sp in enumerate(species)}
+    data_dir = os.path.join(stats_dir, DATA_DIR)
+    os.makedirs(data_dir, exist_ok=True)
     data = {"version": __version__, "species": [[sp, PALETTE[k % len(PALETTE)]] for k, sp in enumerate(species)],
             "data": DATA_DIR}
 
@@ -209,19 +232,37 @@ def write_stats_page(results_dir, written=None):
     trees_fn = os.path.join(results_dir, "Resolved_Gene_Trees", "Resolved_Gene_Trees.txt")
     if view_pages.link(results_dir, "trees", written) and os.path.exists(trees_fn):
         with open(trees_fn, encoding="utf-8", errors="replace") as infile:
-            with_trees = {line.split(":", 1)[0] for line in infile if ":" in line}
+            with_trees = {line[:line.find(":")] for line in infile if ":" in line}
         data["tree_page"] = view_pages.link(results_dir, "trees", written)  # --tree-view
     data["groups_page"] = view_pages.link(results_dir, "groups", written)  # --groups-view
     data["nav"] = view_pages.nav(results_dir, "stats", written)
-    # [orthogroup, [genes of each species], duplications, those with support >= 0.5, 1 if it has a tree page]
-    data["orthogroups"] = [[og, c, *dups.get(og, [0, 0]), int(og in with_trees)] for og, c in counts]
-    data["og_sizes"] = sizes_histogram([sum(c) for _, c in counts])
 
-    matrices = {"Orthogroups shared": shared_orthogroups(counts, len(species))}
+    # each orthogroup in columns (its genes, species, duplications, those with support >= 0.5, 1 if
+    # it has a tree page), and the genes of each species in it in chunks: Counts_<c>
+    ids = [og for og, _ in counts]
+    og_dups = [dups.get(og, [0, 0]) for og in ids]
+    data["ogs"] = {"ids": view_pages.compact_ids(ids), "genes": [sum(p[1::2]) for _, p in counts],
+                   "species": [len(p) // 2 for _, p in counts],
+                   "dups": [d[0] for d in og_dups], "dups05": [d[1] for d in og_dups],
+                   "tree": [int(og in with_trees) for og in ids]}
+    data["max_genes"] = max((max(p[1::2]) for _, p in counts if p), default=1)  # of a species in an orthogroup
+    data["counts"] = view_pages.write_chunks(data_dir, "Counts", [p for _, p in counts], len)
+    data["og_sizes"] = sizes_histogram(data["ogs"]["genes"])
+    of_species = [[] for _ in species]  # the orthogroups of each species: Species_<k>
+    for i, (_, pairs) in enumerate(counts):
+        for k in pairs[::2]:
+            of_species[k].append(i)
+    for k, rows in enumerate(of_species):
+        view_pages.write_data(data_dir, f"Species_{k}", rows)
+
+    # the species x species matrices: Matrix_<i>
+    matrices = [("Orthogroups shared", shared_orthogroups(counts, len(species)))]
     for kind in ORTHOLOG_KINDS:
         if fn := stats_file(f"OrthologsStats_{kind}.tsv"):
-            matrices["Orthologs: " + ("all" if kind == "Totals" else kind)] = read_matrix(fn, species)
-    data["matrices"] = matrices
+            matrices.append(("Orthologs: " + ("all" if kind == "Totals" else kind), read_matrix(fn, species)))
+    for i, (_, m) in enumerate(matrices):
+        view_pages.write_data(data_dir, f"Matrix_{i}", m)
+    data["matrices"] = [name for name, _ in matrices]
 
     if fn := stats_file("Duplications_per_Species_Tree_Node.tsv"):
         data["node_duplications"] = {row[0]: [number(row[1]), number(row[2])]
@@ -232,23 +273,29 @@ def write_stats_page(results_dir, written=None):
             nodes, names = flat_tree(Tree(infile.read().strip(), parser=1))
         data["species_tree"] = {"genes": [[name, species_index.get(name, -1)] for name in names], "nodes": nodes}
 
+    # the HOGs of each species tree node: HOGs_<node> (in columns) and HOGCounts_<node>_<c>
     hog_dir = os.path.join(results_dir, "Phylogenetic_Hierarchical_Orthogroups")
     hog_files = sorted((fn for fn in os.listdir(hog_dir) if fn.endswith(".tsv")) if os.path.isdir(hog_dir) else [],
                        key=lambda fn: (node_number(fn[:-4]), fn))
+    og_row = {og: i for i, og in enumerate(ids)}
     data["hogs"] = []
     for fn in hog_files:
         node = fn[:-4]
         hogs = read_hogs(os.path.join(hog_dir, fn), species_index)
         data["hogs"].append(hog_summary(node, hogs))
-        os.makedirs(os.path.join(stats_dir, DATA_DIR), exist_ok=True)
-        with open(os.path.join(stats_dir, DATA_DIR, f"HOGs_{node}.js"), "w", encoding="utf-8") as out:
-            out.write(f"hogsLoaded({json.dumps({'node': node, 'hogs': hogs}, separators=(',', ':'))});\n")
+        view_pages.write_data(data_dir, f"HOGs_{node}", {
+            "ids": view_pages.compact_ids([h[0] for h in hogs]),
+            "ogs": [og_row.get(h[1], h[1]) for h in hogs],  # the orthogroup's row (its ID if not one)
+            "clades": [h[2] for h in hogs], "genes": [sum(h[3][1::2]) for h in hogs],
+            "species": [len(h[3]) // 2 for h in hogs],
+            "max_genes": max((max(h[3][1::2]) for h in hogs if h[3]), default=1),
+            "chunks": view_pages.write_chunks(data_dir, f"HOGCounts_{node}", [h[3] for h in hogs], len)})
 
-    os.makedirs(stats_dir, exist_ok=True)
     page = os.path.join(stats_dir, "Statistics.html")
     with open(page, "w", encoding="utf-8") as out:
         out.write(HTML.replace("__NAV_CSS__", view_pages.NAV_CSS).replace("__NAV_HTML__", view_pages.NAV_HTML)
                   .replace("__NAV_JS__", view_pages.NAV_JS).replace("__THEME_JS__", view_pages.THEME_JS)
+                  .replace("__DATA_JS__", view_pages.DATA_JS)
                   .replace("__DATA__", json.dumps(data, separators=(",", ":")).replace("</", "<\\/")))
     return page
 
@@ -303,6 +350,10 @@ a { color:var(--accent); }
 .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--ink2); margin-bottom:6px; align-items:center; }
 .genes-link { font-size:11px; margin-left:4px; }
 .species-key { font-size:13px; color:var(--ink); margin:12px 0 0; }
+.species-key details { width:100%; } .species-key summary { color:var(--ink2); }
+.species-key details .legend { max-height:30vh; overflow:auto; margin-top:6px; }
+.scroll { max-height:70vh; overflow:auto; }
+canvas.strip { display:block; }
 .ramp { display:inline-block; width:90px; height:9px; border-radius:2px; vertical-align:-1px; margin:0 6px; }
 #tip { position:fixed; z-index:10; pointer-events:none; background:var(--surface); color:var(--ink); border:1px solid var(--ring);
   border-radius:8px; padding:7px 10px; font-size:12px; box-shadow:0 4px 14px rgba(0,0,0,.15); max-width:320px; }
@@ -327,6 +378,7 @@ __NAV_HTML__
 <div id="tip" hidden><div class="v"></div><div class="l"></div></div>
 <script>
 const D = __DATA__;
+__DATA_JS__
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmt = (x, d = 1) => typeof x === "number" ? x.toLocaleString(undefined, {maximumFractionDigits: d}) : (x ?? "");
@@ -341,8 +393,18 @@ const minOf = (a, start = Infinity) => a.reduce((x, y) => y < x ? y : x, start);
 $("sub").textContent = `OrthoFinder ${D.version}. Made from the results files (Comparative_Genomics_Statistics, Orthogroups, `
   + `Phylogenetic_Hierarchical_Orthogroups, Species_Tree). Point at a plot for its numbers; "table" shows them as a table.`;
 
-// the species' colours, as on the tree page (and in the genes per species cells)
-$("species-key").innerHTML = D.species.map(([sp, c]) => `<span><span class="sw" style="background:${c}"></span>${esc(sp)}</span>`).join("");
+// the species' colours, as on the tree page (and in the genes per species cells); for many, a list to open
+{
+  const key = D.species.map(([sp, c]) => `<span><span class="sw" style="background:${c}"></span>${esc(sp)}</span>`).join("");
+  $("species-key").innerHTML = NS > 40 ? `<details><summary>The species and their colours (${NS.toLocaleString()})</summary><div class="legend">${key}</div></details>` : key;
+}
+// the species in the order of the species tree's leaves (any not in it after them): for plots of many species
+const TREE_ORDER = (() => {
+  const T = D.species_tree, seen = new Set(), order = [];
+  if (T) for (const nd of T.nodes) if (typeof nd[2] === "number") { const k = T.genes[nd[2]][1]; if (k >= 0 && !seen.has(k)) { seen.add(k); order.push(k); } }
+  for (let k = 0; k < NS; k++) if (!seen.has(k)) order.push(k);
+  return order;
+})();
 __NAV_JS__
 
 // ---- tooltip: any element with data-tv (the value) and data-tl (what it is) ----
@@ -481,7 +543,7 @@ function heatmap(el, M, {unit, diagonal}) {
   const vals = M.flatMap((r, a) => r.filter((v, b) => (a !== b || diagonal) && typeof v === "number" && v > 0));
   const min = vals.length ? minOf(vals) : 0, max = vals.length ? maxOf(vals) : 1;
   const legend = `<div class="legend">fewer<span class="ramp" style="background:linear-gradient(90deg, ${tok("--heat-lo")}, ${tok("--heat-hi")})"></span>more `
-    + `(${fmt(min)} to ${fmt(max)} ${esc(unit)}; 0 in grey; rows → columns${NS > HEAT_SVG_MAX ? "; point at a cell for its species" : ""})</div>`;
+    + `(${fmt(min)} to ${fmt(max)} ${esc(unit)}; 0 in grey; rows → columns${NS > HEAT_SVG_MAX ? `; ${D.species_tree ? "in the order of the species tree; " : ""}point at a cell for its species` : ""})</div>`;
   if (NS > HEAT_SVG_MAX) return heatCanvas(el, M, {unit, diagonal, min, max, legend});
   const W = Math.max(300, el.clientWidth), labelW = Math.min(220, Math.max(...S.map(s => textW(s) + 16))) + 8;
   const cell = Math.max(12, Math.min(52, Math.floor((W - labelW - 20) / NS))), colH = Math.min(150, Math.max(...S.map(s => textW(s, 11))) * 0.72 + 14);
@@ -507,13 +569,14 @@ function heatmap(el, M, {unit, diagonal}) {
   el.innerHTML = legend + `<svg width="${Math.max(W, labelW + NS * cell + 10)}" height="${H}" role="img">${out.join("")}</svg>`;
 }
 function heatCanvas(el, M, {unit, diagonal, min, max, legend}) {
-  // a pixel for each cell, scaled up unsmoothed; the species' colours along the top and the left
-  const W = Math.max(300, el.clientWidth), bar = 6, at = bar + 2;
+  // a pixel for each cell, scaled up unsmoothed; the species' colours along the top and the left;
+  // the species in the order of the species tree (P: position -> species), so that clades are blocks
+  const P = TREE_ORDER, W = Math.max(300, el.clientWidth), bar = 6, at = bar + 2;
   const cell = Math.max(1, Math.min(12, Math.floor((W - at - 4) / NS))), side = at + NS * cell;
   const lo = hex(tok("--heat-lo")), hi = hex(tok("--heat-hi")), zero = hex(tok("--zero"));
   const img = new ImageData(NS, NS), px = img.data;
   for (let a = 0; a < NS; a++) for (let b = 0; b < NS; b++) {
-    const v = M[a][b], i = 4 * (a * NS + b), t = max > min ? (v - min) / (max - min) : 1;
+    const v = M[P[a]][P[b]], i = 4 * (a * NS + b), t = max > min ? (v - min) / (max - min) : 1;
     const c = (a === b && !diagonal) || typeof v !== "number" || v <= 0 ? null : t;
     for (let j = 0; j < 3; j++) px[i + j] = c === null ? zero[j] : Math.round(lo[j] + (hi[j] - lo[j]) * c);
     px[i + 3] = 255;
@@ -525,54 +588,84 @@ function heatCanvas(el, M, {unit, diagonal, min, max, legend}) {
   cv.className = "heat-cv"; cv.tabIndex = 0; cv.setAttribute("role", "img");
   const ctx = cv.getContext("2d");
   ctx.scale(dpr, dpr); ctx.imageSmoothingEnabled = false;
-  D.species.forEach(([, c], k) => { ctx.fillStyle = c; ctx.fillRect(at + k * cell, 0, cell, bar); ctx.fillRect(0, at + k * cell, bar, cell); });
+  P.forEach((sp, k) => { ctx.fillStyle = D.species[sp][1]; ctx.fillRect(at + k * cell, 0, cell, bar); ctx.fillRect(0, at + k * cell, bar, cell); });
   ctx.drawImage(small, at, at, NS * cell, NS * cell);
   // the tooltip (pointermove on the document, after this): the cell's (or the colour's) species
   cv.addEventListener("pointermove", e => {
     const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
     const b = Math.floor((x - at) / cell), a = Math.floor((y - at) / cell), ok = k => k >= 0 && k < NS;
     let tv = null, tl = "";
-    if (ok(a) && ok(b)) { const v = M[a][b]; tv = (a === b && !diagonal) || typeof v !== "number" ? "—" : `${fmt(v)} ${unit}`; tl = `${S[a]} → ${S[b]}`; }
-    else if (y < bar && ok(b)) [tv, tl] = [S[b], "column"];
-    else if (x < bar && ok(a)) [tv, tl] = [S[a], "row"];
+    if (ok(a) && ok(b)) { const v = M[P[a]][P[b]]; tv = (a === b && !diagonal) || typeof v !== "number" ? "—" : `${fmt(v)} ${unit}`; tl = `${S[P[a]]} → ${S[P[b]]}`; }
+    else if (y < bar && ok(b)) [tv, tl] = [S[P[b]], "column"];
+    else if (x < bar && ok(a)) [tv, tl] = [S[P[a]], "row"];
     if (tv === null) { delete cv.dataset.tv; delete cv.dataset.tl; } else Object.assign(cv.dataset, {tv, tl});
   });
   el.innerHTML = legend + `<div class="tablewrap"></div>`;
   el.lastChild.appendChild(cv);
 }
 
-// the genes of each species of an orthogroup or HOG, as a strip of cells: a cell for each
-// species in its colour, stronger for more genes (grey: none), with the number when it fits
-let stripMax = 1;
-const STRIP_NUMBERS = NS <= 20, STRIP_CW = STRIP_NUMBERS ? 22 : NS <= 60 ? 6 : 3, STRIP_H = STRIP_NUMBERS ? 16 : 12;
-function stripColour(k, c) {
-  return c ? mix(tok("--surface"), D.species[k][1], 0.3 + 0.7 * Math.log1p(c) / Math.log1p(stripMax)) : tok("--zero");
+// the genes of each species of an orthogroup or HOG (pairs: [species, genes, species, genes, ...], those with
+// genes) as a strip, on a canvas: a cell for each species in its colour, stronger for more genes (grey: none),
+// with the number when it fits; for many species, each pixel some species (in the order of the species tree),
+// in the colour of the one with the most genes. Pointing at it names the species there.
+const STRIP_NUMBERS = NS <= 20, STRIP_CW = STRIP_NUMBERS ? 22 : NS <= 60 ? 6 : NS <= 160 ? 3 : 0;
+const STRIP_W = STRIP_CW ? NS * STRIP_CW : 480, STRIP_H = STRIP_NUMBERS ? 16 : 12;
+const STRIP_ORDER = STRIP_CW ? S.map((_, k) => k) : TREE_ORDER, STRIP_POS = new Int32Array(NS);
+STRIP_ORDER.forEach((k, p) => { STRIP_POS[k] = p; });
+const stripX = k => STRIP_CW ? k * STRIP_CW : Math.floor(STRIP_POS[k] * STRIP_W / NS);
+const stripCanvas = () => `<canvas class="strip" width="${STRIP_W}" height="${STRIP_H}" style="width:${STRIP_W}px;height:${STRIP_H}px" tabindex="0"></canvas>`;
+function cell(ctx, x, w) { ctx.beginPath(); if (ctx.roundRect && w > 3) ctx.roundRect(x, 0, w, STRIP_H, 2); else ctx.rect(x, 0, w, STRIP_H); ctx.fill(); }
+function drawStrip(cv, pairs, max) {  // pairs null: the heading, the species' colours
+  const dpr = window.devicePixelRatio || 1, ctx = cv.getContext("2d"), surface = tok("--surface"), zero = tok("--zero");
+  cv.width = Math.round(STRIP_W * dpr); cv.height = Math.round(STRIP_H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  Object.assign(cv, {pairs, max});
+  const colour = (k, c) => pairs ? mix(surface, D.species[k][1], 0.3 + 0.7 * Math.log1p(c) / Math.log1p(max)) : D.species[k][1];
+  const w = STRIP_CW ? STRIP_CW - 2 : 1;
+  if (STRIP_CW) { ctx.fillStyle = zero; for (let k = 0; k < NS; k++) cell(ctx, stripX(k), w); }
+  else { ctx.fillStyle = pairs ? zero : surface; ctx.fillRect(0, 0, STRIP_W, STRIP_H); }
+  const at = new Map();  // pixel -> [genes, species] of the species there with the most genes
+  if (pairs) for (let j = 0; j < pairs.length; j += 2) { const x = stripX(pairs[j]), b = at.get(x); if (!b || pairs[j + 1] > b[0]) at.set(x, [pairs[j + 1], pairs[j]]); }
+  else for (let k = NS - 1; k >= 0; k--) at.set(stripX(k), [1, k]);
+  ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = "10px system-ui, sans-serif";
+  for (const [x, [c, k]] of at) {
+    const bg = colour(k, c);
+    ctx.fillStyle = bg; cell(ctx, x, w);
+    if (STRIP_NUMBERS && pairs) { ctx.fillStyle = inkOn(bg); ctx.fillText(c > 999 ? compact(c) : String(c), x + w / 2, STRIP_H / 2 + 0.5); }
+  }
 }
-function strip(genes) {
-  const total = sum(genes);
-  const lines = genes.map((c, k) => [c, k]).filter(([c]) => c).sort((a, b) => b[0] - a[0]);
-  const tl = lines.slice(0, 14).map(([c, k]) => `${S[k]}: ${c}`).join("\n") + (lines.length > 14 ? `\n+ ${lines.length - 14} more species` : "");
-  return `<svg width="${NS * STRIP_CW}" height="${STRIP_H}" ${tipAttrs(`${fmt(total)} genes, ${lines.length} species`, tl)}>`
-    + genes.map((c, k) => {
-      const bg = stripColour(k, c), x = k * STRIP_CW;
-      return `<rect x="${x}" y="0" width="${STRIP_CW - 2}" height="${STRIP_H}" rx="2" fill="${bg}"/>`
-        + (STRIP_NUMBERS && c ? `<text x="${x + (STRIP_CW - 2) / 2}" y="${STRIP_H / 2}" dy="0.35em" text-anchor="middle" font-size="10" fill="${inkOn(bg)}">${c > 999 ? compact(c) : c}</text>` : "");
-    }).join("") + `</svg>`;
-}
+// pointing at a strip: the species there (before the tooltip reads it: the capture phase)
+document.addEventListener("pointermove", e => {
+  const cv = e.target;
+  if (!(cv instanceof HTMLCanvasElement) || !cv.classList.contains("strip")) return;
+  const x = e.clientX - cv.getBoundingClientRect().left;
+  let ks = [];
+  if (STRIP_CW) { const k = Math.floor(x / STRIP_CW); if (k >= 0 && k < NS) ks = [k]; }
+  else { const p0 = Math.max(0, Math.floor(x * NS / STRIP_W)), p1 = Math.min(NS, Math.max(p0 + 1, Math.floor((x + 1) * NS / STRIP_W))); ks = STRIP_ORDER.slice(p0, p1); }
+  if (!cv.pairs) { cv.dataset.tv = ks.map(k => S[k]).join(", "); cv.dataset.tl = "the species' colour"; return; }
+  const genes = new Map();
+  for (let j = 0; j < cv.pairs.length; j += 2) genes.set(cv.pairs[j], cv.pairs[j + 1]);
+  cv.dataset.tv = `${fmt(sum(cv.pairs.filter((_, j) => j % 2)))} genes, ${fmt(cv.pairs.length / 2)} species`;
+  cv.dataset.tl = ks.map(k => `${S[k]}: ${genes.get(k) || 0}`).join("\n");
+}, true);
 // the column's heading: the species of the cells, in their colours (point at one for its name)
-function stripHead() {
-  return `Genes per species<br><svg width="${NS * STRIP_CW}" height="10" style="margin-top:3px">`
-    + S.map((sp, k) => `<rect x="${k * STRIP_CW}" y="0" width="${STRIP_CW - 2}" height="8" rx="2" fill="${D.species[k][1]}"><title>${esc(sp)}</title></rect>`).join("") + `</svg>`;
+const stripHead = () => `Genes per species${STRIP_CW ? "" : " (species tree order)"}<br>` + stripCanvas().replace('class="strip"', 'class="strip" data-head');
+function drawStrips(el, pairsOf, max) {
+  for (const cv of el.querySelectorAll("canvas.strip")) drawStrip(cv, cv.hasAttribute("data-head") ? null : pairsOf(+cv.dataset.r), max);
 }
 
-// a table of many rows, sortable and in pages
-function dataTable(el, {cols, rows, pageSize = 50, sortCol = null, sortDesc = true}) {
-  let page = 0, order = rows;
+// a table of many rows, sortable and in pages; prepare(rows of the page) loads what they need, after(el) draws
+function dataTable(el, {cols, rows, pageSize = 50, sortCol = null, sortDesc = true, prepare, after}) {
+  let page = 0, order = rows, seq = 0;
   const sortBy = (c, desc) => { sortCol = c; sortDesc = desc; const key = cols[c].key;
     order = [...rows].sort((a, b) => { const x = key(a), y = key(b); return (x < y ? -1 : x > y ? 1 : 0) * (desc ? -1 : 1); }); page = 0; };
   if (sortCol !== null) sortBy(sortCol, sortDesc);
-  function render() {
-    const n = order.length, pages = Math.max(1, Math.ceil(n / pageSize)), p0 = page * pageSize, view = order.slice(p0, p0 + pageSize);
+  async function render() {
+    const my = ++seq, n = order.length, pages = Math.max(1, Math.ceil(n / pageSize)), p0 = page * pageSize, view = order.slice(p0, p0 + pageSize);
+    if (prepare) {
+      try { await prepare(view); } catch (e) { if (my === seq) el.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+      if (my !== seq) return;  // another page asked for meanwhile
+    }
     el.innerHTML = `<div class="tablewrap"><table><thead><tr>` + cols.map((c, k) =>
       `<th${c.num ? ' class="num"' : ""}${c.key ? ` data-sort="${k}"` : ""}>${c.head || esc(c.label)}${sortCol === k ? (sortDesc ? " ▾" : " ▴") : ""}</th>`).join("")
       + `</tr></thead><tbody>` + (view.length ? view.map(r => `<tr>${cols.map(c => `<td${c.num ? ' class="num"' : ""}>${c.html(r)}</td>`).join("")}</tr>`).join("")
@@ -580,6 +673,7 @@ function dataTable(el, {cols, rows, pageSize = 50, sortCol = null, sortDesc = tr
       + `</tbody></table></div><div class="tools" style="margin-top:8px"><button class="btn" data-p="-1"${page ? "" : " disabled"}>Previous</button>`
       + `<button class="btn" data-p="1"${page < pages - 1 ? "" : " disabled"}>Next</button>`
       + `<span class="muted">${n ? `${fmt(p0 + 1)}–${fmt(Math.min(n, p0 + pageSize))} of ${fmt(n)}` : "0"}</span></div>`;
+    if (after) after(el);
   }
   el.onclick = e => {
     const th = e.target.closest("th[data-sort]"), b = e.target.closest("[data-p]");
@@ -587,12 +681,18 @@ function dataTable(el, {cols, rows, pageSize = 50, sortCol = null, sortDesc = tr
     if (b) { page += +b.dataset.p; render(); }
   };
   render();
-  return {setRows(r) { rows = r; if (sortCol !== null) sortBy(sortCol, sortDesc); else { order = r; page = 0; } render(); }};
+  return {setRows(r) { rows = r; if (sortCol !== null) sortBy(sortCol, sortDesc); else { order = r; page = 0; } render(); }, redraw: render};
 }
 const treeLink = og => D.tree_page ? `<a href="${esc(D.tree_page)}#${encodeURIComponent(og)}" title="Its gene tree and alignment">${esc(og)}</a>` : esc(og);
 // an orthogroup's ID: a link to its tree (if it has one), and to its genes (--groups-view)
 const ogLinks = (og, hasTree) => (hasTree ? treeLink(og) : esc(og))
   + (D.groups_page ? ` <a class="genes-link" href="${esc(D.groups_page)}#orthogroups/${encodeURIComponent(og)}" title="Its genes">genes</a>` : "");
+function saveText(text, filename) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], {type: "text/tab-separated-values"}));
+  a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
 
 // ---- the tabs ----
 const TABS = [["overview", "Overview"], ["species", "Species"], ["orthogroups", "Orthogroups"], ["duplications", "Duplications"], ["hogs", "HOGs"]];
@@ -600,24 +700,28 @@ const drawn = {}, renderers = {}, onResize = {};  // onResize: {plot: draw it ag
 $("tabs").innerHTML = TABS.map(([id, name]) => `<button role="tab" data-tab="${id}">${name}</button>`).join("");
 function openTab(id) {
   if (!renderers[id]) id = "overview";
+  hideTip();
   for (const [t] of TABS) { $("tab-" + t).hidden = t !== id; document.querySelector(`[data-tab="${t}"]`).setAttribute("aria-selected", t === id); }
   if (!drawn[id]) { drawn[id] = true; renderers[id](); }
   history.replaceState(null, "", "#" + id);
 }
 $("tabs").onclick = e => { const b = e.target.closest("[data-tab]"); if (b) openTab(b.dataset.tab); };
 
+// the orthogroups, in columns (D.ogs): a row number for each; the genes of each species in it are in chunks (Counts_<c>)
+const O = D.ogs, OGIDS = expandIds(O.ids), NOG = OGIDS.length, OG_ROWS = Array.from({length: NOG}, (_, r) => r);
+const isAll = r => O.species[r] === NS, isSingle = r => isAll(r) && O.genes[r] === NS, isOne = r => O.species[r] === 1;
+
 // Overview
-const OGS = D.orthogroups;  // [orthogroup, [genes of each species], duplications, with support >= 0.5, has a tree page]
 renderers.overview = () => {
-  const sec = $("tab-overview"), O = Object.fromEntries(D.overall || []);
-  const nAll = OGS.filter(o => o[1].every(c => c)).length, nSingle = OGS.filter(o => o[1].every(c => c === 1)).length;
+  const sec = $("tab-overview"), OV = Object.fromEntries(D.overall || []);
+  const nAll = OG_ROWS.filter(isAll).length, nSingle = OG_ROWS.filter(isSingle).length;
   const tiles = [
-    ["Species", NS], ["Genes", O["Number of genes"]],
-    ["Genes in orthogroups", O["Percentage of genes in orthogroups"], "%", O["Number of genes in orthogroups"] !== undefined ? `${fmt(O["Number of genes in orthogroups"])} genes` : ""],
-    ["Orthogroups", OGS.length], ["With all species", nAll, "", `${fmt(100 * nAll / (OGS.length || 1))}% of orthogroups`],
+    ["Species", NS], ["Genes", OV["Number of genes"]],
+    ["Genes in orthogroups", OV["Percentage of genes in orthogroups"], "%", OV["Number of genes in orthogroups"] !== undefined ? `${fmt(OV["Number of genes in orthogroups"])} genes` : ""],
+    ["Orthogroups", NOG], ["With all species", nAll, "", `${fmt(100 * nAll / (NOG || 1))}% of orthogroups`],
     ["Single-copy orthogroups", nSingle, "", "one gene in each species"],
-    ["Species-specific orthogroups", O["Number of species-specific orthogroups"]],
-    ["Unassigned genes", O["Number of unassigned genes"]],
+    ["Species-specific orthogroups", OV["Number of species-specific orthogroups"]],
+    ["Unassigned genes", OV["Number of unassigned genes"]],
   ].filter(t => t[1] !== undefined);
   sec.innerHTML = `<div class="tiles">${tiles.map(([l, v, u, n]) => `<div class="tile"><div class="label">${esc(l)}</div>`
     + `<div class="value">${typeof v === "number" ? (u === "%" ? fmt(v) + "%" : compact(v)) : esc(v)}</div>${n ? `<div class="note">${esc(n)}</div>` : ""}</div>`).join("")}</div><div class="grid2" id="ov-grid"></div>`;
@@ -625,7 +729,7 @@ renderers.overview = () => {
   const c1 = card(g, "Orthogroup sizes", "Orthogroups by their number of genes");
   const c2 = card(g, "Species per orthogroup", "Orthogroups by the number of species with genes in them");
   const bySp = Array.from({length: NS}, (_, k) => [String(k + 1), 0]);
-  OGS.forEach(o => { const n = o[1].filter(c => c).length; if (n) bySp[n - 1][1]++; });
+  for (const n of O.species) if (n) bySp[n - 1][1]++;
   const draw = () => { columns(c1.querySelector(".chart"), D.og_sizes, {unit: "orthogroups", xTitle: "Genes"});
                        columns(c2.querySelector(".chart"), bySp, {unit: "orthogroups", xTitle: "Species"}); };
   draw(); onResize["overview"] = draw;
@@ -639,25 +743,38 @@ renderers.overview = () => {
 };
 
 // Species
+const BIG_TABLE = 100;  // above this many species, a species x species matrix is saved as a file, not shown as a table
 renderers.species = () => {
   const sec = $("tab-species"), P = Object.fromEntries((D.per_species || []).map(([k, v]) => [k, v]));
   if (P["Number of genes in orthogroups"] && P["Number of unassigned genes"]) {
     const c = card(sec, "Genes in orthogroups", "Of each species' genes, those in orthogroups and those not assigned to any");
+    if (NS > 30) c.querySelector(".chart").classList.add("scroll");
     const rows = S.map((s, k) => ({label: s, k, parts: [P["Number of genes in orthogroups"][k] || 0, P["Number of unassigned genes"][k] || 0]}));
     const draw = () => stacked(c.querySelector(".chart"), rows, ["In orthogroups", "Unassigned"]);
     draw(); onResize["species-stacked"] = draw;
     setTable(c, [["Species", 0], ["In orthogroups", 1], ["Unassigned", 1], ["% in orthogroups", 1]],
       rows.map(r => [swatch(r.k) + esc(r.label), r.parts[0], r.parts[1], 100 * r.parts[0] / (sum(r.parts) || 1)]));
   }
-  const names = Object.keys(D.matrices);
   const c = card(sec, "Shared between species", "");
-  c.querySelector("header > div").insertAdjacentHTML("beforeend", `<div style="margin-top:6px"><select id="mat">${names.map(n => `<option>${esc(n)}</option>`).join("")}</select></div>`);
+  c.querySelector("header > div").insertAdjacentHTML("beforeend", `<div style="margin-top:6px"><select id="mat">${D.matrices.map((n, i) => `<option value="${i}">${esc(n)}</option>`).join("")}</select></div>`);
+  let M = null, name = "";
+  if (NS > BIG_TABLE) {
+    const b = c.querySelector("[data-table]");
+    b.removeAttribute("data-table"); b.textContent = "save as TSV"; b.title = "The matrix as a tab-separated file";
+    b.onclick = () => { if (M) saveText(["", ...S].join("\t") + "\n" + M.map((r, a) => [S[a], ...r.map(v => v ?? "")].join("\t")).join("\n") + "\n", name.replace(/[^\w-]+/g, "_") + ".tsv"); };
+  }
   const drawM = () => {
-    const name = $("mat").value, M = D.matrices[name], og = name === "Orthogroups shared";
-    heatmap(c.querySelector(".chart"), M, {unit: og ? "orthogroups" : "orthologs", diagonal: og});
-    setTable(c, [["", 0], ...S.map(s => [s, 1])], M.map((r, a) => [swatch(a) + esc(S[a]), ...r.map((v, b) => a === b && !og ? "—" : v)]));
+    const i = +$("mat").value, og = i === 0;
+    name = D.matrices[i];
+    c.querySelector(".chart").innerHTML = `<div class="empty">Loading ${esc(name)}...</div>`;
+    loadData(`Matrix_${i}`).then(m => {
+      if (+$("mat").value !== i) return;
+      M = m;
+      heatmap(c.querySelector(".chart"), M, {unit: og ? "orthogroups" : "orthologs", diagonal: og});
+      if (NS <= BIG_TABLE) setTable(c, [["", 0], ...S.map(s => [s, 1])], M.map((r, a) => [swatch(a) + esc(S[a]), ...r.map((v, b) => a === b && !og ? "—" : v)]));
+    }, err => { c.querySelector(".chart").innerHTML = `<div class="empty">${esc(name)} ${esc(err.message)}.</div>`; });
   };
-  $("mat").onchange = drawM; drawM(); onResize["species-matrix"] = drawM;
+  $("mat").onchange = drawM; drawM(); onResize["species-matrix"] = () => { if (M) heatmap(c.querySelector(".chart"), M, {unit: +$("mat").value === 0 ? "orthogroups" : "orthologs", diagonal: +$("mat").value === 0}); };
   sec.insertAdjacentHTML("beforeend", `<div class="muted" style="margin:-6px 0 14px">Orthogroups shared: orthogroups with genes of both species (on the diagonal, those with genes of the species). `
     + `Orthologs: as in Comparative_Genomics_Statistics/OrthologsStats_*.tsv, from the row's species to the column's.</div>`);
   if (D.per_species) {
@@ -671,39 +788,57 @@ renderers.species = () => {
 // Orthogroups
 renderers.orthogroups = () => {
   const sec = $("tab-orthogroups");
-  stripMax = maxOf(OGS.map(o => maxOf(o[1])), 1);
   sec.innerHTML = `<div class="tools"><input id="og-q" placeholder="Search an orthogroup ID" autocomplete="off">`
     + `<select id="og-kind"><option value="">All orthogroups</option><option value="all">With all species</option><option value="single">Single-copy (one gene in each species)</option>`
     + `<option value="one">Species-specific (one species)</option><option value="dup">With gene duplications</option><option value="tree">With a gene tree</option></select>`
     + `<select id="og-sp"><option value="-1">Any species</option>${S.map((s, k) => `<option value="${k}">With ${esc(s)}</option>`).join("")}</select>`
-    + `<button class="btn" id="og-dl">Download as TSV</button></div><div class="card"><div id="og-table"></div></div>`
-    + `<div class="muted">Genes per species: a cell for each species (${S.length}), in its colour (as in the column's heading; point at a colour there for its species), `
-    + `stronger for more genes, grey for none${STRIP_NUMBERS ? "; the number of genes in it" : ""}. Point at a row's cells for all its numbers.</div>`;
+    + `<button class="btn" id="og-dl">Download as TSV</button><span class="muted" id="og-msg"></span></div><div class="card"><div id="og-table"></div></div>`
+    + `<div class="muted">Genes per species: ${STRIP_CW ? `a cell for each species (${S.length}), in its colour (as in the column's heading)`
+      : `the ${fmt(NS)} species in the order of the species tree, a few in each pixel, in the colour of the one with the most genes`}, `
+    + `stronger for more genes, grey for none${STRIP_NUMBERS ? "; the number of genes in it" : ""}. Point at it for the species there and their genes.</div>`;
+  let counts = new Map();
   const cols = [
-    {label: "Orthogroup", key: r => r[0], html: r => ogLinks(r[0], r[4])},
-    {label: "Genes", key: r => sum(r[1]), html: r => fmt(sum(r[1])), num: true},
-    {label: "Species", key: r => r[1].filter(c => c).length, html: r => `${r[1].filter(c => c).length} of ${NS}`, num: true},
-    {label: "Genes per species", head: stripHead(), html: r => strip(r[1])},
-    {label: "Duplications (support ≥ 0.5)", key: r => r[3], html: r => fmt(r[3]), num: true},
-    {label: "", html: r => (r[1].every(c => c === 1) ? `<span class="tag">single-copy</span>` : r[1].every(c => c) ? `<span class="tag">all species</span>` : "")
-      + (r[1].filter(c => c).length === 1 ? `<span class="tag">species-specific</span>` : "")},
+    {label: "Orthogroup", key: r => OGIDS[r], html: r => ogLinks(OGIDS[r], O.tree[r])},
+    {label: "Genes", key: r => O.genes[r], html: r => fmt(O.genes[r]), num: true},
+    {label: "Species", key: r => O.species[r], html: r => `${fmt(O.species[r])} of ${fmt(NS)}`, num: true},
+    {label: "Genes per species", head: stripHead(), html: r => stripCanvas().replace('class="strip"', `class="strip" data-r="${r}"`)},
+    {label: "Duplications (support ≥ 0.5)", key: r => O.dups05[r], html: r => fmt(O.dups05[r]), num: true},
+    {label: "", html: r => (isSingle(r) ? `<span class="tag">single-copy</span>` : isAll(r) ? `<span class="tag">all species</span>` : "")
+      + (isOne(r) ? `<span class="tag">species-specific</span>` : "")},
   ];
-  const table = dataTable($("og-table"), {cols, rows: OGS});
-  let filtered = OGS;
-  const apply = () => {
-    const q = $("og-q").value.trim().toLowerCase(), kind = $("og-kind").value, sp = +$("og-sp").value;
-    filtered = OGS.filter(r => (!q || r[0].toLowerCase().includes(q)) && (sp < 0 || r[1][sp])
-      && (!kind || (kind === "all" ? r[1].every(c => c) : kind === "single" ? r[1].every(c => c === 1) : kind === "one" ? r[1].filter(c => c).length === 1
-        : kind === "dup" ? r[3] > 0 : r[4])));
+  const table = dataTable($("og-table"), {cols, rows: OG_ROWS,
+    prepare: view => chunkRows("Counts", D.counts, view).then(m => { counts = m; }),
+    after: el => drawStrips(el, r => counts.get(r), D.max_genes)});
+  onResize["orthogroups"] = () => table.redraw();
+  let filtered = OG_ROWS, applying = 0;
+  const apply = async () => {
+    const my = ++applying, q = $("og-q").value.trim().toLowerCase(), kind = $("og-kind").value, sp = +$("og-sp").value;
+    let withSp = null;
+    if (sp >= 0) {
+      $("og-msg").textContent = `Loading the orthogroups of ${S[sp]}...`;
+      try { withSp = new Set(await loadData(`Species_${sp}`)); } catch (e) { $("og-msg").textContent = `The orthogroups of ${S[sp]} ${e.message}.`; return; }
+      if (my !== applying) return;
+      $("og-msg").textContent = "";
+    }
+    filtered = OG_ROWS.filter(r => (!q || OGIDS[r].toLowerCase().includes(q)) && (!withSp || withSp.has(r))
+      && (!kind || (kind === "all" ? isAll(r) : kind === "single" ? isSingle(r) : kind === "one" ? isOne(r) : kind === "dup" ? O.dups05[r] > 0 : O.tree[r])));
     table.setRows(filtered);
   };
   for (const id of ["og-q", "og-kind", "og-sp"]) $(id).addEventListener("input", apply);
-  $("og-dl").onclick = () => {
-    const text = ["Orthogroup", ...S, "Total", "Duplications", "Duplications (support >= 0.5)"].join("\t") + "\n"
-      + filtered.map(r => [r[0], ...r[1], sum(r[1]), r[2], r[3]].join("\t")).join("\n") + "\n";
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([text], {type: "text/tab-separated-values"}));
-    a.download = "Orthogroups_selected.tsv"; document.body.appendChild(a); a.click(); a.remove();
+  $("og-dl").onclick = async () => {
+    // the genes of each species: a column for each, or for many species, the species with genes in one column
+    $("og-msg").textContent = `Preparing ${fmt(filtered.length)} orthogroups...`;
+    let m;
+    try { m = await chunkRows("Counts", D.counts, filtered); } catch (e) { $("og-msg").textContent = `The genes per species ${e.message}.`; return; }
+    $("og-msg").textContent = "";
+    const wide = NS <= 200, lines = [["Orthogroup", ...(wide ? S : ["Genes per species"]), "Total", "Duplications", "Duplications (support >= 0.5)"].join("\t")];
+    for (const r of filtered) {
+      const p = m.get(r), cells = [];
+      if (wide) { const g = new Array(NS).fill(0); for (let j = 0; j < p.length; j += 2) g[p[j]] = p[j + 1]; cells.push(...g); }
+      else { const parts = []; for (let j = 0; j < p.length; j += 2) parts.push(`${S[p[j]]}: ${p[j + 1]}`); cells.push(parts.join(", ")); }
+      lines.push([OGIDS[r], ...cells, O.genes[r], O.dups[r], O.dups05[r]].join("\t"));
+    }
+    saveText(lines.join("\n") + "\n", "Orthogroups_selected.tsv");
   };
 };
 
@@ -717,59 +852,62 @@ function speciesTree(el, T, values) {  // values: {node name: [all, support >= 0
   const order = [], st = [0];
   while (st.length) { const k = st.pop(); order.push(k); if (kids[k].length) for (let j = kids[k].length - 1; j >= 0; j--) st.push(kids[k][j]); else y[k] = row++; }
   for (let j = order.length - 1; j >= 0; j--) { const k = order[j]; if (kids[k].length) y[k] = (y[kids[k][0]] + y[kids[k][kids[k].length - 1]]) / 2; }
-  const W = Math.max(320, el.clientWidth), rowH = 42, top = 36, labelW = Math.min(260, Math.max(...T.genes.map(g => textW(g[0]) + 16))) + 70;
-  const maxD = Math.max(...depth) || 1, sx = (W - labelW - 40) / maxD, X = k => 24 + depth[k] * sx, Y = k => top + y[k] * rowH;
-  const vmax = Math.max(1, ...Object.values(values).map(v => v[1])), out = [];
+  // for many species, closer rows and smaller circles, without the numbers (pointing at a node gives them)
+  const rowH = row > 150 ? 16 : row > 60 ? 24 : 42, roomy = rowH >= 42, rMax = roomy ? 12 : rowH / 2 - 1;
+  const W = Math.max(320, el.clientWidth), top = roomy ? 36 : 12, labelW = Math.min(260, maxOf(T.genes.map(g => textW(g[0]) + 16), 0)) + 70;
+  const maxD = maxOf(depth, 0) || 1, sx = (W - labelW - 40) / maxD, X = k => 24 + depth[k] * sx, Y = k => top + y[k] * rowH;
+  const vmax = maxOf(Object.values(values).map(v => v[1]), 1), out = [];
   for (const k of order) {
     const p = T.nodes[k][0];
     out.push(`<line x1="${p >= 0 ? X(p) : 8}" x2="${X(k)}" y1="${Y(k)}" y2="${Y(k)}" stroke="var(--axis)" stroke-width="1.5"/>`);
     if (kids[k].length) out.push(`<line x1="${X(k)}" x2="${X(k)}" y1="${Y(kids[k][0])}" y2="${Y(kids[k][kids[k].length - 1])}" stroke="var(--axis)" stroke-width="1.5"/>`);
   }
   for (const k of order) {
-    const v = values[name(k)] || [0, 0], r = 4 + 12 * Math.sqrt(v[1] / vmax), x = X(k), yk = Y(k), leaf = !kids[k].length;
+    const v = values[name(k)] || [0, 0], r = Math.min(rMax, 2 + (rMax - 2) * Math.sqrt(v[1] / vmax)), x = X(k), yk = Y(k), leaf = !kids[k].length;
     out.push(`<g ${tipAttrs(`${fmt(v[1])} duplications with support ≥ 0.5`, `${name(k)}${leaf ? "" : " (the species below it)"}: ${fmt(v[0])} in all`)}>`
-      + `<circle cx="${x}" cy="${yk}" r="${Math.max(r, 12)}" fill="transparent"/><circle cx="${x}" cy="${yk}" r="${r}" fill="var(--s1)" fill-opacity="0.22" stroke="var(--s1)" stroke-width="1.5"/></g>`
-      + `<text x="${x}" y="${yk - r - 4}" text-anchor="middle" font-size="11" fill="var(--ink2)" pointer-events="none">${compact(v[1])}</text>`);
+      + `<circle cx="${x}" cy="${yk}" r="${Math.max(r, rowH / 2)}" fill="transparent"/><circle cx="${x}" cy="${yk}" r="${r}" fill="var(--s1)" fill-opacity="0.22" stroke="var(--s1)" stroke-width="1.5"/></g>`
+      + (roomy ? `<text x="${x}" y="${yk - r - 4}" text-anchor="middle" font-size="11" fill="var(--ink2)" pointer-events="none">${compact(v[1])}</text>` : ""));
     if (leaf) {
-      const sp = T.genes[T.nodes[k][2]][1];
-      out.push((sp >= 0 ? `<rect x="${x + 20}" y="${yk - 4.5}" width="9" height="9" rx="2" fill="${D.species[sp][1]}"/>` : "")
-        + `<text x="${x + 35}" y="${yk}" dy="0.32em" font-size="12" fill="var(--ink)">${esc(name(k))}</text>`);
-    } else out.push(`<text x="${x - 6}" y="${yk + 14}" text-anchor="end" font-size="10" fill="var(--muted)">${esc(name(k))}</text>`);
+      const sp = T.genes[T.nodes[k][2]][1], fs = Math.min(12, rowH - 4);
+      out.push((sp >= 0 ? `<rect x="${x + rMax + 8}" y="${yk - 4.5}" width="9" height="9" rx="2" fill="${D.species[sp][1]}"/>` : "")
+        + `<text x="${x + rMax + 23}" y="${yk}" dy="0.32em" font-size="${fs}" fill="var(--ink)">${esc(name(k))}</text>`);
+    } else if (roomy) out.push(`<text x="${x - 6}" y="${yk + 14}" text-anchor="end" font-size="10" fill="var(--muted)">${esc(name(k))}</text>`);
   }
-  el.innerHTML = `<svg width="${W}" height="${top + row * rowH}" role="img">${out.join("")}</svg>`;
+  el.innerHTML = `<svg width="${W}" height="${top + row * rowH + (roomy ? 0 : 8)}" role="img">${out.join("")}</svg>`;
 }
 renderers.duplications = () => {
   const sec = $("tab-duplications");
   if (D.species_tree && D.node_duplications) {
     const c = card(sec, "Gene duplications on the species tree", "Duplications with support ≥ 0.5 at each node (the circle's area); at a species, those within it");
+    if (NS > 30) c.querySelector(".chart").classList.add("scroll");
     const draw = () => speciesTree(c.querySelector(".chart"), D.species_tree, D.node_duplications);
     draw(); onResize["duplications-tree"] = draw;
     setTable(c, [["Species tree node", 0], ["Duplications", 1], ["With support ≥ 0.5", 1]],
       Object.entries(D.node_duplications).map(([k, v]) => [esc(k), v[0], v[1]]));
   } else sec.insertAdjacentHTML("beforeend", `<div class="empty">No duplications per species tree node in these results (Duplications_per_Species_Tree_Node.tsv).</div>`);
   const bins = [[0, 0], [1, 1], [2, 2], [3, 3], [4, 5], [6, 10], [11, 20], [21, 50], [51, Infinity]].map(([lo, hi]) =>
-    [lo === hi ? String(lo) : hi === Infinity ? `>${lo - 1}` : `${lo}-${hi}`, OGS.filter(o => o[3] >= lo && o[3] <= hi).length]);
+    [lo === hi ? String(lo) : hi === Infinity ? `>${lo - 1}` : `${lo}-${hi}`, O.dups05.filter(d => d >= lo && d <= hi).length]);
   const c2 = card(sec, "Duplications per orthogroup", "Orthogroups by their number of gene duplications with support ≥ 0.5");
   const draw2 = () => columns(c2.querySelector(".chart"), bins, {unit: "orthogroups", xTitle: "Duplications"});
   draw2(); onResize["duplications-hist"] = draw2;
   setTable(c2, [["Duplications", 0], ["Orthogroups", 1]], bins.map(([l, v]) => [esc(l), v]));
-  const top = [...OGS].sort((a, b) => b[3] - a[3]).slice(0, 15).filter(o => o[3]);
+  const top = [...OG_ROWS].sort((a, b) => O.dups05[b] - O.dups05[a]).slice(0, 15).filter(r => O.dups05[r]);
   if (top.length) {
     const c3 = card(sec, "Orthogroups with the most duplications", "Duplications with support ≥ 0.5");
-    const draw3 = () => hbars(c3.querySelector(".chart"), top.map(o => ({label: o[0], k: -1, value: o[3], tl: `${o[0]}: ${fmt(sum(o[1]))} genes, ${fmt(o[2])} duplications in all`})), {unit: "duplications"});
+    const draw3 = () => hbars(c3.querySelector(".chart"), top.map(r => ({label: OGIDS[r], k: -1, value: O.dups05[r], tl: `${OGIDS[r]}: ${fmt(O.genes[r])} genes, ${fmt(O.dups[r])} duplications in all`})), {unit: "duplications"});
     draw3(); onResize["duplications-top"] = draw3;
-    setTable(c3, [["Orthogroup", 0], ["Genes", 1], ["Duplications", 1], ["With support ≥ 0.5", 1]], top.map(o => [o[4] ? treeLink(o[0]) : esc(o[0]), sum(o[1]), o[2], o[3]]));
+    setTable(c3, [["Orthogroup", 0], ["Genes", 1], ["Duplications", 1], ["With support ≥ 0.5", 1]], top.map(r => [O.tree[r] ? treeLink(OGIDS[r]) : esc(OGIDS[r]), O.genes[r], O.dups[r], O.dups05[r]]));
   }
 };
 
-// HOGs
-const hogData = {};
-let hogWanted = null, hogTable = null;
-window.hogsLoaded = d => { hogData[d.node] = d.hogs; if (d.node === hogWanted) showHogs(d.node); };
+// HOGs: those of each species tree node in a data file (HOGs_<node>, in columns), the genes of each species
+// in them in chunks (HOGCounts_<node>_<c>)
+let hogWanted = null;
 renderers.hogs = () => {
   const sec = $("tab-hogs");
   if (!D.hogs.length) { sec.innerHTML = `<div class="empty">No hierarchical orthogroups (HOGs) in these results (Phylogenetic_Hierarchical_Orthogroups).</div>`; return; }
   const c = card(sec, "HOGs at each species tree node", "Hierarchical orthogroups (Phylogenetic_Hierarchical_Orthogroups/<node>.tsv)");
+  if (D.hogs.length > 30) c.querySelector(".chart").classList.add("scroll");
   const draw = () => hbars(c.querySelector(".chart"), D.hogs.map(h => ({label: h.node, k: -1, value: h.hogs, tl: `${h.node}: ${fmt(h.genes)} genes, ${fmt(h.multi_species)} HOGs with more than one species`})), {unit: "HOGs"});
   draw(); onResize["hogs-nodes"] = draw;
   setTable(c, [["Node", 0], ["HOGs", 1], ["Genes", 1], ["With more than one species", 1]], D.hogs.map(h => [esc(h.node), h.hogs, h.genes, h.multi_species]));
@@ -791,33 +929,33 @@ function loadHogs(node) {
   const draw = () => columns(c.querySelector(".chart"), h.sizes, {unit: "HOGs", xTitle: "Genes"});
   draw(); onResize["hogs-sizes"] = draw;
   setTable(c, [["Genes", 0], ["HOGs", 1]], h.sizes.map(([l, n]) => [esc(l), n]));
-  if (hogData[node]) return showHogs(node);
-  const s = document.createElement("script");
-  s.src = `${D.data}/HOGs_${encodeURIComponent(node)}.js`;
-  s.onerror = () => { if (hogWanted === node) $("hog-table").innerHTML = `<div class="empty">The HOGs of ${esc(node)} could not be loaded (${esc(s.src)}). The page needs its folder ${esc(D.data)} next to it: copy (or download) them together, e.g. the whole results directory.</div>`; };
-  document.head.appendChild(s);
+  loadData(`HOGs_${node}`).then(H => { if (hogWanted === node) showHogs(node, H); },
+    err => { if (hogWanted === node) $("hog-table").innerHTML = `<div class="empty">The HOGs of ${esc(node)} ${esc(err.message)}.</div>`; });
 }
-function showHogs(node) {
-  const hogs = hogData[node];
-  stripMax = maxOf(hogs.map(h => maxOf(h[3])), 1);
+function showHogs(node, H) {
+  const ids = expandIds(H.ids), rows = ids.map((_, r) => r);
+  const ogOf = r => typeof H.ogs[r] === "number" ? OGIDS[H.ogs[r]] : H.ogs[r], treeOf = r => typeof H.ogs[r] === "number" && O.tree[H.ogs[r]];
   const bySp = Array.from({length: NS}, (_, k) => [String(k + 1), 0]);
-  hogs.forEach(h => { const n = h[3].filter(c => c).length; if (n) bySp[n - 1][1]++; });
+  for (const n of H.species) if (n) bySp[n - 1][1]++;
   const c2 = $("hog-grid").lastElementChild;
   const draw = () => columns(c2.querySelector(".chart"), bySp, {unit: "HOGs", xTitle: "Species"});
   draw(); onResize["hogs-species"] = draw;
   setTable(c2, [["Species", 0], ["HOGs", 1]], bySp);
+  let counts = new Map();
   const cols = [
-    {label: "HOG", key: r => r[0], html: r => esc(r[0])},
-    {label: "Orthogroup", key: r => r[1], html: r => ogLinks(r[1], OG_TREE.has(r[1]))},
-    {label: "Gene tree clade", key: r => r[2], html: r => esc(r[2])},
-    {label: "Genes", key: r => sum(r[3]), html: r => fmt(sum(r[3])), num: true},
-    {label: "Species", key: r => r[3].filter(c => c).length, html: r => fmt(r[3].filter(c => c).length), num: true},
-    {label: "Genes per species", head: stripHead(), html: r => strip(r[3])},
+    {label: "HOG", key: r => ids[r], html: r => esc(ids[r])},
+    {label: "Orthogroup", key: r => ogOf(r), html: r => ogLinks(ogOf(r), treeOf(r))},
+    {label: "Gene tree clade", key: r => H.clades[r], html: r => esc(H.clades[r])},
+    {label: "Genes", key: r => H.genes[r], html: r => fmt(H.genes[r]), num: true},
+    {label: "Species", key: r => H.species[r], html: r => fmt(H.species[r]), num: true},
+    {label: "Genes per species", head: stripHead(), html: r => stripCanvas().replace('class="strip"', `class="strip" data-r="${r}"`)},
   ];
-  hogTable = dataTable($("hog-table"), {cols, rows: hogs});
-  $("hog-q").oninput = () => { const q = $("hog-q").value.trim().toLowerCase(); hogTable.setRows(q ? hogs.filter(h => h[0].toLowerCase().includes(q) || h[1].toLowerCase().includes(q)) : hogs); };
+  const table = dataTable($("hog-table"), {cols, rows,
+    prepare: view => chunkRows(`HOGCounts_${node}`, H.chunks, view).then(m => { counts = m; }),
+    after: el => drawStrips(el, r => counts.get(r), H.max_genes)});
+  onResize["hogs-table"] = () => table.redraw();
+  $("hog-q").oninput = () => { const q = $("hog-q").value.trim().toLowerCase(); table.setRows(q ? rows.filter(r => ids[r].toLowerCase().includes(q) || ogOf(r).toLowerCase().includes(q)) : rows); };
 }
-const OG_TREE = new Set(OGS.filter(o => o[4]).map(o => o[0]));
 
 // redraw the plots for the window's width and the colour scheme
 let resizeTimer = null;

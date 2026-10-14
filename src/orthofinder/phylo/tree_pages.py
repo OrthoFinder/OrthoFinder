@@ -25,15 +25,17 @@ in three ways: the HOGs at each node (Phylogenetic_Hierarchical_Orthogroups),
 each with its clade of the gene tree and the HOGs it contains at the nodes
 below; an orthogroup in the species tree (its gene tree mapped onto it: the
 gene copies on each branch, the duplications and the losses); and each
-species' genes, by orthogroup. Their data is in Tree_Data/HOGs_<node>.js and
-Tree_Data/Species_<k>.js, loaded when opened.
+species' genes, by orthogroup. Their data is in data files loaded when opened
+(view_pages.write_data): the HOGs of each node (a summary, and their genes in
+chunks), the genes of each species, and the orthogroups behind the numbers of
+each node. Genes are found with an index of their names (Genes_<i>), so that
+the page stays small and quick for thousands of species.
 
 All genes (a third tab): the species tree, with each orthogroup's gene tree
 attached at the node where the orthogroup was gained, opened group by group
 and orthogroup by orthogroup.
 """
 
-import csv
 import json
 import os
 
@@ -49,21 +51,48 @@ PALETTE = ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9", "#8
 DATA_DIR = "Tree_Data"
 
 
-def species_and_genes(orthogroups_dir):
-    """The species (the Orthogroups.tsv columns) and {gene: species} of all genes."""
-    species, gene_species = [], {}
-    for fn in ("Orthogroups.tsv", "Orthogroups_UnassignedGenes.tsv"):
-        path = os.path.join(orthogroups_dir, fn)
-        if not os.path.exists(path):
-            continue
-        with open(path, newline="", encoding="utf-8", errors="replace") as infile:
-            rows = list(csv.reader(infile, delimiter="\t"))
-        species = rows[0][1:]
-        for row in rows[1:]:
-            for sp, cell in zip(species, row[1:]):
-                for gene in cell.split(", ") if cell else []:
-                    gene_species[gene] = sp
-    return species, gene_species
+def read_species(orthogroups_dir):
+    """The species: the columns of Orthogroups.tsv (or of the MCL orthogroups)."""
+    for name in ("Orthogroups.tsv", "MCL_Orthogroups.tsv"):
+        path = os.path.join(orthogroups_dir, name)
+        if os.path.exists(path):
+            with open(path, encoding="utf-8", errors="replace") as infile:
+                return infile.readline().rstrip("\r\n").split("\t")[1:]
+    return []
+
+
+def sparse_rows(path, n_species):
+    """[orthogroup, [[species, [genes]], ...]] of the rows of Orthogroups.tsv (or the unassigned genes)."""
+    if not os.path.exists(path):
+        return
+    with open(path, encoding="utf-8", errors="replace") as infile:
+        next(infile, None)  # the header: the species, in the same order
+        for line in infile:
+            cut = line.find("\t")
+            if cut > 0:
+                yield line[:cut], [(k - 1, text.split(", ")) for k, text in view_pages.sparse_cells(line)
+                                   if 1 <= k <= n_species]
+
+
+class GeneSpecies:
+    """
+    {gene: species} of all genes (Orthogroups.tsv and the unassigned genes),
+    read when first needed: only for gene trees whose genes are not named
+    "<species>_<gene>" (-X).
+    """
+
+    def __init__(self, orthogroups_dir, species):
+        self.dir, self.species, self.genes = orthogroups_dir, species, None
+
+    def get(self, gene):
+        if self.genes is None:
+            self.genes = {}
+            for fn in ("Orthogroups.tsv", "Orthogroups_UnassignedGenes.tsv"):
+                for _, cells in sparse_rows(os.path.join(self.dir, fn), len(self.species)):
+                    for k, genes in cells:
+                        for g in genes:
+                            self.genes[g] = self.species[k]
+        return self.genes.get(gene)
 
 
 def genes_by_species(orthogroups_dir, n_species):
@@ -72,39 +101,31 @@ def genes_by_species(orthogroups_dir, n_species):
     and its unassigned genes, from Orthogroups.tsv and Orthogroups_UnassignedGenes.tsv.
     """
     result = [{"orthogroups": [], "unassigned": []} for _ in range(n_species)]
-    for fn, unassigned in (("Orthogroups.tsv", False), ("Orthogroups_UnassignedGenes.tsv", True)):
-        path = os.path.join(orthogroups_dir, fn)
-        if not os.path.exists(path):
-            continue
-        with open(path, encoding="utf-8", errors="replace") as infile:
-            next(infile, None)  # the header: the same species, in the same order
-            for line in infile:
-                row = line.rstrip("\r\n").split("\t")
-                for k, cell in enumerate(row[1:n_species + 1]):
-                    if cell:
-                        genes = cell.split(", ")
-                        if unassigned:
-                            result[k]["unassigned"].extend(genes)
-                        else:
-                            result[k]["orthogroups"].append([row[0], genes])
+    for og, cells in sparse_rows(os.path.join(orthogroups_dir, "Orthogroups.tsv"), n_species):
+        for k, genes in cells:
+            result[k]["orthogroups"].append([og, genes])
+    for _, cells in sparse_rows(os.path.join(orthogroups_dir, "Orthogroups_UnassignedGenes.tsv"), n_species):
+        for k, genes in cells:
+            result[k]["unassigned"].extend(genes)
     return result
 
 
 def read_hogs(filename, species_number):
     """
     The HOGs of a species tree node: [[HOG, orthogroup, gene tree parent clade,
-    [[species number, [genes]], ...]], ...], from Phylogenetic_Hierarchical_Orthogroups/<node>.tsv.
+    [[species number, [genes]], ...]], ...], from Phylogenetic_Hierarchical_
+    Orthogroups/<node>.tsv (only its non-empty cells are read).
     """
     hogs = []
     with open(filename, encoding="utf-8", errors="replace") as infile:
         header = infile.readline().rstrip("\r\n").split("\t")
-        columns = [(k, species_number[sp]) for k, sp in enumerate(header) if sp in species_number]
+        column = {k: species_number[sp] for k, sp in enumerate(header) if k >= 3 and sp in species_number}
         for line in infile:
-            row = line.rstrip("\r\n").split("\t")
-            if len(row) < 3:
+            fields = line.rstrip("\r\n").split("\t", 3)
+            if len(fields) < 3:
                 continue
-            genes = [[sp, row[k].split(", ")] for k, sp in columns if k < len(row) and row[k].strip()]
-            hogs.append([row[0], row[1], row[2], genes])
+            genes = sorted((column[k], text.split(", ")) for k, text in view_pages.sparse_cells(line) if k in column)
+            hogs.append([fields[0], fields[1], fields[2], genes])
     return hogs
 
 
@@ -120,7 +141,8 @@ def count_orthogroups(orthogroups_dir):
 def write_explorer_data(results_dir, data_dir, species, species_number):
     """
     The data of the species tree explorer: the HOGs of each species tree node
-    (HOGs_<node>.js) and the genes of each species (Species_<k>.js), each
+    (HOGs_<node>: their IDs, orthogroups, clades and sizes; HOGs_<node>_<c>:
+    their genes, in chunks) and the genes of each species (Species_<k>), each
     loaded by the page when it is opened. Returns [[node, HOGs], ...] and the
     genes of each species.
     """
@@ -132,13 +154,16 @@ def write_explorer_data(results_dir, data_dir, species, species_number):
         node = fn[:-4]
         hogs = read_hogs(os.path.join(hog_dir, fn), species_number)
         hog_nodes.append([node, len(hogs)])
-        with open(os.path.join(data_dir, f"HOGs_{node}.js"), "w", encoding="utf-8") as out:
-            out.write(f"hogsLoaded({json.dumps({'node': node, 'hogs': hogs}, separators=(',', ':'))});\n")
+        view_pages.write_data(data_dir, f"HOGs_{node}", {
+            "ids": view_pages.compact_ids([h[0] for h in hogs]), "ogs": [h[1] for h in hogs],
+            "clades": [h[2] for h in hogs], "genes": [sum(len(g) for _, g in h[3]) for h in hogs],
+            "species": [len(h[3]) for h in hogs],
+            "chunks": view_pages.write_chunks(data_dir, f"HOGs_{node}", [h[3] for h in hogs],
+                                              lambda genes: sum(len(g) for _, g in genes))})
     n_genes = []
     for k, genes in enumerate(genes_by_species(os.path.join(results_dir, "Orthogroups"), len(species))):
         n_genes.append(sum(len(g) for _, g in genes["orthogroups"]) + len(genes["unassigned"]))
-        with open(os.path.join(data_dir, f"Species_{k}.js"), "w", encoding="utf-8") as out:
-            out.write(f"speciesLoaded({json.dumps({'k': k, **genes}, separators=(',', ':'))});\n")
+        view_pages.write_data(data_dir, f"Species_{k}", genes)
     return hog_nodes, n_genes
 
 
@@ -225,13 +250,20 @@ def alignment_stats(aln):
 
 
 def tree_stats(nodes, genes, duplications):
-    """Of a gene tree: its genes per species ([species number, genes]), length and duplications."""
+    """
+    Of a gene tree: its species, length and duplications, and its genes per
+    species ([species number, genes]) if it has at most 20 species (for more,
+    the page counts them from the tree's data, when it is shown).
+    """
     per_species = {}
     for _, sp in genes:
         per_species[sp] = per_species.get(sp, 0) + 1
-    return {"species": sorted(per_species.items()),
-            "length": round(sum(node[1] for node in nodes), 4),
-            "duplications": [len(duplications), sum(1 for d in duplications if d[1] >= 0.5)]}
+    stats = {"n_species": sum(1 for sp in per_species if sp >= 0),
+             "length": round(sum(node[1] for node in nodes), 4),
+             "duplications": [len(duplications), sum(1 for d in duplications if d[1] >= 0.5)]}
+    if len(per_species) <= 20:
+        stats["species"] = sorted(per_species.items())
+    return stats
 
 
 def write_tree_data(filename, data):
@@ -269,10 +301,11 @@ def reconcile(gene_nodes, gene_species, smap):
     """
     A gene tree (flat) mapped onto the species tree, each of its nodes to the
     last common ancestor of its genes' species (gene_species: the species
-    number of each gene). Returns, for each species tree node, the gene copies
-    on the branch above it and the gene losses there, and the node its root is
-    mapped to (None if no gene's species is in the species tree). As the
-    page's reconcile() (the species tree explorer), for one orthogroup.
+    number of each gene). Returns the gene copies on the branch above each
+    species tree node and the gene losses there ({node: number}, the nodes
+    with any), and the node its root is mapped to (None if no gene's species
+    is in the species tree). As the page's reconcile() (the species tree
+    explorer), for one orthogroup.
     """
     n = len(gene_nodes)
     kids = [[] for _ in range(n)]
@@ -286,7 +319,7 @@ def reconcile(gene_nodes, gene_species, smap):
         for c in kids[k]:
             if m[c] >= 0:
                 m[k] = m[c] if m[k] < 0 else smap.lca(m[k], m[c])
-    copies, losses = [0] * smap.n, [0] * smap.n
+    copies, losses = {}, {}
     for k in range(n):
         if m[k] < 0:
             continue
@@ -294,24 +327,24 @@ def reconcile(gene_nodes, gene_species, smap):
         if p < 0:  # the lineage above the gene tree's root
             y = m[k]
             while y >= 0:
-                copies[y] += 1
+                copies[y] = copies.get(y, 0) + 1
                 y = smap.parent[y]
             continue
         if m[p] < 0 or m[p] == m[k]:
             continue
         y = m[k]
         while True:
-            copies[y] += 1
+            copies[y] = copies.get(y, 0) + 1
             x = smap.parent[y]
             if x == m[p]:
                 if any(m[c] == m[p] for c in kids[p]):  # a duplication at p: its other copy is lost below x
                     for z in smap.kids[x]:
                         if z != y:
-                            losses[z] += 1
+                            losses[z] = losses.get(z, 0) + 1
                 break
             for z in smap.kids[x]:  # the lineage passes x without a copy in z
                 if z != y:
-                    losses[z] += 1
+                    losses[z] = losses.get(z, 0) + 1
             y = x
     return copies, losses, (m[0] if m[0] >= 0 else None)
 
@@ -336,11 +369,11 @@ class AllOrthogroups:
         self.n_trees += 1
         self.gains[root] += 1
         self.gained[root].append(og)
-        for k in range(self.smap.n):
-            self.copies[k] += copies[k]
-            if losses[k]:
-                self.losses[k] += losses[k]
-                self.lost[k].append([og, losses[k]])
+        for k, c in copies.items():
+            self.copies[k] += c
+        for k, c in losses.items():
+            self.losses[k] += c
+            self.lost[k].append([og, c])
         here = {}
         for _, support, species_node in og_dups:
             k = node_index.get(species_node)
@@ -355,10 +388,17 @@ class AllOrthogroups:
         return {"n_trees": self.n_trees, "n_orthogroups": n_orthogroups, "copies": self.copies,
                 "losses": self.losses, "gains": self.gains, "dups": self.dups}
 
-    def lists(self):
-        by_count = lambda rows: sorted(rows, key=lambda r: (-r[1], r[0]))  # the most first
-        return {"gained": self.gained, "lost": [by_count(r) for r in self.lost],
-                "duplicated": [by_count(r) for r in self.duplicated]}
+    def write(self, data_dir):
+        """
+        The orthogroups behind the numbers: All_Gained (those gained at each
+        node, for All genes) and All_<k> (those with gene losses and
+        duplications at node k, the most first), loaded when needed.
+        """
+        by_count = lambda rows: sorted(rows, key=lambda r: (-r[1], r[0]))
+        view_pages.write_data(data_dir, "All_Gained", self.gained)
+        for k in range(self.smap.n):
+            view_pages.write_data(data_dir, f"All_{k}", {"lost": by_count(self.lost[k]),
+                                                         "duplicated": by_count(self.duplicated[k])})
 
 
 def write_tree_pages(results_dir, written=None):
@@ -376,7 +416,8 @@ def write_tree_pages(results_dir, written=None):
         entries = [line.strip().split(": ", 1) for line in infile if line.strip()]
     if not entries:  # e.g. -og: the file is there but has no trees
         return 0
-    species, gene_species = species_and_genes(os.path.join(results_dir, "Orthogroups"))
+    species = read_species(os.path.join(results_dir, "Orthogroups"))
+    gene_species = GeneSpecies(os.path.join(results_dir, "Orthogroups"), species)
     colour = {sp: PALETTE[i % len(PALETTE)] for i, sp in enumerate(species)}
     species_set = set(species)
     species_number = {sp: k for k, sp in enumerate(species)}
@@ -398,7 +439,8 @@ def write_tree_pages(results_dir, written=None):
         all_ogs = AllOrthogroups(SpeciesTreeMap(nodes, [species_number.get(name, -1) for name in names]))
         node_index = {(names[node[2]] if isinstance(node[2], int) else node[2]): k for k, node in enumerate(nodes)}
 
-    trees = []  # [orthogroup, [gene names], stats]
+    trees = []  # [orthogroup, genes, stats]
+    tree_genes = []  # (gene, the tree's number), for the index of the genes
     n_failed = 0
     for og, newick in entries:
         try:
@@ -427,7 +469,9 @@ def write_tree_pages(results_dir, written=None):
                 stats["alignment"] = alignment_stats(aln)
         os.makedirs(data_dir, exist_ok=True)
         write_tree_data(os.path.join(data_dir, og + ".js"), data)
-        trees.append([og, sorted({leaf_species(n, species_set, gene_species)[1] for n in leaf_names}), stats])
+        gene_names = {leaf_species(n, species_set, gene_species)[1] for n in leaf_names}
+        tree_genes.extend((name, len(trees)) for name in gene_names)
+        trees.append([og, len(gene_names), stats])
         if all_ogs:
             all_ogs.add(og, nodes, [sp for _, sp in genes], og_dups, node_index)
     if n_failed:
@@ -436,11 +480,11 @@ def write_tree_pages(results_dir, written=None):
         return 0
 
     hog_nodes, n_genes = write_explorer_data(results_dir, data_dir, species, species_number)
-    explorer = {"hog_nodes": hog_nodes, "species_genes": n_genes}
+    explorer = {"hog_nodes": hog_nodes, "species_genes": n_genes,
+                "genes": view_pages.write_gene_index(data_dir, tree_genes)}
     if all_ogs:
         explorer["all_orthogroups"] = all_ogs.summary(count_orthogroups(os.path.join(results_dir, "Orthogroups")))
-        with open(os.path.join(data_dir, "All_Orthogroups.js"), "w", encoding="utf-8") as out:
-            out.write(f"allOrthogroupsLoaded({json.dumps(all_ogs.lists(), separators=(',', ':'))});\n")
+        all_ogs.write(data_dir)
     explorer.update(nav=view_pages.nav(results_dir, "trees", written),
                     stats_page=view_pages.link(results_dir, "stats", written),
                     groups_page=view_pages.link(results_dir, "groups", written))
@@ -449,13 +493,23 @@ def write_tree_pages(results_dir, written=None):
     return len(trees)
 
 
+def tree_columns(trees):
+    """The trees ([orthogroup, genes, stats]) in columns, smaller for the page (which makes the rows again)."""
+    al = lambda a: [a["columns"], a["gaps"], *a["lengths"], a["identical"]] if a else 0
+    return {"ids": view_pages.compact_ids([t[0] for t in trees]), "genes": [t[1] for t in trees],
+            "n_species": [t[2]["n_species"] for t in trees], "length": [t[2]["length"] for t in trees],
+            "dups": [t[2]["duplications"][0] for t in trees], "dups05": [t[2]["duplications"][1] for t in trees],
+            "species": [t[2].get("species", 0) for t in trees], "alignment": [al(t[2].get("alignment")) for t in trees]}
+
+
 def write_page(filename, species, colour, trees, species_tree, extra=None):
     """extra: the explorer's data and the links to the other pages (view_pages)."""
     data = {"version": __version__, "data": DATA_DIR, "species_tree": species_tree,
-            "species": [[sp, colour[sp]] for sp in species], "trees": trees, **(extra or {})}
+            "species": [[sp, colour[sp]] for sp in species], "trees": tree_columns(trees), **(extra or {})}
     with open(filename, "w", encoding="utf-8") as out:
         out.write(HTML.replace("__NAV_CSS__", view_pages.NAV_CSS).replace("__NAV_HTML__", view_pages.NAV_HTML)
                   .replace("__NAV_JS__", view_pages.NAV_JS).replace("__THEME_JS__", view_pages.THEME_JS)
+                  .replace("__DATA_JS__", view_pages.DATA_JS)
                   .replace("__DATA__", json.dumps(data, separators=(",", ":")).replace("</", "<\\/")))
 
 
@@ -519,6 +573,8 @@ section[hidden] { display:none; }
 .hogtree, .below { margin:6px 0; font-size:13px; }
 .clade { overflow:auto; background:var(--ink-fff); border:1px solid var(--line); border-radius:6px; padding:4px; margin:4px 0; max-height:60vh; }
 .clade svg { display:block; } .clade [data-k] { cursor:pointer; }
+.legend details { width:100%; } .legend summary { color:var(--muted); }
+.legend details > div { display:flex; flex-wrap:wrap; gap:6px 14px; max-height:30vh; overflow:auto; margin-top:6px; }
 __NAV_CSS__
 </style></head><body><main>
 __NAV_HTML__
@@ -577,6 +633,16 @@ __NAV_HTML__
 </main>
 <script>
 const D = __DATA__;
+__DATA_JS__
+{  // the trees, written in columns (tree_columns): a row for each, [orthogroup, genes, stats]
+  const C = D.trees;
+  D.trees = expandIds(C.ids).map((og, k) => {
+    const st = {n_species: C.n_species[k], length: C.length[k], duplications: [C.dups[k], C.dups05[k]]}, a = C.alignment[k];
+    if (C.species[k]) st.species = C.species[k];
+    if (a) st.alignment = {columns: a[0], gaps: a[1], lengths: [a[2], a[3], a[4]], identical: a[5]};
+    return [og, C.genes[k], st];
+  });
+}
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const num = (x, d = 0) => Number(x).toLocaleString(undefined, {maximumFractionDigits: d});
@@ -611,7 +677,10 @@ $("sub").textContent = "OrthoFinder " + D.version + ". The trees of Resolved_Gen
   + "n0, n1, ... are the gene tree nodes (the HOG files' gene tree parent clade). "
   + "Below each tree, its alignment (MultipleSequenceAlignments).";
 __NAV_JS__
-$("legend").innerHTML = D.species.map(([s, c]) => `<span style="--c:${c}">${esc(s)}</span>`).join("");
+{  // for many species, a list to open
+  const key = D.species.map(([s, c]) => `<span style="--c:${c}">${esc(s)}</span>`).join("");
+  $("legend").innerHTML = D.species.length > 40 ? `<details><summary>The species and their colours (${num(D.species.length)})</summary><div>${key}</div></details>` : key;
+}
 $("key").innerHTML = "Click a node to collapse or expand its clade. A branch is in a species' colour when all its genes are of that species. "
   + `<svg width="10" height="10"><rect x="1" y="1" width="8" height="8" fill="${DUP}"/></svg> gene duplication (support &ge; 0.5), `
   + `<svg width="10" height="10"><rect x="1.5" y="1.5" width="7" height="7" fill="var(--ink-fff)" stroke="${DUP}" stroke-width="1.5"/></svg> support &lt; 0.5.`;
@@ -807,7 +876,7 @@ if (D.species_tree) {
   $("species").innerHTML = `<details open><summary><b>Species tree</b> <span class="muted">(N0, N1, ... as in the HOG files)</span></summary>`
     + `<div class="tools" style="margin-top:6px"><span class="seg" role="group" aria-label="Layout of the species tree">`
     + `<button id="sp-rect">Rectangular</button><button id="sp-circ">Circular</button></span></div>`
-    + `<div class="tree" id="species-tree"></div></details>`;
+    + `<div class="tree capped" id="species-tree"></div></details>`;
   const drawSpeciesTree = () => {
     const draw = layout === "circ" ? circularTreeSvg : treeSvg;
     $("species-tree").innerHTML = draw(S, {width: Math.min(700, $("species").clientWidth), clickable: false}).svg;
@@ -830,8 +899,17 @@ let treeEqual = false;  // every branch the same length
 try { if (localStorage.getItem("orthofinder-tree-layout") === "circ") treeLayout = "circ"; } catch (e) { /* not available */ }
 try { treeEqual = localStorage.getItem("orthofinder-tree-lengths") === "equal"; } catch (e) { /* not available */ }
 window.treeLoaded = T => { loaded[T.og] = T; gotData("tree:" + T.og, T); if (T.og === wanted) setTree(T); };
+// the choice of tree: the OPTIONS trees around the one shown (a run can have hundreds of thousands)
+const OPTIONS = 1000;
+let optionsFor = null, optionsFrom = 0;
+function fillOptions() {
+  if (optionsFor === shown && i >= optionsFrom && i < optionsFrom + OPTIONS) return;
+  optionsFor = shown; optionsFrom = Math.max(0, Math.min(i - OPTIONS / 2, shown.length - OPTIONS));
+  const part = shown.slice(optionsFrom, optionsFrom + OPTIONS);
+  $("og").innerHTML = part.map((t, k) => `<option value="${optionsFrom + k}">${esc(t[0])} (${num(t[1])} genes)</option>`).join("");
+}
 function show() {
-  $("og").innerHTML = shown.map((t, k) => `<option value="${k}">${esc(t[0])} (${t[1].length} genes)</option>`).join("");
+  fillOptions();
   $("og").value = String(i);
   const t = shown[i];
   $("count").textContent = shown.length ? `${i + 1} of ${shown.length.toLocaleString()}` : "no matches";
@@ -853,6 +931,7 @@ function show() {
 }
 function setTree(T) {
   G = T.kids ? T : prepareTree(T);
+  if (shown[i] && shown[i][0] === T.og && !shown[i][2].species) showStats(shown[i], T);
   $("treebox").scrollTo(0, 0);
   drawTree(true);
 }
@@ -921,13 +1000,23 @@ function treeCap() {
 window.addEventListener("resize", treeCap);
 $("whole").onclick = () => { wholeTree = !wholeTree; treeCap(); };
 
-function showStats(t) {
+function showStats(t, T) {  // T: the tree's data, once loaded (for its genes per species, if t has not them)
   if (!t) { $("stats").innerHTML = ""; return; }
-  const st = t[2], counts = Object.fromEntries(st.species), n = t[1].length;
-  const present = D.species.filter((_, k) => counts[k]).length;
+  const st = t[2], n = t[1], present = st.n_species;
+  let perSpecies = st.species;
+  if (!perSpecies && T) {
+    const c = {};
+    for (const nd of T.nodes) if (typeof nd[2] === "number") { const k = T.genes[nd[2]][1]; c[k] = (c[k] || 0) + 1; }
+    perSpecies = Object.entries(c).map(([k, x]) => [+k, x]).sort((a, b) => a[0] - b[0]);
+  }
+  const counts = Object.fromEntries(perSpecies || []);
   const singleCopy = present === D.species.length && D.species.every((_, k) => counts[k] === 1);
-  const chips = D.species.map(([sp, c], k) =>
-    `<span class="chip${counts[k] ? "" : " none"}" style="--c:${c}">${esc(sp)} ${counts[k] || 0}</span>`).join("");
+  // each species, or for many, those with genes
+  const many = D.species.length > 40;
+  const chips = !perSpecies ? `<span class="muted">loading...</span>`
+    : (many ? perSpecies.filter(([k]) => k >= 0).map(([k]) => [D.species[k], k]) : D.species.map((x, k) => [x, k])).map(([[sp, c], k]) =>
+      `<span class="chip${counts[k] ? "" : " none"}" style="--c:${c}">${esc(sp)} ${counts[k] || 0}</span>`).join("")
+      + (many && present < D.species.length ? `<span class="muted">none in the other ${num(D.species.length - present)} species</span>` : "");
   const [dups, supported] = st.duplications;
   let html = `<dt>Orthogroup</dt><dd>${num(n)} genes, ${present} of ${D.species.length} species`
     + (singleCopy ? ` <span class="badge">single-copy in all species</span>` : "") + `</dd>`
@@ -1076,13 +1165,29 @@ $("cv").addEventListener("mousemove", e => {
 });
 
 // ---- choosing the tree ----
+// the trees matching a search: by their orthogroup's ID, and by their genes (the start of a gene's name, with the index)
+async function searchTrees(q) {
+  q = q.trim().toLowerCase();
+  if (!q) return D.trees;
+  const hits = new Set();
+  D.trees.forEach((t, k) => { if (t[0].toLowerCase().includes(q)) hits.add(k); });
+  for (const [, k] of await findGenes(D.genes, q, 5000)) hits.add(k);
+  return [...hits].sort((a, b) => a - b).map(k => D.trees[k]);
+}
+let searching = 0, typing = null;
 $("q").addEventListener("input", e => {
-  const q = e.target.value.trim().toLowerCase();
-  const cur = shown[i] && shown[i][0];
-  shown = q ? D.trees.filter(([og, genes]) => og.toLowerCase().includes(q) || genes.some(g => g.toLowerCase().includes(q))) : D.trees;
-  i = Math.max(0, shown.findIndex(t => t[0] === cur));
-  if (shown[i] && shown[i][0] === cur) { drawTree(false); $("count").textContent = `${i + 1} of ${shown.length.toLocaleString()}`; }
-  else show();
+  clearTimeout(typing);
+  typing = setTimeout(async () => {
+    const my = ++searching, cur = shown[i] && shown[i][0];
+    $("count").textContent = "searching...";
+    let found;
+    try { found = await searchTrees(e.target.value); } catch (err) { $("count").textContent = `The index of the genes ${err.message}.`; return; }
+    if (my !== searching) return;
+    shown = found;
+    i = Math.max(0, shown.findIndex(t => t[0] === cur));
+    if (shown[i] && shown[i][0] === cur) { fillOptions(); $("og").value = String(i); drawTree(false); $("count").textContent = `${i + 1} of ${shown.length.toLocaleString()}`; }
+    else show();
+  }, 200);
 });
 $("og").addEventListener("change", e => { i = +e.target.value; show(); });
 $("prev").onclick = () => { i--; show(); };
@@ -1119,12 +1224,12 @@ function fetchData(key, src) {
   });
 }
 function gotData(key, value) { cache[key] = value; (waiting[key] || []).forEach(w => w.resolve(value)); delete waiting[key]; }
-window.hogsLoaded = d => gotData("hogs:" + d.node, d.hogs);
-window.speciesLoaded = d => gotData("species:" + d.k, d);
 const TREE_OGS = new Set(D.trees.map(t => t[0]));
 const loadTree = og => loaded[og] ? Promise.resolve(loaded[og]) : fetchData("tree:" + og, `${D.data}/${encodeURIComponent(og)}.js`);
-const loadHogs = node => fetchData("hogs:" + node, `${D.data}/HOGs_${encodeURIComponent(node)}.js`);
-const loadSpecies = k => fetchData("species:" + k, `${D.data}/Species_${k}.js`);
+// the HOGs of a node: their IDs, orthogroups, clades and sizes (HOGs_<node>), their genes in chunks (HOGs_<node>_<c>)
+const loadHogs = node => loadData(`HOGs_${node}`).then(H => { if (!H.idList) H.idList = expandIds(H.ids); return H; });
+const hogGenes = (node, H, rows) => chunkRows(`HOGs_${node}`, H.chunks, rows);  // Map: row -> [[species, [genes]], ...]
+const loadSpecies = k => loadData(`Species_${k}`);
 
 // ---- the species tree ----
 const ST = (() => {
@@ -1203,22 +1308,31 @@ function lazy(summaryHtml, fill, {open = false, cls = ""} = {}) {
   if (open) { d.open = true; setTimeout(doFill); }
   return d;
 }
-// a long list shown a part at a time, with a search
-function longList(el, items, render, {placeholder, match, step = 30}) {
+// a long list shown a part at a time, with a search: match(item, q), or search(q) giving the items (or a promise of them)
+function longList(el, items, render, {placeholder, match, search, step = 30}) {
   el.innerHTML = `<div class="tools"><input placeholder="${esc(placeholder)}" autocomplete="off"><span class="muted"></span></div><div class="items"></div>`
     + `<button class="more" hidden>Show more</button>`;
   const input = el.querySelector("input"), list = el.querySelector(".items"), more = el.querySelector(".more"), count = el.querySelector(".muted");
-  let shownItems = items, n = 0;
+  let shownItems = items, n = 0, seq = 0, typing = null;
   const add = () => {
     const end = Math.min(shownItems.length, n + step);
     for (; n < end; n++) list.appendChild(render(shownItems[n]));
     more.hidden = n >= shownItems.length;
     count.textContent = `${n.toLocaleString()} of ${shownItems.length.toLocaleString()}`;
   };
-  input.oninput = () => { const q = input.value.trim().toLowerCase(); shownItems = q ? items.filter(x => match(x, q)) : items; list.innerHTML = ""; n = 0; add(); };
+  input.oninput = () => { clearTimeout(typing); typing = setTimeout(async () => {
+    const my = ++seq, q = input.value.trim().toLowerCase();
+    count.textContent = "searching...";
+    let found;
+    try { found = !q ? items : search ? await search(q) : items.filter(x => match(x, q)); } catch (e) { count.textContent = e.message; return; }
+    if (my !== seq) return;
+    shownItems = found; list.innerHTML = ""; n = 0; add();
+  }, 150); };
   more.onclick = add;
   add();
 }
+// the orthogroups with a gene whose name starts with q (with the index of the genes)
+const ogsWithGene = q => findGenes(D.genes, q, 5000).then(found => new Set(found.map(([, k]) => D.trees[k][0])));
 
 // ---- the explorer ----
 const MODES = {
@@ -1262,55 +1376,67 @@ function speciesTreeNode(k, mode, open = false) {
   }, {open});
 }
 
-function hogSummary(h) {
-  const n = h[3].reduce((s, [, g]) => s + g.length, 0);
-  return `<b>${esc(h[0])}</b> <span class="muted">${esc(h[1])} · ${num(n)} gene${n === 1 ? "" : "s"}, ${h[3].length} species</span> `
-    + h[3].map(([k, g]) => spChip(k, String(g.length))).join("");
-}
+// a HOG: h = [ID, orthogroup, gene tree clade, genes, species, row (in HOGs_<node>)]; its genes are loaded when it is opened
+const hogOf = (H, r) => [H.idList[r], H.ogs[r], H.clades[r], H.genes[r], H.species[r], r];
+const hogSummary = h => `<b>${esc(h[0])}</b> <span class="muted">${esc(h[1])} · ${num(h[3])} gene${h[3] === 1 ? "" : "s"}, ${num(h[4])} species</span>`;
 function fillHogs(body, node) {
   body.innerHTML = `<p class="muted">Loading the HOGs of ${esc(node)}...</p>`;
-  loadHogs(node).then(hogs => longList(body, hogs, h => hogDetails(h, node), {
-    placeholder: "Search a HOG, orthogroup or gene", match: (h, q) => h[0].toLowerCase().includes(q) || h[1].toLowerCase().includes(q)
-      || h[3].some(([, g]) => g.some(x => x.toLowerCase().includes(q)))}),
+  loadHogs(node).then(H => longList(body, H.idList.map((_, r) => r), r => hogDetails(H, r, node), {
+    placeholder: "Search a HOG or orthogroup ID, or a gene", search: async q => {
+      const hits = new Set(H.idList.map((id, r) => id.toLowerCase().includes(q) || H.ogs[r].toLowerCase().includes(q) ? r : -1).filter(r => r >= 0));
+      const ogs = await ogsWithGene(q), cand = H.ogs.map((og, r) => ogs.has(og) ? r : -1).filter(r => r >= 0 && !hits.has(r));
+      const of = await hogGenes(node, H, cand);  // those of its HOGs with the gene
+      for (const r of cand) if (of.get(r).some(([, g]) => g.some(x => x.toLowerCase().startsWith(q)))) hits.add(r);
+      return [...hits].sort((a, b) => a - b);
+    }}),
     err => { body.innerHTML = `<p class="muted">The HOGs of ${esc(node)} ${esc(err.message)}.</p>`; });
 }
-function hogDetails(h, node) {
+function hogDetails(H, r, node) {
+  const h = hogOf(H, r);
   return lazy(hogSummary(h), body => {
-    const genes = new Set(h[3].flatMap(([k, g]) => g.map(x => geneKey(k, x))));
-    body.innerHTML = `<div class="muted">${esc(h[0])}: the genes of ${esc(h[1])} below the node ${esc(h[2])} of its gene tree. ${openOgLink(h[1])}</div><div class="hogtree"></div><div class="below"></div>`;
-    const treeEl = body.querySelector(".hogtree");
-    const listGenes = () => { treeEl.innerHTML = h[3].map(([k, g]) => `<div>${spChip(k, D.species[k][0])}${g.map(esc).join(", ")}</div>`).join(""); };
-    if (TREE_OGS.has(h[1])) {
-      treeEl.innerHTML = `<p class="muted">Loading the gene tree of ${esc(h[1])}...</p>`;
-      loadTree(h[1]).then(T => {
-        const P = pruneTree(T, g => genes.has(geneKey(g[1], geneName(g))), h[2]);
-        if (!P) return listGenes();
-        treeEl.innerHTML = smallTreeHtml(P);
-        drawSmallTrees(treeEl);
-      }, listGenes);
-    } else listGenes();
-    // the HOGs it contains at the nodes below, and its genes in the species below
-    const below = body.querySelector(".below"), k = ST.byName[node];
-    if (k === undefined) return;
-    for (const c of ST.kids[k]) {
-      if (ST.isLeaf(c)) {
-        const sp = ST.sp(c), g = (h[3].find(([s]) => s === sp) || [, []])[1];
-        below.insertAdjacentHTML("beforeend", `<div class="leaf">${sp >= 0 ? spChip(sp, ST.name(c)) : esc(ST.name(c)) + ": "}`
-          + (g.length ? g.map(esc).join(", ") : `<span class="muted">no genes</span>`) + `</div>`);
-        continue;
-      }
-      const cname = ST.name(c), holder = document.createElement("div");
-      holder.className = "sub";
-      below.appendChild(holder);
-      if (HOG_COUNT[cname] === undefined) { holder.innerHTML = `<span class="muted">${esc(cname)}: no HOG file</span>`; continue; }
-      holder.innerHTML = `<span class="muted">Loading the HOGs at ${esc(cname)}...</span>`;
-      loadHogs(cname).then(hogs => {
-        const inside = hogs.filter(x => x[1] === h[1] && x[3].every(([s, g]) => g.every(y => genes.has(geneKey(s, y)))));
-        holder.innerHTML = `<div class="muted">At ${esc(cname)}: ${inside.length ? `${inside.length} HOG${inside.length === 1 ? "" : "s"}` : "no HOG (no genes of its species, or lost)"}</div>`;
-        for (const x of inside) holder.appendChild(hogDetails(x, cname));
-      }, err => { holder.innerHTML = `<span class="muted">The HOGs at ${esc(cname)} ${esc(err.message)}.</span>`; });
-    }
+    body.innerHTML = `<p class="muted">Loading the genes of ${esc(h[0])}...</p>`;
+    hogGenes(node, H, [r]).then(of => fillHog(body, h, of.get(r), node), err => { body.innerHTML = `<p class="muted">The genes of ${esc(h[0])} ${esc(err.message)}.</p>`; });
   }, {cls: "hog"});
+}
+// an opened HOG (hogGenesList: its genes, [[species, [genes]], ...]): its clade of the gene tree, and the HOGs it contains below
+function fillHog(body, h, hogGenesList, node) {
+  h = [h[0], h[1], h[2], hogGenesList];
+  const genes = new Set(h[3].flatMap(([k, g]) => g.map(x => geneKey(k, x))));
+  body.innerHTML = `<div class="muted">${esc(h[0])}: the genes of ${esc(h[1])} below the node ${esc(h[2])} of its gene tree. ${openOgLink(h[1])}</div>`
+    + `<div>${h[3].map(([k, g]) => spChip(k, String(g.length))).join("")}</div><div class="hogtree"></div><div class="below"></div>`;
+  const treeEl = body.querySelector(".hogtree");
+  const listGenes = () => { treeEl.innerHTML = h[3].map(([k, g]) => `<div>${spChip(k, D.species[k][0])}${g.map(esc).join(", ")}</div>`).join(""); };
+  if (TREE_OGS.has(h[1])) {
+    treeEl.innerHTML = `<p class="muted">Loading the gene tree of ${esc(h[1])}...</p>`;
+    loadTree(h[1]).then(T => {
+      const P = pruneTree(T, g => genes.has(geneKey(g[1], geneName(g))), h[2]);
+      if (!P) return listGenes();
+      treeEl.innerHTML = smallTreeHtml(P);
+      drawSmallTrees(treeEl);
+    }, listGenes);
+  } else listGenes();
+  // the HOGs it contains at the nodes below, and its genes in the species below
+  const below = body.querySelector(".below"), k = ST.byName[node];
+  if (k === undefined) return;
+  for (const c of ST.kids[k]) {
+    if (ST.isLeaf(c)) {
+      const sp = ST.sp(c), g = (h[3].find(([s]) => s === sp) || [, []])[1];
+      below.insertAdjacentHTML("beforeend", `<div class="leaf">${sp >= 0 ? spChip(sp, ST.name(c)) : esc(ST.name(c)) + ": "}`
+        + (g.length ? g.map(esc).join(", ") : `<span class="muted">no genes</span>`) + `</div>`);
+      continue;
+    }
+    const cname = ST.name(c), holder = document.createElement("div");
+    holder.className = "sub";
+    below.appendChild(holder);
+    if (HOG_COUNT[cname] === undefined) { holder.innerHTML = `<span class="muted">${esc(cname)}: no HOG file</span>`; continue; }
+    holder.innerHTML = `<span class="muted">Loading the HOGs at ${esc(cname)}...</span>`;
+    loadHogs(cname).then(async C => {  // those of the same orthogroup, all their genes in this HOG
+      const cand = C.ogs.map((og, r) => og === h[1] ? r : -1).filter(r => r >= 0), of = await hogGenes(cname, C, cand);
+      const inside = cand.filter(r => of.get(r).every(([s, g]) => g.every(y => genes.has(geneKey(s, y)))));
+      holder.innerHTML = `<div class="muted">At ${esc(cname)}: ${inside.length ? `${inside.length} HOG${inside.length === 1 ? "" : "s"}` : "no HOG (no genes of its species, or lost)"}</div>`;
+      for (const r of inside) holder.appendChild(hogDetails(C, r, cname));
+    }).catch(err => { holder.innerHTML = `<span class="muted">The HOGs at ${esc(cname)} ${esc(err.message)}.</span>`; });
+  }
 }
 
 function fillSpecies(body, sp) {
@@ -1367,11 +1493,15 @@ function renderOgMode(view) {
   const fillSelect = (list, all) => { $("ex-og").innerHTML = (all && D.all_orthogroups ? `<option value="${ALL}">All orthogroups</option>` : "")
     + list.slice(0, 2000).map(t => `<option>${esc(t[0])}</option>`).join(""); };
   fillSelect(D.trees, true);
-  $("ex-og-q").oninput = e => {
-    const q = e.target.value.trim().toLowerCase();
-    fillSelect(q ? D.trees.filter(([og, genes]) => og.toLowerCase().includes(q) || genes.some(g => g.toLowerCase().includes(q))) : D.trees, !q);
+  let seq = 0, typing = null;
+  $("ex-og-q").oninput = e => { clearTimeout(typing); typing = setTimeout(async () => {
+    const my = ++seq, q = e.target.value.trim();
+    let found;
+    try { found = await searchTrees(q); } catch (err) { $("ex-og-sum").textContent = `The index of the genes ${err.message}.`; return; }
+    if (my !== seq) return;
+    fillSelect(found, !q);
     drawOg();
-  };
+  }, 200); };
   $("ex-og").onchange = drawOg;
   drawOg();
 }
@@ -1472,12 +1602,12 @@ function drawAll() {
   $("ex-og-tree").innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${height}"><rect width="100%" height="100%" fill="var(--ink-fff)"/>${out.join("")}</svg>`;
   $("ex-og-tree").onclick = e => { const g = e.target.closest("[data-s]"); if (g) showAllNode(+g.dataset.s); };
 }
-window.allOrthogroupsLoaded = d => gotData("all", d);
 function showAllNode(k) {
   const A = D.all_orthogroups, el = $("ex-og-node"), d = A.dups[k];
   el.innerHTML = `<h3 style="margin:12px 0 4px">${esc(ST.name(k))}${ST.isLeaf(k) ? "" : ` <span class="muted">(${ST.speciesBelow(k).size} species)</span>`}</h3>`
     + `<div class="muted node-note">${num(A.copies[k])} gene copies on the branch above it; ${num(d[0])} gene duplications here (${num(d[1])} with support \u2265 0.5). Loading its orthogroups...</div>`;
-  fetchData("all", `${D.data}/All_Orthogroups.js`).then(L => {
+  Promise.all([loadData("All_Gained"), loadData(`All_${k}`)]).then(([gained, N]) => {
+    const L = {gained: {[k]: gained[k]}, duplicated: {[k]: N.duplicated}, lost: {[k]: N.lost}};
     if (!el.isConnected) return;
     const note = el.querySelector(".node-note");
     note.textContent = note.textContent.replace(" Loading its orthogroups...", "");
@@ -1528,10 +1658,10 @@ function renderAllGenes() {
     + `Drawn without branch lengths: those of the species tree and the gene trees are not on the same scale.`;
   if (agGainedAt) return drawAllGenes();
   $("ag-tree").innerHTML = `<p class="muted">Loading the orthogroups...</p>`;
-  fetchData("all", `${D.data}/All_Orthogroups.js`).then(L => {
+  loadData("All_Gained").then(gained => {
     agGainedAt = {};
-    L.gained.forEach((ogs, k) => ogs.forEach(og => { agGainedAt[og] = k; }));
-    agGained = L.gained;
+    gained.forEach((ogs, k) => ogs.forEach(og => { agGainedAt[og] = k; }));
+    agGained = gained;
     drawAllGenes();
   }, err => { $("ag-tree").innerHTML = `<p class="muted">The orthogroups ${esc(err.message)}.</p>`; });
 }
@@ -1541,8 +1671,8 @@ function agBuild() {
   const add = (node, parent) => { node.parent = parent; node.kids = []; node.idx = nodes.length; nodes.push(node); if (parent >= 0) nodes[parent].kids.push(node.idx); return node.idx; };
   const addOg = (og, parent) => {
     const t = ogInfo[og], key = "o:" + og, open = agOpen.has(key), T = loaded[og] || cache["tree:" + og];
-    const sps = t[2].species.map(([k]) => k);
-    const me = add({key, kind: "og", og, open, sp: sps.length === 1 ? sps[0] : -1, label: og, note: `${num(t[1].length)} genes, ${sps.length} species`, species: t[2].species}, parent);
+    const sps = (t[2].species || []).map(([k]) => k);  // (for at most 20 species)
+    const me = add({key, kind: "og", og, open, sp: sps.length === 1 ? sps[0] : -1, label: og, note: `${num(t[1])} genes, ${num(t[2].n_species)} species`, species: t[2].species || []}, parent);
     if (!open) return;
     if (!T) { nodes[me].note += " (loading)"; agLoad(og); return; }
     const GT = T.kids ? T : prepareTree(T), map = [me], dups = GT.dupAt;
@@ -1645,12 +1775,15 @@ $("ag-tree").addEventListener("click", e => {
 });
 $("ag-open").onclick = () => { if (agGained) { agGained.forEach((ogs, k) => { if (ogs.length) agOpen.add("b:" + k); }); drawAllGenes(); } };
 $("ag-close").onclick = () => { agOpen.clear(); agClosed.clear(); agHighlight = ""; drawAllGenes(); };
-$("ag-find").onsubmit = e => {
+$("ag-find").onsubmit = async e => {
   e.preventDefault();
-  const q = $("ag-q").value.trim(), ql = q.toLowerCase();
+  const q = $("ag-q").value.trim();
   if (!q || !agGainedAt) return;
   let og = TREE_OGS.has(q) ? q : null;
-  if (!og) { const t = D.trees.find(t => t[1].some(g => g.toLowerCase().includes(ql))); og = t && t[0]; }
+  if (!og) {  // the first gene whose name starts with it
+    try { const found = await findGenes(D.genes, q, 1); og = found.length ? D.trees[found[0][1]][0] : null; }
+    catch (err) { $("ag-msg").textContent = `The index of the genes ${err.message}.`; return; }
+  }
   if (!og || agGainedAt[og] === undefined) { $("ag-msg").textContent = `Not found in the gene trees: ${q}`; return; }
   $("ag-msg").textContent = TREE_OGS.has(q) ? "" : `In ${og}`;
   for (let k = agGainedAt[og]; k >= 0; k = ST.parent(k)) agClosed.delete("s:" + k);

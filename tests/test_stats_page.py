@@ -45,6 +45,18 @@ def page_data(d):
     return json.loads(re.search(r"const D = (.*);\n", page).group(1))
 
 
+def data_file(path):
+    """The value of a page's data file (view_pages.write_data): ofData(name, value);"""
+    text = path.read_text()
+    m = re.match(r'ofData\("([^"]+)",(.*)\);\n$', text, re.S)
+    assert m and m.group(1) == path.stem
+    return json.loads(m.group(2))
+
+
+def stats_data(d, name):
+    return data_file(d / "Comparative_Genomics_Statistics" / "Statistics_Data" / f"{name}.js")
+
+
 def test_write_stats_page(tmp_path):
     make_results(tmp_path)
     page = stats_page.write_stats_page(str(tmp_path))
@@ -55,11 +67,16 @@ def test_write_stats_page(tmp_path):
     assert data["overall"] == [["Number of species", 2], ["Number of genes", 10],
                                ["Percentage of genes in orthogroups", 80.0], ["Date", "2026-10-09"]]
     assert data["per_species"] == [["Number of genes in orthogroups", [6, 2]], ["Number of unassigned genes", [1, 1]]]
-    # [orthogroup, genes of each species, duplications, with support >= 0.5, has a tree page]
-    assert data["orthogroups"] == [["OG0000000", [2, 1], 2, 1, 0], ["OG0000001", [1, 1], 0, 0, 0],
-                                   ["OG0000002", [3, 0], 0, 0, 0]]
+    # the orthogroups in columns (their IDs as OG + 7 digits from 0), and the genes of each species in them
+    # in chunks ([species, genes, ...] of those with genes); the orthogroups of each species
+    assert data["ogs"] == {"ids": {"prefix": "OG", "width": 7, "n": 3}, "genes": [3, 2, 3], "species": [2, 2, 1],
+                           "dups": [2, 0, 0], "dups05": [1, 0, 0], "tree": [0, 0, 0]}
+    assert data["counts"] == [0] and data["max_genes"] == 3
+    assert stats_data(tmp_path, "Counts_0") == [[0, 2, 1, 1], [0, 1, 1, 1], [0, 3]]
+    assert stats_data(tmp_path, "Species_0") == [0, 1, 2] and stats_data(tmp_path, "Species_1") == [0, 1]
     assert dict(data["og_sizes"])["2"] == 1 and dict(data["og_sizes"])["3"] == 2
-    assert data["matrices"] == {"Orthogroups shared": [[3, 2], [2, 2]], "Orthologs: one-to-one": [[0, 1], [1, 0]]}
+    assert data["matrices"] == ["Orthogroups shared", "Orthologs: one-to-one"]
+    assert stats_data(tmp_path, "Matrix_0") == [[3, 2], [2, 2]] and stats_data(tmp_path, "Matrix_1") == [[0, 1], [1, 0]]
     assert data["node_duplications"] == {"Sp_A": [2, 1], "N0": [0, 0]}
     assert data["species_tree"]["genes"] == [["Sp_A", 0], ["Sp_B", 1]]
     assert data["hogs"] == [{"node": "N0", "hogs": 2, "genes": 6, "multi_species": 1,
@@ -70,10 +87,11 @@ def test_write_stats_page(tmp_path):
 def test_hog_data(tmp_path):
     make_results(tmp_path)
     stats_page.write_stats_page(str(tmp_path))
-    text = (tmp_path / "Comparative_Genomics_Statistics" / "Statistics_Data" / "HOGs_N0.js").read_text()
-    assert text.startswith("hogsLoaded(") and text.endswith(");\n")
-    assert json.loads(text[len("hogsLoaded("):-len(");\n")]) == {
-        "node": "N0", "hogs": [["N0.HOG0000000", "OG0000000", "n0", [2, 1]], ["N0.HOG0000001", "OG0000002", "n0", [3, 0]]]}
+    # the HOGs in columns (their orthogroups' rows), the genes of each species in them in chunks
+    assert stats_data(tmp_path, "HOGs_N0") == {
+        "ids": {"prefix": "N0.HOG", "width": 7, "n": 2}, "ogs": [0, 2], "clades": ["n0", "n0"], "genes": [3, 3],
+        "species": [2, 1], "max_genes": 3, "chunks": [0]}
+    assert stats_data(tmp_path, "HOGCounts_N0_0") == [[0, 2, 1, 1], [0, 3]]
 
 
 def test_links_to_the_tree_page(tmp_path):
@@ -84,7 +102,7 @@ def test_links_to_the_tree_page(tmp_path):
     stats_page.write_stats_page(str(tmp_path))
     data = page_data(tmp_path)
     assert data["tree_page"] == "../Resolved_Gene_Trees/Resolved_Gene_Trees.html"
-    assert [og[4] for og in data["orthogroups"]] == [1, 0, 0]  # only the orthogroups with a tree
+    assert data["ogs"]["tree"] == [1, 0, 0]  # only the orthogroups with a tree
 
 
 def test_only_gene_counts(tmp_path):
@@ -112,7 +130,7 @@ def test_page_script_is_valid_javascript(tmp_path):
     stats_page.write_stats_page(str(tmp_path))
     js = tmp_path / "page.js"
     js.write_text((tmp_path / "Comparative_Genomics_Statistics" / "Statistics.html").read_text()
-                  .split("<script>")[1].split("</script>")[0])
+                  .split("<script>")[-1].split("</script>")[0])
     result = subprocess.run(["node", "--check", str(js)], capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stderr
 

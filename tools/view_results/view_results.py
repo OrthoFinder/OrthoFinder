@@ -18,6 +18,7 @@ made by make_copies.py), and needs Python 3 and ete4 (pip install ete4), not
 OrthoFinder:
 
     python view_results/view_results.py Results_*/
+    python -m view_results Results_*/        (the same, from the directory that holds view_results)
 
 Examples
 --------
@@ -26,6 +27,11 @@ view_results Results_*/
 view_results Results_*/ --tree-view
 
 view_results Results_*/ --stats-view --groups-view
+
+For results on another computer (e.g. a cluster), --serve serves the pages over
+HTTP, to open in a browser on yours through an ssh tunnel (the command prints it):
+
+    view_results Results_*/ --serve
 """
 
 import argparse
@@ -36,10 +42,12 @@ try:
     if __package__:  # the view_results command of an OrthoFinder install
         from .orthofinder_pages.views import write_views
         from .orthofinder_pages.printing import print_pages
+        from .orthofinder_pages.view_pages import add_serve_options, present, serve
     else:  # run as a script: python view_results.py
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         from orthofinder_pages.views import write_views
         from orthofinder_pages.printing import print_pages
+        from orthofinder_pages.view_pages import add_serve_options, present, serve
 except ModuleNotFoundError as e:
     if e.name != "ete4":
         raise
@@ -53,7 +61,8 @@ def main(args=None):
                     "files of a finished run (as a run with --view). With no option, all three pages.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="Examples:\n  view_results Results_*/\n  view_results Results_*/ --tree-view\n"
-               "  view_results Results_*/ --stats-view --groups-view")
+               "  view_results Results_*/ --stats-view --groups-view\n"
+               "  view_results Results_*/ --serve      (on a cluster: the pages, served to open in a browser)")
     parser.add_argument("results_dir", metavar="INPUT", help="an OrthoFinder results directory (Results_<name>)")
     parser.add_argument("--tree-view", action="store_true", help="the trees: Resolved_Gene_Trees/Resolved_Gene_Trees.html")
     parser.add_argument("--stats-view", action="store_true",
@@ -61,17 +70,24 @@ def main(args=None):
     parser.add_argument("--groups-view", action="store_true",
                         help="the genes of the orthogroups and HOGs: Orthogroups/Groups.html")
     parser.add_argument("--view", action="store_true", help="all three pages (the default)")
+    add_serve_options(parser)
     a = parser.parse_args(args)
     results_dir = os.path.normpath(a.results_dir)
     if not os.path.isdir(os.path.join(results_dir, "Orthogroups")):
         parser.error(f"not an OrthoFinder results directory (no Orthogroups directory): {a.results_dir}")
-    every = a.view or not (a.tree_view or a.stats_view or a.groups_view)
+    chosen = a.view or a.tree_view or a.stats_view or a.groups_view
+    if a.serve and not chosen and present(results_dir):  # --serve alone: the pages there, as they are
+        serve(results_dir, a.host, a.port)
+        return 0
+    every = a.view or not chosen
     pages, hub, there = write_views(results_dir, trees=every or a.tree_view, stats=every or a.stats_view,
                                     groups=every or a.groups_view)
     if not pages:
         print(f"No pages written: {results_dir} has no resolved gene trees or orthogroups yet", file=sys.stderr)
         return 1
     print_pages(there if hub else pages, hub)  # with OrthoFinder_Results.html: all its pages
+    if a.serve:
+        serve(results_dir, a.host, a.port)
     return 0
 
 

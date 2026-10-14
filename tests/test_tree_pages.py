@@ -76,21 +76,26 @@ def test_write_tree_pages(tmp_path, capsys):
     assert tree_pages.write_tree_pages(str(tmp_path)) == 2
     assert "1 gene trees could not be read" in capsys.readouterr().out
     # each gene tree; the explorer's HOGs of each species tree node and genes of each species
-    assert sorted(p.name for p in (tmp_path / "Resolved_Gene_Trees" / "Tree_Data").iterdir()) == \
-        ["All_Orthogroups.js", "HOGs_N0.js", "OG0000000.js", "OG0000001.js", "Species_0.js", "Species_1.js"]
+    assert sorted(p.name for p in (tmp_path / "Resolved_Gene_Trees" / "Tree_Data").iterdir()) == [
+        "All_0.js", "All_1.js", "All_2.js", "All_Gained.js", "Genes_0.js", "HOGs_N0.js", "HOGs_N0_0.js",
+        "OG0000000.js", "OG0000001.js", "Species_0.js", "Species_1.js"]
     colour = dict(zip(["Sp_A", "Sp_B"], tree_pages.PALETTE))
 
     data = page_data(tmp_path)
-    assert [t[:2] for t in data["trees"]] == [["OG0000000", ["a1", "a2", "b1"]], ["OG0000001", ["a3", "b2", "b3"]]]
+    # the trees in columns: their genes, species, length, duplications, genes per species (for at most 20
+    # species) and alignment ([columns, % gaps, shortest, median and longest sequence, % identical columns])
+    # MK-LV, MKAL-, M--LV: 4 of 15 positions are gaps; columns 1 (M) and 4 (L) are identical in all;
+    # branch lengths 0.1 + 0.2 + 0.3 + 0.4; the duplication with support 0.4 is not counted as supported
+    assert data["trees"] == {"ids": {"prefix": "OG", "width": 7, "n": 2}, "genes": [3, 3], "n_species": [2, 2],
+                             "length": [1.0, 0.6], "dups": [2, 0], "dups05": [1, 0],
+                             "species": [[[0, 2], [1, 1]], [[0, 1], [1, 2]]], "alignment": [[5, 26.7, 3, 4, 4, 40.0], 0]}
+    # the genes of the trees, sorted, each with its tree's number: to find a gene by the start of its name
+    assert data["genes"] == ["a1"]
+    assert data_file(tmp_path, "Genes_0") == [["a1", 0], ["a2", 0], ["a3", 1], ["b1", 0], ["b2", 1], ["b3", 1]]
     assert data["species"] == [["Sp_A", colour["Sp_A"]], ["Sp_B", colour["Sp_B"]]]
     assert data["data"] == "Tree_Data"
     assert data["species_tree"] == {"genes": [["Sp_A", 0], ["Sp_B", 1]],
                                     "nodes": [[-1, 0, "N0"], [0, 0.5, 0], [0, 0.5, 1]]}
-    # MK-LV, MKAL-, M--LV: 4 of 15 positions are gaps; columns 1 (M) and 4 (L) are identical in all;
-    # branch lengths 0.1 + 0.2 + 0.3 + 0.4; the duplication with support 0.4 is not counted as supported
-    assert data["trees"][0][2] == {"species": [[0, 2], [1, 1]], "length": 1.0, "duplications": [2, 1],
-                                   "alignment": {"columns": 5, "gaps": 26.7, "lengths": [3, 4, 4], "identical": 40.0}}
-    assert data["trees"][1][2] == {"species": [[0, 1], [1, 2]], "length": 0.6, "duplications": [0, 0]}
 
 
 def test_tree_data(tmp_path):
@@ -143,7 +148,7 @@ def test_page_script_is_valid_javascript(tmp_path):
     tree_pages.write_tree_pages(str(tmp_path))
     js = tmp_path / "page.js"
     js.write_text((tmp_path / "Resolved_Gene_Trees" / "Resolved_Gene_Trees.html").read_text()
-                  .split("<script>")[1].split("</script>")[0])
+                  .split("<script>")[-1].split("</script>")[0])
     result = subprocess.run(["node", "--check", str(js)], capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stderr
 
@@ -182,10 +187,12 @@ def test_links_to_the_other_pages(tmp_path):
     assert data["stats_page"] == "../Comparative_Genomics_Statistics/Statistics.html" and data["groups_page"] is None
 
 
-def data_file(d, name, callback):
-    text = (d / "Resolved_Gene_Trees" / "Tree_Data" / name).read_text()
-    assert text.startswith(callback + "(") and text.endswith(");\n")
-    return json.loads(text[len(callback) + 1:-len(");\n")])
+def data_file(d, name):
+    """The value of a data file (view_pages.write_data): ofData(name, value);"""
+    path = d / "Resolved_Gene_Trees" / "Tree_Data" / f"{name}.js"
+    m = re.match(r'ofData\("([^"]+)",(.*)\);\n$', path.read_text(), re.S)
+    assert m and m.group(1) == name
+    return json.loads(m.group(2))
 
 
 def test_explorer_data(tmp_path):
@@ -194,14 +201,15 @@ def test_explorer_data(tmp_path):
     data = page_data(tmp_path)
     assert data["hog_nodes"] == [["N0", 2]]
     assert data["species_genes"] == [4, 3]  # assigned and unassigned
-    # each HOG's genes by species number, as in the HOG file
-    assert data_file(tmp_path, "HOGs_N0.js", "hogsLoaded") == {"node": "N0", "hogs": [
-        ["N0.HOG0000000", "OG0000000", "n0", [[0, ["a1", "a2"]], [1, ["b1"]]]],
-        ["N0.HOG0000001", "OG0000001", "n0", [[0, ["a3"]], [1, ["b2", "b3"]]]]]}
-    assert data_file(tmp_path, "Species_0.js", "speciesLoaded") == {
-        "k": 0, "orthogroups": [["OG0000000", ["a1", "a2"]], ["OG0000001", ["a3"]]], "unassigned": ["a4"]}
-    assert data_file(tmp_path, "Species_1.js", "speciesLoaded") == {
-        "k": 1, "orthogroups": [["OG0000000", ["b1"]], ["OG0000001", ["b2", "b3"]]], "unassigned": []}
+    # the HOGs of a node in columns, and each HOG's genes by species number in chunks
+    assert data_file(tmp_path, "HOGs_N0") == {"ids": {"prefix": "N0.HOG", "width": 7, "n": 2},
+                                              "ogs": ["OG0000000", "OG0000001"], "clades": ["n0", "n0"],
+                                              "genes": [3, 3], "species": [2, 2], "chunks": [0]}
+    assert data_file(tmp_path, "HOGs_N0_0") == [[[0, ["a1", "a2"]], [1, ["b1"]]], [[0, ["a3"]], [1, ["b2", "b3"]]]]
+    assert data_file(tmp_path, "Species_0") == {
+        "orthogroups": [["OG0000000", ["a1", "a2"]], ["OG0000001", ["a3"]]], "unassigned": ["a4"]}
+    assert data_file(tmp_path, "Species_1") == {
+        "orthogroups": [["OG0000000", ["b1"]], ["OG0000001", ["b2", "b3"]]], "unassigned": []}
 
 
 def test_explorer_without_hogs(tmp_path):
@@ -220,8 +228,9 @@ def test_reconcile_duplication_and_losses():
     copies, losses, root = tree_pages.reconcile(g_nodes, [number[n[0]] for n in g_names], smap)
     node = {(s_names[x] if isinstance(x, int) else x): k for k, (_, _, x) in enumerate(s_nodes)}
     assert root == node["N0"]
-    assert {name: copies[k] for name, k in node.items()} == {"N0": 1, "N1": 2, "A": 2, "B": 1, "C": 1}
-    assert {name: losses[k] for name, k in node.items()} == {"N0": 0, "N1": 0, "A": 0, "B": 1, "C": 1}
+    # only the nodes with any
+    assert {name: copies[k] for name, k in node.items() if k in copies} == {"N0": 1, "N1": 2, "A": 2, "B": 1, "C": 1}
+    assert {name: losses[k] for name, k in node.items() if k in losses} == {"B": 1, "C": 1}
 
 
 def test_all_orthogroups(tmp_path):
@@ -231,6 +240,8 @@ def test_all_orthogroups(tmp_path):
     assert page_data(tmp_path)["all_orthogroups"] == {
         "n_trees": 2, "n_orthogroups": 2, "copies": [2, 2, 2], "losses": [0, 0, 0], "gains": [2, 0, 0],
         "dups": [[1, 0], [1, 1], [0, 0]]}  # from Duplications.tsv: n0 at N0 (support 0.4), n1 at Sp_A
-    assert data_file(tmp_path, "All_Orthogroups.js", "allOrthogroupsLoaded") == {
-        "gained": [["OG0000000", "OG0000001"], [], []], "lost": [[], [], []],
-        "duplicated": [[["OG0000000", 1]], [["OG0000000", 1]], []]}
+    # the orthogroups gained at each node, and those with losses and duplications at each
+    assert data_file(tmp_path, "All_Gained") == [["OG0000000", "OG0000001"], [], []]
+    assert data_file(tmp_path, "All_0") == {"lost": [], "duplicated": [["OG0000000", 1]]}
+    assert data_file(tmp_path, "All_1") == {"lost": [], "duplicated": [["OG0000000", 1]]}
+    assert data_file(tmp_path, "All_2") == {"lost": [], "duplicated": []}

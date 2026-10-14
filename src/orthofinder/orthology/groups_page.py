@@ -3,17 +3,19 @@
 browser, a tab for each:
 
     Orthogroups/Groups.html
-    Orthogroups/Groups_Data/<table>.js
+    Orthogroups/Groups_Data/*.js
 
 Made from the results files (Orthogroups.tsv, Phylogenetic_Hierarchical_
 Orthogroups/N<i>.tsv), so it can be written again for existing results:
 
     python -m orthofinder.orthology.groups_page <results directory>
 
-The page holds only a summary; each table (the orthogroups, the HOGs of a
-species tree node) is a script the page
-loads when it is opened, so that the page stays small for large runs (a page
-opened from disk may load scripts, but not read other files).
+The page holds only a summary. Each table (the orthogroups, the HOGs of a
+species tree node) is a data file of its rows (their IDs and sizes), and their
+genes are in chunks, loaded for the rows shown; genes are found with an index
+of their names (view_pages.write_gene_index). So the page stays small and quick
+for thousands of species: a page opened from disk may load scripts, but not
+read other files.
 """
 
 import json
@@ -27,33 +29,49 @@ from ..utils import view_pages
 DATA_DIR = "Groups_Data"
 
 
-def split_genes(cell):
-    return cell.split(", ") if cell else []
-
-
-def read_table(filename):
-    """The header and rows of a tab-separated file, split only on tabs (cells may be very long)."""
-    with open(filename, encoding="utf-8", errors="replace") as infile:
-        rows = [line.rstrip("\r\n").split("\t") for line in infile]
-    return (rows[0], [r for r in rows[1:] if r and r[0]]) if rows else ([], [])
-
-
 def node_number(name):
     m = re.match(r"N(\d+)$", name)
     return int(m.group(1)) if m else 10 ** 9
 
 
-def write_table(data_dir, key, columns, rows):
-    """A table for the page, as a script that gives it to the page when loaded."""
-    with open(os.path.join(data_dir, key + ".js"), "w", encoding="utf-8") as out:
-        table = {"key": key, "columns": columns, "rows": rows}
-        out.write(f"tableLoaded({json.dumps(table, separators=(',', ':'))});\n")
+def read_groups(filename, species_index, first=1):
+    """
+    The header and rows of Orthogroups.tsv or a HOG file: [[the first cells
+    (up to first), [[species, [genes]], ...]], ...] with the species of the
+    header's columns from first on (species_index: {name: number}), read
+    without splitting each row at every tab (most cells are empty).
+    """
+    rows = []
+    with open(filename, encoding="utf-8", errors="replace") as infile:
+        header = infile.readline().rstrip("\r\n").split("\t")
+        column = {k: species_index[sp] for k, sp in enumerate(header) if k >= first and sp in species_index}
+        for line in infile:
+            fields = line.rstrip("\r\n").split("\t", first)
+            if not fields[0] or len(fields) < first:
+                continue
+            genes = sorted((column[k], text.split(", ")) for k, text in view_pages.sparse_cells(line) if k in column)
+            rows.append([fields[:first], genes])
+    return header, rows
+
+
+def table_file(data_dir, key, rows, extra):
+    """
+    A table for the page: <key> (its rows' IDs, genes and species, extra, and
+    the first row of each chunk) and <key>_<c> (the genes of each species in its
+    rows, [[species, [genes]], ...]). Returns its number of rows.
+    """
+    view_pages.write_data(data_dir, key, {
+        **extra, "genes": [sum(len(g) for _, g in genes) for _, genes in rows],
+        "species": [len(genes) for _, genes in rows],
+        "chunks": view_pages.write_chunks(data_dir, key, [genes for _, genes in rows],
+                                          lambda genes: sum(len(g) for _, g in genes))})
+    return len(rows)
 
 
 def write_groups_page(results_dir, written=None):
     """
-    Write the groups page of a results directory and its tables. written: the
-    pages a run is writing (view_pages.present).
+    Write the groups page of a results directory and its data files. written:
+    the pages a run is writing (view_pages.present).
     Returns the page's filename, or None if the results have no orthogroups.
     """
     og_dir = os.path.join(results_dir, "Orthogroups")
@@ -61,24 +79,31 @@ def write_groups_page(results_dir, written=None):
     if og_fn is None:
         return None
     q_mcl = os.path.basename(og_fn).startswith("MCL_")
-    header, og_rows = read_table(og_fn)
-    species = header[1:]
-    n = len(species)
+    with open(og_fn, encoding="utf-8", errors="replace") as infile:
+        species = infile.readline().rstrip("\r\n").split("\t")[1:]
+    species_index = {sp: k for k, sp in enumerate(species)}
+    _, og_rows = read_groups(og_fn, species_index)
     data_dir = os.path.join(og_dir, DATA_DIR)
     os.makedirs(data_dir, exist_ok=True)
     tabs = []
 
-    def genes_column(k):
-        return {"name": species[k], "kind": "genes", "species": k}
-
-    # the orthogroups
-    rows = [[r[0], sum(len(split_genes(c)) for c in r[1:n + 1])] + [split_genes(c) for c in (r[1:n + 1] + [""] * n)[:n]]
-            for r in og_rows]
-    write_table(data_dir, "Orthogroups", [{"name": "Orthogroup", "kind": "og"}, {"name": "Genes", "kind": "num"}]
-                + [genes_column(k) for k in range(n)], rows)
+    # the orthogroups (Orthogroups, which the page loads first: the IDs of the orthogroups, for the HOGs)
+    ids = [first[0] for first, _ in og_rows]
+    og_row = {og: i for i, og in enumerate(ids)}
+    tree_page = view_pages.link(results_dir, "trees", written)
+    with_trees = set()
+    trees_fn = os.path.join(results_dir, "Resolved_Gene_Trees", "Resolved_Gene_Trees.txt")
+    if tree_page and os.path.exists(trees_fn):
+        with open(trees_fn, encoding="utf-8", errors="replace") as infile:
+            with_trees = {line[:line.find(":")] for line in infile if ":" in line}
+    n = table_file(data_dir, "Orthogroups", og_rows, {"ids": view_pages.compact_ids(ids), "cols": list(range(len(species))),
+                                                      "tree": [int(og in with_trees) for og in ids]})
     tabs.append({"id": "orthogroups", "name": "MCL orthogroups" if q_mcl else "Orthogroups",
                  "note": f"The orthogroups of {os.path.basename(og_fn)}.",
-                 "views": [{"name": "All orthogroups", "key": "Orthogroups", "rows": len(rows)}]})
+                 "views": [{"name": "All orthogroups", "key": "Orthogroups", "rows": n}]})
+    gene_index = view_pages.write_gene_index(data_dir, ((gene, i) for i, (_, genes) in enumerate(og_rows)
+                                                        for _, gs in genes for gene in gs))
+    del og_rows
 
     # the HOGs, a table for each species tree node (the species of its clade)
     hog_dir = os.path.join(results_dir, "Phylogenetic_Hierarchical_Orthogroups")
@@ -87,35 +112,31 @@ def write_groups_page(results_dir, written=None):
                        key=lambda f: (node_number(f[:-4]), f))
     for fn in hog_files:
         node = fn[:-4]
-        head, hog_rows = read_table(os.path.join(hog_dir, fn))
-        cols = [(i, species.index(sp)) for i, sp in enumerate(head) if i >= 3 and sp in species]
-        clade = [(i, k) for i, k in cols if any(i < len(r) and r[i] for r in hog_rows)]
-        rows = [[r[0], r[1], r[2], sum(len(split_genes(r[i])) for i, _ in clade if i < len(r))]
-                + [split_genes(r[i]) if i < len(r) else [] for i, _ in clade] for r in hog_rows]
-        write_table(data_dir, f"HOGs_{node}", [{"name": "HOG", "kind": "id"}, {"name": "Orthogroup", "kind": "og"},
-                                               {"name": "Gene tree clade", "kind": "text"}, {"name": "Genes", "kind": "num"}]
-                    + [genes_column(k) for _, k in clade], rows)
-        views.append({"name": f"{node}: {', '.join(species[k] for _, k in clade)}", "key": f"HOGs_{node}", "rows": len(rows)})
+        _, hog_rows = read_groups(os.path.join(hog_dir, fn), species_index, first=3)
+        clade = sorted({k for _, genes in hog_rows for k, _ in genes})
+        n = table_file(data_dir, f"HOGs_{node}", hog_rows, {
+            "ids": view_pages.compact_ids([first[0] for first, _ in hog_rows]),
+            "ogs": [og_row.get(first[1], first[1]) for first, _ in hog_rows],  # the orthogroup's row (its ID if not one)
+            "clades": [first[2] for first, _ in hog_rows], "cols": clade})
+        names = [species[k] for k in clade]
+        views.append({"name": f"{node}: " + (", ".join(names) if len(names) <= 4 else
+                                             f"{len(names)} species ({', '.join(names[:3])}, ...)"),
+                      "key": f"HOGs_{node}", "rows": n})
     if views:
         tabs.append({"id": "hogs", "name": "HOGs", "views": views,
                      "note": "The hierarchical orthogroups of Phylogenetic_Hierarchical_Orthogroups/N<i>.tsv, "
                              "one species tree node at a time (the species of its clade)."})
 
-    tree_page = view_pages.link(results_dir, "trees", written)
-    tree_ogs = []
-    trees_fn = os.path.join(results_dir, "Resolved_Gene_Trees", "Resolved_Gene_Trees.txt")
-    if tree_page and os.path.exists(trees_fn):
-        with open(trees_fn, encoding="utf-8", errors="replace") as infile:
-            tree_ogs = [line.split(":", 1)[0] for line in infile if ":" in line]
-    data = {"version": __version__, "data": DATA_DIR, "tabs": tabs,
+    data = {"version": __version__, "data": DATA_DIR, "tabs": tabs, "genes": gene_index,
             "species": [[sp, PALETTE[k % len(PALETTE)]] for k, sp in enumerate(species)],
             "nav": view_pages.nav(results_dir, "groups", written),
-            "tree_page": tree_page if tree_ogs else None, "tree_ogs": tree_ogs,
+            "tree_page": tree_page if with_trees else None,
             "stats_page": view_pages.link(results_dir, "stats", written)}
     page = os.path.join(og_dir, "Groups.html")
     with open(page, "w", encoding="utf-8") as out:
         out.write(HTML.replace("__NAV_CSS__", view_pages.NAV_CSS).replace("__NAV_HTML__", view_pages.NAV_HTML)
                   .replace("__NAV_JS__", view_pages.NAV_JS).replace("__THEME_JS__", view_pages.THEME_JS)
+                  .replace("__DATA_JS__", view_pages.DATA_JS)
                   .replace("__DATA__", json.dumps(data, separators=(",", ":")).replace("</", "<\\/")))
     return page
 
@@ -155,6 +176,9 @@ td.num, th.num { font-variant-numeric:tabular-nums; text-align:right; }
 details { display:inline; } summary { display:inline; cursor:pointer; color:var(--accent); font-size:12px; white-space:nowrap; }
 a { color:var(--accent); }
 mark { background:var(--mark); color:inherit; }
+.spg { margin:1px 0 3px; } .spn { font-size:12px; color:var(--muted); margin-right:4px; }
+.legend > details { display:block; width:100%; } .legend > details > summary { display:list-item; color:var(--muted); font-size:13px; }
+.legend details .legend { max-height:30vh; overflow:auto; margin-top:6px; }
 __NAV_CSS__
 </style></head><body><main>
 __NAV_HTML__
@@ -172,54 +196,87 @@ __NAV_HTML__
 </main>
 <script>
 const D = __DATA__;
+__DATA_JS__
 __NAV_JS__
-const PAGE = 100, SHOW = 6;
+const PAGE = 100, SHOW = 6, SHOW_SPECIES = 6, COLUMNS_MAX = 20;  // a column for each species up to COLUMNS_MAX of them
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const TREE_OGS = new Set(D.tree_ogs);
+const NS = D.species.length;
 $("sub").textContent = `OrthoFinder ${D.version}. The genes of each orthogroup and HOG, from the results files. `
-  + `Each table is loaded when it is opened.`;
-$("legend").innerHTML = D.species.map(([s, c]) => `<span><span class="sw" style="background:${c}"></span>${esc(s)}</span>`).join("");
-$("tabs").innerHTML = D.tabs.map(t => `<button role="tab" data-tab="${t.id}">${esc(t.name)}</button>`).join("");
-
-// tables, each loaded once, when first opened
-const tables = {}, waiting = {};
-window.tableLoaded = t => { tables[t.key] = t; (waiting[t.key] || []).forEach(f => f(t)); delete waiting[t.key]; };
-function loadTable(key, then) {
-  if (tables[key]) return then(tables[key]);
-  if (!waiting[key]) {
-    waiting[key] = [];
-    const s = document.createElement("script");
-    s.src = `${D.data}/${encodeURIComponent(key)}.js`;
-    s.onerror = () => { delete waiting[key]; $("table").innerHTML = `<tr><td class="muted">The table ${esc(key)} could not be loaded (${esc(s.src)}). The page needs its folder ${esc(D.data)} next to it: copy (or download) them together, e.g. the whole results directory.</td></tr>`; };
-    document.head.appendChild(s);
-  }
-  waiting[key].push(then);
+  + `Each table is loaded when it is opened, and the genes of the rows shown.`;
+{
+  const key = D.species.map(([s, c]) => `<span><span class="sw" style="background:${c}"></span>${esc(s)}</span>`).join("");
+  $("legend").innerHTML = NS > 40 ? `<details><summary>The species and their colours (${NS.toLocaleString()})</summary><div class="legend">${key}</div></details>` : key;
 }
+$("tabs").innerHTML = D.tabs.map(t => `<button role="tab" data-tab="${t.id}">${esc(t.name)}</button>`).join("");
+const message = text => { $("table").innerHTML = `<tr><td class="muted">${esc(text)}</td></tr>`; };
 
 const q = () => $("q").value.trim().toLowerCase();
 const mark = s => { const t = q(), i = t ? String(s).toLowerCase().indexOf(t) : -1;
   return i < 0 ? esc(s) : esc(String(s).slice(0, i)) + `<mark>${esc(String(s).slice(i, i + t.length))}</mark>` + esc(String(s).slice(i + t.length)); };
 const chips = gs => gs.map(g => `<span class="gene">${mark(g)}</span>`).join("");
-function genes(gs) {
-  const t = q(), hit = t && gs.slice(SHOW).some(g => g.toLowerCase().includes(t));
-  return gs.length <= SHOW ? chips(gs) : chips(gs.slice(0, SHOW))
-    + `<details${hit ? " open" : ""}><summary>+${gs.length - SHOW} more</summary>${chips(gs.slice(SHOW))}</details>`;
+const hasHit = gs => { const t = q(); return t && gs.some(g => g.toLowerCase().includes(t)); };
+// the hidden part of a long list: made when opened (a large orthogroup can have thousands of genes), or at
+// once, open, if the search matches in it
+let more = [];
+function hidden(summary, html, hit) {
+  if (hit) return `<details open><summary>${summary}</summary>${html()}</details>`;
+  more.push(html);
+  return `<details data-more="${more.length - 1}"><summary>${summary}</summary></details>`;
 }
-function ogCell(og) {
+document.addEventListener("toggle", e => {
+  const d = e.target;
+  if (d.open && d.dataset && d.dataset.more !== undefined && more[+d.dataset.more]) {
+    d.insertAdjacentHTML("beforeend", more[+d.dataset.more]()); delete d.dataset.more;
+  }
+}, true);
+function genes(gs) {
+  if (gs.length <= SHOW) return chips(gs);
+  const rest = gs.slice(SHOW);
+  return chips(gs.slice(0, SHOW)) + hidden(`+${rest.length} more`, () => chips(rest), hasHit(rest));
+}
+// the genes of many species in one cell: each species' genes after its name; past SHOW_SPECIES species, the rest to open
+function bySpecies(groups) {
+  if (q()) groups = [...groups.filter(([, gs]) => hasHit(gs)), ...groups.filter(([, gs]) => !hasHit(gs))];  // those matching the search first
+  const one = ([k, gs]) => `<div class="spg"><span class="sw" style="background:${D.species[k][1]}"></span><span class="spn">${esc(D.species[k][0])}</span> ${genes(gs)}</div>`;
+  const rest = groups.slice(SHOW_SPECIES);
+  return groups.slice(0, SHOW_SPECIES).map(one).join("")
+    + (rest.length ? hidden(`+${rest.length} more species`, () => rest.map(one).join(""), rest.some(([, gs]) => hasHit(gs))) : "");
+}
+function ogCell(og, hasTree) {
   const links = [];
-  if (D.tree_page && TREE_OGS.has(og)) links.push(`<a href="${esc(D.tree_page)}#${encodeURIComponent(og)}" title="Its gene tree and alignment">tree</a>`);
+  if (D.tree_page && hasTree) links.push(`<a href="${esc(D.tree_page)}#${encodeURIComponent(og)}" title="Its gene tree and alignment">tree</a>`);
   if (D.stats_page) links.push(`<a href="${esc(D.stats_page)}#orthogroups/${encodeURIComponent(og)}" title="In the statistics">statistics</a>`);
   return `<td class="id">${mark(og)}${links.length ? `<span class="links">${links.join("")}</span>` : ""}</td>`;
 }
-const th = c => c.kind === "genes" ? `<th><span class="sw" style="background:${D.species[c.species][1]}"></span>${esc(c.name)}</th>`
-  : `<th${c.kind === "num" ? ' class="num"' : ""}>${esc(c.name)}</th>`;
-const td = (c, v) => c.kind === "genes" ? `<td>${genes(v)}</td>` : c.kind === "og" ? ogCell(v)
-  : c.kind === "num" ? `<td class="num">${Number(v).toLocaleString()}</td>`
-  : `<td class="${c.kind === "id" ? "id" : ""}">${mark(v)}</td>`;
-const text = r => r.map(v => Array.isArray(v) ? v.join(" ") : String(v)).join(" ").toLowerCase();
+const num = x => Number(x).toLocaleString();
 
-let tab = D.tabs[0], table = null, rows = [], page = 0;
+// a table (a data file): its rows' IDs (and for HOGs their orthogroups and gene tree clades), genes and species,
+// the species of its columns (cols), and its genes in chunks, loaded for the rows shown
+let OG = null, OGIDS = null;  // the orthogroups, loaded first
+function prepare(t) {
+  if (t.ready) return t;
+  t.ids = expandIds(t.ids);
+  t.rowIds = t.ogs ? t.ogs.map(x => typeof x === "number" ? OGIDS[x] : x) : t.ids;  // its orthogroup's ID
+  t.columns = t.cols.length <= COLUMNS_MAX;  // a column for each species, else one for all
+  t.ready = true;
+  return t;
+}
+function headHtml(t) {
+  const sp = k => `<th><span class="sw" style="background:${D.species[k][1]}"></span>${esc(D.species[k][0])}</th>`;
+  return "<thead><tr>" + (t.ogs ? "<th>HOG</th><th>Orthogroup</th><th>Gene tree clade</th>" : "<th>Orthogroup</th>")
+    + `<th class="num">Genes</th>` + (t.columns ? t.cols.map(sp).join("") : `<th>Genes by species <span class="muted">(${num(t.cols.length)} species)</span></th>`) + "</tr></thead>";
+}
+function rowHtml(t, r, groups) {
+  const og = t.ogs && typeof t.ogs[r] === "number" ? t.ogs[r] : (t.ogs ? -1 : r), hasTree = og >= 0 && OG.tree[og];
+  let cells;
+  if (t.columns) { const of = new Map(groups); cells = t.cols.map(k => `<td>${genes(of.get(k) || [])}</td>`).join(""); }
+  else cells = `<td>${bySpecies(groups)}</td>`;
+  return "<tr>" + (t.ogs ? `<td class="id">${mark(t.ids[r])}</td>${ogCell(t.rowIds[r], hasTree)}<td>${mark(t.clades[r])}</td>` : ogCell(t.ids[r], hasTree))
+    + `<td class="num">${num(t.genes[r])}<div class="muted" style="white-space:nowrap">${num(t.species[r])} species</div></td>${cells}</tr>`;
+}
+
+let tab = D.tabs[0], table = null, rows = [], page = 0, seq = 0;
 function openTab(id, view = 0) {
   tab = D.tabs.find(t => t.id === id) || D.tabs[0];
   for (const b of document.querySelectorAll("#tabs button")) b.setAttribute("aria-selected", b.dataset.tab === tab.id);
@@ -232,19 +289,40 @@ function openTab(id, view = 0) {
 function openView(i) {
   const key = tab.views[i].key;
   table = null;
-  $("table").innerHTML = `<tr><td class="muted">Loading ${esc(tab.views[i].name)}...</td></tr>`;
-  loadTable(key, t => { if (tab.views[+$("view").value].key === key) { table = t; filter(); } });
+  message(`Loading ${tab.views[i].name}...`);
+  loadData(key).then(t => { if (tab.views[+$("view").value].key === key) { table = prepare(t); table.key = key; filter(); } },
+    err => message(`The table ${key} ${err.message}.`));
 }
-function filter() {
+// the rows that match the search: by their IDs, and by their genes (the start of a gene's name, with the index)
+async function filter() {
   if (!table) return;
-  const t = q();
-  rows = t ? table.rows.filter(r => text(r).includes(t)) : table.rows;
+  const my = ++seq, t = q(), T = table;
+  if (!t) { rows = T.ids.map((_, r) => r); page = 0; return draw(); }
+  const hits = new Set();
+  T.ids.forEach((id, r) => { if (id.toLowerCase().includes(t) || (T.ogs && T.rowIds[r].toLowerCase().includes(t))) hits.add(r); });
+  $("count").textContent = "searching...";
+  try {
+    const found = await findGenes(D.genes, t, 5000);  // [[gene, orthogroup's row]]
+    if (my !== seq) return;
+    const ogs = new Set(found.map(g => g[1]));
+    if (!T.ogs) ogs.forEach(r => hits.add(r));
+    else {  // the HOGs of those orthogroups with the gene (an orthogroup can have several HOGs at a node)
+      const cand = T.ogs.map((x, r) => [x, r]).filter(([x]) => typeof x === "number" && ogs.has(x)).map(([, r]) => r);
+      const of = await chunkRows(T.key, T.chunks, cand);
+      if (my !== seq) return;
+      for (const r of cand) if (of.get(r).some(([, gs]) => gs.some(g => g.toLowerCase().startsWith(t)))) hits.add(r);
+    }
+  } catch (e) { if (my === seq) message(`The index of the genes ${e.message}.`); return; }
+  rows = [...hits].sort((a, b) => a - b);
   page = 0; draw();
 }
-function draw() {
-  const start = page * PAGE;
-  $("table").innerHTML = "<thead><tr>" + table.columns.map(th).join("") + "</tr></thead><tbody>"
-    + rows.slice(start, start + PAGE).map(r => "<tr>" + r.map((v, i) => td(table.columns[i], v)).join("") + "</tr>").join("") + "</tbody>";
+async function draw() {
+  const my = ++seq, T = table, start = page * PAGE, shown = rows.slice(start, start + PAGE);
+  let of;
+  try { of = await chunkRows(T.key, T.chunks, shown); } catch (e) { if (my === seq) message(`The genes ${e.message}.`); return; }
+  if (my !== seq) return;
+  more = [];
+  $("table").innerHTML = headHtml(T) + "<tbody>" + shown.map(r => rowHtml(T, r, of.get(r))).join("") + "</tbody>";
   $("count").textContent = rows.length
     ? `${(start + 1).toLocaleString()}–${Math.min(start + PAGE, rows.length).toLocaleString()} of ${rows.length.toLocaleString()}` : "no matches";
   $("prev").disabled = page === 0;
@@ -252,7 +330,8 @@ function draw() {
 }
 $("tabs").onclick = e => { const b = e.target.closest("[data-tab]"); if (b) { openTab(b.dataset.tab); history.replaceState(null, "", "#" + b.dataset.tab); } };
 $("view").onchange = e => openView(+e.target.value);
-$("q").addEventListener("input", filter);
+let typing = null;
+$("q").addEventListener("input", () => { clearTimeout(typing); typing = setTimeout(filter, 200); });
 $("prev").onclick = () => { page--; draw(); };
 $("next").onclick = () => { page++; draw(); };
 // Groups.html#orthogroups/OG0000003: that orthogroup; #hogs: the HOGs
@@ -261,8 +340,12 @@ function goToHash() {
   $("q").value = search || "";
   openTab(tab || D.tabs[0].id);
 }
-goToHash();
-window.addEventListener("hashchange", goToHash);  // e.g. sent here from another page in OrthoFinder_Results.html
+message("Loading the orthogroups...");
+loadData("Orthogroups").then(t => {
+  OG = t; OGIDS = expandIds(t.ids);
+  goToHash();
+  window.addEventListener("hashchange", goToHash);  // e.g. sent here from another page in OrthoFinder_Results.html
+}, err => message(`The orthogroups ${err.message}.`));
 </script></body></html>
 """
 
