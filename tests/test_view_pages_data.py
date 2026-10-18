@@ -1,5 +1,6 @@
 """The data files of the pages to view the results (view_pages): small and quick for thousands of species."""
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -86,3 +87,47 @@ def test_gene_counts_sparse(tmp_path):
 def test_shared_orthogroups():
     counts = [["OG0", [0, 2, 1, 1]], ["OG1", [0, 1, 1, 1]], ["OG2", [0, 3]], ["OG3", [2, 1]]]
     assert stats_page.shared_orthogroups(counts, 3) == [[3, 2, 0], [2, 2, 0], [0, 0, 1]]
+
+
+def test_chunks_from_an_iterator_as_from_a_list(tmp_path):
+    import random
+    rng = random.Random(3)
+    rows = [["x"] * rng.randint(0, 30) for _ in range(200)]
+    (tmp_path / "a").mkdir(), (tmp_path / "b").mkdir()
+    starts_a = view_pages.write_chunks(str(tmp_path / "a"), "T", rows, len, limit=50)
+    starts_b = view_pages.write_chunks(str(tmp_path / "b"), "T", iter(rows), len, limit=50)
+    assert starts_a == starts_b
+    assert sorted(os.listdir(tmp_path / "a")) == sorted(os.listdir(tmp_path / "b"))
+    for fn in os.listdir(tmp_path / "a"):
+        assert (tmp_path / "a" / fn).read_text() == (tmp_path / "b" / fn).read_text()
+
+
+def test_gene_index_sorted_in_runs_as_in_memory(tmp_path):
+    # merged runs give what sorted() gives, equal names (ignoring case) in the order given
+    import random
+    rng = random.Random(8)
+    genes = [(rng.choice(["g", "G", "a", "Ab", "ab", "z"]) + str(rng.randint(0, 30)), i) for i in range(5000)]
+    (tmp_path / "mem").mkdir(), (tmp_path / "runs").mkdir()
+    index_mem = view_pages.write_gene_index(str(tmp_path / "mem"), genes, shard=300)
+    index_runs = view_pages.write_gene_index(str(tmp_path / "runs"), iter(genes), shard=300, run=137)
+    assert index_mem == index_runs
+    assert os.listdir(tmp_path / "runs") and not [f for f in os.listdir(tmp_path / "runs") if not f.endswith(".js")]
+    for fn in os.listdir(tmp_path / "mem"):
+        assert (tmp_path / "mem" / fn).read_text() == (tmp_path / "runs" / fn).read_text()
+
+
+def test_command_threads_whatever_the_environment(monkeypatch):
+    import subprocess
+    from orthofinder.utils import command_runner, parallel_task_manager
+    for var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
+        monkeypatch.setitem(parallel_task_manager.my_env, var, "32")
+    seen = {}
+
+    def run(command, env, stdout=None, stderr=None):
+        seen.update({k: env[k] for k in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS")})
+        return 0, b"", b""
+    monkeypatch.setattr(parallel_task_manager, "run_monitored_command", run)
+    command_runner.run_command("prog -t METHODTHREAD", "1")
+    assert seen == {"OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1"}
+    command_runner.run_command("prog -t METHODTHREAD", "2")
+    assert seen["OMP_NUM_THREADS"] == "2" and seen["MKL_NUM_THREADS"] == "1"

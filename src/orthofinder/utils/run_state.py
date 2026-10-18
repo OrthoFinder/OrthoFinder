@@ -11,8 +11,19 @@ Log.txt is the record of a run for people; checkpoint.txt the record of its
 progress (stages, finished searches); run_state.json the locations and
 settings a restart needs.
 
-  run         "analysis": "core" (-f) or "assign" (--assign); the commands
-              that made and continued it.
+  run         "analysis": "core" (-f) or "assign" (--assign); "invocations": the
+              OrthoFinder commands that made and continued it, each
+              {"number", "command", "directory" (where it was run: its
+              paths are relative to it), "started", "version"} (results of older
+              versions: "commands", the command lines only).
+  commands    one example of each external command the run used, for
+              debugging: {"<program> [<sub-command>]": {"command" (as it was
+              run: the program's full path, the threads filled in), "program",
+              "stage", "invocation" (its number)}}, the first of each in the
+              latest invocation that ran it (a dependency test's only if the
+              run ran none)
+              (note_command; "(species tree)": the tree of the concatenated
+              alignment).
   dirs        "working": this results directory's WorkingDirectory (the
               current dir, where the run writes);
               "base": the working directories read from, this one first
@@ -32,6 +43,17 @@ settings a restart needs.
               "first_new_species": the ID of the first new species;
               "i_og_restart": the first orthogroup whose gene tree is still to
               be inferred (the others were inferred to find the clades).
+  programs    {program: full path} of the programs the run uses (the search,
+              MCL, MSA, tree and species tree programs, as the dependency
+              check ran them; parallel_task_manager.program_dirs: where they
+              are looked for). A restart's check updates them.
+  python      the Python the run uses: "executable", "prefix", "version", "orthofinder"
+              (its version and path) and "packages": {name: {"version", "path"}}
+              of the Python packages it needs (null if one is not installed).
+  system      the computer the run is on (utils.system_info: OS, glibc, CPU and
+              the cores available to the run, memory and a container's or job's
+              limit, open-file limits, container, cluster job), for debugging;
+              null where a value cannot be read. A restart's check updates it.
   settings    the settings a restart continues with (SETTINGS), unless given
               again on its command line. A custom scoring matrix
               (--custom-matrix) is the copy in the working directory that
@@ -41,9 +63,13 @@ settings a restart needs.
 Paths inside the results directory are kept relative to it, so a results
 directory that is copied or moved keeps working; others are absolute.
 """
+import contextlib
+import datetime
 import json
 import os
+import re
 import shutil
+import threading
 
 from ..search import diamond_scoring
 
@@ -108,37 +134,167 @@ def read(results_dir):
     fn = state_path(results_dir)
     if not os.path.exists(fn):
         return {}
-    with open(fn) as infile:
+    with open(fn, encoding="utf-8") as infile:
         return json.load(infile)
 
 
 def _write(results_dir, state):
     fn = state_path(results_dir)
     tmp = fn + ".tmp"
-    with open(tmp, "w") as outfile:
+    with open(tmp, "w", encoding="utf-8", newline="\n") as outfile:
         json.dump(state, outfile, indent=2, sort_keys=True)
     os.replace(tmp, fn)        # never a half-written state
+
+
+# One update at a time: the commands are noted from the threads, and the forked
+# processes, that run them. (A lock of the working directory itself, not a file.)
+_update_lock = threading.RLock()
+_lock_depth = [0]
+
+
+@contextlib.contextmanager
+def _locked(results_dir):
+    with _update_lock:
+        fd = None
+        if _lock_depth[0] == 0:
+            try:
+                import fcntl
+                fd = os.open(os.path.join(_results_dir(results_dir), WORKING_DIR_NAME), os.O_RDONLY)
+                fcntl.flock(fd, fcntl.LOCK_EX)
+            except (ImportError, OSError):     # (Windows; or not lockable: the threads only)
+                if fd is not None:
+                    os.close(fd)
+                fd = None
+        _lock_depth[0] += 1
+        try:
+            yield
+        finally:
+            _lock_depth[0] -= 1
+            if fd is not None:
+                os.close(fd)                    # (releases the lock)
 
 
 def update(results_dir, section, **values):
     """Set values in a section of the state (paths are given as they are: see record_dirs etc.)."""
     if not os.path.isdir(os.path.join(_results_dir(results_dir), WORKING_DIR_NAME)):
         return
-    state = read(results_dir)
-    state["version"] = VERSION
-    state.setdefault(section, {}).update(values)
-    _write(results_dir, state)
+    with _locked(results_dir):
+        state = read(results_dir)
+        state["version"] = VERSION
+        state.setdefault(section, {}).update(values)
+        _write(results_dir, state)
 
 
 # ------------------------------------------------------------- the parts ----
 
 def record_run(results_dir, analysis, command):
-    """The analysis a results directory holds (set by the run that made it) and the commands run on it."""
-    state = read(results_dir)
-    run = state.get("run", {})
-    commands = run.get("commands", [])
-    commands.append(command)
-    update(results_dir, "run", analysis=run.get("analysis", analysis), commands=commands[-20:])
+    """
+    The analysis a results directory holds (set by the run that made it) and the
+    OrthoFinder commands run on it (the latest 20): each with the directory it was
+    run in, when it started and the version that ran it.
+    """
+    from .. import __version__
+    if not os.path.isdir(os.path.join(_results_dir(results_dir), WORKING_DIR_NAME)):
+        return
+    with _locked(results_dir):
+        state = read(results_dir)
+        run = state.get("run", {})
+        invocations = run.get("invocations", [])
+        _invocation[0] = invocations[-1].get("number", len(invocations)) + 1 if invocations else 1
+        invocations.append({"number": _invocation[0], "command": command, "directory": os.getcwd(),
+                            "started": datetime.datetime.now().isoformat(timespec="seconds"),
+                            "version": __version__})
+        update(results_dir, "run", analysis=run.get("analysis", analysis), invocations=invocations[-20:])
+
+
+# ------------------------------------------------- the external commands ----
+# The stage of the run (the workflow's steps, utils.logging.RunLogger.stage and
+# run.context.RunContext.step), for the commands noted while it runs
+_stage = ["Initialisation"]
+
+
+@contextlib.contextmanager
+def stage(name):
+    """The commands run in this block are noted as of the stage name."""
+    previous = _stage[0]
+    _stage[0] = name
+    try:
+        yield
+    finally:
+        _stage[0] = previous
+
+
+_noted = set()            # the keys noted in this invocation (by this process)
+_tested = set()           # those noted by a dependency test only (a run's command replaces it)
+DEPENDENCY_CHECK = "Dependency check"
+_invocation = [0]         # its number (record_run)
+_noted_lock = threading.Lock()
+_SUB_COMMAND = re.compile(r"[A-Za-z][A-Za-z0-9_-]*$")
+_ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
+# (the concatenated alignment of the species tree: file_handler.get_species_tree_concat_align_fn)
+_SPECIES_TREE_ALIGNMENT = "SpeciesTreeAlignment.fa"
+
+
+def command_key(command):
+    """
+    "<program> [<sub-command>]" of an external command: its program, and
+    the word after it if a sub-command (diamond makedb / blastp, mmseqs createdb /
+    search: not an option or a file); "(species tree)" if it reads the concatenated
+    alignment of the species tree. None if it runs no program.
+    """
+    first = re.split(r"\n|;|&&|\|\||\|", command, maxsplit=1)[0].split()
+    while first and _ASSIGNMENT.match(first[0]):
+        first.pop(0)
+    if not first:
+        return None
+    key = os.path.basename(first[0])
+    if len(first) > 1 and _SUB_COMMAND.match(first[1]):
+        key += " " + first[1]
+    if _SPECIES_TREE_ALIGNMENT in command:
+        key += " (species tree)"
+    return key
+
+
+def note_command(command):
+    """
+    Keep one example of each kind of external command (command_key) in the run's
+    state ("commands"): the first the invocation runs (by any of its processes),
+    as it is run (the program's full path, utils.programs; the threads filled in),
+    with its stage. A dependency test's command is kept only until the run's
+    first command of its kind, and one of an earlier invocation is replaced.
+    Never fails the run.
+    """
+    try:
+        key = command_key(command)
+        test = _stage[0] == DEPENDENCY_CHECK
+        if key is None or key in _noted or (test and key in _tested):
+            return
+        with _noted_lock:
+            if key in _noted or (test and key in _tested):
+                return
+            (_tested if test else _noted).add(key)
+        from ..utils import file_handler, programs
+        results_dir = getattr(file_handler.handler, "rd1", None)
+        if not results_dir:
+            return
+        program = programs.command_programs(command)
+        path = None
+        if program:
+            # (a dependency test, before a copy is chosen, runs the first on PATH)
+            from . import parallel_task_manager
+            path = programs.chosen().get(program[0]) or shutil.which(
+                program[0], path=parallel_task_manager.my_env.get("PATH"))
+        if not os.path.isdir(os.path.join(_results_dir(results_dir), WORKING_DIR_NAME)):
+            return
+        with _locked(results_dir):
+            noted = read(results_dir).get("commands", {}).get(key)
+            if (noted is not None and noted.get("invocation") == _invocation[0]
+                    and (test or noted.get("stage") != DEPENDENCY_CHECK)):
+                return             # (noted by another process)
+            update(results_dir, "commands", **{key: {"command": programs.with_paths(command), "program": path,
+                                                     "stage": _stage[0], "invocation": _invocation[0]}})
+    except Exception:
+        pass
 
 
 def record_dirs(results_dir, working=None, base=None, trees=None, core_results=None, core_working=None):
@@ -177,9 +333,14 @@ def file(results_dir, state, name):
     return fn if fn is not None and os.path.exists(fn) else None
 
 
+def species_tree_copy_fn(results_dir):
+    """The copy of the species tree the run uses, in its working directory (keep_species_tree)."""
+    return os.path.join(_results_dir(results_dir), WORKING_DIR_NAME, SPECIES_TREE_FN)
+
+
 def keep_species_tree(results_dir, species_tree_fn):
     """Keep a copy of the species tree the run uses, in its working directory (a restart uses it)."""
-    copy_fn = os.path.join(_results_dir(results_dir), WORKING_DIR_NAME, SPECIES_TREE_FN)
+    copy_fn = species_tree_copy_fn(results_dir)
     if os.path.abspath(species_tree_fn) != os.path.abspath(copy_fn):
         shutil.copyfile(species_tree_fn, copy_fn)
     record_file(results_dir, "species_tree", copy_fn)

@@ -25,9 +25,10 @@ def write_table(path, species, rows, first="OG", start=0):
 
 def test_species_for_analysis(tmp_path):
     ids = tmp_path / "SpeciesIDs.txt"
-    ids.write_text("0: Species_A.faa\n#1: Excluded.fa\n2: Species B.fa\n\n")
+    ids.write_text("0: Species_A.faa\n#1: Excluded.fa\n2: Species B.fa\n\n", encoding="utf-8")
+    # (the names of the other results files: gene_ids.clean_species_name)
     assert orthoxml.species_for_analysis(str(ids), [2, 0]) == [
-        ("Species B", "Species B.fa"), ("Species_A", "Species_A.faa")]
+        ("Species_B", "Species B.fa"), ("Species_A", "Species_A.faa")]
 
 
 def test_orthogroups(tmp_path):

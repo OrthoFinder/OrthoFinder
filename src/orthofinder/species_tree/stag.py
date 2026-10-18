@@ -35,7 +35,7 @@ except ImportError:
     ...
 
 from ..phylo import tree, newick
-from ..utils import util, parallel_task_manager
+from ..utils import util, parallel_task_manager, gene_ids, file_io
 from . import consensus_tree as cons
 
 # import tree, newick, util, parallel_task_manager
@@ -75,7 +75,7 @@ def write_phylip_matrix(m, names, out_fn, max_og=1e6):
     m - list of mp.Array  (so that each represents an nSeq x nSeq matrix
     """
     sliver = 1e-6
-    with open(out_fn, 'w') as outfile:
+    with open(out_fn, 'w', encoding="utf-8", newline="\n") as outfile:
         n = len(m)
         outfile.write("%d\n" % n)
         for i in range(n):
@@ -97,13 +97,11 @@ class GeneToSpecies(object):
         self.exact = dict()
         self.startswith = dict()
         if gene_map_fn.endswith("SpeciesIDs.txt"):
-            with open(gene_map_fn, 'r') as infile:
-                for line in infile:
-                    _, sp = line.rstrip().rsplit(".", 1)[0].split()
-                    sp = sp.replace(".", "_")
-                    self.startswith[sp] = sp
+            for sp in gene_ids.species_names(gene_map_fn).values():
+                sp = sp.replace(".", "_")
+                self.startswith[sp] = sp
         else:
-            with open(gene_map_fn, 'r') as infile:
+            with file_io.open_text_any(gene_map_fn) as infile:
                 for i, line in enumerate(infile):
                     t = line.rstrip().split()
                     if len(t) != 2: 
@@ -158,13 +156,15 @@ def get_distances_fast(t, n_sp, g_to_i):
                         i = sp0 if sp0<sp1 else sp1
                         j = sp1 if sp0<sp1 else sp0
                         D[i,j] = min(D[i,j], dist0+dist1)
-                spp = {k for ch in children for k in ch.d.keys()}
-                d = {k:(min([ch.d[k] for ch in children if k in ch.d])+max(0.0, n.dist)) for k in spp}
-                n.add_feature('d', d)
-    for i in range(n_sp):
-        for j in range(i):
-            D[i,j] = D[j, i]
-        D[i,i]=0.
+            # once per node, after the pairs of children (also a node of one child)
+            spp = {k for ch in children for k in ch.d.keys()}
+            d = {k:(min([ch.d[k] for ch in children if k in ch.d])+max(0.0, n.dist)) for k in spp}
+            n.add_feature('d', d)
+    # the lower triangle from the upper (filled above), the diagonal 0: one numpy step,
+    # not a Python loop over the species pairs for every tree
+    lower = np.tril_indices(n_sp, -1)
+    D[lower] = D.T[lower]
+    np.fill_diagonal(D, 0.)
     return D
 
 def process_trees(dir_in, dir_matrices, dir_trees_out, GeneToSpecies, q_verbose=True, q_skip_single_copy=False, q_for_of=False):
@@ -174,7 +174,7 @@ def process_trees(dir_in, dir_matrices, dir_trees_out, GeneToSpecies, q_verbose=
     n_not_all_present = 0
     n_fail = 0
     if q_verbose: print("\nProcessing gene trees:")
-    for fn in glob.glob(dir_in + "/*"):
+    for fn in sorted(glob.glob(dir_in + "/*")):   # (glob lists in no particular order)
         try:
             t = tree.Tree(fn)
         except newick.NewickError:
@@ -220,8 +220,8 @@ def process_trees(dir_in, dir_matrices, dir_trees_out, GeneToSpecies, q_verbose=
       
 def astral(tree_dir, astral_jar_file, q_for_of=False):
     trees_fn = tree_dir + "../TreesFile.txt"
-    with open(trees_fn, 'w') as outfile:
-        for fn in glob.glob(tree_dir + "/*"):
+    with open(trees_fn, 'w', encoding="utf-8", newline="\n") as outfile:
+        for fn in sorted(glob.glob(tree_dir + "/*")):
             t = tree.Tree(fn)    
             outfile.write(t.write(format=9) + "\n")
     species_tree_fn = tree_dir + "../SpeciesTree_ids.txt"

@@ -119,7 +119,7 @@ def copies(version=None):
 def write(directory=os.path.join(HERE, PACKAGE)):
     os.makedirs(directory, exist_ok=True)
     for name, text in copies().items():
-        with open(os.path.join(directory, name), "w", encoding="utf-8") as outfile:
+        with open(os.path.join(directory, name), "w", encoding="utf-8", newline="\n") as outfile:
             outfile.write(text)
 
 

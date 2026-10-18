@@ -1,8 +1,7 @@
 import glob
-import gzip
 import os
-import string
 import random
+import tempfile
 from collections import defaultdict
 from typing import Optional
 
@@ -11,6 +10,7 @@ try:
 except ImportError:
     ...
 import numpy as np
+from rich.markup import escape
 
 from . import sample_genes
 from . import mcl
@@ -190,8 +190,7 @@ def ogs_from_diamond_results(fn_og_results_out, q_ignore_sub=False, layout=None)
 
     # Search output is never quoted, so a plain split gives the fields
     i_query, i_subject, i_evalue = (layout.index(f) for f in ("qseqid", "sseqid", "evalue"))
-    opener = gzip.open if fn_og_results_out.endswith(".gz") else open
-    with opener(fn_og_results_out, "rt") as infile:
+    with file_io.open_text(fn_og_results_out) as infile:
         for line in file_io.hit_lines(infile, layout):
             line = line.rstrip("\r\n").split("\t")
             gene = line[i_query]
@@ -222,19 +221,31 @@ def ogs_from_diamond_results(fn_og_results_out, q_ignore_sub=False, layout=None)
     return og_assignments, species_closest_hits
 
 
+def core_clusters_file(wd):
+    """
+    The MCL orthogroups of the analysis whose working directory is wd:
+    clusters_OrthoFinder_I<inflation>.txt_id_pairs.txt. The working directory of
+    an --assign analysis also has those of each new species clade
+    (clusters_OrthoFinder_unassigned_clade_<i>_...), which are among them: they
+    are not used (glob lists the files in no particular order).
+    """
+    fns = sorted(
+        fn for fn in glob.glob(wd + "clusters_OrthoFinder*_id_pairs.txt")
+        if "_unassigned_clade_" not in os.path.basename(fn)
+    )
+    if not fns:
+        print("ERROR: Couldn't find the orthogroups (clusters_OrthoFinder_*_id_pairs.txt) in %s" % wd)
+        util.fail()
+    if len(fns) > 1:
+        print("WARNING: Found multiple orthogroup files, using the first: %s" % fns)
+    return fns[0]
+
+
 def get_original_orthogroups():
     wd_input_clusters = file_handler.handler.get_working_directory1_read()[
         1
     ]  # first is the current working directory, second is the most recent of the input directories
-    fn_clusters = glob.glob(wd_input_clusters + "clusters*_id_pairs.txt")
-    if len(fn_clusters) == 0:
-        print("ERROR: Couldn't find previous orthogroups in %s" % wd_input_clusters)
-        util.fail()
-    elif len(fn_clusters) > 1:
-        print("WARNING: Found multiple orthogroup files: %s" % fn_clusters)
-    fn_clusters = fn_clusters[0]
-    ogs = mcl.get_predicted_ogs(fn_clusters)
-    return ogs
+    return mcl.get_predicted_ogs(core_clusters_file(wd_input_clusters))
 
 
 def _ogs_from_diamond_results_plain(fn_and_layout):
@@ -274,11 +285,11 @@ def assign_genes(results_files, n_processes=1, layout=None):
 
 
 # def write_all_orthogroups(ogs: List[Set[str]], ogs_new_species: Dict[int, Set[str]], ogs_clade_specific: List[List[Set[str]]]):
-def write_all_orthogroups(ogs, ogs_new_species, ogs_clade_specific_lists, restart_index=None):
+def write_all_orthogroups(ogs, ogs_new_species, ogs_clade_specific_lists, restart_index=None, write=True):
     """
     Add the new species' genes and the clade-specific orthogroups to ogs (in
     place), drop single-gene orthogroups whose gene is now in a larger one, and
-    write the clusters file.
+    write the clusters file (not with write=False: the clusters filename is then None).
 
     restart_index: the position in ogs (before this call) from which
     orthogroups still need trees. Removing single-gene orthogroups shifts the
@@ -299,8 +310,10 @@ def write_all_orthogroups(ogs, ogs_new_species, ogs_clade_specific_lists, restar
         restart_index = sum(keep[:restart_index])
     ogs[:] = [og for og, k in zip(ogs, keep) if k]
 
-    _, clusters_filename_pairs = file_handler.handler.create_unused_clusters_fn()
-    mcl.write_updated_clusters_file(ogs, clusters_filename_pairs)
+    clusters_filename_pairs = None
+    if write:
+        _, clusters_filename_pairs = file_handler.handler.create_unused_clusters_fn()
+        mcl.write_updated_clusters_file(ogs, clusters_filename_pairs)
     if restart_index is None:
         return clusters_filename_pairs
     return clusters_filename_pairs, restart_index
@@ -340,12 +353,9 @@ def _profile_genes_for_chunk(args):
                 fn_temp = None
                 if q_subtrees:
                     # MSA needs to be modified
-                    letters = string.ascii_lowercase
-                    fn_temp = (
-                        "/tmp/shoot_db_create"
-                        + "".join(random.choice(letters) for i in range(6))
-                        + os.path.basename(fn)
-                    )
+                    # (in the system's temporary directory: TMPDIR, e.g. on a cluster node)
+                    fd, fn_temp = tempfile.mkstemp(prefix="shoot_db_create", suffix=os.path.basename(fn))
+                    os.close(fd)
                     fw_temp.write_seqs_to_fasta(
                         [
                             g
@@ -444,7 +454,7 @@ def create_profiles_database(
     if q_diamond and os.path.exists(fn_diamond_db):
         # print("Profiles database already exists and will be reused: %s" % fn_diamond_db)
         print("Profiles database already exists and will be reused: ")
-        print(f"[dark_cyan]{fn_diamond_db}[dark_cyan]")
+        print(f"[dark_cyan]{escape(fn_diamond_db)}[/dark_cyan]")
         return fn_diamond_db, q_hogs
 
     og_set = orthogroups_set.OrthogroupSet(
@@ -465,10 +475,7 @@ def create_profiles_database(
             print("WARNING: Using MCL-based orthogroups as a fall-back")
             # util.Fail()
     if not q_hogs:
-        clusters_filename = list(glob.glob(wd + "clusters_OrthoFinder*id_pairs.txt"))
-        if len(clusters_filename) == 0:
-            print("ERROR: Can't find %s" % wd + "clusters_OrthoFinder*id_pairs.txt")
-        ogs = mcl.get_predicted_ogs(clusters_filename[0])
+        ogs = mcl.get_predicted_ogs(core_clusters_file(wd))
         fn_fasta = fn_fasta[:-7] + ".fa"
     fw = fasta_processor.FastaWriter(wd + "Species*fa", q_glob=True)
     seq_write = []
@@ -545,8 +552,8 @@ def read_hogs(din, hog_name, ids_rev=None):
         print("ERROR: %s does not exist" % fn)
         raise RuntimeError
     ogs = []
-    with open(fn, util.csv_read_mode) as infile:
-        reader = file_io.unquoted_reader(infile)   # HOG files are written unquoted
+    with open(fn, util.csv_read_mode, encoding="utf-8") as infile:
+        reader = file_io.reader(infile)
         next(reader)  # header
         for line in reader:
             ogs.append([])

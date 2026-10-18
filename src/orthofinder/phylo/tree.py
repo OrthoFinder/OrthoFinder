@@ -838,7 +838,7 @@ class TreeNode(object):
                           is_leaf_fn=is_leaf_fn,
                           format_root_node=format_root_node)
         if outfile is not None:
-            open(outfile, "w").write(nw)
+            open(outfile, "w", encoding="utf-8", newline="\n").write(nw)
         else:
             return nw
 

@@ -1,7 +1,6 @@
 """Directory and file helpers: working directories, cleaning up, compressing."""
 
 import datetime
-import gzip
 import os
 import shutil
 
@@ -11,6 +10,7 @@ except ImportError:
     ...
 
 from .printing import printer
+from . import file_io
 
 
 def get_directory_name(
@@ -112,15 +112,13 @@ def get_unused_filename(base_filename, ext, i_unassigned=None):
 
 
 def file_open(filename_with_gz, mode, gz):
-    if gz:
-        return gzip.open(filename_with_gz + ".gz", mode)
-    else:
-        return open(filename_with_gz, mode)
+    """A text file (file_io.open_text): UTF-8, "\\n" line endings; filename_with_gz + ".gz" if gz."""
+    return file_io.open_text(filename_with_gz + ".gz" if gz else filename_with_gz, mode)
 
 
 def compress_files(src_dir, output_fn):
     try:
-        with open(output_fn, "w") as writer:
+        with open(output_fn, "w", encoding="utf-8", newline="\n") as writer:
             filenames = []
             with os.scandir(src_dir) as it:
                 for entry in it:
@@ -131,7 +129,7 @@ def compress_files(src_dir, output_fn):
             filenames = sorted(filenames)
             for fn, entry in filenames:
                 try:
-                    with open(entry.path, "r") as infile:
+                    with open(entry.path, "r", encoding="utf-8") as infile:
                         og_tree = "".join(line.strip() for line in infile)
                     writer.write(f"{fn}: {og_tree}\n")
                 except IOError as e:

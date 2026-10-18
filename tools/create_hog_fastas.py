@@ -24,7 +24,6 @@ Usage:
 
 import os
 import sys
-import csv
 import glob
 import argparse
 from collections import Counter
@@ -72,7 +71,7 @@ def process_log(log_fn):
     Should work with relevant paths to allow directory to move
     """
     earlier_wds = []     # listed after the last WorkingDirectory_Base (this version)
-    with open(log_fn, 'r') as infile:
+    with open(log_fn, encoding="utf-8") as infile:
         for line in infile:
             for key in file_handler.EARLIER_WD_KEYS:
                 if line.startswith(key + ": "):
@@ -114,8 +113,8 @@ def read_hierarchical_orthogroup(fn, i_skip = 3):
         ogs - List of orthogroups, orthogroup is list of species, species is list 
               of genes
     """
-    with open(fn, util.csv_read_mode) as infile:
-        reader = csv.reader(infile, delimiter="\t")
+    with open(fn, encoding="utf-8") as infile:
+        reader = (row.rstrip("\r\n").split("\t") for row in infile)
         ogs = []
         next(reader)   # header
         for line in reader:

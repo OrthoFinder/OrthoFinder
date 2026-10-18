@@ -3,6 +3,8 @@
 import os
 from collections import namedtuple
 
+from . import file_io
+
 
 # Get Info from seqs IDs file?
 def count_fasta_sequences(fasta_filename, block_size=1 << 24):
@@ -43,6 +45,7 @@ n_seqs_per_species: Dict[int, int] - indexed by OrthoFinder species ID, info on 
 def get_seqs_info(input_directory_list, species_to_use, n_sp_all):
     input_directory_list = list(input_directory_list)
     species_to_use = list(species_to_use)
+    species_to_use_set = set(species_to_use)
     seq_starting_indices = [0]
     n_seqs = 0
     n_seqs_per_species = {}
@@ -57,7 +60,7 @@ def get_seqs_info(input_directory_list, species_to_use, n_sp_all):
                 break
 
         if fasta_filename is None:
-            if i_fasta in species_to_use:
+            if i_fasta in species_to_use_set:
                 raise FileNotFoundError(
                     f"Species{i_fasta}.fa not found in any of the input "
                     f"directories: {input_directory_list}"
@@ -67,7 +70,7 @@ def get_seqs_info(input_directory_list, species_to_use, n_sp_all):
 
         n_seqs_per_species[i_fasta] = n
 
-        if i_fasta in species_to_use:
+        if i_fasta in species_to_use_set:
             n_seqs += n
             seq_starting_indices.append(n_seqs)
 
@@ -133,7 +136,7 @@ def get_species_to_use(species_ids_fn):
     species_to_use = []
     species_to_use_names = []
     n_skipped = 0
-    with open(species_ids_fn, "r") as species_f:
+    with file_io.open_text_any(species_ids_fn) as species_f:
         for line in species_f:
             line = line.rstrip()
             if not line:
@@ -141,7 +144,7 @@ def get_species_to_use(species_ids_fn):
             if line.startswith("#"):
                 n_skipped += 1
             else:
-                i_sp, sp_name = line.split(": ")
+                i_sp, sp_name = line.split(": ", 1)   # (a file name may hold ": ")
                 if sp_name not in species_to_use_names:
                     species_to_use.append(int(i_sp))
                     species_to_use_names.append(sp_name)

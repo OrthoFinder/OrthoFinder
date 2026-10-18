@@ -14,13 +14,12 @@ import sys
 import itertools
 from collections import defaultdict 
 
-import multiprocessing as mp
 
 try:
     from rich import print
 except ImportError:
     ...
-from ..utils import file_handler, file_io
+from ..utils import file_handler, file_io, parallel_task_manager
 from ..phylo import taxa as phylo_taxa
 from . import stats
 from .rooting import check_and_root_tree
@@ -65,10 +64,8 @@ class TreeAnalyser(object):
             putative_xenolog_file_handles, 
             hog_writer, 
             q_split_paralogous_clades, 
-            fewer_open_files=False,
             exist_msa=True,
             write_hog_tree=True,
-            fix_files=True,
     ):
         self.n_ogs = n_ogs
         self.d_results_orthologs = d_results_orthologs
@@ -89,14 +86,8 @@ class TreeAnalyser(object):
         self.putative_xenolog_file_handles = putative_xenolog_file_handles
         self.hog_writer = hog_writer
         self.q_split_paralogous_clades = q_split_paralogous_clades
-        self.fewer_open_files = fewer_open_files
-        self.lock_orthologs = [mp.Lock() for i in range(self.nspecies)]   # lock the larger of the two species index
-        self.lock_dups = mp.Lock()
-        self.lock_suspect = mp.Lock()
-        self.lock_hogs = mp.Lock()
         self.exist_msa = exist_msa
         self.write_hog_tree = write_hog_tree
-        self.fix_files = fix_files
 
 
     def analyse_tree(self, iog, n_ortho_acc=None):
@@ -114,7 +105,7 @@ class TreeAnalyser(object):
         n_species = len(self.species_to_use)
 
         try:
-            if self.write_hog_tree or not self.fix_files:
+            if self.write_hog_tree:
                 tree_file = file_handler.handler.get_ogs_tree_fn(iog)
             else:
                 tree_file = file_handler.handler.get_resolved_tree_id_dir() + "OG%07d.txt" % iog
@@ -141,7 +132,7 @@ class TreeAnalyser(object):
                 q_no_recon=self.q_no_recon
             )
 
-            ortholog_lines = empty_ortholog_lines(self.nspecies, self.fewer_open_files)
+            ortholog_lines = empty_ortholog_lines(self.nspecies)
             ortholog_sus_lines = ["" for _ in range(self.nspecies)]
 
             pair_counts = [] if n_ortho_acc is not None else None
@@ -153,8 +144,8 @@ class TreeAnalyser(object):
                 len(suspect_genes) > 0,
                 ortholog_lines,
                 ortholog_sus_lines,
-                fewer_open_files=self.fewer_open_files,
                 pair_counts=pair_counts,
+                other_names=self.spec_seq_dict,
             )
 
             cached_hogs = get_hogs_from_tree(
@@ -164,13 +155,7 @@ class TreeAnalyser(object):
                 self.q_split_paralogous_clades,
             )
 
-            phylo_taxa.rename_tree_taxa(
-                recon_tree,
-                self.recon_trees_renamed_dir + "OG%07d.txt" % iog,
-                self.spec_seq_dict,
-                q_support=False,
-                q_fix_negatives=True
-            )
+            self.write_resolved_tree(recon_tree, iog)
 
             if n_ortho_acc is not None:
                 # Only count trees that were analysed completely.
@@ -187,6 +172,8 @@ class TreeAnalyser(object):
                 "cached_hogs": cached_hogs,
             }
 
+        except parallel_task_manager.WorkerError:
+            raise       # the run cannot write its results (write_resolved_tree)
         except Exception as e:
             print(str(e))
             print("WARNING: Unknown error analysing tree %s" % og_name)
@@ -196,30 +183,41 @@ class TreeAnalyser(object):
                 "n_orthologs": (
                     stats.NOrthoSp(n_species) if n_ortho_acc is None else None
                 ),
-                "olog_lines": empty_ortholog_lines(self.nspecies, self.fewer_open_files),
+                "olog_lines": empty_ortholog_lines(self.nspecies),
                 "olog_sus_lines": ["" for _ in range(self.nspecies)],
                 "duplications": [],
                 "suspect_genes": set(),
                 "cached_hogs": [],
             }
 
-def empty_ortholog_lines(nspecies, fewer_open_files):
+    def write_resolved_tree(self, recon_tree, iog):
+        """
+        The resolved gene tree: with the gene names (the second pass, the results),
+        or with the gene IDs (the first pass, read by the update of the orthogroups:
+        gene names need not be unique, e.g. with -X the same name in two species,
+        so a tree of names cannot be turned back into the genes). If it cannot be
+        written the run stops (its orthologs and HOGs are not dropped without the
+        run failing): the update needs these trees, and a results file would be
+        missing.
+        """
+        fn = self.recon_trees_renamed_dir + "OG%07d.txt" % iog
+        if self.write_hog_tree:
+            ids_map = {leaf.name: leaf.name for leaf in recon_tree.get_leaves()}
+        else:
+            ids_map = self.spec_seq_dict
+        try:
+            phylo_taxa.rename_tree_taxa(recon_tree, fn, ids_map, q_support=False, q_fix_negatives=True)
+        except Exception as e:
+            raise parallel_task_manager.WorkerError(
+                "ERROR: Cannot write the resolved gene tree of OG%07d, %s (%s: %s)" % (iog, fn, type(e).__name__, e))
+
+
+def empty_ortholog_lines(nspecies):
     """
-    Per-species containers for one tree's ortholog rows.
-
-    In pairwise mode each row is a dict {j: text} holding only the partner
-    species that have orthologs, instead of an nspecies x nspecies grid
-    (1,000,000 cells per tree at 1,000 species). Use iter_ortholog_row to read it.
+    One tree's ortholog rows: the text of each species (by its index), the rows
+    of its file Orthologs/<species>.tsv.
     """
-    if fewer_open_files:
-        return [[""] for _ in range(nspecies)]
-    return [{} for _ in range(nspecies)]
-
-
-def iter_ortholog_row(row):
-    """(j, text) for the non-empty cells of an olog_lines row (list or dict)."""
-    items = row.items() if isinstance(row, dict) else enumerate(row)
-    return ((j, text) for j, text in items if text)
+    return ["" for _ in range(nspecies)]
 
 
 class SpeciesSets(object):
@@ -548,8 +546,8 @@ def get_lines_for_ortholog_files(
         q_contains_suspect_orthologs,
         ortholog_lines,
         ortholog_sus_lines,
-        fewer_open_files,
         pair_counts=None,
+        other_names=None,
     ):
     """
     Add ortholog rows to olog_lines/olog_sus_lines.
@@ -557,6 +555,10 @@ def get_lines_for_ortholog_files(
     Returns a dense NOrthoSp for these trees. If pair_counts is a list, the
     (iL, iR, nL, nR) records are appended to it instead and None is returned,
     which avoids allocating five nspecies x nspecies matrices per tree.
+
+    other_names: {sequence ID: name} of the "Other" genes of the putative
+    xenologues (of several species, so <species>_<gene> unless -X:
+    gene_ids.species_prefixes); default sequence_dict.
     """
     nsp = len(i_species_to_use)
     n_ortho = stats.NOrthoSp(nsp) if pair_counts is None else None
@@ -565,7 +567,7 @@ def get_lines_for_ortholog_files(
     # olog_lines[i][j] += row copies the whole accumulated string every time
     # (Python can't append in place to a string held in a list), which is
     # quadratic for large trees.
-    ortholog_parts = defaultdict(list)   # (i, j) -> rows
+    ortholog_parts = defaultdict(list)   # i -> rows
     sus_parts = defaultdict(list)    # i -> rows
 
     sp_to_i = {str(sp): i for i, sp in enumerate(i_species_to_use)}
@@ -589,6 +591,11 @@ def get_lines_for_ortholog_files(
         return ", ".join(
             sorted(seq_name(sp, g) for g in genes)
         )
+
+    def join_other_names(sp, genes):
+        if other_names is None:
+            return join_gene_names(sp, genes)
+        return ", ".join(sorted(other_names[str(sp) + "_" + str(g)] for g in genes))
 
     def add_stats(i_l, i_r, n_l, n_r):
         if pair_counts is None:
@@ -618,33 +625,9 @@ def get_lines_for_ortholog_files(
         text_l = join_gene_names(sp_l, genes_l)
         text_r = join_gene_names(sp_r, genes_r)
 
-        if fewer_open_files:
-            ortholog_parts[(i_l, 0)].append(getrow((
-                og,
-                sp_label[i_r],
-                text_l,
-                text_r
-            )))
-
-            ortholog_parts[(i_r, 0)].append(getrow((
-                og,
-                sp_label[i_l],
-                text_r,
-                text_l
-            )))
-
-        else:
-            ortholog_parts[(i_l, i_r)].append(getrow((
-                og,
-                text_l,
-                text_r
-            )))
-
-            ortholog_parts[(i_r, i_l)].append(getrow((
-                og,
-                text_r,
-                text_l
-            )))
+        # (one file per species: OG, the other species, the genes of each)
+        ortholog_parts[i_l].append(getrow((og, sp_label[i_r], text_l, text_r)))
+        ortholog_parts[i_r].append(getrow((og, sp_label[i_l], text_r, text_l)))
 
         add_stats(i_l, i_r, n_l, n_r)
 
@@ -663,9 +646,11 @@ def get_lines_for_ortholog_files(
 
         text_l = join_gene_names(sp_l, genes_l)
         text_r = join_gene_names(sp_r, genes_r)
+        other_l = join_other_names(sp_l, genes_l)
+        other_r = join_other_names(sp_r, genes_r)
 
-        sus_parts[i_l].append(getrow((og, text_l, text_r)))
-        sus_parts[i_r].append(getrow((og, text_r, text_l)))
+        sus_parts[i_l].append(getrow((og, text_l, other_r)))
+        sus_parts[i_r].append(getrow((og, text_r, other_l)))
 
     for iog, orthologs_onetree in orthologs_alltrees:
         og = "OG%07d" % iog
@@ -732,13 +717,8 @@ def get_lines_for_ortholog_files(
                             genes1
                         )
 
-    for (i, j), parts in ortholog_parts.items():
-        row = ortholog_lines[i]
-        if isinstance(row, dict):
-            # Sparse row: only species pairs with orthologs are stored.
-            row[j] = row.get(j, "") + "".join(parts)
-        else:
-            row[j] += "".join(parts)
+    for i, parts in ortholog_parts.items():
+        ortholog_lines[i] += "".join(parts)
     for i, parts in sus_parts.items():
         ortholog_sus_lines[i] += "".join(parts)
 

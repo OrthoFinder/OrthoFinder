@@ -58,7 +58,6 @@ import time
 import signal
 import copy  # Y
 import time  # Y
-import csv  # Y
 import os.path  # Y
 from ..utils import parallel_task_manager, file_handler, util, fasta_processor, file_io, run_state, orthoxml
 from ..mcl_orthogroups import infer_orthogroups, orthogroups_set
@@ -87,15 +86,15 @@ except ImportError:
 TEST_MODE = os.getenv("ORTHOFINDER_TEST_ISOLATE") == "1"
 
 configfile_location = os.path.join(__location__, "run")
-max_int = sys.maxsize
-ok = False
-while not ok:
-    try:
-        csv.field_size_limit(max_int)
-        ok = True
-    except OverflowError:
-        max_int = int(max_int / 10)
 sys.setrecursionlimit(10**6)
+
+# Printing a name the console's encoding cannot hold (e.g. a Windows code page, or
+# output redirected to a file) shows "?" for the character rather than failing
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors="replace")
+    except (AttributeError, ValueError):   # (not a text stream, e.g. replaced by a test)
+        pass
 
 # uncomment to get round problem with python multiprocessing library that can set all cpu affinities to a single cpu
 # This can cause use of only a limited number of cpus in other cases so it has been commented out

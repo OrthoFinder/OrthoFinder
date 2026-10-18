@@ -132,7 +132,7 @@ def check_file(fn):
     - Duplicated accession lines
     """
     accs = set()
-    with open(fn, 'r') as infile:
+    with open(fn, 'r', encoding="utf-8") as infile:
         for l in infile:
             if l.startswith(">"):
                 a = l.rstrip()[1:]
@@ -151,7 +151,7 @@ def scan_tags(fn):
     """
     tags = set()
     tokens = []
-    with open(fn, 'r') as infile:
+    with open(fn, 'r', encoding="utf-8") as infile:
         for line in infile:
             if not line.startswith(">"): continue
             tokens.append([t.split(":", 1) for t in line.rstrip().split() if ":" in t])
@@ -165,7 +165,7 @@ def scan_tags(fn):
 
 def scan_tags_ncbi(fn):
     genes = []
-    with open(fn, 'r') as infile:
+    with open(fn, 'r', encoding="utf-8") as infile:
         for line in infile:
             if not line.startswith(">"): continue
             genes.append(line[1:].split(".", 1)[0])
@@ -173,7 +173,7 @@ def scan_tags_ncbi(fn):
 
 def scan_tags_with_fn(fn, gene_name_fn):
     genes = []
-    with open(fn, 'r') as infile:
+    with open(fn, 'r', encoding="utf-8") as infile:
         for line in infile:
             if not line.startswith(">"): continue
             genes.append(gene_name_fn(line))
@@ -187,7 +187,7 @@ def get_gene_name_ensembl(acc_line):
     return tokens[0]
 
 def is_ncbi(fn):
-    with open(fn, 'r') as infile:
+    with open(fn, 'r', encoding="utf-8") as infile:
         for l in infile:
             if l.startswith(">"):
                 l = l.rstrip()
@@ -225,7 +225,7 @@ def get_gene_name_ncbi(acc_line):
 def create_primary_transcripts_file(fn, dout, gene_name_fn, q_use_original_accession_line):
     # Get genes and lengths
     max_gene_lens = defaultdict(int)
-    with open(fn, 'r') as infile:
+    with open(fn, 'r', encoding="utf-8") as infile:
         lines = [l.rstrip() for l in infile]
     N = len(lines) - 1
     n_acc = 0
@@ -263,7 +263,7 @@ def create_primary_transcripts_file(fn, dout, gene_name_fn, q_use_original_acces
     # Parse file second time and only write out sequences that are longest variant
     n_genes_written = 0
     outfn = os.path.join(dout, os.path.basename(fn))
-    with open(outfn, 'w') as outfile:
+    with open(outfn, 'w', encoding="utf-8", newline="\n") as outfile:
         i_line = -1
         while i_line < N:
             i_line += 1

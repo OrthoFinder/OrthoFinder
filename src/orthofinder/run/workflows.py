@@ -10,7 +10,7 @@ from rich.markup import escape
 from ..mcl_orthogroups import infer_orthogroups
 from ..orthology import workflow
 from ..search import runner
-from ..utils import fasta_processor, file_handler, printing, species_info
+from ..utils import fasta_processor, file_handler, printing, run_state, species_info
 from ..utils.printing import printer
 from . import previous_run, process_args
 
@@ -40,21 +40,15 @@ def get_orthologs(
         options.q_double_blast,
         options.q_add_species_to_ids,
         options.q_trim,
-        options.fewer_open_files,
         options.cmd_order,
         options.method_threads,
-        options.method_threads_large,
-        options.method_threads_small,
-        options.threshold,
-        options.species_tree_fn,
-        options.q_stop_after_seqs,
-        options.q_stop_after_alignments,
-        options.q_stop_after_trees,
-        options.q_stop_after_species_trees,
-        options.q_msa_trees,
-        options.q_phyldog,
-        options.name,
-        options.q_split_para_clades,
+        user_species_tree=options.species_tree_fn,
+        q_stop_after_trees=options.q_stop_after_trees,
+        q_stop_after_species_trees=options.q_stop_after_species_trees,
+        q_msa=options.q_msa_trees,
+        q_phyldog=options.q_phyldog,
+        results_name=options.name,
+        q_split_para_clades=options.q_split_para_clades,
         save_space=options.save_space,
         root_from_previous=False,
         i_og_restart=i_og_restart,
@@ -66,8 +60,8 @@ def add_species(ctx):
     species_info_obj, species_to_use_names = previous_run.process_previous_files(
         file_handler.handler.get_working_directory1_read(), options.q_double_blast
     )
-    printer.print(f"\nAdding new species in [dark_cyan]{ctx.fasta_dir}")
-    printer.print(f"to existing analysis in [dark_cyan]{ctx.continuation_dir}")
+    printer.print(f"\nAdding new species in [dark_cyan]{escape(ctx.fasta_dir)}")
+    printer.print(f"to existing analysis in [dark_cyan]{escape(ctx.continuation_dir)}")
     species_info_obj = fasta_processor.processes_new_fasta(
         ctx.fasta_dir, options.dna, species_info_obj, species_to_use_names
     )
@@ -104,13 +98,14 @@ def _prepare(options, species_info_obj):
 def _search(ctx, options, species_info_obj, seqs_info):
     """The sequence search databases and the searches."""
     printing.print_underline("Dividing up work for BLAST for parallel processing")
-    runner.create_search_databases(species_info_obj, options, ctx.prog_caller)
+    with run_state.stage("Create search databases"):      # (for the commands noted: not a step of Log.txt)
+        runner.create_search_databases(species_info_obj, options, ctx.prog_caller)
     with ctx.step("Sequence search"):
         runner.run_search(options, species_info_obj, seqs_info, ctx.prog_caller)
 
 
 def _orthogroups_and_orthologs(ctx, options, species_info_obj, seqs_info):
-    """The orthogroups from the search results, then (unless -og, --no-fix-files) the orthologs."""
+    """The orthogroups from the search results, then (unless -og) the orthologs."""
     species_names_dict = previous_run.species_name_dict(
         file_handler.handler.get_species_ids_fn()
     )
@@ -118,7 +113,7 @@ def _orthogroups_and_orthologs(ctx, options, species_info_obj, seqs_info):
         infer_orthogroups.do_orthogroups(
             options, species_info_obj, seqs_info, species_names_dict
         )
-    if options.fix_files and not options.q_stop_after_mcl_groups:
+    if not options.q_stop_after_mcl_groups:
         get_orthologs(
             seqs_info,
             species_names_dict,
@@ -246,9 +241,7 @@ def from_gene_trees(ctx):
     #     options.speciesTreeFN,
     #     options.qAddSpeciesToIDs,
     #     options.qSplitParaClades,
-    #     options.fewer_open_files,
     #     exist_msa=options.qMSATrees,
-    #     fix_files=options.fix_files,
     #     mclInflation=options.mclInflation
     # )
 
@@ -272,15 +265,12 @@ def from_gene_trees(ctx):
         options.n_blast,
         options.n_process_alg,
         options.q_add_species_to_ids,
-        options.fewer_open_files,
-        options.species_tree_fn,
-        options.q_stop_after_seqs,
-        options.q_stop_after_alignments,
-        options.q_stop_after_trees,
-        options.q_msa_trees,
-        options.q_phyldog,
-        options.name,
-        options.q_split_para_clades,
+        user_species_tree=options.species_tree_fn,
+        q_stop_after_trees=options.q_stop_after_trees,
+        q_msa=options.q_msa_trees,
+        q_phyldog=options.q_phyldog,
+        results_name=options.name,
+        q_split_para_clades=options.q_split_para_clades,
         save_space=options.save_space,
         root_from_previous=False,
         i_og_restart=i_og_restart_state,
@@ -321,7 +311,6 @@ def from_species_trees(ctx):
         options.n_process_alg,
         options.q_add_species_to_ids,
         options.species_tree_fn,
-        options.fewer_open_files,  # Open one ortholog file per species when analysing trees
         q_split_para_clades=options.q_split_para_clades,
         i_og_restart=i_og_restart_state,
     )

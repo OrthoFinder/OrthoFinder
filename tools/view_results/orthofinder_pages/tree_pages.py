@@ -37,6 +37,7 @@ attached at the node where the orthogroup was gained, opened group by group
 and orthogroup by orthogroup.
 """
 
+import itertools
 import json
 import os
 
@@ -269,7 +270,7 @@ def tree_stats(nodes, genes, duplications):
 
 def write_tree_data(filename, data):
     """The data of one gene tree, as a script that gives it to the page."""
-    with open(filename, "w", encoding="utf-8") as out:
+    with open(filename, "w", encoding="utf-8", newline="\n") as out:
         out.write(f"treeLoaded({json.dumps(data, separators=(',', ':'))});\n")
 
 
@@ -414,9 +415,20 @@ def write_tree_pages(results_dir, written=None):
     if not os.path.exists(gene_trees_fn):
         return 0
     with open(gene_trees_fn, encoding="utf-8", errors="replace") as infile:
-        entries = [line.strip().split(": ", 1) for line in infile if line.strip()]
-    if not entries:  # e.g. -og: the file is there but has no trees
-        return 0
+        # the trees one at a time (not all of them read first)
+        entries = (line.strip().split(": ", 1) for line in infile if line.strip())
+        first = next(entries, None)
+        if first is None:  # e.g. -og: the file is there but has no trees
+            return 0
+        # (the genes of the index in a temporary file as the trees are read, sorted
+        # in bounded memory: view_pages.write_gene_index)
+        with view_pages.EntryFile(os.path.dirname(gene_trees_fn)) as tree_genes:
+            return _write_tree_pages(results_dir, written, itertools.chain([first], entries), tree_genes,
+                                     species_tree_fn)
+
+
+def _write_tree_pages(results_dir, written, entries, tree_genes, species_tree_fn):
+    """write_tree_pages, of the trees entries ([orthogroup, Newick]); tree_genes: a view_pages.EntryFile."""
     species = read_species(os.path.join(results_dir, "Orthogroups"))
     gene_species = GeneSpecies(os.path.join(results_dir, "Orthogroups"), species)
     colour = {sp: PALETTE[i % len(PALETTE)] for i, sp in enumerate(species)}
@@ -441,7 +453,6 @@ def write_tree_pages(results_dir, written=None):
         node_index = {(names[node[2]] if isinstance(node[2], int) else node[2]): k for k, node in enumerate(nodes)}
 
     trees = []  # [orthogroup, genes, stats]
-    tree_genes = []  # (gene, the tree's number), for the index of the genes
     n_failed = 0
     for og, newick in entries:
         try:
@@ -470,8 +481,10 @@ def write_tree_pages(results_dir, written=None):
                 stats["alignment"] = alignment_stats(aln)
         os.makedirs(data_dir, exist_ok=True)
         write_tree_data(os.path.join(data_dir, og + ".js"), data)
-        gene_names = {leaf_species(n, species_set, gene_species)[1] for n in leaf_names}
-        tree_genes.extend((name, len(trees)) for name in gene_names)
+        # (in the order of the leaves: a set's order of strings changes from run to run)
+        gene_names = list(dict.fromkeys(leaf_species(n, species_set, gene_species)[1] for n in leaf_names))
+        for name in gene_names:
+            tree_genes.add((name, len(trees)))
         trees.append([og, len(gene_names), stats])
         if all_ogs:
             all_ogs.add(og, nodes, [sp for _, sp in genes], og_dups, node_index)
@@ -482,7 +495,7 @@ def write_tree_pages(results_dir, written=None):
 
     hog_nodes, n_genes = write_explorer_data(results_dir, data_dir, species, species_number)
     explorer = {"hog_nodes": hog_nodes, "species_genes": n_genes,
-                "genes": view_pages.write_gene_index(data_dir, tree_genes)}
+                "genes": view_pages.write_gene_index(data_dir, tree_genes.entries())}
     if all_ogs:
         explorer["all_orthogroups"] = all_ogs.summary(count_orthogroups(os.path.join(results_dir, "Orthogroups")))
         all_ogs.write(data_dir)
@@ -507,7 +520,7 @@ def write_page(filename, species, colour, trees, species_tree, extra=None):
     """extra: the explorer's data and the links to the other pages (view_pages)."""
     data = {"version": __version__, "data": DATA_DIR, "species_tree": species_tree,
             "species": [[sp, colour[sp]] for sp in species], "trees": tree_columns(trees), **(extra or {})}
-    with open(filename, "w", encoding="utf-8") as out:
+    with open(filename, "w", encoding="utf-8", newline="\n") as out:
         out.write(HTML.replace("__NAV_CSS__", view_pages.NAV_CSS).replace("__NAV_HTML__", view_pages.NAV_HTML)
                   .replace("__NAV_JS__", view_pages.NAV_JS).replace("__THEME_JS__", view_pages.THEME_JS)
                   .replace("__DATA_JS__", view_pages.DATA_JS)

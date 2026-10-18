@@ -35,14 +35,13 @@ def node_number(name):
     return int(m.group(1)) if m else 10 ** 9
 
 
-def read_groups(filename, species_index, first=1):
+def iter_groups(filename, species_index, first=1):
     """
-    The header and rows of Orthogroups.tsv or a HOG file: [[the first cells
-    (up to first), [[species, [genes]], ...]], ...] with the species of the
-    header's columns from first on (species_index: {name: number}), read
-    without splitting each row at every tab (most cells are empty).
+    The rows of Orthogroups.tsv or a HOG file, one at a time: [the first cells
+    (up to first), [[species, [genes]], ...]] with the species of the header's
+    columns from first on (species_index: {name: number}), read without
+    splitting each row at every tab (most cells are empty).
     """
-    rows = []
     with open(filename, encoding="utf-8", errors="replace") as infile:
         header = infile.readline().rstrip("\r\n").split("\t")
         column = {k: species_index[sp] for k, sp in enumerate(header) if k >= first and sp in species_index}
@@ -51,22 +50,39 @@ def read_groups(filename, species_index, first=1):
             if not fields[0] or len(fields) < first:
                 continue
             genes = sorted((column[k], text.split(", ")) for k, text in view_pages.sparse_cells(line) if k in column)
-            rows.append([fields[:first], genes])
-    return header, rows
+            yield [fields[:first], genes]
 
 
-def table_file(data_dir, key, rows, extra):
+def read_groups(filename, species_index, first=1):
+    """The header and the rows (iter_groups) of Orthogroups.tsv or a HOG file."""
+    with open(filename, encoding="utf-8", errors="replace") as infile:
+        header = infile.readline().rstrip("\r\n").split("\t")
+    return header, list(iter_groups(filename, species_index, first))
+
+
+def table_file(data_dir, key, rows, extra, on_row=None):
     """
     A table for the page: <key> (its rows' IDs, genes and species, extra, and
     the first row of each chunk) and <key>_<c> (the genes of each species in its
     rows, [[species, [genes]], ...]). Returns its number of rows.
+    rows: an iterator (iter_groups): each chunk is written as it is complete, so
+    the table is never all in memory (millions of genes); on_row(i, first cells,
+    genes) is called with each row, and extra (a dict, or a function giving it,
+    called once all the rows are read) can use what on_row collects.
     """
+    n_genes, n_species = [], []
+
+    def chunk_rows():
+        for i, (first, genes) in enumerate(rows):
+            n_genes.append(sum(len(g) for _, g in genes))
+            n_species.append(len(genes))
+            if on_row is not None:
+                on_row(i, first, genes)
+            yield genes
+    chunks = view_pages.write_chunks(data_dir, key, chunk_rows(), lambda genes: sum(len(g) for _, g in genes))
     view_pages.write_data(data_dir, key, {
-        **extra, "genes": [sum(len(g) for _, g in genes) for _, genes in rows],
-        "species": [len(genes) for _, genes in rows],
-        "chunks": view_pages.write_chunks(data_dir, key, [genes for _, genes in rows],
-                                          lambda genes: sum(len(g) for _, g in genes))})
-    return len(rows)
+        **(extra() if callable(extra) else extra), "genes": n_genes, "species": n_species, "chunks": chunks})
+    return len(n_genes)
 
 
 def write_groups_page(results_dir, written=None):
@@ -83,28 +99,37 @@ def write_groups_page(results_dir, written=None):
     with open(og_fn, encoding="utf-8", errors="replace") as infile:
         species = infile.readline().rstrip("\r\n").split("\t")[1:]
     species_index = {sp: k for k, sp in enumerate(species)}
-    _, og_rows = read_groups(og_fn, species_index)
     data_dir = os.path.join(og_dir, DATA_DIR)
     os.makedirs(data_dir, exist_ok=True)
     tabs = []
 
     # the orthogroups (Orthogroups, which the page loads first: the IDs of the orthogroups, for the HOGs)
-    ids = [first[0] for first, _ in og_rows]
-    og_row = {og: i for i, og in enumerate(ids)}
     tree_page = view_pages.link(results_dir, "trees", written)
     with_trees = set()
     trees_fn = os.path.join(results_dir, "Resolved_Gene_Trees", "Resolved_Gene_Trees.txt")
     if tree_page and os.path.exists(trees_fn):
         with open(trees_fn, encoding="utf-8", errors="replace") as infile:
             with_trees = {line[:line.find(":")] for line in infile if ":" in line}
-    n = table_file(data_dir, "Orthogroups", og_rows, {"ids": view_pages.compact_ids(ids), "cols": list(range(len(species))),
-                                                      "tree": [int(og in with_trees) for og in ids]})
+    # The rows are read, written and let go one at a time (iter_groups, table_file): kept
+    # are their IDs and, for the gene index, each gene and its row, in a temporary file
+    # (written as the rows are read, then sorted in bounded memory: write_gene_index)
+    ids = []
+    with view_pages.EntryFile(data_dir) as genes_file:
+        def og_row_read(i, first, genes):
+            ids.append(first[0])
+            for _, gs in genes:
+                for gene in gs:
+                    genes_file.add((gene, i))
+        n = table_file(data_dir, "Orthogroups", iter_groups(og_fn, species_index),
+                       lambda: {"ids": view_pages.compact_ids(ids), "cols": list(range(len(species))),
+                                "tree": [int(og in with_trees) for og in ids]},
+                       on_row=og_row_read)
+        gene_index = view_pages.write_gene_index(data_dir, genes_file.entries())
+    og_row = {og: i for i, og in enumerate(ids)}
+    del ids
     tabs.append({"id": "orthogroups", "name": "MCL orthogroups" if q_mcl else "Orthogroups",
                  "note": f"The orthogroups of {os.path.basename(og_fn)}.",
                  "views": [{"name": "All orthogroups", "key": "Orthogroups", "rows": n}]})
-    gene_index = view_pages.write_gene_index(data_dir, ((gene, i) for i, (_, genes) in enumerate(og_rows)
-                                                        for _, gs in genes for gene in gs))
-    del og_rows
 
     # the HOGs, a table for each species tree node (the species of its clade)
     hog_dir = os.path.join(results_dir, "Phylogenetic_Hierarchical_Orthogroups")
@@ -113,12 +138,18 @@ def write_groups_page(results_dir, written=None):
                        key=lambda f: (node_number(f[:-4]), f))
     for fn in hog_files:
         node = fn[:-4]
-        _, hog_rows = read_groups(os.path.join(hog_dir, fn), species_index, first=3)
-        clade = sorted({k for _, genes in hog_rows for k, _ in genes})
-        n = table_file(data_dir, f"HOGs_{node}", hog_rows, {
-            "ids": view_pages.compact_ids([first[0] for first, _ in hog_rows]),
-            "ogs": [og_row.get(first[1], first[1]) for first, _ in hog_rows],  # the orthogroup's row (its ID if not one)
-            "clades": [first[2] for first, _ in hog_rows], "cols": clade})
+        hog_ids, hog_ogs, hog_clades, clade_set = [], [], [], set()
+
+        def hog_row_read(i, first, genes):
+            hog_ids.append(first[0])
+            hog_ogs.append(og_row.get(first[1], first[1]))   # the orthogroup's row (its ID if not one)
+            hog_clades.append(first[2])
+            clade_set.update(k for k, _ in genes)
+        n = table_file(data_dir, f"HOGs_{node}", iter_groups(os.path.join(hog_dir, fn), species_index, first=3),
+                       lambda: {"ids": view_pages.compact_ids(hog_ids), "ogs": hog_ogs, "clades": hog_clades,
+                                "cols": sorted(clade_set)},
+                       on_row=hog_row_read)
+        clade = sorted(clade_set)
         names = [species[k] for k in clade]
         views.append({"name": f"{node}: " + (", ".join(names) if len(names) <= 4 else
                                              f"{len(names)} species ({', '.join(names[:3])}, ...)"),
@@ -134,7 +165,7 @@ def write_groups_page(results_dir, written=None):
             "tree_page": tree_page if with_trees else None,
             "stats_page": view_pages.link(results_dir, "stats", written)}
     page = os.path.join(og_dir, "Groups.html")
-    with open(page, "w", encoding="utf-8") as out:
+    with open(page, "w", encoding="utf-8", newline="\n") as out:
         out.write(HTML.replace("__NAV_CSS__", view_pages.NAV_CSS).replace("__NAV_HTML__", view_pages.NAV_HTML)
                   .replace("__NAV_JS__", view_pages.NAV_JS).replace("__THEME_JS__", view_pages.THEME_JS)
                   .replace("__DATA_JS__", view_pages.DATA_JS)

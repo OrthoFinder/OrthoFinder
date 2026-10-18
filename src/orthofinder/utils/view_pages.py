@@ -11,10 +11,13 @@ to the others, and its links to them open the other page's tab (messages to
 the parent page: a page opened from disk cannot reach into another).
 """
 
+import heapq
 import json
 import os
+import pickle
 import re
 import sys
+import tempfile
 
 from .. import __version__
 
@@ -66,7 +69,7 @@ def nav(results_dir, current, written=None):
 
 def write_data(data_dir, name, value):
     """<data_dir>/<name>.js: a data file, which gives value to the page (loadData(name), DATA_JS)."""
-    with open(os.path.join(data_dir, name + ".js"), "w", encoding="utf-8") as out:
+    with open(os.path.join(data_dir, name + ".js"), "w", encoding="utf-8", newline="\n") as out:
         out.write(f"ofData({json.dumps(name)},{json.dumps(value, separators=(',', ':'))});\n")
 
 
@@ -106,33 +109,133 @@ def write_chunks(data_dir, prefix, rows, weight, limit=50000):
     """
     rows in data files <prefix>_<c>, each of rows of about limit in weight
     (weight(row): e.g. its genes), so that the page loads the rows it shows
-    (chunkRows, DATA_JS). Returns the first row of each chunk.
+    (chunkRows, DATA_JS). Returns the first row of each chunk. rows can be
+    an iterator: each chunk is written once it is complete, so only one is
+    held at a time.
     """
-    starts, total = [0], 0
+    starts, total, chunk = [0], 0, []
+    i = -1
     for i, row in enumerate(rows):
         w = weight(row) + 1
         if total and total + w > limit:
+            write_data(data_dir, f"{prefix}_{len(starts) - 1}", chunk)
             starts.append(i)
-            total = 0
+            total, chunk = 0, []
         total += w
-    for c, start in enumerate(starts):
-        end = starts[c + 1] if c + 1 < len(starts) else len(rows)
-        write_data(data_dir, f"{prefix}_{c}", rows[start:end])
+        chunk.append(row)
+    write_data(data_dir, f"{prefix}_{len(starts) - 1}", chunk)
     return starts
 
 
-def write_gene_index(data_dir, genes, shard=20000):
+# The genes of the gene index sorted in memory at a time (write_gene_index): more are
+# sorted in runs of this many, kept in temporary files, and merged
+GENE_INDEX_RUN = 1000000
+
+
+def _gene_key(entry):
+    return entry[0].lower()
+
+
+# Temporary files of entries (genes): pickled in blocks of this many, read back block by block
+_BLOCK = 10000
+
+
+class EntryFile(object):
+    """
+    A temporary file of entries, written then read back in order (in blocks of
+    _BLOCK, pickled: much quicker than a line of text each). Use as a context
+    manager; add(entry) then entries().
+    """
+
+    def __init__(self, directory):
+        self.file = tempfile.TemporaryFile(dir=directory)
+        self.block = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.file.close()
+
+    def add(self, entry):
+        self.block.append(entry)
+        if len(self.block) >= _BLOCK:
+            self._flush()
+
+    def _flush(self):
+        if self.block:
+            pickle.dump(self.block, self.file, pickle.HIGHEST_PROTOCOL)
+            self.block = []
+
+    def entries(self):
+        self._flush()
+        self.file.seek(0)
+        while True:
+            try:
+                block = pickle.load(self.file)
+            except EOFError:
+                return
+            yield from block
+
+
+def _sorted_genes(genes, tmp_dir, run=GENE_INDEX_RUN):
+    """
+    The (gene, value) entries sorted by gene ignoring case, as sorted() would
+    sort them (equal names in the order given), in bounded memory: in memory if
+    there are at most run of them, else sorted runs written to tmp_dir and
+    merged (both sorts are stable, and heapq.merge takes equal names from the
+    earlier run first).
+    """
+    genes = iter(genes)
+    first = []
+    for entry in genes:
+        first.append(entry)
+        if len(first) >= run:
+            break
+    else:
+        yield from sorted(first, key=_gene_key)
+        return
+    runs = []
+    batch = first
+    try:
+        while batch:
+            batch.sort(key=_gene_key)
+            run_file = EntryFile(tmp_dir)
+            for entry in batch:
+                run_file.add(entry)
+            runs.append(run_file)
+            batch = []
+            for entry in genes:
+                batch.append(entry)
+                if len(batch) >= run:
+                    break
+        yield from heapq.merge(*(r.entries() for r in runs), key=_gene_key)
+    finally:
+        for r in runs:
+            r.file.close()
+
+
+def write_gene_index(data_dir, genes, shard=20000, run=GENE_INDEX_RUN):
     """
     An index of gene names, to find genes by the start of their name
-    (findGenes, DATA_JS): genes [(gene, value)], e.g. the orthogroup each is in,
-    sorted (ignoring case) into data files Genes_<i> of shard genes each.
+    (findGenes, DATA_JS): genes [(gene, value)] (or an iterator of them), e.g.
+    the orthogroup each is in, sorted (ignoring case) into data files Genes_<i>
+    of shard genes each, in bounded memory (_sorted_genes: tens of millions of
+    genes are not all held at once).
     Returns the first gene (in lower case) of each, for the page.
     """
-    genes = sorted(genes, key=lambda g: g[0].lower())
     index = []
-    for i in range(0, len(genes), shard):
-        write_data(data_dir, f"Genes_{len(index)}", [list(g) for g in genes[i:i + shard]])
-        index.append(genes[i][0].lower())
+    with tempfile.TemporaryDirectory(prefix="gene_index_", dir=data_dir) as tmp_dir:
+        batch = []
+        for entry in _sorted_genes(genes, tmp_dir, run):
+            batch.append(list(entry))
+            if len(batch) == shard:
+                write_data(data_dir, f"Genes_{len(index)}", batch)
+                index.append(batch[0][0].lower())
+                batch = []
+        if batch:
+            write_data(data_dir, f"Genes_{len(index)}", batch)
+            index.append(batch[0][0].lower())
     return index
 
 
@@ -192,7 +295,7 @@ def write_hub(results_dir, keys):
     pages = [[key, name, path] for key, (name, path) in PAGES.items() if key in keys]
     data = {"version": __version__, "pages": pages, "results": os.path.basename(os.path.normpath(results_dir))}
     fn = os.path.join(results_dir, HUB)
-    with open(fn, "w", encoding="utf-8") as out:
+    with open(fn, "w", encoding="utf-8", newline="\n") as out:
         out.write(HUB_HTML.replace("__THEME_JS__", THEME_JS).replace("__THEME_HTML__", THEME_HTML)
                   .replace("__THEME_SELECT_JS__", THEME_SELECT_JS)
                   .replace("__DATA__", json.dumps(data, separators=(",", ":")).replace("</", "<\\/")))

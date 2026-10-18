@@ -131,8 +131,7 @@ def main(args=None):
         if ids_dir is None:
             print("ERROR: no SpeciesIDs.txt in the working directory: %s" % working_dirs[0], file=sys.stderr)
             return 1
-        ids = gene_ids.FullAccession(os.path.join(ids_dir, "SpeciesIDs.txt")).get_id_to_name_dict()
-        species_names = {k: v.rsplit(".", 1)[0] for k, v in ids.items()}
+        species_names = gene_ids.species_names(os.path.join(ids_dir, "SpeciesIDs.txt"))
 
     if a.output_dir:
         os.makedirs(a.output_dir, exist_ok=True)
@@ -148,7 +147,7 @@ def main(args=None):
     concatenated_alignment.create_concatenated_alignment(
         i_ogs, ogs, alignment_fn, out_alignment, f_single_copy,
         q_progress=True, species_names=species_names)
-    with open(out_orthogroups, "w") as outfile:
+    with open(out_orthogroups, "w", encoding="utf-8", newline="\n") as outfile:
         for i_og in i_ogs:
             outfile.write("OG%07d\n" % i_og)
     print("Concatenated alignment: %s" % out_alignment)

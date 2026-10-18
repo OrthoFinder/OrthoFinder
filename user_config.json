@@ -47,7 +47,7 @@
     "__comment": "If the Numerical underflow error occurs then the tree will be run a second time with the safe option selected.",
     "iqtree3": {
         "program_type": "tree",
-        "cmd_line": "iqtree3 -s INPUT --prefix PATH/IDENTIFIER -T METHODTHREAD -quiet",
+        "cmd_line": "iqtree3 -s INPUT --prefix PATH/IDENTIFIER -T METHODTHREAD --seed 12345 -quiet",
         "output_filename": "PATH/IDENTIFIER.treefile"
     },
     "diamond": {
@@ -80,8 +80,8 @@
     "__comment": "MMseqs2 and nucleotide sequences: when the input is nucleotide (-d), OrthoFinder adds \"--search-type 3 -k 13\" to the mmseqs search commands below and leaves out createindex. The k-mer length (-k) sets the size of the k-mer table MMseqs2 builds for every search, whatever the input size: at its default for nucleotides (k=15) the table takes ~8.4 GB of memory per search (and ~8 GB of disk per species with createindex), so running several searches at once (-t) can exhaust memory; k=13 takes ~0.5 GB and k=11 ~40 MB. A shorter k-mer finds more candidate matches (here k=13 found slightly more hits than k=15) but can make searches of large genomes slower. To use another length, add -k N to the mmseqs search command in search_cmd: OrthoFinder then keeps it (it also applies to protein input).",
     "mmseqs": {
         "program_type": "search",
-        "db_cmd": "mmseqs createdb INPUT OUTPUT.fa ; mmseqs createindex OUTPUT.fa /tmp",
-        "search_cmd": "mmseqs search PATH/mmseqsDBBASENAME DATABASE.fa OUTPUT.db /tmp/tmpBASEOUTNAME  --threads METHODTHREAD ; mmseqs convertalis --threads METHODTHREAD PATH/mmseqsDBBASENAME DATABASE.fa OUTPUT.db OUTPUT"
+        "db_cmd": "mmseqs createdb INPUT OUTPUT.fa ; mmseqs createindex OUTPUT.fa OUTPUT.tmp --remove-tmp-files 1",
+        "search_cmd": "mmseqs search PATH/mmseqsDBBASENAME DATABASE.fa OUTPUT.db PATH/tmpBASEOUTNAME --remove-tmp-files 1 --threads METHODTHREAD ; mmseqs convertalis --threads METHODTHREAD PATH/mmseqsDBBASENAME DATABASE.fa OUTPUT.db OUTPUT"
     },
     "blastn": {
         "program_type": "search",

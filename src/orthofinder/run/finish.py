@@ -10,7 +10,7 @@ from collections import Counter
 
 from ..mcl_orthogroups import infer_orthogroups, mcl
 from ..orthology import ortholog_writers
-from ..utils import file_handler, gene_ids, orthoxml, paths, printing
+from ..utils import file_handler, file_io, gene_ids, orthoxml, paths, printing
 from . import previous_run, views
 
 try:
@@ -24,7 +24,7 @@ def write_mcl_orthogroups(options):
     The MCL orthogroups (before the HOGs) in the results, from the clusters in
     the working directory: Orthogroups/MCL_Orthogroups.txt, .tsv, .GeneCount.tsv,
     _UnassignedGenes.tsv, and with --orthoxml MCL_Orthogroups.orthoxml. For a
-    stop option (-og, -ogh, -ogt, -ost), -mog, or a run that failed after the
+    stop option (-og, -ogt, -ost), -mog, or a run that failed after the
     clustering. With --assign: its orthogroups before the HOGs (the core run's
     with the genes assigned to them, and the new clade-specific ones). Returns
     the .tsv file, or None (no clusters, or already written).
@@ -41,7 +41,7 @@ def write_mcl_orthogroups(options):
     species_ids_fn, sequence_ids_fn = handler.get_species_ids_fn(), handler.get_sequence_ids_fn()
     species_names_dict = previous_run.species_name_dict(species_ids_fn)
     species_to_use = sorted(species_names_dict)
-    with open(sequence_ids_fn) as infile:
+    with file_io.open_text_any(sequence_ids_fn) as infile:
         n_seqs = Counter(int(line.split("_", 1)[0]) for line in infile if line.strip())
     ogs = mcl.get_predicted_ogs(clusters_fn)
     infer_orthogroups.add_unclustered_genes(ogs, species_to_use, n_seqs)
@@ -49,7 +49,8 @@ def write_mcl_orthogroups(options):
         ids_dict = mcl.id_full_dict([sequence_ids_fn], func=gene_ids.FirstWordExtractor)
     except RuntimeError:   # the first words are not unique: the full accessions
         ids_dict = mcl.id_full_dict([sequence_ids_fn], func=gene_ids.FullAccession)
-    mcl.MCL.create_ogs(ogs, base + ".txt", None, ids_dict)
+    prefixes = gene_ids.species_prefixes(species_names_dict) if options.q_add_species_to_ids else None
+    mcl.MCL.create_ogs(ogs, base + ".txt", None, ids_dict, prefixes)
     mcl.MCL.create_orthogroup_table(ogs, ids_dict, species_names_dict, species_to_use, base, write_ids=False)
     if options.orthoxml:
         species = orthoxml.species_for_analysis(species_ids_fn, species_to_use)
@@ -79,7 +80,7 @@ def clean_up_at_exit(options, q_failed):
     orthogroups, and no empty results directories, without hiding the run's own
     error if this fails.
     """
-    stopped = options is not None and (options.q_stop_after_mcl_groups or options.q_stop_after_groups
+    stopped = options is not None and (options.q_stop_after_mcl_groups
                                        or options.q_stop_after_trees or options.q_stop_after_species_trees)
     try:
         if q_failed or stopped:
@@ -101,7 +102,7 @@ def process_output_files(ctx, species_info_obj, species_names_dict):
         d_orthologs = os.path.join(file_handler.handler.rd1, "Orthologs")
         if not options.save_space and os.path.isdir(d_orthologs):
             # split up the orthologs into one file per species-pair
-            ortholog_writers.split_ortholog_files(d_orthologs)
+            ortholog_writers.split_ortholog_files(d_orthologs, n_processes=options.n_process_alg or 1)
 
         ### ------------- Compress the Gene_Trees --------------
         gene_tree_dir = file_handler.handler.get_ogs_tree_dir(q_results=True)
@@ -115,25 +116,15 @@ def process_output_files(ctx, species_info_obj, species_names_dict):
             paths.compress_files(resolved_gene_tree_dir, usr_resolved_gene_tree_fn)
 
         ### ---------- Clean up WorkingDirectory ---------------
-        if options.rm_gene_trees:
+        if not options.keep_gene_trees:
             paths.cleanup_path(gene_tree_dir)
 
-        if options.rm_resolved_gene_trees:
+        if not options.keep_resolved_gene_trees:
             paths.cleanup_path(resolved_gene_tree_dir)
 
         d_results = (
             os.path.normpath(file_handler.handler.get_results_directory1()) + os.path.sep
         )
-
-        if options.fewer_open_files and options.save_space and os.path.isdir(d_orthologs):
-            for i in range(len(species_info_obj.species_to_use)):
-                sp0 = species_info_obj.species_to_use[i]
-                sp0_name = species_names_dict[sp0]
-                sp_path = os.path.join(d_orthologs, f"{sp0_name}.tsv")
-                # the uncompressed file left from writing the .tsv.gz; only a
-                # regular file is removed, never e.g. a folder a user extracted to
-                if os.path.isfile(sp_path):
-                    os.remove(sp_path)
 
         if options.mcl_orthogroups or options.q_stop_after_mcl_groups:
             # -mog, -og: the MCL orthogroups as MCL_Orthogroups.*

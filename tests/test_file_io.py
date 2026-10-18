@@ -6,9 +6,11 @@ import random
 import numpy as np
 import pytest
 
-from orthofinder.utils import file_io
+from orthofinder.utils import file_io, gene_ids
 
 ALPHABET = ["a", "Z", "_", ".", ",", " ", ", ", "\t", '"', "\r", "\n", "\r\n", "é", "\x00", "#", "\\"]
+# Names as OrthoFinder makes them from FASTA headers of all sorts (gene_ids.clean_name)
+HEADER_ALPHABET = ALPHABET + ["'", ":", ";", "(", ")", "[", "]", "=", "α", "🧬", "<", "&", "|", "\u00a0", "\u2028"]
 
 
 def random_value(rng):
@@ -25,34 +27,75 @@ def random_rows(seed, n=3000):
     return [[random_value(rng) for _ in range(rng.randrange(0, 6))] for _ in range(n)]
 
 
+def random_name_rows(seed, n=2000):
+    """Rows of names made from random headers: an ID, then cells of ", "-joined names."""
+    rng = random.Random(seed)
+
+    def name():
+        while True:     # (a header with nothing but spaces is an error: fasta_processor)
+            header = "".join(rng.choice(HEADER_ALPHABET) for _ in range(rng.randrange(1, 12)))
+            if header.strip():
+                return gene_ids.clean_name(header)
+    return [["OG%07d" % i] + [", ".join(name() for _ in range(rng.randrange(0, 4))) for _ in range(rng.randrange(1, 6))]
+            for i in range(n)]
+
+
 @pytest.mark.parametrize("seed", range(5))
-@pytest.mark.parametrize("terminator", ["\r\n", "\n"])
-def test_writer_matches_csv(seed, terminator):
-    rows = random_rows(seed)
-    expected, actual = io.StringIO(), io.StringIO()
-    w = csv.writer(expected, delimiter="\t", lineterminator=terminator)
+def test_names_need_no_quoting(seed):
+    # A name cannot hold a tab, line break or quote: written unquoted, the files are
+    # the same bytes as csv would write, so every reader (csv, pandas, spreadsheets,
+    # str.split) reads the names as they are.
+    rows = random_name_rows(seed)
     for row in rows:
-        w.writerow(row)
-    file_io.writer(actual, lineterminator=terminator).writerows(rows)
+        for cell in row:
+            assert not set(cell) & set('\t\r\n"\'') and cell == cell.strip()
+    expected, actual = io.StringIO(), io.StringIO()
+    csv.writer(expected, delimiter="\t", lineterminator="\n").writerows(rows)
+    file_io.writer(actual).writerows(rows)
     assert actual.getvalue() == expected.getvalue()
+    assert list(file_io.reader(io.StringIO(actual.getvalue()))) == rows
+    assert list(csv.reader(io.StringIO(actual.getvalue()), delimiter="\t")) == rows
 
 
 @pytest.mark.parametrize("seed", range(5))
-@pytest.mark.parametrize("terminator", ["\r\n", "\n"])
-@pytest.mark.parametrize("newline", [None, ""])
-@pytest.mark.parametrize("quotes", [True, False])
-def test_reader_matches_csv(tmp_path, seed, terminator, newline, quotes):
-    rows = random_rows(seed)
-    if not quotes:
-        rows = [[v for v in row if not (isinstance(v, str) and set(v) & set('\t"\r\n'))] for row in rows]
+@pytest.mark.parametrize("terminator", ["\r\n", "\n", "\r"])
+def test_reader_round_trip(tmp_path, seed, terminator):
+    # Fields without a tab or line break are read back as written, quotes and all,
+    # whatever the line endings (e.g. a file saved on Windows)
+    rows = [[str(v) for v in row if not (isinstance(v, str) and set(v) & set("\t\r\n"))]
+            for row in random_rows(seed)]
+    rows = [row for row in rows if row != [""]]      # (a line with nothing on it is [])
     fn = tmp_path / "t.tsv"
-    with open(fn, "w", newline="") as f:
-        csv.writer(f, delimiter="\t", lineterminator=terminator).writerows(rows)
-    with open(fn, newline=newline) as f:
-        expected = list(csv.reader(f, delimiter="\t"))
-    with open(fn, newline=newline) as f:
-        actual = list(file_io.reader(f))
-    assert actual == expected
+    fn.write_bytes("".join("\t".join(row) + terminator for row in rows).encode("utf-8"))
+    with file_io.open_text(str(fn)) as f:
+        assert list(file_io.reader(f)) == rows
+
+
+def test_reader_keeps_quotes(tmp_path):
+    # Tab-joined, never quoted: a quote is part of a field (files of any version)
+    rows = [["N0.HOG0000000", "OG0000000", "n0", '"geneA, geneB', "geneC"],
+            ["N0.HOG0000001", "OG0000001", "-", 'g"x', ""],
+            []]
+    fn = tmp_path / "N0.tsv"
+    fn.write_text("".join("\t".join(r) + "\n" for r in rows), encoding="utf-8")
+    with file_io.open_text(str(fn)) as f:
+        assert list(file_io.reader(f)) == rows
+
+
+@pytest.mark.parametrize("ext", ["", ".gz"])
+def test_open_text_utf8_lf(tmp_path, ext):
+    # The same bytes on every OS: UTF-8, "\n" line endings
+    fn = str(tmp_path / ("t.tsv" + ext))
+    with file_io.open_text(fn, "wt") as f:
+        w = file_io.writer(f)
+        w.writerow(["Orthogroup", "Myco_µ"])
+        w.writerow(["OG0000000", "α-tubulin, 🧬gene"])
+    data = (gzip.open if ext else open)(fn, "rb").read()
+    assert data == "Orthogroup\tMyco_µ\nOG0000000\tα-tubulin, 🧬gene\n".encode("utf-8")
+    with file_io.open_text(fn, "at") as f:
+        f.write("x\n")
+    with pytest.raises(ValueError):
+        file_io.open_text(fn, "rb")
 
 
 def _old_getrow(row):
@@ -70,27 +113,6 @@ def test_unquoted_line_matches_old_getrow(seed):
     for r in rows:
         file_io.write_unquoted(out, r)
     assert out.getvalue() == "".join(_old_getrow(r) for r in rows)
-
-
-def test_unquoted_reader_keeps_quotes(tmp_path):
-    # Rows as written to HOG files and Duplications.tsv: tab-joined, never quoted.
-    rows = [["N0.HOG0000000", "OG0000000", "n0", '"geneA, geneB', "geneC"],
-            ["N0.HOG0000001", "OG0000001", "-", 'g"x', ""],
-            []]
-    fn = tmp_path / "N0.tsv"
-    fn.write_text("".join("\t".join(r) + "\n" for r in rows))
-    with open(fn) as f:
-        assert list(file_io.unquoted_reader(f)) == rows
-    with open(fn) as f:   # what a quote-aware reader makes of the same line
-        assert next(csv.reader(f, delimiter="\t")) != rows[0]
-
-
-def test_writer_default_line_ending_is_lf():
-    out = io.StringIO()
-    w = file_io.writer(out)
-    w.writerow(["Orthogroup", "Sp0"])
-    w.writerow(["OG0000000", 'gene"x'])     # quoted row, written by csv
-    assert out.getvalue() == 'Orthogroup\tSp0\nOG0000000\t"gene""x"\n'
 
 
 def test_reader_gzip_and_next(tmp_path):
@@ -111,31 +133,9 @@ def test_file_info_reports_line_endings(tmp_path):
     fn.write_bytes(b"a\tb\r\nc\td\n")
     info = file_io.file_info(str(fn))
     assert info["lines"] == 2 and info["fields per line"] == "2"
-    assert info["line endings"].startswith("mixed")
-
-
-@pytest.mark.parametrize("ext", ["", ".gz"])
-def test_convert_round_trip(tmp_path, ext):
-    rows = [["Orthogroup", "Sp0", "Sp1"], ["OG0000000", '"gene', 'g"x'], ["OG0000001", "", "y"]]
-    unquoted = tmp_path / ("in.tsv" + ext)
-    with file_io.open_text(str(unquoted), "wt") as f:
-        for r in rows:
-            file_io.write_unquoted(f, r)
-    quoted = tmp_path / ("q.tsv" + ext)
-    back = tmp_path / ("back.tsv" + ext)
-    assert file_io.convert(str(unquoted), str(quoted), "unquoted", "quoted") == 3
-    with file_io.open_text(str(quoted)) as f:
-        assert list(file_io.reader(f)) == rows
-    file_io.convert(str(quoted), str(back), "quoted", "unquoted")
-    with file_io.open_text(str(back)) as f:
-        assert list(file_io.unquoted_reader(f)) == rows
-
-
-def test_convert_to_unquoted_rejects_tab_in_field(tmp_path):
-    fn = tmp_path / "t.tsv"
-    fn.write_text('h\tx\n1\t"a\tb"\n')
-    with pytest.raises(ValueError):
-        file_io.convert(str(fn), str(tmp_path / "out.tsv"), "quoted", "unquoted")
+    assert info["line endings"].startswith("mixed") and info["encoding"] == "UTF-8"
+    fn.write_bytes("a\tµ\n".encode("cp1252"))
+    assert file_io.file_info(str(fn))["encoding"] == "not UTF-8"
 
 
 def test_standalone_copy_imports_without_orthofinder(tmp_path):
@@ -145,7 +145,7 @@ def test_standalone_copy_imports_without_orthofinder(tmp_path):
     subprocess.run([sys.executable, "-c", code], cwd=tmp_path, check=True)
     out = subprocess.run([sys.executable, "file_io.py", "--help"], cwd=tmp_path, check=True,
                          capture_output=True, text=True).stdout
-    assert "info" in out and "convert" in out
+    assert "info" in out
 
 
 _HITS = ("3_17\t5_2\t60.8\t120\t40\t1\t1\t120\t3\t122\t5.99e-111\t315\n"
@@ -299,3 +299,17 @@ def test_search_checkpoint(tmp_path):
     assert status(started, started, completed)[0] is False                  # ... then finished
     assert status("Starting OrthoFinder")[0] is False                        # no search logged
     assert file_io.search_checkpoint(str(tmp_path / "missing")) == (False, {})
+
+
+def test_copy_tiny_alignments_only_alignments(tmp_path):
+    # the tree program's own files next to the alignments (e.g. IQ-TREE) are not copied
+    from orthofinder.hog_orthogroups import finalise
+    align_ids, results = tmp_path / "Alignments_ids", tmp_path / "MultipleSequenceAlignments"
+    align_ids.mkdir(); results.mkdir()
+    (align_ids / "OG0000007.fa").write_text(">0_1\nMK-L\n>1_2\nMKAL\n")
+    for ext in ("iqtree", "log", "mldist", "bionj"):
+        (align_ids / ("OG0000007." + ext)).write_text("IQ-TREE report, not an alignment\n")
+    finalise.copy_tiny_alignments(str(align_ids) + "/", str(results), {"OG0000007": [["OG0000002", "N0.HOG0000002", "-"]]},
+                                  {"0_1": "geneA", "1_2": "geneB"})
+    text = (results / "OG0000002.fa").read_text()
+    assert text.startswith(">geneA\n") and ">geneB\n" in text and "IQ-TREE" not in text

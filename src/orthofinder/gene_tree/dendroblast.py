@@ -30,6 +30,7 @@ class DendroBLASTTrees(object):
         self.q_double_blast = q_double_blast
         # Check files exist
     
+    @parallel_task_manager.frozen_while_running
     def get_og_matrices_full_parallel(self):
         """
         read the blast files as well, remove need for intermediate pickle and unpickle
@@ -49,7 +50,18 @@ class DendroBLASTTrees(object):
             except:
                 iog4 = len(ogs_all)
             ogs = ogs_all[:iog4]
-            ogs_per_species = [[[(g, i) for i, g in enumerate(og) if g.i_sp == i_sp] for i_sp in self.og_set.seqs_info.species_to_use] for og in ogs]
+            # each orthogroup's (gene, index) per species (in species_to_use order): one pass over
+            # its genes, not one per species (species x genes)
+            species_to_use = self.og_set.seqs_info.species_to_use
+            sp_column = {i_sp: k for k, i_sp in enumerate(species_to_use)}
+            ogs_per_species = []
+            for og in ogs:
+                by_species = [[] for _ in species_to_use]
+                for i, g in enumerate(og):
+                    k = sp_column.get(g.i_sp)
+                    if k is not None:
+                        by_species[k].append((g, i))
+                ogs_per_species.append(by_species)
             n_genes = [len(og) for og in ogs]
             n_seqs = self.og_set.seqs_info.n_seqs_per_species
             og_matrices = [[mp.Array('d', n, lock=False) for _ in range(n)] for n in n_genes]
@@ -142,7 +154,7 @@ class DendroBLASTTrees(object):
         """
         max_og = 1.1*max_og
         sliver = 1e-6
-        with open(out_fn, 'w') as outfile:
+        with open(out_fn, 'w', encoding="utf-8", newline="\n") as outfile:
             n = len(m)
             outfile.write("%d\n" % n)
             for i in range(n):
@@ -182,7 +194,7 @@ class DendroBLASTTrees(object):
             M[sp2, sp1] = x
         species_matrix_fn = file_handler.handler.get_species_tree_matrix_fn(q_put_in_working_dir)  
         sliver = 1e-6
-        with open(species_matrix_fn, 'w') as outfile:
+        with open(species_matrix_fn, 'w', encoding="utf-8", newline="\n") as outfile:
             outfile.write("%d\n" % n)
             for i in range(n):
                 outfile.write(str(self.og_set.seqs_info.species_to_use[i]) + " ")

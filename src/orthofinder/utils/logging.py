@@ -158,11 +158,13 @@ class RunLogger:
         def decorate(function):
             @wraps(function)
             def run(*args, **kwargs):
+                from . import run_state
                 logger = cls._current()
                 if logger is not None:
                     logger.step(name, "Started")
                 try:
-                    result = function(*args, **kwargs)
+                    with run_state.stage(name):       # (the external commands noted are of this stage)
+                        result = function(*args, **kwargs)
                 except BaseException:
                     if logger is not None and cls._failed_stage is None:
                         cls._failed_stage = name

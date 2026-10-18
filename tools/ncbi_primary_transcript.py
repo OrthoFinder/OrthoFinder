@@ -60,7 +60,7 @@ def parse_fasta(fasta_file):
 def parse_gff(gff_file):
     gene_map = {}
 
-    with open(gff_file, "r") as gff:
+    with open(gff_file, "r", encoding="utf-8") as gff:
         for line in gff:
             if line.startswith("#"):
                 continue
@@ -97,7 +97,7 @@ def get_longest_transcripts(protein_dict, gene_map):
 
 
 def write_longest_fasta(output_file, longest_transcripts):
-    with open(output_file, "w") as out_fasta:
+    with open(output_file, "w", encoding="utf-8", newline="\n") as out_fasta:
         for gene, (protein_id, sequence) in sorted(longest_transcripts.items()):
             out_fasta.write(f">{protein_id} gene={gene}\n")
             out_fasta.write(f"{sequence}\n")

@@ -27,8 +27,6 @@
 
 import os
 import sys
-import csv
-from functools import partial
 import glob
 #import shelve
 try:
@@ -36,9 +34,9 @@ try:
 except ImportError:
     ...
 
+import bisect
 import itertools
 import zlib
-import multiprocessing as mp
 from collections import Counter, defaultdict
 from ..phylo import tree
 from ..utils import parallel_task_manager
@@ -54,7 +52,6 @@ def compare(exp, act):
 
 criteria = "crit_all"
 
-n_procs = mp.cpu_count()
 sp_tree_format = 1  
 
 too_large = frozenset(["Too many genes"])
@@ -329,10 +326,62 @@ def local_check_clades(clade1, clade2, exp_clades, GeneToSpecies):
 def join(clades):
      return set([s for child in clades for grandchild in child for s in grandchild])
      
-def supported_hierachies(t, G, S, GeneToSpecies, species, dict_clades, clade_names, tree_name, q_write_dup_trees=False):
+class CladeIndex(object):
+    """
+    The clades of the species tree (the keys of dict_clades) as bitmasks of their
+    species, sorted by size, to find the smallest clades containing a set of
+    species without testing it against every clade: with n species there are
+    ~2n clades, tested for each node of each gene tree (~n nodes).
+    """
+
+    def __init__(self, dict_clades):
+        self.bit = {}
+        for clade in dict_clades:
+            for sp in clade:
+                if sp not in self.bit:
+                    self.bit[sp] = len(self.bit)
+        entries = sorted(((len(k), self.mask(k), k) for k in dict_clades), key=lambda e: e[0])
+        self.sizes = [e[0] for e in entries]
+        self.masks = [e[1] for e in entries]
+        self.clades = [e[2] for e in entries]
+
+    def mask(self, species_set):
+        bit = self.bit
+        m = 0
+        for sp in species_set:
+            b = bit.get(sp)
+            if b is None:
+                return None     # a species in no clade: contained in none
+            m |= 1 << b
+        return m
+
+    def smallest_containing(self, species_set):
+        """
+        The set of the smallest clades containing species_set (those of the same,
+        smallest size), as the keys of dict_clades; empty if none does.
+        """
+        found = set()
+        m = self.mask(species_set)
+        if m is None:
+            return found
+        sizes, masks, clades = self.sizes, self.masks, self.clades
+        size_found = None
+        for k in range(bisect.bisect_left(sizes, len(species_set)), len(sizes)):
+            if size_found is not None and sizes[k] > size_found:
+                break
+            if m & masks[k] == m:
+                size_found = sizes[k]
+                found.add(clades[k])
+        return found
+
+
+def supported_hierachies(t, G, S, GeneToSpecies, species, dict_clades, clade_names, tree_name, q_write_dup_trees=False,
+                         clade_index=None):
     """
     Only get the species sets in the first instance as work out the clades as and when
     """
+    if clade_index is None:
+        clade_index = CladeIndex(dict_clades)
     q_ancient = False
     supported = defaultdict(int)
     genes_post_dup = set()
@@ -361,13 +410,9 @@ def supported_hierachies(t, G, S, GeneToSpecies, species, dict_clades, clade_nam
             if len(s1) == 1 and s1 == s2:
                 supported[frozenset(s1)] += 1
             if min(len(s1), len(s2)) < 2: continue
-            k1 = frozenset(species)
-            k2 = frozenset(species)
-            for kk in dict_clades: 
-                if  s1.issubset(kk) and len(kk) < len(k1): k1 = kk
-                if  s2.issubset(kk) and len(kk) < len(k2): k2 = kk
-            edges1 = set([kk for kk in dict_clades if s1.issubset(kk) and len(kk) == len(k1)])
-            edges2 = set([kk for kk in dict_clades if s2.issubset(kk) and len(kk) == len(k2)])
+            # the smallest clades of the species tree containing s1, and s2
+            edges1 = clade_index.smallest_containing(s1)
+            edges2 = clade_index.smallest_containing(s2)
             for k1 in edges1.intersection(edges2):
                 if len(k1) == 1:
                     # terminal duplciations dealt with above (since no extra info about species tree topology is needed)
@@ -445,13 +490,32 @@ Parallelisation wrappers
 # def SupportedHierachies_wrapper2(args):
 #     return supported_hierachies_wrapper(*args)
 
+# The species tree's data in a worker process (_init_worker): sent once per worker, not
+# with each gene tree (dict_clades has ~2n sets of up to n species: tens of MB at
+# thousands of species)
+_WORKER = {}
+
+
+def _init_worker(GeneToSpecies, species, dict_clades, clade_names, q_write_dup_trees):
+    _WORKER.update(
+        GeneToSpecies=GeneToSpecies, species=species, dict_clades=dict_clades,
+        clade_names=clade_names, q_write_dup_trees=q_write_dup_trees,
+        clade_index=CladeIndex(dict_clades),
+    )
+
+
+def _worker_tree(tree_name):
+    return supported_hierachies_wrapper(tree_name, **_WORKER)
+
+
 def supported_hierachies_wrapper(
     tree_name, 
     GeneToSpecies, 
     species, 
     dict_clades, 
     clade_names, 
-    q_write_dup_trees=False
+    q_write_dup_trees=False,
+    clade_index=None,
 ):
     if not os.path.exists(tree_name):
         return None
@@ -483,6 +547,7 @@ def supported_hierachies_wrapper(
         clade_names,
         tree_name,
         q_write_dup_trees,
+        clade_index=clade_index,
     )
 
     del t
@@ -515,6 +580,34 @@ def analyse_species_tree(species_tree):
         ch1 = [ch[1]] if ch[1].is_leaf() else ch[1].get_children() 
         dict_clades[p] = [[set(c.get_leaf_names()) for c in ch0], [set(c.get_leaf_names()) for c in ch1]]
     return species, dict_clades, clade_names
+
+def _supported_clade_distances(species_tree, clusters):
+    """
+    (topological distance, branch length) from the root to each node whose clade
+    is in clusters, as species_tree.get_distance(node[, topology_only=True]) gives
+    them (the lengths added from the node up, in the same order), with the clades
+    found in one pass: get_leaf_names and get_distance for each node cost
+    species^2 for each candidate root.
+    """
+    clades = {}
+    for n in species_tree.traverse("postorder"):
+        clades[id(n)] = (frozenset([n.name]) if n.is_leaf() else
+                         frozenset().union(*[clades[id(c)] for c in n.children]))
+    supported = []
+    for n in species_tree.traverse("preorder"):
+        if clades[id(n)] not in clusters:
+            continue
+        topology = 0.0      # (a float, as get_distance gives it)
+        length = 0.0
+        current = n
+        while current is not species_tree:
+            if current is not n:
+                topology += 1
+            length += current.dist
+            current = current.up
+        supported.append((topology, length))
+    return supported
+
 
 def root_at_clade(t, accs_in_clade):
     if len(accs_in_clade) == 1:
@@ -573,20 +666,14 @@ def process_trees(
 
     tree_files = glob.iglob(trees_dir + "/*")
 
-    worker_func = partial(
-        supported_hierachies_wrapper,
-        GeneToSpecies=gene_to_species_map,
-        species=species,
-        dict_clades=dict_clades,
-        clade_names=clade_names,
-        q_write_dup_trees=q_write_dup_trees,
-    )
+    worker_args = (gene_to_species_map, species, dict_clades, clade_names, q_write_dup_trees)
 
     # A fresh pool per batch keeps worker memory bounded. On a failure (or a
     # worker killed, e.g. out of memory) parallel_map stops the other workers
     # and raises the child's error.
     for batch in batched(tree_files, 1000):
-        for result in parallel_task_manager.parallel_map(worker_func, batch, n_processors):
+        for result in parallel_task_manager.parallel_map(
+                _worker_tree, batch, n_processors, initializer=_init_worker, initargs=worker_args):
             if result is None:
                 continue
             supported, genes_post_dup = result
@@ -604,11 +691,13 @@ def get_root(species_tree_fn, trees_dir, gene_to_species_map, n_processors, q_wr
     try:
         species_tree = tree.Tree(species_tree_fn, format=2)
         q_have_branch_support = True
-    except:
+    except Exception:
         try:
             species_tree = tree.Tree(species_tree_fn, format=1)
-        except:
-            print("ERROR: Species tree inference failed")
+        except Exception as e:
+            # (an error: the analysis cannot go on without the species tree)
+            raise RuntimeError("ERROR: Species tree inference failed: the species tree %s cannot be read (%s)"
+                               % (species_tree_fn, e)) from e
     species, dict_clades, clade_names = analyse_species_tree(species_tree)
     # pool = mp.Pool(nProcessors, maxtasksperchild=1)       
     # list_of_dicts = pool.map(
@@ -655,10 +744,11 @@ def get_root(species_tree_fn, trees_dir, gene_to_species_map, n_processors, q_wr
         for r in roots:
             # 1. Root at potential outgroup
             species_tree = root_at_clade(species_tree, r)
+            supported = _supported_clade_distances(species_tree, clusters)
             # 2. Get minimum topological distance to any clade with gene duplication evidence
-            top_dist.append(min([species_tree.get_distance(n, topology_only=True) for n in species_tree.traverse('preorder') if frozenset(n.get_leaf_names()) in clusters]))
+            top_dist.append(min([topology for topology, _ in supported]))
             # 3. Get minimum branch length to outgroups that are also the minimum topological distance
-            branch_dist.append(min([species_tree.get_distance(n) for n in species_tree.traverse('preorder') if (frozenset(n.get_leaf_names()) in clusters and species_tree.get_distance(n, topology_only=True) == top_dist[-1])]))        
+            branch_dist.append(min([length for topology, length in supported if topology == top_dist[-1]]))
         # 4. Get the distance for the root which is furthest from its closest outgroup
         max_top_dist = max(top_dist)
         best_dist = -1

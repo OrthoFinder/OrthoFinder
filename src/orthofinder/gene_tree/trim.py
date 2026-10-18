@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import sys
 import shutil
 # import argparse
 import numpy as np
@@ -20,7 +19,7 @@ class MSA(object):
     def __init__(self, fn):
         self.names = []         # list of names
         seqs = []
-        with open(fn, 'r') as infile:
+        with open(fn, 'r', encoding="utf-8") as infile:
             for line in infile:
                 line = line.rstrip()
                 if line.startswith(">"):
@@ -33,8 +32,10 @@ class MSA(object):
         self.length = len(seqs[0]) if seqs else 0   # number of columns in MSA
         for i, seq in enumerate(seqs[1:], 2):
             if len(seq) != self.length:
-                print("Error: sequence %d has length %d, previous was %d" % (i, len(seq), self.length))
-                sys.exit()
+                # (an error, not sys.exit(): that is a successful exit, and the run would
+                # end as if stopped normally, without its results)
+                raise ValueError("ERROR: Malformed alignment %s: sequence %d has length %d, previous was %d"
+                                 % (fn, i, len(seq), self.length))
         # one byte a character; other characters (not Latin-1) as 4-byte code points
         try:
             self.encoding, dtype = "latin-1", np.uint8
@@ -47,7 +48,7 @@ class MSA(object):
 
     def write_msa(self, i_cols, outfn, n_char = 80):
         kept = np.where(self.residues[:, i_cols], self.M[:, i_cols], ord("-")).astype(self.M.dtype)
-        with open(outfn, 'w') as outfile:
+        with open(outfn, 'w', encoding="utf-8", newline="\n") as outfile:
             for name, row in zip(self.names, kept):
                 seq = row.tobytes().decode(self.encoding)
                 outfile.write(">" + name + "\n")
@@ -87,15 +88,13 @@ def run_in_process(infn, outfn, msa_min_seq, f, n_min, c):
         with no residues.
     """
     if not os.path.exists(infn):
-        print("ERROR, input file does not exist: %s" % infn)
-        sys.exit()
+        raise FileNotFoundError("ERROR: The alignment to trim does not exist: %s" % infn)
     try:
         # BEWARE: Input and output files may be the same
-        with open(outfn, 'a') as outfile:
+        with open(outfn, 'a', encoding="utf-8", newline="\n") as outfile:
             outfile.write(" ")
-    except:
-        print("ERROR, cannot write to output file: %s" % outfn)
-        sys.exit()
+    except OSError as e:
+        raise OSError("ERROR: Cannot write the trimmed alignment %s: %s" % (outfn, e)) from e
 
     msa = MSA(infn)   
     n = msa.n
@@ -157,7 +156,8 @@ def get_satifactory_f(gap_counts, aa_counts, N, f_orig, n_min, c, tol = 0.001):
         if n_keep < n_min or aa_new < c*aa_before:
             up = x
         elif (n_keep == n_min and aa_new >= c*aa_before) or (n_keep >= n_min and aa_new == c*aa_before):
-            # one on the limit, the other satisfied - stop exactly here
+            # one on the limit, the other satisfied - stop exactly here (x is used)
+            down = x
             break
         else:
             down = x

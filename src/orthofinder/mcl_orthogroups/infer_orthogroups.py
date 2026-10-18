@@ -17,7 +17,7 @@ from ..utils import gene_ids
 def write_graph_per_species(args):
     seqs_info, graph_fn, i_spec, d_pickle = args
     # calculate the 2-way connections for one query species
-    with open(graph_fn + "_%d" % i_spec, "w") as graph_file:
+    with open(graph_fn + "_%d" % i_spec, "w", encoding="utf-8", newline="\n") as graph_file:
         connect2 = []
         for j_spec in range(seqs_info.n_species):
             m1 = matrices.load_matrix("connect", i_spec, j_spec, d_pickle)
@@ -69,7 +69,7 @@ def write_graph_per_species_homology(args):
         w2tr = numeric.transpose(matrices.load_matrix("B", j_spec, i_spec, d_pickle))
         W.append((w1 + w2tr > 0).tolil())  # symmetrise
     # matrices.dump_matrix_array("H", W, iSpec, d_pickle)
-    with open(graph_fn + "_%d" % i_spec, "w") as graph_file:
+    with open(graph_fn + "_%d" % i_spec, "w", encoding="utf-8", newline="\n") as graph_file:
         for query in range(seqs_info.n_seqs_per_species[seqs_info.species_to_use[i_spec]]):
             offset = seqs_info.seq_starting_indices[i_spec]
             graph_file.write("%d    " % (offset + query))
@@ -106,7 +106,7 @@ def get_sequence_lengths(seqs_info):
         current_sequence_length = 0
         i_current_sequence = -1
         q_first_line = True
-        with open(fasta_filename) as infile:
+        with open(fasta_filename, encoding="utf-8") as infile:
             for row in infile:
                 if len(row) > 1 and row[0] == ">":
                     if q_first_line:
@@ -303,37 +303,34 @@ def post_clustering_orthogroups(
         species_names_dict,
         options,
         q_incremental=False,
+        ogs=None,
     ):
     """
     Write OGs & statistics to results files, write Fasta files.
     Args:
         q_incremental - These are not the final orthogroups, don't write results
+        ogs - the orthogroups, if they are in memory and not written (--assign, before
+              its clade-specific orthogroups): else read from clusters_filename_pairs
     """
-    ogs = mcl.get_predicted_ogs(clusters_filename_pairs)
-    # The MCL orthogroups are the results (Orthogroups.*) only with --no-fix-files; else
-    # they are written as MCL_Orthogroups.* at the end of the run if wanted (-og, -mog,
-    # the other stop options, or a failed run: run.finish.write_mcl_orthogroups)
-    q_results_ogs = not options.fix_files and not q_incremental
-    if q_results_ogs or (options.q_stop_after_mcl_groups and not q_incremental):
+    ogs_given = ogs
+    if ogs is None:
+        ogs = mcl.get_predicted_ogs(clusters_filename_pairs)
+    # The MCL orthogroups are not results files here: they are written as MCL_Orthogroups.*
+    # at the end of the run if wanted (-og, -mog, the other stop options, or a failed run:
+    # run.finish.write_mcl_orthogroups)
+    if options.q_stop_after_mcl_groups and not q_incremental:
         # every gene must be in an orthogroup (or Orthogroups_UnassignedGenes.tsv)
         add_unclustered_genes(ogs, species_info_obj.species_to_use, seqs_info.n_seqs_per_species)
-    results_base_filename = file_handler.handler.get_orthogroup_results_fn_base() if q_results_ogs else None
 
     printing.print_underline("Writing orthogroups to file")
     ids_dict = mcl.MCL.write_orthogroup_files(
         ogs,
         [file_handler.handler.get_sequence_ids_fn()],
-        results_base_filename,
+        None,
         clusters_filename_pairs,
+        # Legacy/Orthogroups_id.txt, of the final MCL orthogroups only
+        write_ids=options.keep_legacy and not q_incremental,
     )
-    if q_results_ogs:
-        mcl.MCL.create_orthogroup_table(
-            ogs,
-            ids_dict,
-            species_names_dict,
-            species_info_obj.species_to_use,
-            results_base_filename,
-        )
 
     # Write Orthogroup FASTA files
     og_set = orthogroups_set.OrthogroupSet(
@@ -344,13 +341,11 @@ def post_clustering_orthogroups(
         options.q_add_species_to_ids,
         options.tree_program,
         id_extractor=gene_ids.FirstWordExtractor,
+        ogs=ogs_given,
     )
 
 
     tree_gen = msa_trees.TreesForOrthogroups(None, None, None)
-    fasta_writer = msa_trees.FastaWriter(
-        file_handler.handler.get_species_seqs_dir(), species_info_obj.species_to_use
-    )
 
     # d_seqs = files.FileHandler.get_results_seqs_dir()
     # if not os.path.exists(d_seqs):
@@ -362,16 +357,11 @@ def post_clustering_orthogroups(
     if not os.path.exists(d_seqs_id):
         os.mkdir(d_seqs_id)
 
-    # Orthogroup_Sequences/ only if these are the final orthogroups (--no-fix-files); the
-    # MCL orthogroups' sequences (e.g. -og) are written by tools/mcl_orthogroup_sequences.py
-    q_results=False
-    if not options.fix_files:
-        d_seqs = file_handler.handler.get_results_seqs_dir()
-        if not os.path.exists(d_seqs):
-            os.mkdir(d_seqs)
-        q_results = True 
-
-    tree_gen.write_fasta_files(fasta_writer, og_set.get_ogs_all(), ids_dict, q_id=True, q_results=q_results)
+    # Not Orthogroup_Sequences/: the MCL orthogroups' sequences (e.g. -og) are written by
+    # tools/mcl_orthogroup_sequences.py
+    tree_gen.write_fasta_files(file_handler.handler.get_species_seqs_dir(), species_info_obj.species_to_use,
+                               og_set.get_ogs_all(), ids_dict, q_id=True, q_results=False,
+                               n_processes=options.n_process_alg or 1)
 
     if not q_incremental:
         # stats.Stats(ogs, speciesNamesDict, speciesInfoObj.speciesToUse, files.FileHandler.iResultsVersion)

@@ -1,15 +1,12 @@
 import sys
 import os
 from operator import itemgetter
-from collections import defaultdict, Counter
 
 from ..gene_tree import msa_trees
-from ..mcl_orthogroups.mcl import id_full_dict
+from ..mcl_orthogroups.mcl import id_full_dict, orthogroup_table_cells
 from ..mcl_orthogroups.orthogroups_set import Seq
 from ..utils import util, file_handler, file_io
 
-from xml.etree.ElementTree import SubElement  # Y
-from .. import __version__
 from ..utils import species_info
 from ..utils import gene_ids
 
@@ -28,23 +25,25 @@ def post_hogs_processing(
         q_incremental - These are not the final orthogroups, don't write results
     """
     new_ogs, name_dictionary = update_ogs(
-        file_handler.handler.hierarchical_orthogroups_fn_n0()
+        file_handler.handler.n0_mcl_ids_fn()
     )
     results_base_filename = file_handler.handler.get_orthogroup_results_fn_base()
     # printing.print_underline("Writing orthogroups to file")
-    all_assigned = set([g for og in new_ogs for g in og])
+    all_assigned = {g for og in new_ogs for g in og}   # (not a list of every gene first)
     # Unassigned genes in sequence-ID order: iterating a set of strings gives a
     # different order (and so different OG numbers) in every run.
     unassigned = [g for g in dict.fromkeys(all_seq_ids) if g not in all_assigned]
     single_ogs_list = [{g} for g in unassigned]
     new_ogs.extend(single_ogs_list)
 
-    with open(file_handler.handler.ogs_all_id_fn(), "w") as outfile:
+    with open(file_handler.handler.ogs_all_id_fn(), "w", encoding="utf-8", newline="\n") as outfile:
         for og in new_ogs:
             outfile.write(", ".join(sorted(og, key=species_info.seq_id_key)) + "\n")
 
+    # (Orthogroups.txt gives no species: <species>_<gene>, gene_ids.species_prefixes)
+    prefixes = gene_ids.species_prefixes(species_names_dict) if options.q_add_species_to_ids else None
     ids_dict = HogOrthogroupFiles.write_orthogroup_files(
-        new_ogs, [file_handler.handler.get_sequence_ids_fn()], results_base_filename
+        new_ogs, [file_handler.handler.get_sequence_ids_fn()], results_base_filename, prefixes
     )
 
     if not q_incremental:
@@ -54,6 +53,7 @@ def post_hogs_processing(
             species_names_dict,
             species_info_obj.species_to_use,
             results_base_filename,
+            write_ids=options.keep_legacy,
         )
 
     # Write Orthogroup FASTA files
@@ -69,20 +69,19 @@ def post_hogs_processing(
 
     ## ------------------ Fix Orthogroup_Sequences and Sequences_ids --------------------
     tree_gen = msa_trees.TreesForOrthogroups(None, None, None)
-    fasta_writer = msa_trees.FastaWriter(
-        file_handler.handler.get_species_seqs_dir(), species_info_obj.species_to_use
-    )
 
     d_seqs = file_handler.handler.get_results_seqs_dir()
     if not os.path.exists(d_seqs):
         os.mkdir(d_seqs)
 
-    # Update Orthogroup_Sequneces
+    # Update Orthogroup_Sequneces (as the alignments and trees: <species>_<gene>)
+    id_dict = og_set.spec_seq_dict()
     tree_gen.write_fasta_files(
-        fasta_writer, og_set.get_ogs_all(), ids_dict, q_id=False, q_results=True
+        file_handler.handler.get_species_seqs_dir(), species_info_obj.species_to_use,
+        og_set.get_ogs_all(), id_dict, q_id=False, q_results=True,
+        n_processes=options.n_process_alg or 1,
     )
 
-    id_dict = og_set.spec_seq_dict()
     id_dict.update(
         og_set.species_dict()
     )  # same code will then also convert concatenated alignment for species tree
@@ -123,7 +122,7 @@ def read_hogs_to_matrix(input_path):
     memory (e.g. 1,000 species x 100,000 HOGs).
     """
     rows = []
-    with open(input_path) as input_file:
+    with open(input_path, encoding="utf-8") as input_file:
         next(input_file, None)      # header
         for line in input_file:
             line_split = line.strip().split("\t")
@@ -166,7 +165,7 @@ class HogOrthogroupSet(object):
         else:
             self.ogs_all_fn = ogs_all_fn
 
-        self.species_ids_ex = gene_ids.FullAccession(self.species_id_fn)
+        self.species_names = gene_ids.species_names(self.species_id_fn)
         self._spec_seq_ids = None
         self._extractor = id_extractor
         self.seq_ids_ex = None
@@ -206,26 +205,16 @@ class HogOrthogroupSet(object):
 
     def species_dict(self):
         """returns Dict[str, str]"""
-        d = self.species_ids_ex.get_id_to_name_dict()
-        return {k: v.rsplit(".", 1)[0] for k, v in d.items()}
+        return dict(self.species_names)
 
     def spec_seq_dict(self):
         """returns Dict[str, str]"""
         if self._spec_seq_ids != None:
             return self._spec_seq_ids
-        seqs = self.sequence_dict()
-        seqs = {
-            k: v for k, v in seqs.items() if int(k.split("_")[0]) in self.species_to_use
-        }
-        if not self.q_add_species_to_ids:
-            self._spec_seq_ids = seqs
-            return seqs
-        specs = self.species_dict()
-        specs_ed = {k: v.replace(".", "_").replace(" ", "_") for k, v in specs.items()}
-        self._spec_seq_ids = {
-            seq_id: specs_ed[seq_id.split("_")[0]] + "_" + name
-            for seq_id, name in seqs.items()
-        }
+        # (a view of the names of the species used, with their species' prefix unless -X:
+        # not a second copy of every gene's name)
+        prefixes = gene_ids.species_prefixes(self.species_dict()) if self.q_add_species_to_ids else None
+        self._spec_seq_ids = gene_ids.SpeciesNames(self.sequence_dict(), self.species_to_use, prefixes)
         return self._spec_seq_ids
 
     def get_i_ogs4(self):
@@ -236,30 +225,22 @@ class HogOrthogroupSet(object):
 
     def get_ogs_all(self):
         if self.ogs_all is None:
-            with open(self.ogs_all_fn) as infile:
-                ogs = [og.strip().split(", ") for og in infile]
-            if self.tree_program in ["raxml", "raxml-ng"]:
-                self.ogs_all = [
-                    [Seq(g) for g in og] for og in ogs if len(og) >= self.min_seq
-                ]
-            else:
-                self.ogs_all = [[Seq(g) for g in og] for og in ogs]
+            # (all of them: see orthogroups_set.OrthogroupSet.get_ogs_all), each line's
+            # genes as Seqs straight away: not every gene held twice (as text, then Seqs)
+            with open(self.ogs_all_fn, encoding="utf-8") as infile:
+                self.ogs_all = [[Seq(g) for g in line.strip().split(", ")] for line in infile]
 
             # self.ogs_all = sorted(self.ogs_all, key=len, reverse=True)
         return self.ogs_all
 
     def all_ogs(self):
-        with open(self.ogs_all_fn) as infile:
+        with open(self.ogs_all_fn, encoding="utf-8") as infile:
             ogs = [og.strip().split(", ") for og in infile]
-        if self.tree_program in ["raxml", "raxml-ng"]:
-            all_ogs = [[g for g in og] for og in ogs if len(og) >= self.min_seq]
-        else:
-            all_ogs = [[g for g in og] for og in ogs]
-        return all_ogs
+        return [[g for g in og] for og in ogs]
 
     def all_used_sequence_ids(self):
         ids_dict = self.sequence_dict()
-        species_to_use_strings = list(map(str, self.species_to_use))
+        species_to_use_strings = set(map(str, self.species_to_use))   # (a set: a test per gene)
         all_ids = [
             s for s in ids_dict.keys() if s.split("_")[0] in species_to_use_strings
         ]
@@ -268,12 +249,14 @@ class HogOrthogroupSet(object):
 
 class HogOrthogroupFiles:
     @staticmethod
-    def create_ogs(predicted_ogs, output_filename, id_dict):
-        with open(output_filename, "w") as output_file:
+    def create_ogs(predicted_ogs, output_filename, id_dict, prefixes=None):
+        """prefixes: of the gene names (gene_ids.species_prefixes), None: the names alone (-X)"""
+        with open(output_filename, "w", encoding="utf-8", newline="\n") as output_file:
             for i_og, og in enumerate(predicted_ogs):
                 output_file.write("OG%07d: " % i_og)
                 accessions = sorted(
-                    [id_dict[seq] for seq in og if id_dict.get(seq) is not None]
+                    [(prefixes[seq.split("_", 1)[0]] if prefixes else "") + id_dict[seq]
+                     for seq in og if id_dict.get(seq) is not None]
                 )
                 output_file.write(" ".join(accessions))
                 output_file.write("\n")
@@ -281,7 +264,7 @@ class HogOrthogroupFiles:
     # @staticmethod
 
     @staticmethod
-    def write_orthogroup_files(ogs, ids_filenames, results_base_filename):
+    def write_orthogroup_files(ogs, ids_filenames, results_base_filename, prefixes=None):
         output_fn = results_base_filename + ".txt"
         try:
             # fullDict = dict()
@@ -291,7 +274,7 @@ class HogOrthogroupFiles:
             #     fullDict.update(idDict)
 
             full_dict = id_full_dict(ids_filenames, func=gene_ids.FirstWordExtractor)
-            HogOrthogroupFiles.create_ogs(ogs, output_fn, full_dict)
+            HogOrthogroupFiles.create_ogs(ogs, output_fn, full_dict, prefixes)
         except KeyError as e:
             sys.stderr.write("ERROR: Sequence ID not found in %s\n" % ids_filenames)
             sys.stderr.write(str(e) + "\n")
@@ -314,35 +297,30 @@ class HogOrthogroupFiles:
                     #     idDict = idExtract.get_id_to_name_dict()
                     #     fullDict.update(idDict)
                     full_dict = id_full_dict(ids_filenames, func=gene_ids.FullAccession)
-                    HogOrthogroupFiles.create_ogs(ogs, output_fn, full_dict)
-                except:
-                    err_text = "ERROR: %s contains a duplicate ID. " % (ids_filenames)
+                    HogOrthogroupFiles.create_ogs(ogs, output_fn, full_dict, prefixes)
+                except RuntimeError as e:
+                    # (a duplicate ID: gene_ids raises a RuntimeError; any other error is its own)
+                    err_text = "ERROR: %s contains a duplicate ID (%s). " % (ids_filenames, e)
                     file_handler.handler.log_fail_and_exit(err_text)
         return full_dict
 
     @staticmethod
     def create_orthogroup_table(
-        ogs, id_to_name_dict, species_names_dict, species_to_use, results_base_filename
+        ogs, id_to_name_dict, species_names_dict, species_to_use, results_base_filename, write_ids=True
     ):
+        """write_ids: also the orthogroups as sequence IDs (a legacy file, --keep-legacy: Legacy/Fixed_Orthogroups_id.tsv)"""
 
-        n_species = len(species_names_dict)
-
-        ogs_ids = [[seq for seq in og] for og in ogs]
-        ogs_names = [[id_to_name_dict[seq] for seq in og] for og in ogs]
-        ogs_ints = [
-            [list(map(int, sequence.split("_"))) for sequence in og] for og in ogs
-        ]
 
         # write out
-        orthogroups_id_fn = file_handler.handler.ogs_id_fn(fixed=True)
+        orthogroups_id_fn = file_handler.handler.ogs_id_fn(fixed=True) if write_ids else os.devnull
         output_filename = results_base_filename + ".tsv"
         output_filename_counts = results_base_filename + ".GeneCount.tsv"
         single_gene_filename = results_base_filename + "_UnassignedGenes.tsv"
         with (
-            open(output_filename, util.csv_write_mode) as output_file,
-            open(orthogroups_id_fn, util.csv_write_mode) as ogidfile,
-            open(single_gene_filename, util.csv_write_mode) as single_gene_file,
-            open(output_filename_counts, util.csv_write_mode) as out_file_counts,
+            open(output_filename, util.csv_write_mode, encoding="utf-8", newline="\n") as output_file,
+            open(orthogroups_id_fn, util.csv_write_mode, encoding="utf-8", newline="\n") as ogidfile,
+            open(single_gene_filename, util.csv_write_mode, encoding="utf-8", newline="\n") as single_gene_file,
+            open(output_filename_counts, util.csv_write_mode, encoding="utf-8", newline="\n") as out_file_counts,
         ):
             ogid_filewriter = file_io.writer(ogidfile)
             file_writer = file_io.writer(output_file)
@@ -356,31 +334,17 @@ class HogOrthogroupFiles:
                 writer.writerow(row)
             file_writer_counts.writerow(row + ["Total"])
 
-            for i_og, (og, og_names, og_ids) in enumerate(
-                zip(ogs_ints, ogs_names, ogs_ids)
-            ):
-                og_dict = defaultdict(list)
-                og_id_dict = defaultdict(list)
-                row = ["OG%07d" % i_og]
-                id_row = ["OG%07d" % i_og]
-                this_output_writer = file_writer
-                # separate it into sequences from each species
+            column = {i_species: i for i, i_species in enumerate(species_to_use)}
+            n_columns = len(species_to_use)
+            for i_og, og in enumerate(ogs):
+                og_name = "OG%07d" % i_og
+                name_cells, id_cells, counts = orthogroup_table_cells(og, id_to_name_dict, column, n_columns)
                 if len(og) == 1:
-                    row.extend(["" for x in range(n_species)])
-                    row[species_to_use.index(og[0][0]) + 1] = og_names[0]
-                    this_output_writer = single_gene_writer
+                    single_gene_writer.writerow([og_name] + name_cells)
                 else:
-                    for (i_species, i_sequence), name, ids in zip(og, og_names, og_ids):
-                        og_dict[species_to_use.index(i_species)].append(name)
-                        og_id_dict[species_to_use.index(i_species)].append(ids)
-                    for i_species in range(n_species):
-                        row.append(", ".join(sorted(og_dict[i_species])))
-                        id_row.append(", ".join(sorted(og_id_dict[i_species])))
-                    ogid_filewriter.writerow(id_row)
-                    counts = Counter([i_species for i_species, _ in og])
-                    counts_row = [counts[i_species] for i_species in species_to_use]
-                    file_writer_counts.writerow(row[:1] + counts_row + [sum(counts_row)])
-                this_output_writer.writerow(row)
+                    file_writer.writerow([og_name] + name_cells)
+                    ogid_filewriter.writerow([og_name] + id_cells)
+                    file_writer_counts.writerow([og_name] + counts + [sum(counts)])
 
     # @staticmethod
     # def SingleGeneWriter(

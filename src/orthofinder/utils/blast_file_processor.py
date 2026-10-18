@@ -26,7 +26,6 @@
 
 import os
 import sys
-import gzip
 import array
 import numpy as np
 from scipy import sparse
@@ -34,10 +33,7 @@ try:
     from rich import print
 except ImportError:
     ...
-from . import util, file_io
-
-PY2 = sys.version_info <= (3,)       
-file_read_mode = 'rb' if PY2 else 'rt'
+from . import util, file_io, matrices
 
 def get_blast6_scores(seqs_info, blast_dir_list, i_species, j_species, q_exclude_self_hits = True, sep = "_", q_double_blast=True, q_allow_empty=False, fmt="lil"):
     """
@@ -64,19 +60,29 @@ def get_blast6_scores(seqs_info, blast_dir_list, i_species, j_species, q_exclude
     n_seqs_j = seqs_info.n_seqs_per_species[j_species]
 
     def result(I, J, S):
-        B = sparse.csr_matrix((S, (I, J)), shape=(n_seqs_i, n_seqs_j))
+        # (in order of (I, J): _bit_score_matrix)
+        B = matrices.csr_from_sorted(S, I, J, (n_seqs_i, n_seqs_j))
         return B.tolil() if fmt == "lil" else B
 
     empty = (np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.int64), np.zeros(0))
     row = ""
+    # The results file, compressed or not, in the first directory that has it: looked
+    # up once (one file per pair of species; on a network filesystem each lookup is slow)
+    path = None
     for d in blast_dir_list:
         if d[-1] != os.sep:
             d += os.sep
         fn = d + "Blast%d_%d.txt" % (i_species_open, j_species_open)
-        if os.path.exists(fn) or os.path.exists(fn + ".gz"): break
-    if q_allow_empty and not os.path.exists(fn) and not os.path.exists(fn + ".gz"):
-        return result(*empty)
-    path = fn + ".gz" if os.path.exists(fn + ".gz") else fn
+        if os.path.exists(fn + ".gz"):
+            path = fn + ".gz"
+        elif os.path.exists(fn):
+            path = fn
+        if path is not None:
+            break
+    if path is None:
+        if q_allow_empty:
+            return result(*empty)
+        path = fn       # (reading it reports the missing file)
     # The file's columns depend on the search program and its options (as
     # recorded when the search was run): read the IDs and bit score by name.
     layout = file_io.hit_format(path)
@@ -100,7 +106,7 @@ def get_blast6_scores(seqs_info, blast_dir_list, i_species, j_species, q_exclude
         if q_rev:
             i_q, i_h = i_h, i_q
         i_bitscore = layout.index("bitscore")
-        with (gzip.open(fn + ".gz", file_read_mode) if os.path.exists(fn + ".gz") else open(fn, file_read_mode)) as blastfile:
+        with file_io.open_text(path) as blastfile:
             # Search output is never quoted, so a plain split gives the fields
             for line in file_io.hit_lines(blastfile, layout):
                 row = line.rstrip("\r\n").split("\t")

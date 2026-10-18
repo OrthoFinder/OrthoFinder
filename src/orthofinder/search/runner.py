@@ -13,23 +13,23 @@ import re
 import time
 from ..utils import printing
 from ..utils import command_runner
+from ..utils import programs
 
 
 def run_blast_db_command(command):
+    from ..utils import run_state
+    run_state.note_command(command)
     capture = subprocess.Popen(
-        command,
+        programs.with_paths(command),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        env=parallel_task_manager.my_env,
+        env=programs.with_env(parallel_task_manager.my_env),
         shell=True,
     )
     stdout, stderr = capture.communicate()
-    try:
-        stdout = stdout.decode()
-        stderr = stderr.decode()
-    except (UnicodeDecodeError, AttributeError):
-        stdout = stdout.encode()
-        stderr = stderr.encode()
+    # (a program's output need not be UTF-8, e.g. in a Windows console's code page)
+    stdout = stdout.decode(errors="replace")
+    stderr = stderr.decode(errors="replace")
     n_stdout_lines = stdout.count("\n")
     n_stderr_lines = stderr.count("\n")
     n_lines_success = 12
@@ -107,7 +107,7 @@ def run_search(
         saved = [command_runner.fill_method_threads(c, options.method_threads)[1] for c in commands]
     else:
         saved = commands
-    with open(commands_fn, "w") as writer:
+    with open(commands_fn, "w", encoding="utf-8", newline="\n") as writer:
         for line in file_io.commands_file_lines(saved, fmt):
             writer.write(line + "\n")
     if options.q_stop_after_prepare:
@@ -142,15 +142,11 @@ def run_search(
         options.n_blast,
         commands,
         method_threads=options.method_threads,
-        method_threads_large=options.method_threads_large,
-        method_threads_small=options.method_threads_small,
-        threshold=options.threshold,
         cmd_order=options.cmd_order,
         tasksize=tasksizes,
         q_list_of_list=False,
         q_print_on_error=True,
         q_always_print_stderr=False,
-        dynamic_threads=options.dynamic_threads,
         on_success=record_finished_search,
     )
 
@@ -242,8 +238,10 @@ def create_search_databases(
 
 
 # A results file written by a search command: ".../Blast<i>_<j>.txt" (not, e.g.,
-# MMseqs2's temporary "/tmp/tmpBlast<i>_<j>.txt").
-_RESULTS_IN_COMMAND = re.compile(r"""([^\s'"=<>|;]*?)\bBlast(\d+)_(-?\d+)\.txt""")
+# MMseqs2's temporary ".../tmpBlast<i>_<j>.txt"). Matched from the start of a word
+# only (the lookbehind): otherwise it is tried again from every character of each
+# path, ~30x slower (~0.4 ms a command; one command per pair of species).
+_RESULTS_IN_COMMAND = re.compile(r"""(?<![^\s'"=<>|;])([^\s'"=<>|;]*?)\bBlast(\d+)_(-?\d+)\.txt""")
 
 
 def _results_in_command(command):
@@ -359,7 +357,8 @@ def recreate_missing_databases(commands, working_dir, prog_caller, options):
 
 
 # MMseqs2's temporary folder for one search, named in its command (config:
-# "/tmp/tmpBASEOUTNAME"), e.g. /tmp/tmpBlast0_3.txt.
+# "PATH/tmpBASEOUTNAME": in the run's working directory, so that runs at the same
+# time do not share it), e.g. .../WorkingDirectory/tmpBlast0_3.txt.
 _TMP_IN_COMMAND = re.compile(r"""(/\S*/tmp\S*Blast\d+_-?\d+\.txt)(?=[\s;&|]|$)""")
 
 
@@ -386,6 +385,9 @@ def remove_search_only_files(databases, prog_caller):
             remove = glob.glob(glob.escape(db) + ".*")      # not DBSpecies10.* for DBSpecies1
         elif prog_caller.uses_mmseqs(program):
             remove = glob.glob(glob.escape(db) + ".*idx*")
+            # createindex's temporary folder (config: "createindex OUTPUT.fa OUTPUT.tmp")
+            if os.path.isdir(db + ".tmp"):
+                shutil.rmtree(db + ".tmp", ignore_errors=True)
         else:
             continue
         for f in remove:
@@ -413,7 +415,7 @@ def recreate_search_results(to_create, working_dir, options, prog_caller):
             "ERROR: The search results below are missing or incomplete, and there is no %s "
             "with the commands to create them:\n%s"
             % (commands_fn, "\n".join(path or fn for fn, path in to_create)))
-    with open(commands_fn) as reader:
+    with file_io.open_text_any(commands_fn) as reader:
         commands = [line.strip() for line in reader if line.strip() and not line.startswith("#")]
     selected, no_command, moved_from = search_commands_for(
         commands, [fn for fn, _ in to_create], working_dir)
@@ -445,15 +447,11 @@ def recreate_search_results(to_create, working_dir, options, prog_caller):
         options.n_blast,
         selected,
         method_threads=options.method_threads,
-        method_threads_large=options.method_threads_large,
-        method_threads_small=options.method_threads_small,
-        threshold=options.threshold,
         cmd_order=options.cmd_order,
         tasksize=None,
         q_list_of_list=False,
         q_print_on_error=True,
         q_always_print_stderr=False,
-        dynamic_threads=options.dynamic_threads,
         on_success=record_finished_search,
     )
     remove_search_only_files(databases, prog_caller)
@@ -511,15 +509,11 @@ def run_search_assign(
         options.n_blast,
         commands,
         method_threads=options.method_threads,
-        method_threads_large=options.method_threads_large,
-        method_threads_small=options.method_threads_small,
-        threshold=options.threshold,
         cmd_order=options.cmd_order,
         tasksize=tasksizes,
         q_list_of_list=False,
         q_print_on_error=True,
         q_always_print_stderr=False,
-        dynamic_threads=options.dynamic_threads,
     )
 
     util.print_time("Done profiles search")

@@ -127,9 +127,9 @@ def get_ordered_search_commands_assign(species_info_obj, diamond_db, options, pr
     if q_one_query:
         wd = file_handler.handler.get_species_seqs_dir()[0]
         fn_single_fasta = "%sall_sequences.fa" % wd
-        with open(fn_single_fasta, 'w') as outfile:
+        with open(fn_single_fasta, 'w', encoding="utf-8", newline="\n") as outfile:
             for i_fasta in i_species_new:
-                with open(file_handler.handler.get_species_fasta_fn(i_fasta), 'r') as infile:
+                with open(file_handler.handler.get_species_fasta_fn(i_fasta), 'r', encoding="utf-8") as infile:
                     for line in infile:
                         outfile.write(line)
                     outfile.write("\n")

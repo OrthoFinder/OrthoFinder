@@ -5,6 +5,10 @@ include pyproject.toml
 
 recursive-include src/orthofinder *.json
 recursive-include ExampleData *
+# (not the results of runs on the example data)
+prune ExampleData/OrthoFinder
+prune tests/data/proteome/Core/OrthoFinder
+prune tests/data/dna/Genomes_Core/OrthoFinder
 
 # prune tests
 # prune .github

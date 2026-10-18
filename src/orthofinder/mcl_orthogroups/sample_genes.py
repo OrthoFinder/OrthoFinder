@@ -141,7 +141,7 @@ def get_kmers(s, k):
 
 def write_accession_list(infn, seqs):
     outfn = infn + ".selected.txt"
-    with open(outfn, 'w') as outfile:
+    with open(outfn, 'w', encoding="utf-8", newline="\n") as outfile:
         outfile.write("\n".join(seqs))
 
 

@@ -4,7 +4,7 @@ except ImportError:
     ...
 
 from ..utils import logging as run_logging
-from ..utils import util, file_handler
+from ..utils import util, file_handler, gene_ids
 from ..phylo import tree
 from . import dendroblast
 from . import msa_trees
@@ -12,11 +12,13 @@ from ..utils import printing
 from ..phylo import taxa
 
 def convert_user_species_tree(species_tree_fn_in, species_dict, species_tree_fn_out):
+    """The user's species tree with the species IDs: its leaves are the species' names, written
+    as in the results or as in the FASTA file names (e.g. "Homo sapiens": gene_ids.user_tree_species)."""
     t = tree.Tree(species_tree_fn_in, format=1)  
     t.prune(t.get_leaf_names())
     rev_dict = {v:k for k,v in species_dict.items()}
     for sp in t:
-        sp.name = rev_dict[sp.name]       
+        sp.name = rev_dict[gene_ids.user_tree_species(sp.name)]
     t.write(outfile=species_tree_fn_out)
 
 @run_logging.RunLogger.stage("Build alignments and gene trees", require_result=True)
@@ -32,9 +34,6 @@ def infer_gene_and_species_trees(
         q_trim,
         cmd_order="descending",
         method_threads=None,
-        method_threads_large=None,
-        method_threads_small=None, 
-        threshold=None,
         user_species_tree = None,
         q_stop_after_seqs = False,
         q_stop_after_align = False,
@@ -43,9 +42,7 @@ def infer_gene_and_species_trees(
         results_name = "",
         root_from_previous = False,
         i_og_restart=0,
-        fix_files=True,
         species_tree_program=None,
-        dynamic_threads=False,
         n_skip=50,
         msa_min_seq=10,
         species_tree_alignment=False,
@@ -105,12 +102,7 @@ def infer_gene_and_species_trees(
             i_og_restart=i_og_restart,
             cmd_order=cmd_order,
             method_threads=method_threads,
-            method_threads_large=method_threads_large,
-            method_threads_small=method_threads_small, 
-            threshold=threshold,
-            fix_files=fix_files,
             species_tree_program=species_tree_program,
-            dynamic_threads=dynamic_threads,
             n_skip=n_skip,
             msa_min_seq=msa_min_seq,
             species_tree_alignment=species_tree_alignment,
@@ -145,8 +137,6 @@ def infer_gene_and_species_trees(
         sp_tree_fn_ids, q_stag = db.run_analysis(user_species_tree == None)
         if user_species_tree != None:
             sp_tree_fn_ids = file_handler.handler.get_species_tree_unrooted_fn()
-    # if not fix_files:
-    #     files.FileHandler.log_working_directory_trees()
     q_species_tree_supports = False if (user_species_tree or q_msa or q_phyldog) else q_stag
 
     return None if root_from_previous else sp_tree_fn_ids, q_species_tree_supports

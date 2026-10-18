@@ -5,21 +5,17 @@ OrthoFinder's file readers and writers, kept in one place.
 Add new readers/writers here rather than in the modules that use them, so
 each file format has one implementation and its reader and writer match.
 
-Tab-separated files come in two kinds, and a file must be read with the
-reader of the kind it was written as:
+Text files are UTF-8, with "\n" line endings on every OS (open_text), so that
+results are the same bytes on Linux, macOS and Windows and are read the same
+everywhere. Readers accept "\n", "\r\n" and "\r".
 
-Quoted (csv)  reader, writer
-    Orthogroups.tsv, Orthogroups.GeneCount.tsv, the statistics files, the
-    converted N0.tsv, the per-pair ortholog files made by split_ortholog_files.
-    Same bytes/rows as csv.writer / csv.reader with delimiter="\t": a field
-    holding a tab, a quote or a line break is quoted. Rows needing no quoting
-    (nearly all) are joined/split with str methods, ~4x faster to write and
-    ~1.5x faster to read than csv; other rows are handed to csv.
-
-Unquoted      unquoted_reader, unquoted_line, write_unquoted
-    HOG files (N*.tsv, N0.ids.tsv), Duplications.tsv, the ortholog and
-    xenolog rows. Fields are joined as they are: a quote is part of a field.
-    A line break at the end of a field is dropped.
+Tab-separated files  reader, writer, unquoted_line, write_unquoted
+    Orthogroups.tsv and the other orthogroup tables, the HOG files, the
+    statistics files, the ortholog and xenolog files, Duplications.tsv. Fields
+    are joined by tabs as they are, never quoted: the names in them cannot hold
+    a tab, line break or quote (gene_ids.clean_name), so the files read the
+    same with csv readers, spreadsheets, pandas, R or str.split("\t"). A line
+    break at the end of a field is dropped.
 
 Search hits  hit_format, read_hit_columns, hit_lines, search_hit_format
     Search results (Blast*_*.txt[.gz]), written by DIAMOND, BLAST+, MMseqs2
@@ -29,92 +25,113 @@ Search hits  hit_format, read_hit_columns, hit_lines, search_hit_format
     by name. Large files are read with pandas (optional), small ones
     line by line by the caller (blast_file_processor, orthogroups.assign).
 
-All lines are written ending in "\n" (as "\r\n" on Windows, by text mode).
-Readers accept "\n" and "\r\n", so files from older versions, which ended
-quoted lines in "\r\n", read the same.
-
 Standalone use
     The module needs only the Python standard library (pandas and numpy are
     optional, for read_hit_columns), so it can be copied into other projects
     and imported as `import file_io`. It also runs as a command:
 
         python file_io.py info FILE...
-        python file_io.py convert IN OUT --from quoted --to unquoted
         python -m orthofinder.utils.file_io info Orthogroups.tsv
 
-    Files ending in .gz are read and written gzipped.
+    Files ending in .gz are read gzipped.
 """
 import argparse
-import csv
 import gzip
 import io
-import itertools
 import os
 import re
-import sys
 
 
-# ---------------------------------------------------------------- quoted ----
+# ------------------------------------------------------------ text files ----
+
+ENCODING = "utf-8"
+# The gzip compression level of the files written: 6 (zlib's default) compresses
+# ~8x faster than 9 (gzip's default) and the files are <1% larger (measured on
+# ortholog files: 55 vs 6.4 MB/s, 16.8% of the text either way)
+GZIP_LEVEL = 6
+
+
+def open_text(path, mode="rt", errors=None):
+    """
+    A text file (gzipped if path ends in .gz): UTF-8, its lines written ending in
+    "\n" on every OS, and read with any line ending (as "\n").
+    """
+    if "b" in mode:
+        raise ValueError("open_text opens text files: mode %r" % mode)
+    if "t" not in mode:
+        mode += "t"
+    newline = None if "r" in mode else "\n"
+    if path.endswith(".gz"):
+        level = {} if "r" in mode else {"compresslevel": GZIP_LEVEL}
+        return gzip.open(path, mode, encoding=ENCODING, errors=errors, newline=newline, **level)
+    return open(path, mode, encoding=ENCODING, errors=errors, newline=newline)
+
+
+class open_text_any(object):
+    """
+    The lines of a text file that an older version or a user wrote, on any OS: older
+    versions wrote SpeciesIDs.txt, SequenceIDs.txt, Log.txt and the species trees in
+    the system's encoding (e.g. cp1252 on Windows), this one in UTF-8, and a user's
+    file (e.g. a species tree, -s) may be either, with a byte order mark. Each line
+    is read as UTF-8, or else as cp1252, so that e.g. a restart from older results
+    (-b) reads them. A file object for reading (for line in f, next(f), read(),
+    with ... as f).
+    """
+
+    def __init__(self, path):
+        self._f = open(path, encoding="utf-8-sig", errors="surrogateescape")
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        line = next(self._f)
+        if not line.isascii():      # (nearly every line is: nothing else done)
+            try:
+                line.encode(ENCODING)
+            except UnicodeEncodeError:
+                line = line.encode(ENCODING, "surrogateescape").decode("cp1252", errors="replace")
+        return line
+
+    def read(self):
+        return "".join(self)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self._f.close()
+
+    def close(self):
+        self._f.close()
+
+
+# ---------------------------------------------------------- tab-separated ----
 
 def reader(infile):
-    """
-    The rows of a quoted tab-separated file, as csv.reader(infile, delimiter="\t")
-    gives them. From the first line containing a quote on, csv.reader parses
-    the rest of the file (a quoted field may span lines).
-    """
+    """The rows of a tab-separated file (lists of str; [] for an empty line)."""
     for line in infile:
-        if '"' in line:
-            yield from csv.reader(itertools.chain((line,), infile), delimiter="\t")
-            return
         line = line.rstrip("\r\n")
         yield line.split("\t") if line else []
 
 
 class writer(object):
-    """
-    Same output as csv.writer(outfile, delimiter="\t", lineterminator=lineterminator).
-    csv's default "\r\n" is not used: in a text-mode file on Windows it becomes "\r\r\n".
-    """
+    """Writes the rows of a tab-separated file (unquoted_line), like csv.writer."""
 
-    def __init__(self, outfile, lineterminator="\n"):
+    def __init__(self, outfile):
         self._write = outfile.write
-        self._terminator = lineterminator
-        self._csv = csv.writer(outfile, delimiter="\t", lineterminator=lineterminator)
 
     def writerow(self, row):
-        if type(row) is not list and type(row) is not tuple:
-            row = list(row)
-        try:
-            line = "\t".join(row)                 # rows are usually all str
-        except TypeError:
-            line = "\t".join(x if type(x) is str else ("" if x is None else str(x)) for x in row)
-        # csv quotes a field holding a tab, quote or line terminator, and a
-        # row that is a single empty field: let it write those rows.
-        if (len(row) < 2 or line.count("\t") != len(row) - 1
-                or '"' in line or "\n" in line or "\r" in line):
-            return self._csv.writerow(row)
-        return self._write(line + self._terminator)
+        return self._write(unquoted_line(row))
 
     def writerows(self, rows):
         for row in rows:
-            self.writerow(row)
-
-
-# -------------------------------------------------------------- unquoted ----
-
-def unquoted_reader(infile):
-    """
-    The rows of an unquoted tab-separated file. (csv.reader would take a field
-    starting with a quote as quoted, and merge it with the fields after it.)
-    """
-    for line in infile:
-        line = line.rstrip("\r\n")
-        yield line.split("\t") if line else []
+            self._write(unquoted_line(row))
 
 
 def unquoted_line(row):
     """
-    One line of an unquoted file: the fields as str (None as "None"), each
+    One line of a tab-separated file: the fields as str (None as "None"), each
     without trailing line breaks, joined by tabs, ending in "\n".
     """
     if type(row) is not list and type(row) is not tuple:
@@ -130,7 +147,7 @@ def unquoted_line(row):
 
 
 def write_unquoted(fh, row):
-    """Write one line of an unquoted file (see unquoted_line)."""
+    """Write one line of a tab-separated file (see unquoted_line)."""
     fh.write(unquoted_line(row))
 
 
@@ -368,7 +385,7 @@ def hit_format(path):
         fmt = None
         commands_fn = os.path.join(directory, "blast_commands.txt")
         if os.path.exists(commands_fn):
-            with open(commands_fn) as infile:
+            with open(commands_fn, encoding="utf-8") as infile:
                 for line in infile:
                     if line.startswith(OUTPUT_FIELDS_COMMENT):
                         fmt = HitFormat(line[len(OUTPUT_FIELDS_COMMENT):].split(), declared=True)
@@ -577,7 +594,7 @@ def search_checkpoint(directory, step="Sequence search"):
     done = {}
     fn = os.path.join(directory, "checkpoint.txt")
     if os.path.exists(fn):
-        with open(fn, errors="replace") as infile:
+        with open(fn, errors="replace", encoding="utf-8") as infile:
             for line in infile:
                 if SEARCH_COMPLETED in line:
                     m = _SEARCH_COMPLETED_RE.search(line)
@@ -617,7 +634,7 @@ def trim_checkpoint(path, completed=(), redo=()):
     """
     if not os.path.exists(path):
         return
-    with open(path, errors="replace") as infile:
+    with open(path, errors="replace", encoding="utf-8") as infile:
         lines = infile.readlines()
     start = 0
     for alternatives in completed:
@@ -646,7 +663,7 @@ def trim_checkpoint(path, completed=(), redo=()):
             drop.update(k for k in range(h, end) if not _is_search_record(kept[k]))
     kept = [line for k, line in enumerate(kept) if k not in drop]
     tmp = path + ".tmp"
-    with open(tmp, "w") as outfile:
+    with open(tmp, "w", encoding="utf-8", newline="\n") as outfile:
         outfile.writelines(kept)
     os.replace(tmp, path)
 
@@ -660,21 +677,15 @@ def hit_file_is_empty(path, fmt=None):
 
 # ------------------------------------------------------------ command line ----
 
-def open_text(path, mode="rt"):
-    """Open a text file for reading ("rt") or writing ("wt"), gzipped if it ends in .gz."""
-    if path.endswith(".gz"):
-        return gzip.open(path, mode, newline="")
-    return open(path, mode, newline="")
-
-
 def file_info(path):
     """
-    Line endings, row and field counts of a tab-separated file, and whether it
-    has quote characters (then it matters whether it is read as quoted).
+    Encoding, line endings, row and field counts of a tab-separated file, and
+    how many of its lines have quotes (files of older versions quoted some fields).
     """
     opener = gzip.open if path.endswith(".gz") else open
     n_lf = n_crlf = n_lines = n_quote_lines = 0
     n_fields = set()
+    utf8 = True
     with opener(path, "rb") as infile:
         for line in infile:
             n_lines += 1
@@ -684,6 +695,11 @@ def file_info(path):
                 n_lf += 1
             if b'"' in line:
                 n_quote_lines += 1
+            if utf8:
+                try:
+                    line.decode(ENCODING)
+                except UnicodeDecodeError:
+                    utf8 = False
             line = line.rstrip(b"\r\n")
             if line:
                 n_fields.add(line.count(b"\t") + 1)
@@ -693,6 +709,7 @@ def file_info(path):
         endings = "CRLF (Windows)" if n_crlf else "LF" if n_lf else "none"
     return {
         "path": path,
+        "encoding": "UTF-8" if utf8 else "not UTF-8",
         "lines": n_lines,
         "line endings": endings,
         "fields per line": ("%d" % min(n_fields) if len(n_fields) == 1 else
@@ -701,62 +718,17 @@ def file_info(path):
     }
 
 
-def convert(in_path, out_path, from_kind="quoted", to_kind="quoted"):
-    """
-    Rewrite a tab-separated file from one kind (quoted/unquoted) to another,
-    with "\n" line endings. Returns the number of rows written. Converting to
-    unquoted fails on a field holding a tab or line break, which that kind
-    cannot represent.
-    """
-    read = {"quoted": reader, "unquoted": unquoted_reader}[from_kind]
-    n = 0
-    with open_text(in_path) as infile, open_text(out_path, "wt") as outfile:
-        if to_kind == "quoted":
-            w = writer(outfile)
-            for row in read(infile):
-                w.writerow(row)
-                n += 1
-        else:
-            for row in read(infile):
-                for field in row:
-                    if "\t" in field or "\n" in field or "\r" in field:
-                        raise ValueError("row %d: field %r has a tab or line break, which an unquoted "
-                                         "file cannot hold" % (n + 1, field))
-                write_unquoted(outfile, row)
-                n += 1
-    return n
-
-
 def main(argv=None):
     parser = argparse.ArgumentParser(
-        description="Inspect or convert tab-separated files (OrthoFinder's file_io).")
+        description="Inspect tab-separated files (OrthoFinder's file_io).")
     sub = parser.add_subparsers(dest="command", required=True)
-
-    p = sub.add_parser("info", help="line endings, rows, fields and quotes of each file")
+    p = sub.add_parser("info", help="encoding, line endings, rows, fields and quotes of each file")
     p.add_argument("files", nargs="+")
-
-    p = sub.add_parser("convert", help="rewrite a file as quoted or unquoted, with LF line endings")
-    p.add_argument("input")
-    p.add_argument("output")
-    p.add_argument("--from", dest="from_kind", choices=["quoted", "unquoted"], default="quoted",
-                   help="how the input was written (default: quoted)")
-    p.add_argument("--to", dest="to_kind", choices=["quoted", "unquoted"], default="quoted",
-                   help="how to write the output (default: quoted)")
-
     args = parser.parse_args(argv)
-    if args.command == "info":
-        for path in args.files:
-            for key, value in file_info(path).items():
-                print("%-18s %s" % (key + ":", value))
-            print()
-    else:
-        if os.path.abspath(args.input) == os.path.abspath(args.output):
-            parser.error("input and output must be different files")
-        try:
-            n = convert(args.input, args.output, args.from_kind, args.to_kind)
-        except ValueError as e:
-            sys.exit("ERROR: %s" % e)
-        print("Wrote %d rows to %s" % (n, args.output))
+    for path in args.files:
+        for key, value in file_info(path).items():
+            print("%-18s %s" % (key + ":", value))
+        print()
 
 
 if __name__ == "__main__":

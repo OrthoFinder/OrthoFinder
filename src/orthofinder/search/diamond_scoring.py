@@ -51,7 +51,7 @@ def read_custom_matrix(fn):
     def wrong(i_line, text):
         return ValueError("Custom scoring matrix %s, line %d: %s\n%s" % (fn, i_line, text, CUSTOM_MATRIX_FORMAT))
 
-    with open(fn, errors="replace") as infile:
+    with open(fn, errors="replace", encoding="utf-8") as infile:
         lines = [line.rstrip() for line in infile]
     rows = [(i + 1, line.split()) for i, line in enumerate(lines) if line.strip() and not line.startswith("#")]
     if not rows:
@@ -99,7 +99,7 @@ def copy_custom_matrix(fn, working_dir):
     copy_fn = os.path.join(working_dir, CUSTOM_MATRIX_FN)
     if os.path.abspath(fn) != os.path.abspath(copy_fn):
         lines, _ = read_custom_matrix(fn)
-        with open(copy_fn, "w") as outfile:
+        with open(copy_fn, "w", encoding="utf-8", newline="\n") as outfile:
             outfile.writelines(lines)
     return copy_fn
 

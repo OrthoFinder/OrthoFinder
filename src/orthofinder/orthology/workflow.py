@@ -39,7 +39,7 @@ from ..gene_tree import msa_trees
 from . import reconciliation, hog_writer as hog_processor, parallel_pipeline
 from ..gene_tree import infer_trees
 from ..utils import util, file_handler
-from ..mcl_orthogroups import orthogroups_set, assign
+from ..mcl_orthogroups import orthogroups_set
 from . import stats
 
 from ..hog_orthogroups import finalise
@@ -145,12 +145,8 @@ def orthologs_workflow(
         q_double_blast,
         q_add_species_to_ids,
         q_trim,
-        fewer_open_files,  # Open one ortholog file per species when analysing trees
         cmd_order="ascending",
         method_threads=None,
-        method_threads_large=None,
-        method_threads_small=None, 
-        threshold=None,
         user_species_tree = None,
         q_stop_after_seqs = False,
         q_stop_after_align = False,
@@ -187,9 +183,6 @@ def orthologs_workflow(
         q_trim, 
         cmd_order,
         method_threads,
-        method_threads_large,
-        method_threads_small, 
-        threshold,
         user_species_tree, 
         q_stop_after_seqs, 
         q_stop_after_align, 
@@ -198,9 +191,7 @@ def orthologs_workflow(
         results_name, 
         root_from_previous, 
         i_og_restart,
-        options.fix_files,
         options.species_tree_program,
-        options.dynamic_threads,
         n_skip=options.n_skip,
         msa_min_seq=options.msa_min_seq,
         species_tree_alignment=options.species_tree_alignment,
@@ -252,7 +243,7 @@ def orthologs_workflow(
     infer_orthologs_and_write_results(
         og_set, rooted_sp_tree, fn_rooted_sp_tree, q_multiple_roots, q_species_tree_supports, stride_dups,
         seqs_info, species_names_dict, species_info_obj, options, species_to_use, recon_method,
-        n_high_parallel, n_low_parallel, fewer_open_files, user_species_tree, q_phyldog,
+        n_high_parallel, n_low_parallel, user_species_tree, q_phyldog,
         q_split_para_clades, root_from_previous, i_og_restart=i_og_restart,
     )
 
@@ -260,29 +251,22 @@ def orthologs_workflow(
 def infer_orthologs_and_write_results(
         og_set, rooted_sp_tree, fn_rooted_sp_tree, q_multiple_roots, q_species_tree_supports, stride_dups,
         seqs_info, species_names_dict, species_info_obj, options, species_to_use, recon_method,
-        n_high_parallel, n_low_parallel, fewer_open_files, user_species_tree, q_phyldog,
+        n_high_parallel, n_low_parallel, user_species_tree, q_phyldog,
         q_split_para_clades, root_from_previous, i_og_restart=0, prev_wd=None,
     ):
     """
     From the rooted species tree to the results: orthologs and HOGs, then
-    the results files updated (fix_files) and the statistics. The end of
-    every analysis, whether run straight through (orthologs_workflow) or
-    restarted from the species tree (-fst, orthologs_from_gene_species_trees),
+    the results files updated to the HOG-based orthogroups and the statistics.
+    The end of every analysis, whether run straight through (orthologs_workflow)
+    or restarted from the species tree (-fst, orthologs_from_gene_species_trees),
     so that both give the same results.
-    """
-    save_space = options.save_space
-    # N0.tsv is in the results only with --no-fix-files (else it is made into Orthogroups.tsv)
-    file_handler.handler.n0_in_results = not options.fix_files
 
-    write_hog_tree = False
-    write_to_rd = True
-    if options.fix_files:
-        # if options.qMSATrees:
-        #     align_dir = files.FileHandler.get_results_align_dir()
-            # paths.clear_dir(align_dir)
-        write_hog_tree = True
-        write_to_rd = False
-    
+    The first pass writes only to the working directory (the HOGs, from which
+    the orthogroups are made); the second writes the results files, each once.
+    """
+    # --keep-legacy: the legacy files are written (WorkingDirectory/Legacy), else not at all
+    file_handler.handler.keep_legacy = options.keep_legacy
+    # First pass: the HOGs, in the working directory
     infer_orthologs(
         og_set, 
         rooted_sp_tree, 
@@ -293,108 +277,74 @@ def infer_orthologs_and_write_results(
         recon_method,
         n_high_parallel, 
         n_low_parallel, 
-        fewer_open_files,
         user_species_tree, 
         q_phyldog,
         q_split_para_clades, 
         root_from_previous,
-        save_space=False, 
+        save_space=False,
         exist_msa=options.q_msa_trees,
-        write_hog_tree=write_hog_tree,
-        fix_files=options.fix_files,
-        write_to_rd=write_to_rd,
+        write_hog_tree=True,
+        write_to_rd=False,
         fd_limit=options.fd_limit,
-        # The HOGs with gene names are rewritten by the second pass below; the
-        # update of the results files needs only N0.ids.tsv. They are written
-        # when the legacy files are kept (-rmlg: Legacy/HOGs), and are the
-        # results with --no-fix-files (one pass).
-        write_named_hogs=(not options.fix_files) or (not options.rm_legacy),
+        # The update of the results files needs only N0_mcl.ids.tsv (n0_mcl_ids_fn);
+        # the HOGs with gene names of this pass are legacy files (--keep-legacy: Legacy/HOGs)
+        write_named_hogs=options.keep_legacy,
     )
 
+    util.print_time("Converting MSA/Trees")
+    og_set, new_ogs = finalise.update_output_files(
+        og_set.species_dict(),
+        og_set.sequence_dict(),
+        og_set.species_to_use,
+        og_set.all_used_sequence_ids(),
+        species_info_obj,
+        seqs_info,
+        species_names_dict,
+        options,
+        options.n_process_alg,
+        q_incremental=False,
+        i_og_restart=i_og_restart,
+        exist_msa=options.q_msa_trees,
+        prev_wd=prev_wd,
+    )
+    util.print_time("Done updating MSA/Trees")
+    paths.clear_dir(file_handler.handler.get_ogs_recon_tree_dir(q_results=True))
+    # Second pass: the results files
+    infer_orthologs(
+        og_set,
+        rooted_sp_tree,
+        fn_rooted_sp_tree,
+        q_multiple_roots,
+        q_species_tree_supports,
+        stride_dups,
+        recon_method,
+        n_high_parallel,
+        n_low_parallel,
+        user_species_tree,
+        q_phyldog,
+        q_split_para_clades,
+        root_from_previous,
+        save_space=options.save_space,
+        print_info=False,
+        exist_msa=options.q_msa_trees,
+        write_hog_tree=False,
+        write_to_rd=True,
+        fd_limit=options.fd_limit
+    )
 
-    if options.fix_files:
-        shutil.copy2(
-            file_handler.handler.get_working_directory_write() + "N0.ids.tsv",
-            os.path.join(file_handler.handler.get_legacy_hog_dir(), "N0.ids.tsv")
-        )
+    # (the sequences of the single-copy orthogroups only, read when they are known:
+    # not every sequence of every species)
+    fasta_writer = lambda genes: msa_trees.FastaWriter(file_handler.handler.get_species_seqs_dir(), species_to_use, genes)
+    ogs = stats.add_unassigned_genes(new_ogs, og_set.all_used_sequence_ids())
+    species_dict = {int(k): v for k, v in og_set.species_dict().items()}
+    ids_dict = og_set.spec_seq_dict()   # (the single-copy FASTA files: <species>_<gene>)
 
-        util.print_time("Converting MSA/Trees")
-        og_set, new_ogs = finalise.update_output_files(
-            og_set.species_dict(),
-            og_set.sequence_dict(),
-            og_set.species_to_use,
-            og_set.all_used_sequence_ids(),
-            species_info_obj,
-            seqs_info,
-            species_names_dict,
-            options,
-            options.n_process_alg,
-            q_incremental=False,
-            i_og_restart=i_og_restart,
-            exist_msa=options.q_msa_trees,
-            prev_wd=prev_wd,
-        )
-        if options.q_stop_after_groups:
-            print()
-            print(f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] stopped after writing Orthogroups to file.")
-            shutil.rmtree(file_handler.handler.get_results_species_tree_dir())
-            shutil.rmtree(file_handler.handler.get_result_hog_dir())
-            shutil.rmtree(file_handler.handler.get_putative_xenelogs_dir())
-            shutil.rmtree(file_handler.handler.get_orthologs_directory())
-            shutil.rmtree(file_handler.handler.get_results_align_dir())
-            shutil.rmtree(file_handler.handler.get_results_duplications_dir())
-            printing.print_run_end(file_handler.handler.get_results_directory1())
-            util.success()
-            
-        util.print_time("Done updating MSA/Trees")
-        paths.clear_dir(file_handler.handler.get_ogs_recon_tree_dir(q_results=True))
-        infer_orthologs(
-            og_set, 
-            rooted_sp_tree, 
-            fn_rooted_sp_tree, 
-            q_multiple_roots, 
-            q_species_tree_supports, 
-            stride_dups,
-            recon_method,
-            n_high_parallel, 
-            n_low_parallel, 
-            fewer_open_files,
-            user_species_tree, 
-            q_phyldog,
-            q_split_para_clades, 
-            root_from_previous,
-            save_space=options.save_space, 
-            print_info=False,
-            exist_msa=options.q_msa_trees,
-            write_hog_tree=False,
-            fix_files=options.fix_files,
-            write_to_rd=True,
-            fd_limit=options.fd_limit
-        )
+    if not options.keep_legacy:
+        os.remove(file_handler.handler.ogs_all_id_fn())
+        os.remove(file_handler.handler.n0_mcl_ids_fn())
+        shutil.rmtree(file_handler.handler.get_resolved_tree_id_dir())
 
-        fasta_writer = msa_trees.FastaWriter(file_handler.handler.get_species_seqs_dir(), species_to_use)
-        # ogs = assign.read_hogs(file_handler.FileHandler.get_results_directory1(), "N0")
-        ogs = stats.add_unassigned_genes(new_ogs, og_set.all_used_sequence_ids())
-        species_dict = {int(k): v for k, v in og_set.species_dict().items()}
-        ids_dict = og_set.sequence_dict()
-
-
-        if options.rm_legacy:
-            os.remove(file_handler.handler.ogs_all_id_fn())
-            os.remove(file_handler.handler.hierarchical_orthogroups_fn_n0())
-            shutil.rmtree(file_handler.handler.get_resolved_tree_id_dir())
-            shutil.rmtree(file_handler.handler.get_legacy_dir())
-
-        stats.stats(ogs, species_dict, species_to_use, file_handler.handler.i_results_version, fasta_writer, ids_dict)
-    
-    else:
-
-        fasta_writer = msa_trees.FastaWriter(file_handler.handler.get_species_seqs_dir(), species_to_use)
-        ogs = assign.read_hogs(file_handler.handler.get_results_directory1(), "N0")
-        ogs = stats.add_unassigned_genes(ogs, og_set.all_used_sequence_ids())
-        species_dict = {int(k): v for k, v in og_set.species_dict().items()}
-        ids_dict = og_set.sequence_dict()
-        stats.stats(ogs, species_dict, species_to_use, file_handler.handler.i_results_version, fasta_writer, ids_dict)
+    stats.stats(ogs, species_dict, species_to_use, file_handler.handler.i_results_version, fasta_writer, ids_dict)
 
 
 @run_logging.RunLogger.stage("Infer species tree", require_result=True)
@@ -519,7 +469,6 @@ def infer_orthologs(
         recon_method,
         n_high_parallel,
         n_low_parallel,
-        fewer_open_files,  # Open one ortholog file per species when analysing trees
         user_species_tree=None,
         q_phyldog=False,
         q_split_para_clades=False,
@@ -528,31 +477,30 @@ def infer_orthologs(
         print_info=True,
         exist_msa=True,
         write_hog_tree=True,
-        fix_files=True,
         working_dir="",
         write_to_rd=True,
         fd_limit=None,
         write_named_hogs=True,
     ):
     """ C. Gene tree rooting & orthologs
+    write_to_rd: write the results files (the species tree's too), else only the working directory's
     write_named_hogs: write the HOG files with gene names (else only N0.ids.tsv)"""
 
-    results_species_trees = []
     i_rooted_sp_tree = 0
     if print_info:
-        printing.print_underline("Reconciling gene trees and species tree")         
-    results_species_trees.append(file_handler.handler.get_species_tree_results_fn(0, True))
+        printing.print_underline("Reconciling gene trees and species tree")
     if (not user_species_tree) and (not q_phyldog) and len(og_set.seqs_info.species_to_use) != 2:
         if print_info:
             print(("Outgroup: " + (", ".join([og_set.species_dict()[s] for s in rooted_sp_tree]))))
-    file_handler.handler.copy_concat_orthogroups_to_results()
-    taxa.rename_tree_taxa(
-        species_tree_fn, 
-        results_species_trees[-1], 
-        og_set.species_dict(), 
-        q_support=q_species_tree_supports, 
-        q_fix_negatives=True
-    )
+    if write_to_rd:
+        file_handler.handler.copy_concat_orthogroups_to_results()
+        taxa.rename_tree_taxa(
+            species_tree_fn,
+            file_handler.handler.get_species_tree_results_fn(0, True),
+            og_set.species_dict(),
+            q_support=q_species_tree_supports,
+            q_fix_negatives=True
+        )
     if print_info:
         util.print_time("Starting reconciliation and orthologs")
 
@@ -564,19 +512,17 @@ def infer_orthologs(
         i_rooted_sp_tree if q_multiple_species_tree_roots else None,
         stride_dups=stride_dups, 
         q_split_para_clades=q_split_para_clades,
-        fewer_open_files=fewer_open_files, 
         save_space=save_space, 
         print_info=print_info,
         exist_msa=exist_msa,
         write_hog_tree=write_hog_tree,
-        fix_files=fix_files,
         write_to_rd=write_to_rd,
         fd_limit=fd_limit,
         write_named_hogs=write_named_hogs,
     )
     # util.print_time("Done Recon")
 
-    if not write_hog_tree or not fix_files:
+    if not write_hog_tree:
         # print("%fs for orthologs etc" % (stop-start))
         stats.write_orthologs_stats(og_set, n_orthologs_sp_pair)
     #    print("Identified %d orthologs" % nOrthologs)
@@ -600,7 +546,6 @@ def orthologs_from_gene_trees(
         n_high_parallel,
         n_low_parallel,
         q_add_species_to_ids,
-        fewer_open_files,  # Open one ortholog file per species when analysing trees
         user_species_tree = None,
         q_stop_after_seqs = False,
         q_stop_after_align = False,
@@ -663,7 +608,7 @@ def orthologs_from_gene_trees(
     infer_orthologs_and_write_results(
         og_set, rooted_sp_tree, fn_rooted_sp_tree, q_multiple_roots, q_species_tree_supports, stride_dups,
         seqs_info, species_names_dict, species_info_obj, options, species_to_use, recon_method,
-        n_high_parallel, n_low_parallel, fewer_open_files, user_species_tree, q_phyldog,
+        n_high_parallel, n_low_parallel, user_species_tree, q_phyldog,
         q_split_para_clades, root_from_previous, i_og_restart=i_og_restart,
         prev_wd=prev_wd,
     )
@@ -681,7 +626,6 @@ def orthologs_from_gene_species_trees(
         n_low_parallel,
         q_add_species_to_ids,
         user_species_tree_fn,
-        fewer_open_files,  # Open one ortholog file per species when analysing trees
         q_split_para_clades=False,
         i_og_restart=0,
 ):
@@ -732,6 +676,6 @@ def orthologs_from_gene_species_trees(
     infer_orthologs_and_write_results(
         og_set, rooted_sp_tree, fn_rooted_sp_tree, q_multiple_roots, q_species_tree_supports, stride_dups,
         seqs_info, species_names_dict, species_info_obj, options, species_to_use, recon_method,
-        n_high_parallel, n_low_parallel, fewer_open_files, user_species_tree_fn, options.q_phyldog,
+        n_high_parallel, n_low_parallel, user_species_tree_fn, options.q_phyldog,
         q_split_para_clades, False, i_og_restart=i_og_restart, prev_wd=prev_wd,
     )

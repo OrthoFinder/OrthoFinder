@@ -24,6 +24,8 @@
 # For any enquiries send an email to David Emms
 # david_emms@hotmail.com
 from . import logging as run_logging
+import contextlib
+import gc
 import os
 import sys
 import platform
@@ -37,6 +39,7 @@ import subprocess
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, wait
 from .. import __location__
+from . import programs
 from .printing import printer
 try:
     from rich import print
@@ -60,30 +63,68 @@ except ImportError:
 #         subprocess.call("taskset -p 0xffffffffffff %d" % os.getpid(), shell=True, stdout=f)
 
 
+PROGRAM_DIRS_TEXT = (
+    "the active conda environment, conda's base environment, ~/local/bin (where "
+    "'make install_tools' installs them), PATH (system-wide installations included), "
+    "then OrthoFinder's own bin directory (on Linux x86-64). The first copy of each "
+    "program that works is used"
+)
+
+
+def bundled_binaries_run_here():
+    """Whether the programs in OrthoFinder's own bin/ (built for Linux x86-64) can run on this computer."""
+    return platform.system() == "Linux" and platform.machine().lower() in ("x86_64", "amd64")
+
+
+def program_dirs(environ, location):
+    """
+    The directories searched for the programs OrthoFinder runs, in order of
+    preference (those that exist, each once):
+      1. the active conda environment (CONDA_PREFIX), if it is not base;
+      2. conda's base environment (from CONDA_EXE, <base>/bin/conda, or
+         MAMBA_ROOT_PREFIX): what the active environment does not have;
+      3. ~/local/bin, where `make install_tools` installs them;
+      4. PATH as the user has it: their other installations, system-wide
+         ones included, in their order;
+      5. OrthoFinder's own bin/ (and bin/mafft/bin), last: the programs there
+         are prebuilt, so they may be missing or not run on this computer.
+         Only on Linux x86-64, which they are built for.
+    The dependency check uses the first copy of each program that works
+    (programs.py), so one that does not run never hides a later one.
+    """
+    def conda_bin(prefix):
+        return os.path.join(prefix, "Scripts" if os.name == "nt" else "bin")
+    base = None
+    if environ.get("CONDA_EXE"):
+        base = os.path.dirname(os.path.dirname(environ["CONDA_EXE"]))
+    elif environ.get("MAMBA_ROOT_PREFIX"):
+        base = environ["MAMBA_ROOT_PREFIX"]
+    dirs = []
+    active = environ.get("CONDA_PREFIX")
+    if active:
+        dirs.append(conda_bin(active))
+    if base:
+        dirs.append(conda_bin(base))
+    dirs.append(os.path.expanduser("~/local/bin"))
+    dirs += environ.get("PATH", "").split(os.pathsep)
+    if bundled_binaries_run_here():
+        dirs += [os.path.join(location, "bin"), os.path.join(location, "bin", "mafft", "bin")]
+    unique = []
+    seen = set()
+    for d in dirs:
+        if d and os.path.isdir(d) and os.path.realpath(d) not in seen:
+            seen.add(os.path.realpath(d))
+            unique.append(d)
+    return unique
+
+
 def setup_environment():
 
-    os.environ["OPENBLAS_NUM_THREADS"] = "1"    # fix issue with numpy/openblas. Will mean that single threaded options aren't automatically parallelised 
+    os.environ["OPENBLAS_NUM_THREADS"] = "1"    # fix issue with numpy/openblas. Will mean that single threaded options aren't automatically parallelised
+    os.environ["MKL_NUM_THREADS"] = "1"         # the same for numpy built with MKL (e.g. some conda channels)
 
     my_env = os.environ.copy()
-    # use orthofinder supplied executables by preference
-    local_bin_dir = os.path.join(__location__, 'bin')
-    bin_dirs = [
-        "/opt/bin",
-        "/usr/bin",
-        "/usr/local/bin",
-        os.path.expanduser("~/bin"),
-        os.path.expanduser("~/.local/bin"),
-        os.path.expanduser("~/local/bin"),
-        local_bin_dir,
-    ]
-    for bin_dir in bin_dirs:
-        my_env['PATH'] = bin_dir + os.pathsep + my_env['PATH']
-
-    conda_prefix = my_env.get("CONDA_PREFIX")
-    if conda_prefix:
-        conda_bin = os.path.join(conda_prefix, "Scripts") if os.name == "nt" else os.path.join(conda_prefix, "bin")
-        my_env["PATH"] = conda_bin + os.pathsep + my_env["PATH"]
-    
+    my_env["PATH"] = os.pathsep.join(program_dirs(my_env, __location__))
     return my_env
 
 my_env = setup_environment()
@@ -123,13 +164,45 @@ if hasattr(os, "register_at_fork"):
 
 system = platform.system()
 try:
-    if system in ["Linux", "Darwin"]:
+    # (in OrthoFinder's own process: a process it started, e.g. with "spawn"
+    # (ortholog_writers.split_ortholog_files), has its start method already)
+    if system in ["Linux", "Darwin"] and mp.parent_process() is None:
         if mp.get_start_method(allow_none=True) != 'fork':
             mp.set_start_method('fork')
 except RuntimeError as e:
     print(f"Multiprocessing context setting error on {system}: {e}")
     pass
 
+
+
+_freeze_depth = 0
+_freeze_lock = threading.Lock()
+
+
+@contextlib.contextmanager
+def frozen_for_fork():
+    """
+    While processes started by fork run (from before they start until they end): the
+    objects there are left out of garbage collections (gc.freeze), the processes'
+    and the parent's. A collection touches every object it looks at (e.g. the
+    orthogroups and the gene names: GBs with 1000s of species), so a copy of each of
+    their memory pages would be made: by each process that collects, and, if the
+    parent collects, for the parent (the processes keep the old ones). The objects
+    are still freed as soon as they are not used; only the cyclic collector leaves
+    them until the processes have ended.
+    """
+    global _freeze_depth
+    with _freeze_lock:
+        if _freeze_depth == 0:
+            gc.freeze()
+        _freeze_depth += 1
+    try:
+        yield
+    finally:
+        with _freeze_lock:
+            _freeze_depth -= 1
+            if _freeze_depth == 0:
+                gc.unfreeze()
 
 
 def print_time(message):
@@ -202,7 +275,7 @@ def wait_for_exit(processes, what="child processes", warn_after=10.0, warn_inter
             next_warning = now + warn_interval
 
 
-def parallel_map(function, args_list, n_processes, progress=None):
+def parallel_map(function, args_list, n_processes, progress=None, initializer=None, initargs=()):
     """
     Run function(args) for each element of args_list in a process pool and
     return the results (in args_list order).
@@ -215,12 +288,16 @@ def parallel_map(function, args_list, n_processes, progress=None):
     the workers have been started (start any progress bar then, not before,
     so no worker is forked while its refresh thread holds a lock), and after
     each completed task.
+
+    initializer(*initargs), if given, is run once in each worker before its tasks:
+    for data every task needs, which is then sent once per worker, not per task.
     """
     from concurrent.futures import ProcessPoolExecutor, as_completed
     args_list = list(args_list)
     if not args_list:
         return []
-    pool = ProcessPoolExecutor(max_workers=max(1, min(n_processes, len(args_list))))
+    pool = ProcessPoolExecutor(max_workers=max(1, min(n_processes, len(args_list))),
+                               initializer=initializer, initargs=initargs)
     futures = {pool.submit(function, args): i for i, args in enumerate(args_list)}
     results = [None] * len(args_list)
     try:
@@ -283,7 +360,7 @@ def _process_group_cpu_seconds(pgid):
         if not entry.isdigit():
             continue
         try:
-            with open("/proc/%s/stat" % entry) as f:
+            with open("/proc/%s/stat" % entry, encoding="utf-8") as f:
                 stat = f.read()
         except OSError:
             continue
@@ -364,17 +441,28 @@ def run_monitored_command(command, env, stdout=None, stderr=None,
         warn_interval = COMMAND_WARN_INTERVAL
     use_group = hasattr(os, "killpg")
 
-    # Start and register under the lock, so kill_running_commands() cannot miss
-    # a command that is starting at the same moment.
+    if _commands_aborted.is_set():
+        raise WorkerError("Not started because another command failed: %s" % command)
+    from . import run_state
+    run_state.note_command(command)      # (an example of each kind, in run_state.json)
+    # Started outside the lock (under it, the threads' commands started one at a time:
+    # ~3x slower for many short commands), then registered under it and the abort
+    # checked again: kill_running_commands() sets the abort under the lock before it
+    # lists the commands, so a command starting at the same moment is either in its
+    # list or sees the abort here and is stopped.
+    popen = subprocess.Popen(
+        programs.with_paths(command), env=programs.with_env(env), shell=True,
+        stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr,
+        start_new_session=use_group,
+    )
     with _live_commands_lock:
-        if _commands_aborted.is_set():
-            raise WorkerError("Not started because another command failed: %s" % command)
-        popen = subprocess.Popen(
-            command, env=env, shell=True,
-            stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr,
-            start_new_session=use_group,
-        )
         _live_commands.add(popen)
+        aborted = _commands_aborted.is_set()
+    if aborted:
+        _kill_command(popen)
+        with _live_commands_lock:
+            _live_commands.discard(popen)
+        raise WorkerError("Stopped because another command failed: %s" % command)
 
     start = time.monotonic()
     cpu_prev = 0.0
@@ -531,6 +619,18 @@ def run_method_parallel(
     ]
     manage_queue_new(running_processes, total_tasks, n_processes, result_queue, show_progress=show_progress)
 
+def frozen_while_running(function):
+    """A function that starts processes by fork and waits for them, run frozen_for_fork."""
+    import functools
+
+    @functools.wraps(function)
+    def frozen(*args, **kwargs):
+        with frozen_for_fork():
+            return function(*args, **kwargs)
+    return frozen
+
+
+@frozen_while_running
 def manage_queue_new(
         running_processes,
         total_tasks,

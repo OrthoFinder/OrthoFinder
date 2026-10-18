@@ -215,18 +215,24 @@ def _find_output_dir(results_dir, test_filename, fileno=-1, find_core=True) -> s
         if not _is_valid_results_dir(path):
             continue
 
-        match_name = _normalise_result_name(name) if find_core else name
+        # core results are never those of an assign or restart run (they would be
+        # picked as the newest: their working directory has only the new species)
+        if find_core and _normalise_result_name(name) != name:
+            continue
+
+        match_name = name
 
         candidates.append((name, match_name, path, os.stat(path).st_mtime))
 
     if not candidates:
         return ""
 
-    # 1. Strict/expected match
+    # 1. Strict/expected match: the name, or the name with a run number (_N)
+    exact = re.compile(re.escape(test_filename) + r"(_\d+)?$")
     matched = [
         (mtime, path)
         for name, match_name, path, mtime in candidates
-        if test_filename in match_name
+        if exact.match(match_name)
     ]
 
     if matched:

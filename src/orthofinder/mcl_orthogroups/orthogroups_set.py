@@ -37,6 +37,9 @@ from ..species_tree import concatenated_alignment
 
 
 class Seq(object):
+    # (no __dict__: one Seq per gene, millions of them; ~40 bytes less each)
+    __slots__ = ("i_sp", "i_seq")
+
     def __init__(self, seq_input):
         """Constructor takes sequence in any format and returns generators the
         Seq object accordingly. If performance is really important then can write
@@ -55,7 +58,7 @@ class Seq(object):
             raise NotImplementedError
 
     def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+        return isinstance(other, self.__class__) and self.i_sp == other.i_sp and self.i_seq == other.i_seq
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -81,9 +84,14 @@ class OrthogroupSet(object):
         tree_program="fasttree",
         id_extractor=gene_ids.FirstWordExtractor,
         mcl_inflation=1.2,
+        ogs=None,
     ):
-
-        self.species_ids_ex = gene_ids.FullAccession(file_handler.handler.get_species_ids_fn())
+        """
+        ogs: the orthogroups (List[Set[str]]), if they are in memory and not (yet)
+        written: else they are read from the clusters file (get_ogs_all).
+        """
+        self._ogs_given = ogs
+        self.species_names = gene_ids.species_names(file_handler.handler.get_species_ids_fn())
         self._spec_seq_ids = None
         self._extractor = id_extractor
         self.seq_ids_ex = None
@@ -127,26 +135,16 @@ class OrthogroupSet(object):
 
     def species_dict(self):
         """returns Dict[str, str]"""
-        d = self.species_ids_ex.get_id_to_name_dict()
-        return {k: v.rsplit(".", 1)[0] for k, v in d.items()}
+        return dict(self.species_names)
 
     def spec_seq_dict(self):
         """returns Dict[str, str]"""
         if self._spec_seq_ids != None:
             return self._spec_seq_ids
-        seqs = self.sequence_dict()
-        seqs = {
-            k: v for k, v in seqs.items() if int(k.split("_")[0]) in self.species_to_use
-        }
-        if not self.q_add_species_to_ids:
-            self._spec_seq_ids = seqs
-            return seqs
-        specs = self.species_dict()
-        specs_ed = {k: v.replace(".", "_").replace(" ", "_") for k, v in specs.items()}
-        self._spec_seq_ids = {
-            seq_id: specs_ed[seq_id.split("_")[0]] + "_" + name
-            for seq_id, name in seqs.items()
-        }
+        # (a view of the names of the species used, with their species' prefix unless -X:
+        # not a second copy of every gene's name)
+        prefixes = gene_ids.species_prefixes(self.species_dict()) if self.q_add_species_to_ids else None
+        self._spec_seq_ids = gene_ids.SpeciesNames(self.sequence_dict(), self.species_to_use, prefixes)
         return self._spec_seq_ids
 
     def get_i_ogs4(self):
@@ -157,13 +155,20 @@ class OrthogroupSet(object):
 
     def get_ogs_all(self, i_unassigned=None):
         if self.ogs_all is None:
-            ogs = MCL.get_predicted_ogs(file_handler.handler.get_clusters_fn(self.mcl_inflation, i_unassigned))
-            if self.tree_program in ["raxml", "raxml-ng"]:
-                self.ogs_all = [
-                    [Seq(g) for g in og] for og in ogs if len(og) >= self.min_seq
-                ]
+            q_read = self._ogs_given is None
+            if not q_read:
+                ogs, self._ogs_given = self._ogs_given, None
             else:
-                self.ogs_all = [[Seq(g) for g in og] for og in ogs]
+                ogs = MCL.get_predicted_ogs(file_handler.handler.get_clusters_fn(self.mcl_inflation, i_unassigned))
+            # (all of them, whatever the tree program: one that needs more sequences
+            # skips the smaller ones only for its trees, TreesForOrthogroups.get_tree_commands)
+            self.ogs_all = []
+            for i, og in enumerate(ogs):
+                self.ogs_all.append([Seq(g) for g in sorted(og, key=species_info.seq_id_key)])
+                if q_read:
+                    ogs[i] = None    # (read here: let each set go once converted, not all genes held twice)
+            # (the genes of each orthogroup in ID order: a set's order changes from run to run,
+            # with Python's hash seed, and e.g. the DendroBLAST distance matrices follow it)
             # self.ogs_all = sorted(self.ogs_all, key=len, reverse=True)
         return self.ogs_all
 
@@ -182,14 +187,13 @@ class OrthogroupSet(object):
     #     iogs4 = self.get_i_ogs4()
     #     return [ogs_all[i] for i in iogs4]
 
-    def orthogroup_matrix(self):
-        """qReduce give a matrix with only as many columns as species for cases when
-        clustering has been performed on a subset of species"""
-        return concatenated_alignment.orthogroup_matrix(self.get_ogs_all(), self.min_seq)
+    def orthogroup_occupancy(self):
+        """(concatenated_alignment.Occupancy, iogs4) of the orthogroups for the species tree"""
+        return concatenated_alignment.orthogroup_occupancy(self.get_ogs_all(), self.min_seq)
 
     def all_used_sequence_ids(self):
         ids_dict = self.sequence_dict()
-        species_to_use_strings = list(map(str, self.species_to_use))
+        species_to_use_strings = set(map(str, self.species_to_use))   # (a set: a test per gene)
         all_ids = [
             s for s in ids_dict.keys() if s.split("_")[0] in species_to_use_strings
         ]

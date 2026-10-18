@@ -118,7 +118,7 @@ def start_run(ctx, args, input_args):
     # printer.print(f"    [dark_cyan]{files.FileHandler.get_results_directory1()}")
 
     printer.print("[bold]Results directory:[/bold]")
-    printer.print(f"    [dark_cyan]{file_handler.handler.get_results_directory1()}")
+    printer.print(f"    [dark_cyan]{escape(file_handler.handler.get_results_directory1())}")
 
     # A restart also continues with the species tree the run used (unless
     # -s is given), and its point for restarting gene-tree inference
@@ -172,6 +172,7 @@ def start_run(ctx, args, input_args):
         prog_caller,
         file_handler.handler.get_working_directory1_read()[0],
         q_assign=assign_resume,
+        recorded_programs=state.get("programs"),
     )
     if continuation_dir is not None:
         printing.print_restart_info(options, continuation_dir)

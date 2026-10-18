@@ -100,7 +100,10 @@ OUTPUT_OPTIONS = {
         {"names": ("-o", "--output"), "value": "txt", "read": "output", "help": "Non-default results directory"},
         {"names": ("-X",), "set": {"q_add_species_to_ids": False}, "help": "Don't add species names to sequence IDs"},
         {"names": ("-pof", "--pairwise-ortholog-files"), "set": {"save_space": False},
-         "help": "Save the pairwise ortholog files"},
+         "help": "Save the pairwise ortholog files. With many species (a file for each pair: n x (n-1) files), "
+                 "it is better to run without it and then make only the files needed with the "
+                 "[dark_cyan]split_ortholog_files[/dark_cyan] tool ([dark_cyan]tools/split_ortholog_files.py[/dark_cyan] "
+                 "in the source code)"},
         {"names": ("--orthoxml", "-x"), "set": {"orthoxml": True},
          "help": "The orthogroups in OrthoXML format, for other tools, with their HOGs nested in them: " +
                  _path("Orthogroups/Orthogroups.orthoxml")},
@@ -213,17 +216,14 @@ DEVELOPMENT_OPTIONS = {
                  "[deep_sky_blue2]10000,20000[/deep_sky_blue2]"},
         {"names": ("-efn", "--extended-filename"), "set": {"extended_filename": True},
          "help": "Add the scoring and the search, MSA and tree programs to the results directory name"},
-        {"names": ("--no-fix-files",), "set": {"fix_files": False},
-         "help": "Don't update the results files to the HOG-based orthogroups (one pass of ortholog inference)"},
-        {"names": ("-ogh", "--only-hierarchical-groups"), "set": {"q_stop_after_groups": True},
-         "help": "Stop after the HOG-based orthogroups"},
-        {"names": ("-rmgt", "--rm-gene-trees"), "set": {"rm_gene_trees": False},
+        {"names": ("--keep-gene-trees",), "set": {"keep_gene_trees": True},
          "help": "Keep the gene trees in the working directory (removed by default)"},
-        {"names": ("-rmrgt", "--rm-resolved-gene-trees"), "set": {"rm_resolved_gene_trees": False},
+        {"names": ("--keep-resolved-gene-trees",), "set": {"keep_resolved_gene_trees": True},
          "help": "Keep the resolved gene trees as separate files in the working directory (removed by default)"},
-        {"names": ("-rmlg",), "set": {"rm_legacy": False},
-         "help": "Keep the legacy files (removed by default), incl. the HOGs with gene names from before "
-                 "the orthogroups are updated"},
+        {"names": ("--keep-legacy",), "set": {"keep_legacy": True},
+         "help": "Write the legacy files in WorkingDirectory/Legacy (not written by default): the HOGs from "
+                 "before the orthogroups are updated and the orthogroups as sequence IDs; and keep the "
+                 "working files the update uses"},
         {"names": ("--no-print-info",), "set": {"print_info": False},
          "help": "Don't print the progress messages of the ortholog inference"},
         {"names": ("--concat-alignment",), "set": {"species_tree_alignment": True},

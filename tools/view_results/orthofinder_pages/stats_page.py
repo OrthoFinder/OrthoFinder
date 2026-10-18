@@ -293,7 +293,7 @@ def write_stats_page(results_dir, written=None):
             "chunks": view_pages.write_chunks(data_dir, f"HOGCounts_{node}", [h[3] for h in hogs], len)})
 
     page = os.path.join(stats_dir, "Statistics.html")
-    with open(page, "w", encoding="utf-8") as out:
+    with open(page, "w", encoding="utf-8", newline="\n") as out:
         out.write(HTML.replace("__NAV_CSS__", view_pages.NAV_CSS).replace("__NAV_HTML__", view_pages.NAV_HTML)
                   .replace("__NAV_JS__", view_pages.NAV_JS).replace("__THEME_JS__", view_pages.THEME_JS)
                   .replace("__DATA_JS__", view_pages.DATA_JS)

@@ -265,9 +265,8 @@ class WaterfallMethod:
         """0/1 CSR matrix of the entries of W greater than their row's threshold."""
         rows = np.repeat(np.arange(W.shape[0]), np.diff(W.indptr))
         keep = W.data > threshold_per_row[rows]
-        return sparse.csr_matrix(
-            (np.ones(int(keep.sum())), (rows[keep], W.indices[keep])), shape=W.shape
-        )
+        # (W's order: W has sorted indices)
+        return matrices.csr_from_sorted(np.ones(int(keep.sum())), rows[keep], W.indices[keep], W.shape)
 
     @staticmethod
     def get_bh_s(pairwise_scores_matrices, seqs_info, i_species, tol=1e-3):
@@ -357,7 +356,7 @@ class WaterfallMethod:
         # Should use PTM?
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            with open(graph_fn, "w") as graph_file:
+            with open(graph_fn, "w", encoding="utf-8", newline="\n") as graph_file:
                 graph_file.write(
                     "(mclheader\nmcltype matrix\ndimensions %dx%d\n)\n"
                     % (seqs_info.n_seqs, seqs_info.n_seqs)
@@ -556,9 +555,9 @@ class WaterfallMethod:
             keep = M.data >= most_distant[rows]
             if i_spec == j_spec:
                 keep &= rows != M.indices
-            mat = sparse.csr_matrix(
-                (np.ones(int(keep.sum())), (rows[keep], M.indices[keep])),
-                shape=(n_seqs_i, seqs_info.n_seqs_per_species[seqs_info.species_to_use[j_spec]]),
+            mat = matrices.csr_from_sorted(
+                np.ones(int(keep.sum())), rows[keep], M.indices[keep],
+                (n_seqs_i, seqs_info.n_seqs_per_species[seqs_info.species_to_use[j_spec]]),
             )
             connect.append(mat)
         return connect

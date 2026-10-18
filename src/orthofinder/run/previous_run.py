@@ -1,4 +1,4 @@
-from ..utils import util, file_handler, file_io
+from ..utils import util, file_handler, file_io, gene_ids
 import os
 from collections import Counter
 
@@ -17,7 +17,7 @@ def ids_file_ok(filename):
     """
     It is best to detect any issues with input files at start, perform all required checks here
     """
-    with open(filename, "r") as infile:
+    with file_io.open_text_any(filename) as infile:
         for line in infile:
             line = line.rstrip()
             if len(line) == 0:
@@ -342,7 +342,8 @@ def check_user_species_tree(species_tree_fn, exp_species):
         print("\nERROR: Incorrectly formated user-supplied species tree")
         print(str(e))
         util.fail()
-    act_species = (t.get_leaf_names())
+    # (the names as in the results, e.g. "Homo sapiens" as Homo_sapiens: gene_ids.user_tree_species)
+    act_species = [gene_ids.user_tree_species(name) for name in t.get_leaf_names()]
     c = Counter(act_species)
     if 1 != c.most_common()[0][1]:
         print("ERROR: Species names in species tree are not unique")
@@ -381,17 +382,8 @@ def check_user_species_tree(species_tree_fn, exp_species):
 
 def species_name_dict(species_ids_fn):
     # type: (str) -> Dict[int, str]
-    species_names_dict = dict()
-    with open(species_ids_fn, "r") as species_names_file:
-        for line in species_names_file:
-            if line.startswith("#"):
-                continue
-            line = line.rstrip()
-            if not line:
-                continue
-            short, full = line.split(": ")
-            species_names_dict[int(short)] = full.rsplit(".", 1)[0]
-    return species_names_dict
+    """{species ID: name} of the species used in the analysis (gene_ids.species_names)."""
+    return {int(k): v for k, v in gene_ids.species_names(species_ids_fn, q_unused=False).items()}
 
 
 # def SpeciesSequenceNameDict(sequenceIDsFN):
@@ -424,7 +416,7 @@ def state_from_log(continuation_dir):
     if log_fn is None:
         return {}
     state = {}
-    with open(log_fn, errors="replace") as infile:
+    with open(log_fn, errors="replace", encoding="utf-8") as infile:
         for line in infile:
             line = line.rstrip("\r\n")
             for key, name in PROGRAM_LOG_KEYS:
@@ -490,7 +482,7 @@ class PreviousFilesLocatorNew(PreviousFilesLocator):
         """
         wd_base_anchor = None
         earlier_wds = []     # WorkingDirectory_Core/_Previous lines after the last WorkingDirectory_Base
-        with open(log_fn, 'r') as infile:
+        with file_io.open_text_any(log_fn) as infile:
             for line in infile:
                 for key in EARLIER_WD_KEYS:
                     if line.startswith(key + ": "):
@@ -589,7 +581,7 @@ class PreviousFilesLocatorNew(PreviousFilesLocator):
     def get_wd_base_chain(wd_base_anchor):
         chain = [wd_base_anchor]
         while os.path.exists(chain[-1] + "previous_wd.txt"):
-            with open(chain[-1] + "previous_wd.txt", 'r') as infile:
+            with file_io.open_text_any(chain[-1] + "previous_wd.txt") as infile:
                 wd = infile.readline().rstrip()
                 if not os.path.exists(wd):
                     # try to see if it's a relative directory to current one

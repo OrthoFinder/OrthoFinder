@@ -12,7 +12,6 @@ Perform directed 'reconciliation' first and then apply EggNOG method
 from ..utils import logging as run_logging
 import os
 import sys
-import csv
 import glob
 import resource
 import operator
@@ -29,11 +28,10 @@ try:
 except ImportError:
     ...
 
-from .tree_analyser import TreeAnalyser, mrca_node, gene_to_species_dash, get_lines_for_ortholog_files
+from .tree_analyser import TreeAnalyser, mrca_node, gene_to_species_dash, get_lines_for_ortholog_files, empty_ortholog_lines
 from .hog_writer import HogWriter
 from .parallel_pipeline import run_orthologs_parallel_pipeline, set_file_descriptor_limit
-from .sort_outputs import sort_non_hog_output_files, validate_hog_writer_no_duplicate_ids
-from .ortholog_writers import ParentOutputWriter, NonHogAppendWriter
+from .ortholog_writers import ParentOutputWriter
 from ..phylo import tree
 from ..utils import util, file_handler
 from ..utils import printing
@@ -51,34 +49,26 @@ def reconciliation_and_orthologs(
         i_species_tree=None,
         stride_dups=None,
         q_split_para_clades=False,
-        fewer_open_files=False,
         save_space=False,
         print_info=True,
         exist_msa=True,
         write_hog_tree=True,
-        fix_files=True,
         write_to_rd=True,
         fd_limit=None,
-        sort_non_hog_output=True,
-        validate_hog_ids=True,
         write_named_hogs=True,
     ):
 
     species_tree_ids_fn = file_handler.handler.get_species_tree_ids_rooted_fn()
-    labeled_tree_fn = file_handler.handler.get_species_tree_results_node_labels_fn()
 
-    taxa.rename_tree_taxa(
-        species_tree_ids_fn,
-        labeled_tree_fn,
-        og_set.species_dict(),
-        q_support=False,
-        q_fix_negatives=True,
-        label="N"
-    )
-
-    working_dir = file_handler.handler.get_working_directory_write()
-    results_dir_orthologs = file_handler.handler.get_orthologs_directory()
-    recon_trees_renamed_dir = file_handler.handler.get_ogs_recon_tree_dir(True)
+    if write_to_rd:
+        taxa.rename_tree_taxa(
+            species_tree_ids_fn,
+            file_handler.handler.get_species_tree_results_node_labels_fn(),
+            og_set.species_dict(),
+            q_support=False,
+            q_fix_negatives=True,
+            label="N"
+        )
 
     if print_info:
         util.print_time("Inferring orthologs from gene trees")
@@ -114,6 +104,11 @@ def reconciliation_and_orthologs(
         write_named=write_named_hogs,
     )
 
+    # The orthologs of the orthogroups of 2 or 3 genes, written after those of the trees
+    last_ortholog_lines, n_orthologs_last = None, None
+    if not write_hog_tree:
+        last_ortholog_lines, n_orthologs_last = two_and_three_gene_orthogroups(og_set)
+
     try:
         n_orthologs_sp_pair = do_orthologs_for_ortho_finder(
             og_set,
@@ -124,14 +119,15 @@ def reconciliation_and_orthologs(
             hog_writer,
             q_split_para_clades,
             n_low_parallel,
-            fewer_open_files,
             save_space,
             print_info=print_info,
             exist_msa=exist_msa,
             write_hog_tree=write_hog_tree,
-            fix_files=fix_files,
             fd_limit=fd_limit,
+            last_ortholog_lines=last_ortholog_lines,
         )
+        if n_orthologs_last is not None:
+            n_orthologs_sp_pair += n_orthologs_last
 
         if print_info:
             util.print_time("Done of orthologs")
@@ -143,30 +139,6 @@ def reconciliation_and_orthologs(
         )
 
         hog_writer.close_files()
-
-        if validate_hog_ids:
-            validate_hog_writer_no_duplicate_ids(hog_writer)
-
-        if not write_hog_tree or not fix_files:
-            n_orthologs_sp_pair += two_and_three_gene_orthogroups(
-                og_set,
-                results_dir_orthologs,
-                save_space,
-                fewer_open_files,
-                write_hog_tree=write_hog_tree,
-                fix_files=fix_files
-            )
-
-            if sort_non_hog_output:
-                sort_non_hog_output_files(
-                    n_low_parallel,
-                    og_set.species_to_use,
-                    species_dict,
-                    fewer_open_files,
-                    save_space,
-                    write_hog_tree,
-                    fix_files,
-                )
 
     finally:
         hog_writer.close_files()
@@ -193,33 +165,19 @@ def two_and_three_gene_hogs(og_set, st_rooted_labelled, hog_writer):
         hog_writer.write_hog_genes(genes, hogs_to_write, og_name)
 
 
-def two_and_three_gene_orthogroups(
-        og_set,
-        results_dir,
-        save_space,
-        fewer_open_files,
-        write_hog_tree=False,
-        fix_files=False
-    ):
-
-    if write_hog_tree and fix_files:
-        return stats.NOrthoSp(len(og_set.species_to_use))
-
+def two_and_three_gene_orthogroups(og_set):
+    """
+    The ortholog lines of the orthogroups of 2 or 3 genes (in the layout of
+    get_lines_for_ortholog_files) and their number per species pair. They are
+    written after those of the trees (ParentOutputWriter.write_last): these
+    orthogroups have the fewest genes, so the last orthogroup numbers.
+    """
     species_dict = og_set.species_dict()
     sequence_dict = og_set.sequence_dict()
 
-    all_orthologs, nspecies, sp_to_index, _old_ortholog_lines, _old_sus_lines = get_all_orthologs(og_set)
+    all_orthologs, nspecies, sp_to_index = get_all_orthologs(og_set)
 
-    # Important:
-    # In save_space mode, output is also one file per species,
-    # so get_lines_for_ortholog_files() must use dim2 = 1.
-    use_fewer_open_files = fewer_open_files or save_space
-    dim2 = 1 if use_fewer_open_files else nspecies
-
-    ortholog_lines_tot = [
-        ["" for _ in range(dim2)]
-        for _ in range(nspecies)
-    ]
+    ortholog_lines_tot = empty_ortholog_lines(nspecies)
 
     ortholog_sus_lines_tot = [
         ""
@@ -234,26 +192,9 @@ def two_and_three_gene_orthogroups(
         q_contains_suspect_orthologs=False,
         ortholog_lines=ortholog_lines_tot,
         ortholog_sus_lines=ortholog_sus_lines_tot,
-        fewer_open_files=use_fewer_open_files,
     )
 
-    writer = NonHogAppendWriter(
-        d_results_orthologs=results_dir,
-        species_dict=species_dict,
-        species_to_use=og_set.species_to_use,
-        save_space=save_space,
-        fewer_open_files=fewer_open_files,
-        max_open=64,
-    )
-
-    try:
-        writer.write_ortholog_lines(ortholog_lines_tot)
-        writer.flush()
-
-    finally:
-        writer.close()
-
-    return n_orthologs_sp_pair
+    return ortholog_lines_tot, n_orthologs_sp_pair
 
 
 def get_all_orthologs(og_set):
@@ -306,9 +247,7 @@ def get_all_orthologs(og_set):
 
     nspecies = len(og_set.species_to_use)
     sp_to_index = {str(sp):i for i, sp in enumerate(og_set.species_to_use)}
-    ortholog_lines_tot = [["" for j in range(nspecies)] for i in range(nspecies)]
-    ortholog_sus_lines_tot = ["" for i in range(nspecies)]
-    return all_orthologs, nspecies, sp_to_index, ortholog_lines_tot, ortholog_sus_lines_tot
+    return all_orthologs, nspecies, sp_to_index
 
 
 def do_orthologs_for_ortho_finder(
@@ -320,27 +259,25 @@ def do_orthologs_for_ortho_finder(
         hog_writer,
         q_split_paralogous_clades,
         n_parallel,
-        fewer_open_files,
         save_space,
         print_info=True,
         exist_msa=True,
         write_hog_tree=True,
-        fix_files=True,
         fd_limit=None,
+        last_ortholog_lines=None,
     ):
     try:
         species_dict = og_set.species_dict()
         sequence_dict = og_set.sequence_dict()
         nspecies = len(og_set.species_to_use)
 
-        d_results_orthologs = file_handler.handler.get_orthologs_directory()
+        # none in the pass that writes only the HOG trees
+        d_results_orthologs = None if write_hog_tree else file_handler.handler.get_orthologs_directory()
 
         neighbours = get_species_neighbours(species_tree_rooted_labelled)
         iogs4 = list(og_set.get_i_ogs4())
         recon_trees_renamed_dir = file_handler.handler.get_ogs_recon_tree_dir(True)
         spec_seq_dict = og_set.spec_seq_dict()
-        effective_fewer_open_files = fewer_open_files or save_space
-
         output_writer = ParentOutputWriter(
             d_results_orthologs=d_results_orthologs,
             species_dict=species_dict,
@@ -349,13 +286,9 @@ def do_orthologs_for_ortho_finder(
             spec_seq_dict=spec_seq_dict,
             stride_dups=stride_dups,
             hog_writer=hog_writer,
-            fewer_open_files=effective_fewer_open_files,
             save_space=save_space,
             write_hog_tree=write_hog_tree,
-            fix_files=fix_files,
-            max_open=64,
-            flush_every_results=1000,
-            flush_every_seconds=60,
+            last_ortholog_lines=last_ortholog_lines,
         )
 
         ta = TreeAnalyser(
@@ -376,10 +309,8 @@ def do_orthologs_for_ortho_finder(
             None,  
             hog_writer,
             q_split_paralogous_clades,
-            fewer_open_files=effective_fewer_open_files,
             exist_msa=exist_msa,
             write_hog_tree=write_hog_tree,
-            fix_files=fix_files
         )
 
         total_tasks = len(iogs4)
@@ -392,16 +323,20 @@ def do_orthologs_for_ortho_finder(
 
             try:
                 for completed_tasks, iog in enumerate(iogs4, start=1):
-                    result = ta.analyse_tree(iog)
+                    # (the counts added to n_orthologs_sp_pair, as the parallel workers do:
+                    # not a species x species NOrthoSp per tree)
+                    result = ta.analyse_tree(iog, n_ortho_acc=n_orthologs_sp_pair)
 
                     if result is None:
                         progressbar.update(task, advance=1)
                         continue
 
-                    n_orthologs_sp_pair += result["n_orthologs"]
                     output_writer.write_result(result)
 
                     progressbar.update(task, advance=1)
+
+                # (iogs4 is in OG order)
+                output_writer.write_last()
 
             finally:
                 progressbar.stop()
@@ -425,12 +360,10 @@ def do_orthologs_for_ortho_finder(
                 args_queue,
                 n_parallel,
                 total_tasks,
-                effective_fewer_open_files,
                 output_writer,
                 iogs_ordered=iogs4,
                 n_orthologs_cache=100,
                 write_hog_tree=write_hog_tree,
-                fix_files=fix_files,
                 fd_limit=fd_limit,
                 writer_queue_size=max(4 * n_parallel, 32),
                 spill_dir=file_handler.handler.get_working_directory_write(),

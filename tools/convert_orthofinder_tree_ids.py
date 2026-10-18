@@ -64,7 +64,7 @@ def invert_mapping(ids_map):
 
 
 def convert_resolved_gene_trees_file(ids_map, tree_filename, output_filename):
-    with open(tree_filename, "r") as infile, open(output_filename, "w") as outfile:
+    with open(tree_filename, "r", encoding="utf-8") as infile, open(output_filename, "w", encoding="utf-8", newline="\n") as outfile:
         for line in infile:
             line = line.strip()
 
@@ -87,7 +87,7 @@ def convert_resolved_gene_trees_file(ids_map, tree_filename, output_filename):
             outfile.write("%s: %s\n" % (og_name, tmp_tree.write(format=5).strip()))
 
 def replace_file_with_new_ids(ids_map, tree_filename, new_tree_filename):
-    with open(tree_filename, "r") as infile:
+    with open(tree_filename, "r", encoding="utf-8") as infile:
         first_line = infile.readline().strip()
 
     if first_line.startswith("OG") and ":" in first_line:
@@ -140,10 +140,9 @@ def get_species_sequence_ids_dict(sequence_ids_filename, species_ids_fn=None):
     ids_dict = extract.get_id_to_name_dict()
 
     if species_ids_fn is not None:
-        species_dict = gene_ids.FullAccession(species_ids_fn).get_id_to_name_dict()
         species_dict = {
-            k: v.rsplit(".", 1)[0].replace(".", "_").replace(" ", "_")
-            for k, v in species_dict.items()
+            k: v.replace(".", "_")
+            for k, v in gene_ids.species_names(species_ids_fn).items()
         }
         ids_dict = {
             seq_id: species_dict[seq_id.split("_")[0]] + "_" + name

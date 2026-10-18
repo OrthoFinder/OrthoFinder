@@ -24,14 +24,13 @@ from .ortholog_writers import non_hog_writer_process, ordered_hog_writer_process
 def get_n_writer_processes(
         nspecies,
         n_processes,
-        fewer_open_files=False,
         max_writers=12,
     ):
     """Choose the number of non-HOG output writer processes."""
     nspecies = max(1, int(nspecies))
     n_processes = max(1, int(n_processes))
 
-    species_per_writer = 96 if fewer_open_files else 48
+    species_per_writer = 96
     n_writers = (nspecies + species_per_writer - 1) // species_per_writer
     writer_cpu_cap = max(1, n_processes // 2)
 
@@ -45,6 +44,10 @@ def get_n_writer_processes(
     )
 
 
+# The skips a worker holds per writer before sending them (worker_run_orthologs_method_pipeline)
+SKIP_BATCH = 64
+
+
 def worker_run_orthologs_method_pipeline(
         tree_analyser,
         nspecies,
@@ -52,11 +55,9 @@ def worker_run_orthologs_method_pipeline(
         hog_queue,
         non_hog_queues,
         progress_queue,
-        fewer_open_files,
         need_ortholog_output,
         n_orthologs_cache=100,
         write_hog_tree=False,
-        fix_files=False,
     ):
     """
     Analyse OGs and route HOG and non-HOG output independently.
@@ -68,6 +69,24 @@ def worker_run_orthologs_method_pipeline(
     n_writers = len(non_hog_queues)
     worker_pid = os.getpid()
     n_ortho_acc = stats.NOrthoSp(nspecies)
+    # The OGs with nothing for a writer, sent to it in batches (most OGs have
+    # nothing for most writers): before this worker's next result for it, so it
+    # gets them in order, or once SKIP_BATCH are held, or at the end
+    skips = [[] for _ in non_hog_queues]
+
+    def send_skips(owner):
+        if skips[owner]:
+            non_hog_queues[owner].put(("skips", skips[owner]))
+            skips[owner] = []
+
+    def send(owner, iog, payload):
+        if payload is None:
+            skips[owner].append(iog)
+            if len(skips[owner]) >= SKIP_BATCH:
+                send_skips(owner)
+        else:
+            send_skips(owner)
+            non_hog_queues[owner].put(("result", payload))
 
     while True:
         try:
@@ -81,6 +100,8 @@ def worker_run_orthologs_method_pipeline(
 
             if result is None:
                 hog_queue.put(("skip", iog))
+                for owner in range(n_writers):
+                    send(owner, iog, None)
                 progress_queue.put(("skip", iog))
                 continue
 
@@ -97,12 +118,12 @@ def worker_run_orthologs_method_pipeline(
                 result,
                 n_writers,
                 tree_analyser,
-                fewer_open_files,
                 need_ortholog_output,
             )
 
-            for owner, payload in payloads.items():
-                non_hog_queues[owner].put(("result", payload))
+            # every writer hears of every OG, to write its files in OG order
+            for owner in range(n_writers):
+                send(owner, iog, payloads.get(owner))
 
             progress_queue.put(("result", iog))
 
@@ -117,23 +138,23 @@ def worker_run_orthologs_method_pipeline(
             return
 
     hog_queue.put(None)
-    for writer_queue in non_hog_queues:
+    for owner, writer_queue in enumerate(non_hog_queues):
+        send_skips(owner)
         writer_queue.put(None)
     progress_queue.put(("worker_done", worker_pid, n_ortho_acc))
 
 
+@parallel_task_manager.frozen_while_running
 def run_orthologs_parallel_pipeline(
         tree_analyser,
         nspecies,
         args_queue,
         n_processes,
         total_tasks,
-        fewer_open_files,
         output_writer,
         iogs_ordered,
         n_orthologs_cache=100,
         write_hog_tree=False,
-        fix_files=False,
         fd_limit=None,
         GRACE_PERIOD=10.0,
         STALL_TIMEOUT=120.0,
@@ -144,8 +165,8 @@ def run_orthologs_parallel_pipeline(
     """
     Parallel tree analysis with two output paths.
 
-    HOG rows are committed in deterministic OG order. Other output files are
-    written immediately by exclusive file owners and can be sorted afterward.
+    HOG rows are committed in deterministic OG order, and so are the other
+    output files, each by the writer process that owns it.
 
     STALL_TIMEOUT is the interval between long-wait warnings, not a deadline
     for a tree or an output batch. Silence alone cannot distinguish slow work
@@ -164,7 +185,6 @@ def run_orthologs_parallel_pipeline(
         n_writer_processes = get_n_writer_processes(
             nspecies,
             n_processes,
-            fewer_open_files=fewer_open_files,
         )
     else:
         n_writer_processes = max(
@@ -179,7 +199,6 @@ def run_orthologs_parallel_pipeline(
     #         n_writer_processes,
     #         "" if n_writer_processes == 1 else "es",
     #         nspecies,
-    #         "compact" if fewer_open_files else "pairwise",
     #     )
     # )
 
@@ -218,6 +237,9 @@ def run_orthologs_parallel_pipeline(
                 output_writer,
                 n_processes,
                 writer_id,
+                n_writer_processes,
+                iogs_ordered,
+                spill_dir,
             )
         )
         for writer_id in range(n_writer_processes)
@@ -233,11 +255,9 @@ def run_orthologs_parallel_pipeline(
                 hog_queue,
                 non_hog_queues,
                 progress_queue,
-                fewer_open_files,
                 output_writer.need_ortholog_output,
                 n_orthologs_cache,
                 write_hog_tree,
-                fix_files,
             )
         )
         for _ in range(n_processes)

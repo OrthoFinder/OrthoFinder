@@ -131,6 +131,25 @@ def delete_matrices(base_name, d_pickle):
         for f in glob.glob(d_pickle + pattern):
             if os.path.exists(f): os.remove(f)
 
+def csr_from_sorted(data, rows, cols, shape):
+    """
+    The CSR matrix of entries already in row order (and column order within a
+    row, no duplicates): the same arrays as csr_matrix((data, (rows, cols))), a
+    third of the time (it is made once or more for each pair of species). Entries
+    not in that order are given to csr_matrix.
+    """
+    from scipy import sparse
+    rows = np.asarray(rows)
+    cols = np.asarray(cols)
+    if rows.size > 1:
+        key = rows.astype(np.int64) * shape[1] + cols
+        if not (key[1:] > key[:-1]).all():
+            return sparse.csr_matrix((data, (rows, cols)), shape=shape)
+    indptr = np.zeros(shape[0] + 1, dtype=np.int64)
+    np.cumsum(np.bincount(rows, minlength=shape[0]), out=indptr[1:])
+    return sparse.csr_matrix((data, cols, indptr), shape=shape)
+
+
 def sparse_max_row(csr_mat):
     ret = np.zeros(csr_mat.shape[0])
     ret[np.diff(csr_mat.indptr) != 0] = np.maximum.reduceat(csr_mat.data,csr_mat.indptr[:-1][np.diff(csr_mat.indptr)>0])

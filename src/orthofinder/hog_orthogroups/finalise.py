@@ -1,14 +1,8 @@
 from . import convert, update_trees
 import os
 import itertools
-import re
-import shutil
-import tempfile
-from collections import defaultdict
 
 from ..utils import file_handler, util, file_io
-from ..phylo import newick
-from ..utils import species_info
 from ..utils import paths
 
 def update_output_files(
@@ -31,16 +25,10 @@ def update_output_files(
     species_names = [sp_ids[i] for i in i_sps]
 
     ## ------------------------ Fix OGs and OG Sequences -------------------------
-    old_hog_n0_file = file_handler.handler.wd_hierarchical_orthogroups_fn_n0()
-    hog_n0_file = file_handler.handler.hierarchical_orthogroups_fn_n0()
-    for file in os.listdir(file_handler.handler.get_result_hog_dir()):
-        if file.startswith("N"):
-            shutil.copy2(
-                os.path.join(file_handler.handler.get_result_hog_dir(), file),  
-                file_handler.handler.get_legacy_hog_dir()
-            )
-
-    hogs_converter(file_handler.handler.get_working_directory_write() + "N0.ids.tsv", hog_n0_file, species_names)
+    # The HOGs of N0 of the MCL orthogroups (the first pass), in sequence IDs: the
+    # orthogroups are made from them. (The IDs are exact: two genes of a species with
+    # the same name keep their own.)
+    hog_n0_file = file_handler.handler.n0_mcl_ids_fn()
 
     seq_dir = file_handler.handler.get_results_seqs_dir()
     paths.clear_dir(seq_dir)
@@ -70,8 +58,6 @@ def update_output_files(
     if prev_wd is not None:
         align_id_dir = os.path.join(prev_wd, "Alignments_ids")
     old_hog_n0 = read_hog_file(hog_n0_file)
-    # gene names of the trees -> IDs (a name of several genes: per orthogroup)
-    spec_seq_id_dict = tree_name_to_id_dict(id_dict, old_hog_n0, species_names)
     hog_n0_over4genes = hog_file_over4genes(old_hog_n0, 2)
 
     del old_hog_n0
@@ -104,7 +90,7 @@ def update_output_files(
         hog_index, 
         simplified_name_dict, 
         id_dict,
-        spec_seq_id_dict,
+        None,       # (the trees have the gene IDs: tree_analyser.write_resolved_tree)
         species_names, 
         nprocess,
         tree_file_index,
@@ -131,109 +117,20 @@ def update_output_files(
 
     return og_set, new_ogs
 
-_NEWICK_UNSAFE = re.compile("[" + newick._ILEGAL_NEWICK_CHARS + "]")
-
-
-def tree_name_to_id_dict(id_dict, hog_n0_rows=(), species_names=()):
-    """
-    The sequence IDs of the gene names on the gene trees' leaves
-    (trees.TreeLeafNames), as names appear in the trees.
-
-    The tree writer replaces characters that Newick cannot hold (; [ ] = ...)
-    by "_", so "protein [E. coli]" is "protein _E. coli_" in a tree. Both
-    forms map to the ID. A name (or tree form) shared by several genes is
-    resolved per tree, from the IDs of each orthogroup in hog_n0_rows (the
-    converted N0 HOGs: rows with "OG" and one column of IDs per species).
-    """
-    by_name = defaultdict(set)
-    others = {}                      # entries that are not genes ("0" -> species name)
-    for seq_id, name in id_dict.items():
-        if "_" not in seq_id:
-            others[name] = seq_id
-            continue
-        by_name[name].add(seq_id)
-        by_name[_NEWICK_UNSAFE.sub("_", name)].add(seq_id)
-    name_to_id, ambiguous = {}, {}
-    for name, seq_ids in by_name.items():
-        if len(seq_ids) == 1:
-            name_to_id[name] = next(iter(seq_ids))
-        else:
-            ambiguous[name] = sorted(seq_ids, key=species_info.seq_id_key)
-    for name, seq_id in others.items():
-        if name not in by_name:
-            name_to_id[name] = seq_id
-    # the orthogroups of the genes with an ambiguous name (only those are needed)
-    ambiguous_ids = {seq_id for ids in ambiguous.values() for seq_id in ids}
-    og_ids = defaultdict(set)
-    if ambiguous_ids:
-        for row in hog_n0_rows:
-            for col in species_names:
-                if row.get(col):
-                    og_ids[row["OG"]].update(
-                        g for g in (x.strip() for x in row[col].split(",")) if g in ambiguous_ids)
-    return update_trees.TreeLeafNames(name_to_id, ambiguous, dict(og_ids))
-
-
 _HOG_ID_COLUMNS = ("HOG", "OG", "Gene Tree Parent Clade")
-
-
-def hogs_converter(hogs_n0_ids_file, hogs_n0_file, species_names):
-    """
-    Write the N0 HOG file with sequence IDs (hogs_n0_file), for the update of
-    the results files, from N0.ids.tsv (hogs_n0_ids_file): the HogWriter
-    writes it in the same run, with every HOG of N0 in sequence IDs and the
-    same HOG IDs as N0.tsv. The IDs are exact (two genes of a species with the
-    same name keep their own), so the HOG files with gene names need not be
-    written for this (they are only kept as legacy files, -rmlg).
-
-    The columns are put in the order of the results (species_names); rows are
-    read as lists and only their non-empty cells are copied: with many species
-    most cells are empty.
-    """
-    fieldnames = list(_HOG_ID_COLUMNS) + species_names
-    temp_name = None
-    try:
-        with open(hogs_n0_ids_file, newline='') as infile, \
-            tempfile.NamedTemporaryFile(
-                mode='w', delete=False, newline='', dir=os.path.dirname(hogs_n0_file)
-            ) as temp_file:
-            temp_name = temp_file.name
-            reader = file_io.unquoted_reader(infile)   # HOG files are written unquoted
-            writer = file_io.writer(temp_file)
-            header = next(reader, None)
-            writer.writerow(fieldnames)
-            if header is not None:
-                unknown = set(header) - set(fieldnames)
-                if unknown:
-                    raise ValueError("Unexpected columns in %s: %s" % (hogs_n0_ids_file, sorted(unknown)[:5]))
-                out_pos = [fieldnames.index(name) for name in header]
-                for row in reader:
-                    if not row:
-                        continue
-                    if len(row) > len(header):
-                        raise ValueError("Row with more fields than the header in %s" % hogs_n0_ids_file)
-                    out = [""] * len(fieldnames)
-                    for i in itertools.compress(range(len(row)), row):   # non-empty cells only
-                        out[out_pos[i]] = row[i]
-                    writer.writerow(out)
-    except BaseException:
-        if temp_name is not None and os.path.exists(temp_name):
-            os.remove(temp_name)
-        raise
-    os.replace(temp_name, hogs_n0_file)
 
 
 def read_hog_file(hog_file):
     """
-    The rows of a HOG file as dicts holding only the non-empty cells (the HOG,
-    OG and Gene Tree Parent Clade columns are always included).
+    The rows of a HOG file (written unquoted) as dicts holding only the non-empty
+    cells (the HOG, OG and Gene Tree Parent Clade columns are always included).
 
     With many species almost every species cell is empty; storing them all
     would need one dict entry per species per HOG (e.g. 1,200 x 100,000).
     Readers use row.get(species) and treat a missing cell like an empty one.
     """
     hog_n0 = []
-    with open(hog_file, newline = '') as csvfile:
+    with open(hog_file, newline = '', encoding="utf-8") as csvfile:
         reader = file_io.reader(csvfile)
         header = next(reader, None)
         if header is None:
@@ -267,21 +164,22 @@ def hog_file_over4genes(hog_n0, min_seq):
     return filtered_hog_n0    
 
 def copy_tiny_alignments(align_id_dir, align_dir, name_dictionary, id_dict):
-    for entry in os.scandir(align_id_dir):
-        if entry.is_file():
-            if '.' not in entry.name:
-                continue
-            
-            old_name = entry.name.rsplit(".", 1)[0]
-            entries = name_dictionary.get(old_name)
-            if entries is None: 
-                continue
+    """
+    The alignments of the orthogroups of 2 or 3 genes (no tree: gene tree parent
+    clade "-") in the results, under their new names. Only the alignments,
+    OG<i>.fa: the tree program may write its own files next to them (e.g.
+    IQ-TREE's OG<i>.iqtree, .log, .mldist, .bionj), which are not alignments.
+    """
+    for old_name, path in sorted(index_files(align_id_dir, ".fa").items()):
+        entries = name_dictionary.get(old_name)
+        if entries is None:
+            continue
 
-            for row in entries:
-                if len(row) >= 3 and row[2].strip() == '-':
-                    genes_dict = update_trees.trim_gap_columns(update_trees.read_fasta(entry.path))
-                    update_trees.write_fasta(align_dir, row[0], genes_dict, id_dict)
-                    break
+        for row in entries:
+            if len(row) >= 3 and row[2].strip() == '-':
+                genes_dict = update_trees.trim_gap_columns(update_trees.read_fasta(path))
+                update_trees.write_fasta(align_dir, row[0], genes_dict, id_dict)
+                break
 
 def index_files(id_dir, extension=".fa"):
     file_index = {}
@@ -294,7 +192,7 @@ def index_files(id_dir, extension=".fa"):
                     key = entry.name[:-len(extension)]
                     file_index[key] = entry.path
         else:
-            with open(id_dir) as reader:
+            with open(id_dir, encoding="utf-8") as reader:
                 for line in reader:
                     key, val = line.strip().split(": ", 1)
                     file_index[key] = val

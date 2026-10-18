@@ -27,7 +27,7 @@ def create_input_file(d, output_fn, n_skip=50):
         print("Only %d gene tree(s), all among the first %d orthogroups (-nk): all are used for the "
               "species tree" % (len(trees), n_skip))
         kept = [fn for _, fn in trees]
-    with open(output_fn, 'w') as outfile:
+    with open(output_fn, 'w', encoding="utf-8", newline="\n") as outfile:
         for fn in kept:
             t = tree.Tree(fn,format=1)
             for n in t:
@@ -59,7 +59,7 @@ def remove_internal_labels(fn):
     write e.g. as support values (ASTER >= 1.20: "(1:0.4,2:0.5)1:0.48"): read
     as node names, one can be the same as a species ID.
     """
-    with open(fn) as infile:
+    with open(fn, encoding="utf-8") as infile:
         text = infile.read()
-    with open(fn, "w") as outfile:
+    with open(fn, "w", encoding="utf-8", newline="\n") as outfile:
         outfile.write(re.sub(r"\)[^:,;()\[\]]+", ")", text))

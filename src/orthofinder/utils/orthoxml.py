@@ -14,13 +14,14 @@ NCBI taxonomy ID and a database for each species, which OrthoFinder does not
 know: the taxonomy ID is 0 (unknown) and the database is the FASTA file.
 """
 
-import csv
 import os
 from collections import defaultdict
 from xml.sax.saxutils import escape, quoteattr
 
 from .. import __version__
 from ..phylo import tree as tree_lib
+from . import file_io
+from .gene_ids import clean_species_name
 
 GENE_SEP = ", "
 
@@ -32,18 +33,18 @@ UNKNOWN_VERSION = "NA"
 def species_for_analysis(species_ids_fn, species_to_use):
     """
     (species name, FASTA filename) for each species in species_to_use, from
-    SpeciesIDs.txt ("<ID>: <FASTA filename>" lines). The species name is the
-    FASTA filename without its extension, as in the other results files.
+    SpeciesIDs.txt ("<ID>: <FASTA filename>" lines). The species name is that of
+    the other results files (clean_species_name).
     """
     fasta_files = {}
-    with open(species_ids_fn) as infile:
+    with file_io.open_text_any(species_ids_fn) as infile:
         for line in infile:
-            line = line.rstrip()
-            if not line or line.startswith("#"):
+            line = line.rstrip("\r\n")
+            if not line.strip() or line.startswith("#"):
                 continue
             i_species, fasta_filename = line.split(": ", 1)
             fasta_files[int(i_species)] = fasta_filename
-    return [(fasta_files[i].rsplit(".", 1)[0], fasta_files[i]) for i in species_to_use]
+    return [(clean_species_name(fasta_files[i]), fasta_files[i]) for i in species_to_use]
 
 
 # --- Orthogroups ---------------------------------------------------------------
@@ -111,8 +112,8 @@ def read_genes(tables):
     for path in tables:
         if not os.path.isfile(path):
             continue
-        with open(path, newline="") as infile:
-            reader = csv.reader(infile, delimiter="\t")
+        with file_io.open_text(path) as infile:
+            reader = file_io.reader(infile)
             sp_cols = next(reader)[1:]
             for sp in sp_cols:
                 genes.setdefault(sp, {})
@@ -133,8 +134,8 @@ def read_table(fn, n_id_cols, gene_ids):
     [(group, gene tree parent clade, {species: [gene id]})] of Orthogroups.tsv
     (n_id_cols 1) or an N<i>.tsv (n_id_cols 3: HOG, OG, gene tree parent clade).
     """
-    with open(fn, newline="") as infile:
-        reader = csv.reader(infile, delimiter="\t")
+    with file_io.open_text(fn) as infile:
+        reader = file_io.reader(infile)
         sp_cols = next(reader)[n_id_cols:]
         return [(row[0], row[2] if n_id_cols == 3 else None,
                  {sp: [gene_ids[sp][g] for g in split_genes(cell)]
@@ -274,7 +275,7 @@ def write_orthoxml(filename, species_genes, groups, notes=None, version="0.3", t
     taxonomy: (species tree, {node: taxon id}), with version 0.5
     score_defs: [(score id, description)]
     """
-    with open(filename, "w") as out:
+    with open(filename, "w", encoding="utf-8", newline="\n") as out:
         out.write('<?xml version="1.0" encoding="utf-8"?>\n')
         # (no xsi:schemaLocation, as in FastOMA: orthoxml-tools filter etc. write it wrongly)
         out.write(f'<orthoXML xmlns={quoteattr(NAMESPACE)} origin="OrthoFinder" '

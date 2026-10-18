@@ -12,7 +12,7 @@ except ImportError:
 from . import util, file_handler as files
 from .printing import printer
 from . import species_info
-from . import gene_ids
+from . import gene_ids, file_io
 
 # count = 0 
 
@@ -37,6 +37,30 @@ NUCLEOTIDE_LETTERS = frozenset("ACGTUN")
 NUCLEOTIDE_FRACTION = 0.75
 SEQUENCE_LINES_TO_CHECK = 1000
 SEQUENCE_LETTERS_TO_CHECK = 100000
+
+
+def open_input_fasta(fn):
+    """
+    An input FASTA file, for reading as text in any of the forms it comes in: a
+    byte order mark at the start (e.g. from Windows Notepad) is dropped, any line
+    ending (LF, CRLF or CR) is read as LF, and bytes that are not UTF-8
+    are kept (surrogateescape: see input_header), so that reading never fails.
+    """
+    return open(fn, encoding="utf-8-sig", errors="surrogateescape")
+
+
+def input_header(text):
+    """
+    A header line of open_input_fasta, and whether it was UTF-8: if not (e.g. a
+    file from a Windows program, in cp1252), it is read as cp1252.
+    """
+    if text.isascii():      # (nearly every header: no copy made)
+        return text, True
+    try:
+        text.encode("utf-8")
+        return text, True
+    except UnicodeEncodeError:
+        return text.encode("utf-8", "surrogateescape").decode("cp1252", errors="replace"), False
 
 
 def is_input_fasta_name(f):
@@ -82,7 +106,8 @@ class SequenceTypeSample(object):
 def sequence_type(fn):
     """"protein", "dna" or "empty", from the first sequences of a FASTA file."""
     sample = SequenceTypeSample()
-    with open(fn) as infile:
+    # (only the sequences are looked at: a header that is not UTF-8 does not matter)
+    with open(fn, encoding="utf-8", errors="replace") as infile:
         for line in infile:
             if not line.startswith(">"):
                 sample.add(line)
@@ -99,7 +124,7 @@ class FastaWriter(object):
         sequence = ""
         files = glob.glob(source_fasta_filename) if q_glob else [source_fasta_filename]
         for fn in files:
-            with (gzip.open(fn, 'rt') if fn.endswith('.gz') else open(fn, 'r')) as fasta_file:
+            with (gzip.open(fn, 'rt', encoding="utf-8") if fn.endswith('.gz') else open(fn, 'r', encoding="utf-8")) as fasta_file:
                 for line in fasta_file:
                     if line[0] == ">":
                         # deal with old sequence
@@ -115,19 +140,19 @@ class FastaWriter(object):
                         if q_use_only_second_part:
                             try:
                                 accession = accession.split("|")[1]
-                            except:
-                                sys.stderr(line + "\n")
+                            except IndexError:     # (no "|": the header is reported, the accession kept)
+                                sys.stderr.write(line + "\n")
                         elif q_first_word:
                             accession = accession.split()[0]
                     else:
                         sequence += line
             try:
                 self.seq_lists[accession] = sequence
-            except:
-                sys.stderr(accession + "\n")
+            except Exception:
+                sys.stderr.write(accession + "\n")
     
     def write_seqs_to_fasta(self, seqs, out_filename):
-        with open(out_filename, 'w') as out_file:
+        with open(out_filename, 'w', encoding="utf-8", newline="\n") as out_file:
             for seq in seqs:
                 if seq in self.seq_lists:
                     out_file.write(">%s\n" % seq)
@@ -136,7 +161,7 @@ class FastaWriter(object):
                     sys.stderr.write("ERROR: %s not found\n" % seq)
     
     def write_seqs_to_fasta_with_new_accessions(self, seqs, out_filename, id_dict):
-        with open(out_filename, 'w') as out_file:
+        with open(out_filename, 'w', encoding="utf-8", newline="\n") as out_file:
             for seq in seqs:
                 if seq in self.seq_lists:
                     out_file.write(">%s\n" % id_dict[seq])
@@ -149,7 +174,7 @@ def processes_new_fasta(
         fasta_dir, 
         q_dna, 
         species_info_obj_prev = None, 
-        species_to_use_prev_names=[],
+        species_to_use_prev_names=(),
         species_id_fn="",
         sequence_id_fn="",
     ):
@@ -195,11 +220,11 @@ def processes_new_fasta(
     # species tree and the results): "A.fa" and "A.fna" would both be "A".
     files_of_name = {}
     for fn in sorted(species_to_use_prev_names) + sorted(original_fasta_filenames):
-        files_of_name.setdefault(fn.rsplit(".", 1)[0], []).append(fn)
+        files_of_name.setdefault(gene_ids.clean_species_name(fn), []).append(fn)
     same_name = {name: fns for name, fns in files_of_name.items() if len(fns) > 1}
     if same_name:
         print("ERROR: Species must have different names. These files would give species of the same name "
-              "(the file name without its extension):")
+              "(the file name without its extension, with the characters a name cannot hold replaced by _):")
         for name, fns in sorted(same_name.items()):
             print("  %s: %s" % (name, ", ".join(fns)))
         if species_to_use_prev_names:
@@ -235,7 +260,7 @@ def processes_new_fasta(
     i_species = 0
     # If it's a previous analysis:
     if len(species_to_use_prev_names) != 0:
-        with open(species_id_fn, 'r') as infile:
+        with file_io.open_text_any(species_id_fn) as infile:
             for line in infile: pass
         if line.startswith("#"): line = line[1:]
         i_species = int(line.split(":")[0]) + 1
@@ -246,12 +271,19 @@ def processes_new_fasta(
     species_seen_dict = {}
     renamed = []      # (file, header, name): headers that clean to a name already used
 
-    with open(sequence_id_fn, 'a') as ids_file, open(species_id_fn, 'a') as species_file:
+    not_utf8 = []     # the files whose headers are not UTF-8 (read as cp1252: input_header)
+
+    with open(sequence_id_fn, 'a', encoding="utf-8", newline="\n") as ids_file, \
+            open(species_id_fn, 'a', encoding="utf-8", newline="\n") as species_file:
         for fasta_filename in original_fasta_filenames:
             new_species_ids.append(i_species)
-            output_fasta = open(files.handler.get_species_fasta_fn(i_species, q_for_creation=True), 'w')
+            # (UTF-8: a byte of a sequence line that is not, which open_input_fasta keeps,
+            # is written as U+FFFD, so that the file is read like any other)
+            output_fasta = open(files.handler.get_species_fasta_fn(i_species, q_for_creation=True), 'w',
+                                encoding="utf-8", errors="replace", newline="\n")
             fasta_filename = fasta_filename.rstrip()
-            species_file.write("%d: %s\n" % (i_species, fasta_filename))
+            # (a file name need not be UTF-8 either: input_header)
+            species_file.write("%d: %s\n" % (i_species, input_header(fasta_filename)[0]))
             base_filename, extension = os.path.splitext(fasta_filename)
 
             species_seen_dict[fasta_filename] = {}
@@ -260,13 +292,17 @@ def processes_new_fasta(
             # is checked as it is read (it costs a few ms per proteome)
             sequence_sample = None if q_dna else SequenceTypeSample()
 
-            with open(fasta_dir + os.sep + fasta_filename, 'r') as fasta_file:
+            q_utf8 = True
+            with open_input_fasta(fasta_dir + os.sep + fasta_filename) as fasta_file:
                 for i_line, line in enumerate(fasta_file):
                     
                     if line.isspace(): continue
                     if len(line) > 0 and line[0] == ">":
                         new_id = "%d_%d" % (i_species, i_seq)
                         assign = line[1:].rstrip()
+                        if not assign.isascii():    # (nearly every header is: no call)
+                            assign, q_header_utf8 = input_header(assign)
+                            q_utf8 = q_utf8 and q_header_utf8
                         if len(assign) == 0:
                             print("ERROR: %s contains a blank accession line on line %d" % (fasta_dir + os.sep + fasta_filename, i_line+1))
                             util.fail()
@@ -278,7 +314,7 @@ def processes_new_fasta(
                         else:
                             species_seen_dict[fasta_filename][assign] = 0
                             name = gene_names.add(assign)
-                            if name != gene_ids.clean_accession(assign):
+                            if name != gene_ids.clean_name(assign):
                                 renamed.append((fasta_filename, assign, name))
                         # acc = f"{acc}_{seen[acc]}"
                         ids_file.write("%s: %s\n" % (new_id, assign))
@@ -291,11 +327,17 @@ def processes_new_fasta(
                         output_fasta.write(line)
                 output_fasta.write("\n")
             output_fasta.close()
+            if not q_utf8:
+                not_utf8.append(fasta_filename)
             # Nucleotide input needs -d: the search programs (DIAMOND by
             # default) would otherwise compare it as protein, without error
             if sequence_sample is not None and sequence_sample.type() == "dna":
                 q_ok = False
                 print("ERROR: %s appears to contain nucleotide sequences instead of amino acid sequences. Use '-d' option" % fasta_filename)
+            if i_seq == 0:
+                # (the search programs would fail on it, e.g. "Error detecting input file")
+                q_ok = False
+                print("ERROR: %s contains no sequences" % fasta_filename)
             i_species += 1
             i_seq = 0
         if not q_ok:
@@ -307,13 +349,21 @@ def processes_new_fasta(
         for filename in species_seen_dict:
             for assign, acc_count in species_seen_dict[filename].items():
                 if acc_count > 0:
-                    printer.print(f"{acc_count+1}: {assign} - [orange3]{filename}[/orange3]")
+                    printer.print(f"{acc_count+1}: {escape(assign)} - [orange3]{escape(filename)}[/orange3]")
         printer.print("Please check the input file and make sure the gene names are unique.\n", style="error")
         util.fail()
 
+    if not_utf8:
+        printer.print("\nWARNING: The headers of these files are not UTF-8 text: they have been read as "
+                      "Windows-1252 (cp1252) text. Please check the gene names (SequenceIDs.txt), or save the "
+                      "files as UTF-8:", style="warning")
+        for fasta_filename in not_utf8:
+            printer.print(f"    [orange3]{escape(fasta_filename)}[/orange3]")
+        print()
+
     if renamed:
-        printer.print("\nWARNING: Some gene names would be the same once the characters that output "
-                      "files cannot hold (: , ( ) ; [ ] =) are replaced by _. These genes have been "
+        printer.print("\nWARNING: Some gene names would be the same once the characters a name cannot "
+                      "hold (spaces, tabs, : ; ( ) , [ ] = ' \") are replaced by _. These genes have been "
                       "given distinct names:", style="warning")
         for fasta_filename, assign, name in renamed:
             printer.print(f"    {escape(assign)} -> {escape(name)}  [orange3]{escape(fasta_filename)}[/orange3]")

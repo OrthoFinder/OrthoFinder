@@ -154,7 +154,7 @@ def get_all_splits(trees_dir):
     Returns:
         list of (splits,length) tuples, taxa_index, taxa_ordered, number of trees
     """
-    trees_fns = glob.glob(trees_dir + "/*")
+    trees_fns = sorted(glob.glob(trees_dir + "/*"))   # (glob lists in no particular order)
     if len(trees_fns) == 0:
         print("ERROR: No trees found in directory")
         raise Exception()

@@ -12,7 +12,7 @@ from orthofinder.run.process_args import Options
 from orthofinder.hog_orthogroups.convert import HogOrthogroupSet, update_ogs
 from orthofinder.mcl_orthogroups.mcl import id_full_dict
 from orthofinder.hog_orthogroups.update_trees import read_tree_file
-from orthofinder.hog_orthogroups.finalise import hogs_converter, read_hog_file, hog_file_over4genes, index_files
+from orthofinder.hog_orthogroups.finalise import index_files
 from orthofinder.run.previous_run import species_name_dict, process_previous_files
 from orthofinder.orthology.reconciliation import get_species_neighbours, reconciliation_and_orthologs, get_all_orthologs
 
@@ -258,21 +258,23 @@ class OrthoFinderTestFuncs:
             i_species_tree=None,
             stride_dups=None,
             q_split_para_clades=False,
-            fewer_open_files=False,
             save_space=False,
             print_info=True,
             exist_msa=True,
             write_hog_tree=True,
-            fix_files=True,
             write_to_rd=True,
         )
 
     def get_unique_hogs(self):
-        hog_n0_file = os.path.join(self.current_results_dir, "Phylogenetic_Hierarchical_Orthogroups", "N0.tsv")
-        hog_n0 = read_hog_file(hog_n0_file)
-        hog_n0_over4genes = hog_file_over4genes(hog_n0, 2)
-
-        unique_ogs = set(d['OG'] for d in hog_n0_over4genes)
+        """The orthogroups (the HOGs of N0, Orthogroups/Orthogroups.tsv) of 2 or more genes."""
+        orthogroups_fn = os.path.join(self.current_results_dir, "Orthogroups", "Orthogroups.tsv")
+        unique_ogs = set()
+        with open(orthogroups_fn) as infile:
+            next(infile)
+            for line in infile:
+                og, *cells = line.rstrip("\n").split("\t")
+                if sum(len(c.split(", ")) for c in cells if c) >= 2:
+                    unique_ogs.add(og)
         return unique_ogs
     
     def get_file_indexes(self, input_dir, extension=".fa"):
@@ -286,7 +288,8 @@ class OrthoFinderTestFuncs:
         unique_ogs = self.get_unique_hogs()
         gene_tree_dict = {}
         for og in unique_ogs:
-            gene_tree_dict[og] = read_tree_file(og, tree_file_index)
+            if og in tree_file_index:   # orthogroups of 2 or 3 genes have no tree
+                gene_tree_dict[og] = read_tree_file(og, tree_file_index)
 
         return gene_tree_dict
 
@@ -330,12 +333,10 @@ class OrthoFinderTestFuncs:
             )
             orthologs_alltrees.append((iog, orthologs))
 
-        two_three_all, nspecies, sp_to_index, _, _ = get_all_orthologs(og_set)  # ensure n==1 uses "continue"
+        two_three_all, nspecies, sp_to_index = get_all_orthologs(og_set)  # ensure n==1 uses "continue"
         orthologs_alltrees.extend(two_three_all)
 
-        fewer_open_files = True
-        dim2 = 1 if fewer_open_files else nspecies
-        ortholog_lines_tot     = [["" for _ in range(dim2)] for _ in range(nspecies)]
+        ortholog_lines_tot     = ["" for _ in range(nspecies)]
         ortholog_sus_lines_tot = ["" for _ in range(nspecies)]
         get_lines_for_ortholog_files(
             orthologs_alltrees,
@@ -345,7 +346,6 @@ class OrthoFinderTestFuncs:
             q_contains_suspect_orthologs=False,
             ortholog_lines=ortholog_lines_tot,
             ortholog_sus_lines=ortholog_sus_lines_tot,
-            fewer_open_files=fewer_open_files,
         )
 
         species_names = [og_set.species_dict()[str(sp)] for sp in og_set.species_to_use]
@@ -353,7 +353,7 @@ class OrthoFinderTestFuncs:
 
         for i in range(nspecies):
             species_name = species_names[i] 
-            block = ortholog_lines_tot[i][0]   
+            block = ortholog_lines_tot[i]   
             if not block:
                 continue
             tokens = [t for t in re.split(r"[\t\n]+", block.strip()) if t]
@@ -455,18 +455,14 @@ class OrthoFinderTestFuncs:
         return duplication_dict
 
     def get_orthogroups(self):
-        old_hog_n0_file = os.path.join(self.current_working_dir, "Legacy", "HOGs", "N0.tsv")
+        # the HOGs of N0 of the MCL orthogroups, from which the run updated the
+        # orthogroups (kept with --keep-legacy)
+        old_hog_n0_file = os.path.join(self.current_working_dir, "Legacy", "HOGs", "N0_mcl.ids.tsv")
         og_set = self.get_og_obj()
-        species_to_use = og_set.species_to_use
-        sp_ids = og_set.species_dict()
-        i_sps = list(map(str, sorted(species_to_use)))   # list of strings
-        species_names = [sp_ids[i] for i in i_sps]
-
         seqs_info = self.get_sequence_info_obj()
         species_info_obj = self.get_species_info_obj()
         species_names_dict = self.get_species_name_dict()
         all_seq_ids = og_set.all_used_sequence_ids()
-        hogs_converter(os.path.join(os.path.dirname(old_hog_n0_file), "N0.ids.tsv"), old_hog_n0_file, species_names)
         new_ogs, name_dictionary =  update_ogs(old_hog_n0_file)
         all_assigned = set([g for og in new_ogs for g in og])
         unassigned = set(all_seq_ids).difference(all_assigned)

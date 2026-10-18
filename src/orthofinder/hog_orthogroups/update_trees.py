@@ -31,10 +31,10 @@ def write_tree(hog_name, newick_string, resolved_trees_id_dir):
         else:
             raise TypeError(f"Unexpected type for newick_string: {type(newick_string)}")
 
+        # (no fsync: a working file, of a stage a restart runs again; fsync took ~4 ms
+        # a file even on a local SSD, 75x the write, and far more on network filesystems)
         with tempfile.NamedTemporaryFile("wb", dir=resolved_trees_id_dir, delete=False) as tmp:
             tmp.write(data)
-            tmp.flush()
-            os.fsync(tmp.fileno())
             tmp_name = tmp.name
 
         os.replace(tmp_name, tree_id_file)
@@ -51,7 +51,7 @@ def read_fasta(file_path):
     accession = ""
     sequence = []
     try:
-        with open(file_path, 'r') as fasta_file:
+        with open(file_path, 'r', encoding="utf-8") as fasta_file:
             for line in fasta_file:
                 if line[0] == ">":
                     if not q_first:
@@ -141,7 +141,7 @@ def write_fasta(align_dir, hog_name, sequences, id_dict):
             gene_name = id_dict.get(gene)
             buffer.write(f">{gene_name}\n")
             buffer.write(sequences[gene])
-        with open(fasta_path, 'w', buffering=1024 * 1024) as out_file:
+        with open(fasta_path, 'w', buffering=1024 * 1024, encoding="utf-8", newline="\n") as out_file:
             out_file.write(buffer.getvalue())
     except Exception as e:
         print(f"ERROR writing FASTA for {hog_name}: {e}")
@@ -163,44 +163,6 @@ def check_path(s):
         os.path.dirname(s) != ''
     )
 
-class TreeLeafNames(object):
-    """
-    Sequence IDs for the gene names on the leaves of the resolved gene trees.
-
-    A name of one gene maps to its ID. A name shared by several genes (the
-    same name after ID extraction, or the same once Newick-unsafe characters
-    are replaced by "_") is resolved per tree: its leaf gets the gene of that
-    name that is in the tree's orthogroup (from the converted N0 HOGs, which
-    hold the exact IDs), each gene once. Behaves as a dict of the
-    unambiguous names otherwise (in, get).
-    """
-
-    def __init__(self, name_to_id, ambiguous, og_ids):
-        self.name_to_id = name_to_id     # name -> ID, names of one gene
-        self.ambiguous = ambiguous       # name -> [IDs], names of several genes
-        self.og_ids = og_ids             # OG -> set of the IDs in it
-
-    def __contains__(self, name):
-        return name in self.name_to_id or name in self.ambiguous
-
-    def get(self, name, default=None):
-        return self.name_to_id.get(name, default)
-
-    def leaf_ids(self, unique_og, names):
-        """The ID of each leaf name of one orthogroup's tree (None if unknown)."""
-        in_og = self.og_ids.get(unique_og, set())
-        used = set()
-        ids = []
-        for name in names:
-            seq_id = self.name_to_id.get(name)
-            if seq_id is None and name in self.ambiguous:
-                seq_id = next((i for i in self.ambiguous[name] if i in in_og and i not in used), None)
-            if seq_id is not None:
-                used.add(seq_id)
-            ids.append(seq_id)
-        return ids
-
-
 def update_leaves(unique_og, gene_tree, spec_seq_id_dict=None):
     leaves = [leaf for leaf in gene_tree.leaves() if leaf.name is not None and leaf.name.strip()]
     if len(leaves) != len(list(gene_tree.leaves())):
@@ -208,10 +170,7 @@ def update_leaves(unique_og, gene_tree, spec_seq_id_dict=None):
     if spec_seq_id_dict is None:
         return gene_tree
     names = [leaf.name for leaf in leaves]
-    if isinstance(spec_seq_id_dict, TreeLeafNames):
-        ids = spec_seq_id_dict.leaf_ids(unique_og, names)
-    else:
-        ids = [spec_seq_id_dict.get(name) for name in names]
+    ids = [spec_seq_id_dict.get(name) for name in names]
     for leaf, name, seq_id in zip(leaves, names, ids):
         if seq_id is None:
             print(f"Warning: Leaf name '{name}' not found in mapping dictionary for {unique_og}")
@@ -224,7 +183,7 @@ def read_tree_file(unique_og, tree_file_index, spec_seq_id_dict=None):
     if unique_og in tree_file_index:
         try:
             if check_path(tree_file_index[unique_og]):
-                with open(tree_file_index[unique_og], "r") as file:
+                with open(tree_file_index[unique_og], "r", encoding="utf-8") as file:
                     tree_data = file.read().strip()
                     gene_tree = ete4.Tree(tree_data, parser=1) #quoted_node_names=True, format=1
             else:
@@ -279,6 +238,9 @@ def process_task(
         report_queue,
         strict_prune_fail=False
     ):
+    # (the rows hold only their non-empty cells, finalise.read_hog_file: a row's
+    # genes are read from its own cells, not by a look-up of every species)
+    species_set = set(species_names)
     try:
         while not stop_event.is_set():
             try:
@@ -328,9 +290,8 @@ def process_task(
                 current_leaves = {leaf.name for leaf in subtree.leaves() if leaf.name}
 
                 expected_leaves = set()
-                for col in species_names:
-                    v = row.get(col)
-                    if not v:
+                for col, v in row.items():
+                    if not v or col not in species_set:
                         continue
                     for x in str(v).split(","):
                         x = x.strip()
@@ -344,7 +305,9 @@ def process_task(
                 if len(valid_leaves) < 2:
                     continue
                 try:
-                    subtree.prune(valid_leaves)
+                    # (the branches of the nodes removed are added to those kept: the
+                    # distances between the HOG's genes are those of the gene tree)
+                    subtree.prune(valid_leaves, preserve_branch_length=True)
                 except Exception:
                     if strict_prune_fail:
                         raise
@@ -449,6 +412,7 @@ def _put_sentinels(q, n_left):
     return n_left
 
 
+@parallel_task_manager.frozen_while_running
 def post_ogs_processing(
     unique_ogs,
     resolved_trees_id_dir,

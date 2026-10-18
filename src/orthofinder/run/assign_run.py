@@ -80,9 +80,9 @@ def between_core_orthogroups_workflow(
     i_og_restart = 0
     ogs_new_species, _ = assign.assign_genes(results_files, options.n_process_alg, layout=results_layout)
     warn_species_without_assigned_genes(ogs_new_species, species_info_obj, species_names_dict)
-    clusters_filename_pairs = assign.write_all_orthogroups(
-        ogs, ogs_new_species, []
-    )  # this updates ogs
+    # The core orthogroups with the new species' genes, in memory (ogs is updated): the
+    # clusters file is written once, with the clade-specific orthogroups (below)
+    assign.write_all_orthogroups(ogs, ogs_new_species, [], write=False)
 
     og_set = orthogroups_set.OrthogroupSet(
         options.min_seq,
@@ -93,12 +93,8 @@ def between_core_orthogroups_workflow(
         options.tree_program,
         id_extractor=gene_ids.FirstWordExtractor,
         mcl_inflation=options.mcl_inflation,
+        ogs=list(ogs),   # (a copy of the list: the clade-specific orthogroups are added to ogs below)
     )
-
-    if options.q_stop_after_groups and options.species_tree_fn is None:
-        # Can't infer clade-specific groups
-        print("\nSpecies tree required for clade-speicfic orthogroups - skipping")
-        return clusters_filename_pairs, i_og_restart
 
     n_unassigned = assign.write_unassigned_fasta(ogs, None, species_info_obj)
 
@@ -107,12 +103,13 @@ def between_core_orthogroups_workflow(
         # Infer gene trees
         # We write orthogroup & stats results files in the following code, which we should avoid & only do once all OGs are done.
         infer_orthogroups.post_clustering_orthogroups(
-            clusters_filename_pairs,
+            None,
             species_info_obj,
             seqs_info,
             species_names_dict,
             options,
             q_incremental=True,
+            ogs=ogs,
         )
 
         infer_trees.infer_gene_and_species_trees(
@@ -127,9 +124,6 @@ def between_core_orthogroups_workflow(
             options.q_trim,
             cmd_order=options.cmd_order,
             method_threads=options.method_threads,
-            method_threads_large=options.method_threads_large,
-            method_threads_small=options.method_threads_small,
-            threshold=options.threshold,
             user_species_tree=None,
             q_stop_after_seqs=False,
             q_stop_after_align=False,
@@ -166,23 +160,15 @@ def between_core_orthogroups_workflow(
         rooted_species_tree_fn = file_handler.handler.get_species_tree_ids_rooted_fn()
         rooted_species_tree_ids.write(outfile=rooted_species_tree_fn)
 
-        sp_tree_unrooted_fn = file_handler.handler.get_species_tree_results_fn(None, True)
+        # The species tree the rest of the run uses (options.species_tree_fn), with the species
+        # names, in the working directory: the results species tree files are written once,
+        # with the orthologs (workflow.infer_orthologs)
         taxa.rename_tree_taxa(
             rooted_species_tree_ids,
-            sp_tree_unrooted_fn,
+            run_state.species_tree_copy_fn(file_handler.handler.rd1),
             og_set.species_dict(),
             q_support=q_have_support,
             q_fix_negatives=True,
-        )
-
-        labeled_tree_fn = file_handler.handler.get_species_tree_results_node_labels_fn()
-        taxa.rename_tree_taxa(
-            rooted_species_tree_ids,
-            labeled_tree_fn,
-            og_set.species_dict(),
-            q_support=False,
-            q_fix_negatives=True,
-            label="N",
         )
         i_og_restart = len(ogs)  # Need to process the clade-specific orthogroups only
     else:
@@ -343,8 +329,8 @@ def run_assign(ctx):
         )
         species_info_obj.i_first_new_species = first_new_species
     else:
-        printer.print(f"\nAdding new species in [dark_cyan]{fasta_dir}")
-        printer.print(f"to existing analysis in [dark_cyan]{continuation_dir}")
+        printer.print(f"\nAdding new species in [dark_cyan]{escape(fasta_dir)}")
+        printer.print(f"to existing analysis in [dark_cyan]{escape(continuation_dir)}")
 
         species_info_obj = fasta_processor.processes_new_fasta(
             fasta_dir, options.dna, species_info_obj, species_to_use_names
@@ -407,16 +393,15 @@ def run_assign(ctx):
             species_names_dict,
             options,
         )
-        if options.species_tree_fn is None:
+        q_inferred_species_tree = options.species_tree_fn is None
+        if q_inferred_species_tree:
             # No user species tree, use the one we've just inferred
-            options.species_tree_fn = file_handler.handler.get_species_tree_results_fn(
-                None, True
-            )
+            options.species_tree_fn = run_state.species_tree_copy_fn(results_dir)
         # kept for a restart (-fg, -fgt, -fst) after a stop (-og, -ogt, -ost)
         file_handler.handler.log_species_tree_used(run_state.keep_species_tree(results_dir, options.species_tree_fn))
         run_state.update(results_dir, "assign", i_og_restart=i_og_restart)
         file_handler.handler.log_assign_first_orthogroup_to_infer(i_og_restart)
-    if options.fix_files and not options.q_stop_after_mcl_groups:
+    if not options.q_stop_after_mcl_groups:
         get_orthologs(
             seqs_info,
             species_names_dict,
@@ -424,6 +409,17 @@ def run_assign(ctx):
             options,
             prog_caller,
             i_og_restart,
+        )
+    elif orphan_genes_version == 2 and q_inferred_species_tree:
+        # Stopped after the orthogroups (-og): the species tree inferred to find the clades of
+        # the clade-specific orthogroups, in the results, as the orthologs step writes it
+        # (workflow.infer_orthologs)
+        taxa.rename_tree_taxa(
+            file_handler.handler.get_species_tree_ids_rooted_fn(),
+            file_handler.handler.get_species_tree_results_fn(0, True),
+            {str(i): name for i, name in species_names_dict.items()},
+            q_support=False,
+            q_fix_negatives=True,
         )
     ctx.options = options  # check_options may make new options
     return species_info_obj, species_names_dict

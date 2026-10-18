@@ -25,8 +25,10 @@ class RunContext:
         "[name] Completed". If it fails, is interrupted or exits, it is not
         completed: current_step stays its name, for the error handlers.
         """
+        from ..utils import run_state
         self.current_step = name
         self.log.step(name, "Started")
-        yield
+        with run_state.stage(name):       # (the external commands noted are of this step)
+            yield
         self.log.step(name, "Completed")
         self.current_step = "Workflow"

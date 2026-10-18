@@ -54,10 +54,9 @@ def stderr_exempt(stderr):
         "Licensed under the GNU GPL",
         "Check http://github.com/",
     }
-    try:
-        stderr = stderr.decode()
-    except (UnicodeDecodeError, AttributeError):
-        stderr = stderr.encode()
+    if isinstance(stderr, bytes):
+        # (a program's output need not be UTF-8, e.g. in a Windows console's code page)
+        stderr = stderr.decode(errors="replace")
     lines = stderr.split("\n")
     for line in lines:
         if line.rstrip() == "":
@@ -125,7 +124,7 @@ def print_pages(pages, hub=None):
 
 def print_run_end(d_results, continue_option=None, continue_from=None):
     """
-    The end of a run, also of one stopped early (-op, -og, -ogh, -ogt, -ost):
+    The end of a run, also of one stopped early (-op, -og, -ogt, -ost):
     the results directory, how to continue a stopped run, and the citation.
     """
     from rich.markup import escape
@@ -155,7 +154,7 @@ def print_restart_info(options, directory):
 
 
 def write_citation(d):
-    with open(d + "Citation.txt", "w") as outfile:
+    with open(d + "Citation.txt", "w", encoding="utf-8", newline="\n") as outfile:
         outfile.write(citation)
 
 
@@ -197,47 +196,49 @@ def print_underline(text, q_heavy=False):
     print((("=" if q_heavy else "-") * n))
 
 
-def number_open_files_exception_advice(n_species, q_at_trees):
+# The open files one OrthoFinder process needs, whatever the number of species (the output
+# writers keep a bounded number open), and per thread (the pipes of its worker processes
+# and commands): measured, 64 files for 8 threads and 128 for 64, with this headroom
+OPEN_FILES_BASE = 128
+OPEN_FILES_PER_THREAD = 2
+
+
+def open_files_needed(n_threads):
+    return OPEN_FILES_BASE + OPEN_FILES_PER_THREAD * max(1, int(n_threads))
+
+
+def number_open_files_exception_advice(n_species, q_at_trees, n_req=None):
     """
     Prints advice for user on "IOError: [Errno 24] Too many open files" exception
     Args:
-        n_species - the number of species in the analysis
+        n_species - the number of species in the analysis (the files needed do not depend on it)
         q_at_trees - has this error occurred at the orthologs from trees stage
+        n_req - the files needed (open_files_needed), if known
     """
-    # parallel_task_manager.run_command("ulimit -Hn")
-    n_req = n_species + 100
+    if n_req is None:
+        n_req = open_files_needed(1)
     msg = (
-        "\nERROR: The system limits on the number of files a process can open is too low. For %d species \
-OrthoFinder needs to be able to open at least r=%d files. Please increase the limit and restart OrthoFinder\n\
-1. Check the hard and soft limits on the number of open files for your system:\n\
-    $ ulimit -Hn\n\
-    $ ulimit -Sn\n\
-2. If hard limit, h > r already, then you just need to increase the soft limit:\n\
-    $ ulimit -n %d\n\
-3. Alternatively, if h < r then you need to edit the file '/etc/security/limits.conf', this requires root privileges. \
-To increase the limit to %d for user  called 'emms' add the lines:\n\
-    emms hard nofile %d\n\
-    emms soft nofile %d\n"
-        % (n_species, n_req, n_req, n_req, n_req, n_req)
+        "\nERROR: The system limit on the number of files a process can open is too low. OrthoFinder "
+        "needs to be able to open at least r=%d files (with these threads, for any number of species: "
+        "%d here). Please increase the limit and restart OrthoFinder\n"
+        "1. Check the hard and soft limits on the number of open files for your system:\n"
+        "    $ ulimit -Hn\n"
+        "    $ ulimit -Sn\n"
+        "2. If the hard limit h >= r, increase the soft limit:\n"
+        "    $ ulimit -n %d\n"
+        "3. Otherwise ask your system administrator to raise the hard limit (on Linux, in "
+        "'/etc/security/limits.conf', which needs root privileges), e.g. for a user called 'user':\n"
+        "    user hard nofile %d\n"
+        "    user soft nofile %d\n"
+        "4. Check the limit has been updated (after changing the hard limit, in a new session):\n"
+        "    $ ulimit -Sn"
+        % (n_req, n_species, n_req, n_req, n_req)
     )
-    msg += "    (edit these lines to match your username)\n\
-4. Check the limit has now been updated (if you changed the hard limit you'll need to open a new session and confirm it's updated):\n\
-    $ ulimit -Sn"
-
     if q_at_trees:
         msg_part_2 = "5. Once the limit is updated restart OrthoFinder 'from trees' using the '-ft' command"
     else:
-        msg_part_2 = (
-            "5. Once the limit is updated restart OrthoFinder with the original command"
-        )
-    msg_part_3 = (
-        "\nFor full details see: https://github.com/davidemms/OrthoFinder/issues/384"
-    )
-    print(msg + "\n" + msg_part_2 + "\n" + msg_part_3 + "\n")
-    print(
-        "Since this issue OrthoFinder has been updated to only require O(n) open files for n species rather than O(n^2)."
-    )
-    print("Please follow the above advice to ensure that it is able to.")
+        msg_part_2 = "5. Once the limit is updated restart OrthoFinder with the original command"
+    print(msg + "\n" + msg_part_2 + "\n")
 
 
 def get_progressbar(len_task, visible=True):

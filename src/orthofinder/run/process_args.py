@@ -14,7 +14,7 @@ The steps of an analysis, and the options that start or stop it at a step:
     --assign <dir> --core <dir>: assign the species in <dir> to the orthogroups of a finished analysis
     Stop after:
     -op:  2     (--only-prepare)
-    -og:  4     (orthogroups, --only-groups; -ogh: hierarchical orthogroups)
+    -og:  4     (orthogroups, --only-groups)
     -ogt: 5     (gene trees, --only-trees; -ost: species tree)
 """
 import os
@@ -47,21 +47,14 @@ class Options(object):
         self.q_fast_add = False  # --assign: add species to a finished analysis
         self.use_base = False  # continues an earlier analysis (-b, -fg, -fgt, -fst)
         self.q_stop_after_prepare = False
-        self.q_stop_after_groups = False
         self.q_stop_after_mcl_groups = False
-        self.q_stop_after_seqs = False
-        self.q_stop_after_alignments = False
         self.q_stop_after_trees = False
         self.q_stop_after_species_trees = False
         # threads
         self.n_blast = n_threads_default
         self.n_process_alg = None
         self.method_threads = "1"
-        self.method_threads_large = None
-        self.method_threads_small = None
-        self.dynamic_threads = False
         self.cmd_order = "descending"
-        self.threshold = None
         # programs and methods
         self.search_program = "diamond"
         self.search_program_given = False   # -S on the command line
@@ -91,12 +84,10 @@ class Options(object):
         # output
         self.name = None  # name to identify this set of results
         self.extended_filename = False
-        self.fewer_open_files = True  # By default only open O(n) orthologs files at a time
         self.save_space = True  # On complete, have only one orthologs file per species
-        self.fix_files = True
-        self.rm_gene_trees = True
-        self.rm_resolved_gene_trees = True
-        self.rm_legacy = True
+        self.keep_gene_trees = False  # --keep-gene-trees
+        self.keep_resolved_gene_trees = False  # --keep-resolved-gene-trees
+        self.keep_legacy = False  # --keep-legacy
         self.orthoxml = False  # --orthoxml (-x): also write the orthogroups and HOGs as OrthoXML
         self.species_tree_alignment = False  # --concat-alignment: with -ST, also write the concatenated alignment
         self.mcl_orthogroups = False  # -mog: also keep the MCL orthogroups (MCL_Orthogroups.*)
@@ -430,7 +421,7 @@ def _read_output(r, option, arg, args):
 
 def _read_species_tree(r, option, arg, args):
     _once(r, option)
-    r.options.species_tree_fn = _value(arg, args)
+    r.options.species_tree_fn = get_file_argument(_value(arg, args))
 
 
 def _read_search(r, option, arg, args):
@@ -521,7 +512,7 @@ def _output_directory(value):
     # suite's explicitly isolated test mode.
     if os.path.exists(results_dir) and os.getenv("ORTHOFINDER_TEST_ISOLATE") != "1":
         raise ArgumentError("non-default output directory already exists: %s" % results_dir)
-    if " " in results_dir:
+    if any(c.isspace() for c in results_dir):
         raise ArgumentError("non-default output directory cannot include spaces: %s" % results_dir)
     path, new_dir = os.path.split(results_dir.rstrip("/"))
     if path != "" and not os.path.exists(path):
@@ -580,6 +571,18 @@ def _check_options(prog_caller, options, fasta_dir, continuation_dir, results_di
     if options.search_program not in prog_caller.list_search_methods() + ["blast"]:
         raise ArgumentError("Search program (%s) not configured in config.json file" % options.search_program)
 
+    # Without -o the results are written in the input directory (-f) or the previous results
+    # (-b, --core), and their paths are used in the commands OrthoFinder runs: as for -o, no spaces
+    if results_dir_non_default is None:
+        for d in (continuation_dir, fasta_dir):
+            if d is not None:
+                if any(c.isspace() for c in os.path.abspath(d)):
+                    raise ArgumentError(
+                        "the results are written in %s, whose path includes a space. Please use a "
+                        "directory without spaces%s" % (d, ", or -o to write the results elsewhere"
+                                                           if d is fasta_dir and continuation_dir is None else ""))
+                break
+
 
 def delete_directory_tree(d):
     if os.path.exists(d):
@@ -600,59 +603,62 @@ def check_options(options, species_to_use):
         )
         previous_run.check_user_species_tree(options.species_tree_fn, exp_species)
 
-    # check can open enough files
-    n_extra = 50
+    # The open files a run needs do not grow with the number of species (the writers keep
+    # a bounded number open: ortholog_writers.LazyFileCache): only check the limit is not
+    # very low, after raising the soft limit if the hard limit allows (as any user may)
     q_do_orthologs = not any(
         (
             options.q_stop_after_prepare,
-            options.q_stop_after_groups,
             options.q_stop_after_mcl_groups,
-            options.q_stop_after_seqs,
-            options.q_stop_after_alignments,
             options.q_stop_after_trees,
             options.q_stop_after_species_trees,
         )
     )
     if q_do_orthologs:
-        n_sp = len(species_to_use)
-        wd = file_handler.handler.get_working_directory_write()
-        wd_files_test = wd + "Files_test/"
-        fh = []
-        try:
-            if not os.path.exists(wd_files_test):
-                os.mkdir(wd_files_test)
-            for i_sp in range(n_sp):
-                di = wd_files_test + "Sp%d/" % i_sp
-                if not os.path.exists(di):
-                    os.mkdir(di)
-                for j_sp in range(
-                    1
-                ):  # We only create a linear number of ortholog files now
-                    fnij = di + "Sp%d.txt" % j_sp
-                    fh.append(open(fnij, "w"))
-            # create a few extra files to be safe
-            for i_extra in range(n_extra):
-                fh.append(open(wd_files_test + "Extra%d.txt" % i_extra, "w"))
-            # close the files again and delete
-            for fhh in fh:
-                fhh.close()
-            delete_directory_tree(wd_files_test)
-        except IOError as e:
-            if str(e).startswith("[Errno 24] Too many open files"):
-                printing.number_open_files_exception_advice(len(species_to_use), False)
-                for fhh in fh:
-                    fhh.close()
-                delete_directory_tree(wd_files_test)
-                util.fail()
-            else:
-                for fhh in fh:
-                    fhh.close()
-                delete_directory_tree(wd_files_test)
-                print(
-                    "ERROR: Attempted to open required files for OrthoFinder run but an unexpected error occurred. \n\nStacktrace:"
-                )
-                raise
+        n_needed = printing.open_files_needed(max(options.n_blast, options.n_process_alg))
+        if not open_files_limit_ok(n_needed):
+            printing.number_open_files_exception_advice(len(species_to_use), False, n_needed)
+            util.fail()
+
+    # -pof: a file per pair of species, which with many species can be more files than a
+    # file system or a user's quota allows (servers often limit the number of files)
+    n_sp = len(species_to_use)
+    if q_do_orthologs and not options.save_space and n_sp > POF_WARN_SPECIES:
+        print("WARNING: -pof writes a pairwise ortholog file for each pair of species: %d files for "
+              "%d species. On a server this may exceed your quota on the number of files. Without "
+              "-pof the orthologs are one file per species, from which tools/split_ortholog_files.py can make the pairwise files "
+              "of only the species you need (--species).\n" % (n_sp * (n_sp - 1), n_sp))
     return options
+
+
+# -pof with more species than this: a warning of the number of files
+POF_WARN_SPECIES = 500
+# The soft limit OrthoFinder raises the limit to, if the hard limit allows (headroom
+# for the programs it runs, which inherit it)
+OPEN_FILES_WANTED = 4096
+
+
+def open_files_limit_ok(n_needed):
+    """
+    Whether the process can open n_needed files, the soft limit first raised
+    towards OPEN_FILES_WANTED (at most the hard limit). True where there is no limit
+    to read (e.g. Windows).
+    """
+    try:
+        import resource
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    except (ImportError, ValueError, OSError):
+        return True
+    if soft == resource.RLIM_INFINITY:
+        return True
+    wanted = OPEN_FILES_WANTED if hard == resource.RLIM_INFINITY else min(hard, OPEN_FILES_WANTED)
+    if soft < wanted:
+        try:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (wanted, hard))
+            soft = wanted
+        except (ValueError, OSError):
+            pass
+    return soft >= n_needed
 
 
 def resolve_scoring(options, prog_caller):

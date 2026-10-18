@@ -25,6 +25,7 @@
 # For any enquiries send an email to David Emms
 # david_emms@hotmail.comhor: david
 import os
+import shutil
 import json
 import numpy as np
 import subprocess
@@ -36,7 +37,7 @@ try:
 except ImportError:
     import Queue as queue
 
-from . import util, parallel_task_manager
+from . import util, parallel_task_manager, programs
 from .printing import printer
 try:
     from rich import print
@@ -289,7 +290,8 @@ class ProgramCaller(object):
         if not os.path.exists(configure_file):
             print(("WARNING: Configuration file, '%s', does not exist. No user-confgurable multiple sequence alignment or tree inference methods have been added.\n" % configure_file))
             return
-        with open(configure_file, "r") as infile:
+        # (utf-8-sig: also a user's config file with a byte order mark)
+        with open(configure_file, "r", encoding="utf-8-sig") as infile:
             try:
                 d = json.load(infile)
             except ValueError:
@@ -753,6 +755,8 @@ class ProgramCaller(object):
                    + [resultsfn, resultsfn + ".gz"]):
             if os.path.isfile(fn):
                 os.remove(fn)
+            elif fn.endswith(".tmp") and os.path.isdir(fn):   # e.g. MMseqs2 createindex's
+                shutil.rmtree(fn, ignore_errors=True)
         cmd = cmd_db + "\n" + cmd_s
         return success, stdout_all, stderr_all, cmd
 
@@ -794,12 +798,9 @@ class ProgramCaller(object):
         )
         stdout = out.splitlines(True)
         stderr = err.splitlines(True)
-        try:
-            stdout = [x.decode() for x in stdout]
-            stderr = [x.decode() for x in stderr]
-        except (UnicodeDecodeError, AttributeError):
-            stdout = [x.encode() for x in stdout]
-            stderr = [x.encode() for x in stderr]
+        # (a program's output need not be UTF-8, e.g. in a Windows console's code page)
+        stdout = [x.decode(errors="replace") for x in stdout]
+        stderr = [x.decode(errors="replace") for x in stderr]
         if actual_target_fns != None:
             actual, target = actual_target_fns
             if os.path.exists(actual):
@@ -989,21 +990,21 @@ class ProgramCaller(object):
 
     def _write_test_sequence(self, working_dir):
         fn = working_dir + "Species0.fa"
-        with open(fn, "w") as outfile:
+        with open(fn, "w", encoding="utf-8", newline="\n") as outfile:
             outfile.write(shorter_sequence)
         return fn
 
     def _write_test_gene_trees(self, working_dir):
         """Gene trees as a species tree program gets them: one per line, leaves named by species ID."""
         fn = working_dir + "GeneTrees.nwk"
-        with open(fn, "w") as outfile:
+        with open(fn, "w", encoding="utf-8", newline="\n") as outfile:
             for _ in range(20):
                 outfile.write("(((0:1,1:1):2,(2:1,3:1):2,4:3):4);\n")
         return fn
 
     def _write_test_sequence_longer(self, working_dir, fasta_text=None):
         fn = working_dir + "Species0.fa"
-        with open(fn, "w") as outfile:
+        with open(fn, "w", encoding="utf-8", newline="\n") as outfile:
             outfile.write(longer_sequence if fasta_text is None else fasta_text)
         return fn
 
@@ -1019,7 +1020,11 @@ class ProgramCaller(object):
         )
         print("\nCommand:")
         print("export PATH=%s:" % parallel_task_manager.my_env["PATH"])
-        print(cmd)
+        print(programs.with_paths(cmd))
+        print("\nOrthoFinder looks for the programs it runs in: %s." % parallel_task_manager.PROGRAM_DIRS_TEXT)
+        print("To install them: in a conda environment (recommended: conda install -c bioconda orthofinder, "
+              "or the program on its own), with 'make install_tools' in the OrthoFinder directory (installs "
+              "to ~/local/bin), or anywhere on your PATH.")
         print(
             "\nResolve any issues so that you can successfully run the above commands for OrthoFinder's dependencies on your computer and then re-run OrthoFinder."
         )

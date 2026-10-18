@@ -46,6 +46,8 @@ except NameError:
 
 import re
 import os
+
+from ..utils import file_io
 try:
     from rich import print
 except ImportError:
@@ -56,6 +58,7 @@ __all__ = ["read_newick", "write_newick"]
 
 # Regular expressions used for reading newick format
 _ILEGAL_NEWICK_CHARS = r":;(),\[\]\t\n\r="
+_ILEGAL_NEWICK_RE = re.compile("[" + _ILEGAL_NEWICK_CHARS + "]")
 _NON_PRINTABLE_CHARS_RE = r"[\x00-\x1f]+"
 
 _NHX_RE = r"\[&&NHX:[^\]]*\]"
@@ -128,7 +131,7 @@ def format_node(node, node_type, format):
 
     if converter_fn1 == str:
         try:
-            FIRST_PART = re.sub("["+_ILEGAL_NEWICK_CHARS+"]", "_", \
+            FIRST_PART = _ILEGAL_NEWICK_RE.sub("_", \
                                   str(getattr(node, container1)))
         except (AttributeError, TypeError):
             FIRST_PART = "?"
@@ -145,7 +148,7 @@ def format_node(node, node_type, format):
 
     if converter_fn2 == str:
         try:
-            SECOND_PART = ":"+re.sub("["+_ILEGAL_NEWICK_CHARS+"]", "_", \
+            SECOND_PART = ":"+_ILEGAL_NEWICK_RE.sub("_", \
                                   str(getattr(node, container2)))
         except (ValueError, TypeError):
             SECOND_PART = ":?"
@@ -184,7 +187,9 @@ def read_newick(newick, root_node=None, format=0):
 
     if isinstance(newick, basestring):
         if os.path.exists(newick):
-            nw = open(newick, 'r').read()
+            # (also a user's file, or one of an older version: file_io.open_text_any)
+            with file_io.open_text_any(newick) as infile:
+                nw = infile.read()
         else:
             nw = newick
         nw = nw.strip()
@@ -347,8 +352,6 @@ def write_newick(rootnode, features=None, format=1, format_root_node=True,
                 newick.append(",")
                 
             if leaf(node):
-                safe_name = re.sub("["+_ILEGAL_NEWICK_CHARS+"]", "_", \
-                               str(getattr(node, "name")))
                 newick.append(format_node(node, "leaf", format))
                 newick.append(_get_features_string(node, features))
             else:
@@ -368,7 +371,7 @@ def _get_features_string(self, features=None):
 
     for pr in features:
         if hasattr(self, pr):
-            value = re.sub("["+_ILEGAL_NEWICK_CHARS+"]", "_", \
+            value = _ILEGAL_NEWICK_RE.sub("_", \
                              str(getattr(self, pr)))
             if string != "":
                 string +=":"

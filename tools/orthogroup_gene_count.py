@@ -32,8 +32,17 @@ orthogroup_gene_count Results_*/ -o GeneCountTables/
 """
 
 import os
-import csv
 import argparse
+
+
+class TabWriter(object):
+    """The rows of a tab-separated file, as OrthoFinder writes them: tab-joined, unquoted (UTF-8)."""
+
+    def __init__(self, outfile):
+        self.outfile = outfile
+
+    def writerow(self, row):
+        self.outfile.write("\t".join(map(str, row)) + "\n")
 
 
 def is_orthogroup_table(path):
@@ -68,10 +77,10 @@ def convert_tabular_gene_counts(input_file, output_file=None):
     if output_file is None:
         output_file = default_output_file(input_file)
 
-    with open(input_file, "r") as infile, open(output_file, "w") as outfile:
-        reader = csv.reader(infile, delimiter="\t")
-        writer = csv.writer(outfile, delimiter="\t")
-
+    with open(input_file, encoding="utf-8") as infile, \
+            open(output_file, "w", encoding="utf-8", newline="\n") as outfile:
+        writer = TabWriter(outfile)
+        reader = (line.rstrip("\r\n").split("\t") for line in infile)
         header = next(reader)
 
         # HOG tables contain:
@@ -99,8 +108,9 @@ def convert_colon_gene_counts(input_file, output_file=None):
     if output_file is None:
         output_file = default_output_file(input_file)
 
-    with open(input_file, "r") as infile, open(output_file, "w") as outfile:
-        writer = csv.writer(outfile, delimiter="\t")
+    with open(input_file, encoding="utf-8") as infile, \
+            open(output_file, "w", encoding="utf-8", newline="\n") as outfile:
+        writer = TabWriter(outfile)
         writer.writerow(["Orthogroup", "GeneCount"])
 
         for line in infile:

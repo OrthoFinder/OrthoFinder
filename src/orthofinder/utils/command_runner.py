@@ -9,6 +9,7 @@ import subprocess
 import threading
 import types
 
+from .. import n_cores
 from . import parallel_task_manager, printing
 
 try:
@@ -17,7 +18,10 @@ except ImportError:
     ...
 
 
-TOTAL_CORES = os.cpu_count() or 8
+# The cores this process may use (its CPU affinity, e.g. a cluster job's allocation),
+# not all of the machine's (os.cpu_count): else commands could take more cores than
+# the job has
+TOTAL_CORES = n_cores
 
 
 class CoreTokens(object):
@@ -73,7 +77,10 @@ def fill_method_threads(command, method_threads):
     command without the placeholder.
     """
     try:
-        prog = os.path.basename(shlex.split(command)[0]).lower()
+        # The program: the first word (shlex only for a quoted one: it takes ~0.1 ms for
+        # a whole command, run for every command, e.g. one per pair of species)
+        first = command.split(None, 1)[0] if command[:1] not in "'\"" else shlex.split(command)[0]
+        prog = os.path.basename(first).lower()
     except Exception:
         prog = ""
     if _METHODTHREAD_RE.search(command) and not prog.startswith("diamond"):  # diamond makedb / blastp
@@ -115,7 +122,7 @@ def reset_search_threads(command):
     return "".join(parts)
 
 
-def run_command(command, method_threads, dynamic_threads=False, q_print_on_error=False, q_print_stderr=True, raise_on_error=False):
+def run_command(command, method_threads, q_print_on_error=False, q_print_stderr=True, raise_on_error=False):
     """Run a single command with token gating."""
     
     # threads_needed = threads_from_cmd(command, method_threads)
@@ -134,11 +141,15 @@ def run_command(command, method_threads, dynamic_threads=False, q_print_on_error
         acquired = TOKENS.acquire(threads_needed)
 
         env = dict(parallel_task_manager.my_env) if hasattr(parallel_task_manager, "my_env") else os.environ.copy()
-        if threads_needed > 1:
-            env["OMP_NUM_THREADS"] = str(threads_needed)
-        env.setdefault("OPENBLAS_NUM_THREADS", "1")
-        env.setdefault("MKL_NUM_THREADS", "1")
-        env.setdefault("OMP_NESTED", "0")
+        # A command uses the cores it holds (threads_needed), whatever the user's
+        # environment says (e.g. OMP_NUM_THREADS=32 on a cluster node): its OpenMP
+        # threads, also when it holds 1; and no threads of a BLAS library (the programs
+        # parallelise themselves, with their thread option: BLAS threads in each of
+        # them would multiply)
+        env["OMP_NUM_THREADS"] = str(threads_needed)
+        env["OPENBLAS_NUM_THREADS"] = "1"
+        env["MKL_NUM_THREADS"] = "1"
+        env["OMP_NESTED"] = "0"
 
         out = subprocess.PIPE if q_print_on_error or raise_on_error else subprocess.DEVNULL
         err = subprocess.PIPE if (q_print_on_error and q_print_stderr) or raise_on_error else subprocess.DEVNULL
@@ -171,15 +182,11 @@ def run_parallel_commands(
     commands,
     q_list_of_list,
     method_threads=None,
-    method_threads_large=None,
-    method_threads_small=None,
-    threshold=None,
     cmd_order="descending",
     tasksize=None,
     q_trim=False,
     q_print_on_error=False,
     q_always_print_stderr=False,
-    dynamic_threads=False,
     on_success=None,
 ):
     """
@@ -197,15 +204,11 @@ def run_parallel_commands(
         commands_and_no_filenames,
         q_list_of_list,
         method_threads,
-        method_threads_large,
-        method_threads_small,
-        threshold,
         cmd_order,
         tasksize,
         q_trim,
         q_print_on_error,
         q_always_print_stderr,
-        dynamic_threads,
         on_success=on_success,
     )
 
@@ -215,15 +218,11 @@ def _run_parallel_commands_and_move_results_file(
     commands_and_filenames,
     q_list_of_list,
     method_threads=None,
-    method_threads_large=None,
-    method_threads_small=None,
-    threshold=None,
     cmd_order="descending",
     tasksize=None,
     q_trim=False,
     q_print_on_error=False,
     q_always_print_stderr=False,
-    dynamic_threads=False,
     on_success=None,
     follow_up=None,
     progress=None,
@@ -285,7 +284,6 @@ def _run_parallel_commands_and_move_results_file(
                     q_list_of_list,
                     q_print_on_error,
                     q_always_print_stderr,
-                    dynamic_threads=dynamic_threads,
                     function_pool=function_pool,
                 )
                 futures[fut] = cmd_unit
@@ -386,6 +384,9 @@ class FunctionPool(object):
     """Runs python functions in a few separate processes, each with a core reserved."""
 
     def __init__(self, n_processes):
+        # (frozen while its processes run: parallel_task_manager.frozen_for_fork)
+        self._frozen = parallel_task_manager.frozen_for_fork()
+        self._frozen.__enter__()
         self.pool = concurrent.futures.ProcessPoolExecutor(max_workers=n_processes)
         # Only as many functions as processes take a core: the others wait
         # here without holding one.
@@ -401,12 +402,23 @@ class FunctionPool(object):
             finally:
                 TOKENS.release(1)
 
+    def _unfreeze(self):
+        if self._frozen is not None:
+            self._frozen.__exit__(None, None, None)
+            self._frozen = None
+
     def close(self):
-        self.pool.shutdown(wait=True)
+        try:
+            self.pool.shutdown(wait=True)
+        finally:
+            self._unfreeze()
 
     def stop(self):
-        parallel_task_manager.terminate_processes(list(getattr(self.pool, "_processes", {}).values()))
-        self.pool.shutdown(wait=False, cancel_futures=True)
+        try:
+            parallel_task_manager.terminate_processes(list(getattr(self.pool, "_processes", {}).values()))
+            self.pool.shutdown(wait=False, cancel_futures=True)
+        finally:
+            self._unfreeze()
 
 
 def _start_function_pool(cmd_units, q_list_of_list):
@@ -440,7 +452,6 @@ def worker_run_commands_and_move(
     q_list_of_lists, 
     q_print_on_error,
     q_always_print_stderr,
-    dynamic_threads,
     function_pool=None,
 ):
     """

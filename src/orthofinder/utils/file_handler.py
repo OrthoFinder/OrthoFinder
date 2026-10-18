@@ -50,7 +50,7 @@ except ImportError:
 from . import util
 from . import run_state
 from .. import __version__
-from . import gene_ids
+from . import gene_ids, file_io
 from . import paths
 
 # Log.txt line of the species tree an analysis uses (FileHandler.log_species_tree_used).
@@ -113,7 +113,7 @@ class _FileHandler(object):
         self.wd_base = []               # Base: blast, species & sequence IDs, species fasta files - should not request this and then write here
         self.wd_current = None          # Location to write out any new files
         self.wd_trees = None            # Location of working dir containing tree files
-        self.n0_in_results = False      # N0.tsv (the HOGs of N0) in the results: only with --no-fix-files 
+        self.keep_legacy = False        # --keep-legacy: the legacy files are written (WorkingDirectory/Legacy)
         self.rd1 = None
         self.file_identifier_string = "OrthoFinder"
         self.clusters_filename = None
@@ -420,7 +420,7 @@ class _FileHandler(object):
 
     def create_corrected_species_ids_file(self, species_ids_lines):
         self.species_ids_corrected = self.wd_current + "SpeciesIDs.txt"
-        with open(self.species_ids_corrected, 'w') as outfile:
+        with open(self.species_ids_corrected, 'w', encoding="utf-8", newline="\n") as outfile:
             outfile.write(species_ids_lines)
                                                       
     """ ========================================================================================== """
@@ -443,8 +443,8 @@ class _FileHandler(object):
     def log_species(self):
         text = "\nSpecies used: \n"
         fn = self.get_species_ids_fn()
-        with open(fn, 'r') as infile:
-            species_ids_lines = "".join(infile.readlines())
+        with file_io.open_text_any(fn) as infile:
+            species_ids_lines = "".join(infile)
         text += species_ids_lines
         self.write_to_log(text + "\n")
         # the species of this analysis (SpeciesIDs.txt may later be edited, e.g.
@@ -749,51 +749,49 @@ class _FileHandler(object):
         return self.wd_current + "Distances/OG%07d.phy" % i_og
         
     def get_species_dict(self):
-        d = gene_ids.FullAccession(self.get_species_ids_fn()).get_id_to_name_dict()
-        return {k:v.rsplit(".",1)[0] for k,v in d.items()}
+        return gene_ids.species_names(self.get_species_ids_fn())
 
     def get_hierarchical_orthogroups_fn(self, sp_node_name, q_results=True, extension=""):
-        if sp_node_name == "N0" and not extension:
-            return self.hierarchical_orthogroups_fn_n0()
-        if q_results and not extension:
-            hog_dir = os.path.join(self.rd1, "Phylogenetic_Hierarchical_Orthogroups/")
-            if not os.path.exists(hog_dir):
-                os.makedirs(hog_dir, exist_ok=True)
-            return hog_dir + "%s.tsv" % sp_node_name
-        elif extension == ".ids":
-            return self.get_working_directory_write() + "%s.tsv" % sp_node_name
-        else:
-            wd_hog_dir = os.path.join(self.rd1, "Phylogenetic_Hierarchical_Orthogroups/")
-            if not os.path.exists(wd_hog_dir):
-                os.makedirs(wd_hog_dir, exist_ok=True)
-            return wd_hog_dir + "%s.tsv" % sp_node_name
-     
+        """
+        A HOG file of the ortholog inference, each written once. The HOGs of the
+        two passes are named by the orthogroups they are of:
+        q_results (the second pass, of the final orthogroups): N<i>.tsv in the
+            results (not N0: the orthogroups are Orthogroups.tsv) and N0.ids.tsv in
+            the working directory;
+        else (the first pass, of the MCL orthogroups): N0_mcl.ids.tsv, from which the
+            orthogroups are updated (n0_mcl_ids_fn), and the HOGs with gene names,
+            N<i>_mcl.tsv, which are only written as legacy files (--keep-legacy:
+            Legacy/HOGs).
+        """
+        if extension == ".ids":   # sp_node_name "N0.ids"
+            if q_results:
+                return self.get_working_directory_write() + "%s.tsv" % sp_node_name
+            return self.n0_mcl_ids_fn()
+        if q_results:
+            return self.get_result_hog_dir() + "%s.tsv" % sp_node_name
+        return os.path.join(self.get_legacy_hog_dir(), "%s_mcl.tsv" % sp_node_name)
+
+    def n0_mcl_ids_fn(self):
+        """
+        N0_mcl.ids.tsv: the HOGs of N0 of the MCL orthogroups (the first pass), from
+        which the orthogroups are updated. A legacy file (--keep-legacy: Legacy/HOGs),
+        else in the working directory, removed at the end of the run.
+        """
+        if self.keep_legacy:
+            return os.path.join(self.get_legacy_hog_dir(), "N0_mcl.ids.tsv")
+        return self.get_working_directory_write() + "N0_mcl.ids.tsv"
+
     def get_result_hog_dir(self):
         hog_dir = os.path.join(self.rd1, "Phylogenetic_Hierarchical_Orthogroups/")
         if not os.path.exists(hog_dir):
             os.makedirs(hog_dir, exist_ok=True)
         return hog_dir
-    
-    def wd_hierarchical_orthogroups_fn_n0(self):
-        return os.path.join(self.get_legacy_dir(), "N0.tsv")
-    
-    def hierarchical_orthogroups_fn_n0(self):
-        """
-        N0.tsv, the HOGs of N0 with gene names: in the working directory, as the
-        orthogroups (Orthogroups.tsv) are made from it, but in the results with
-        --no-fix-files (n0_in_results), whose results they are.
-        """
-        if not self.n0_in_results:
-            return os.path.join(self.get_working_directory_write(), "N0.tsv")
-        hog_dir = os.path.join(self.rd1, "Phylogenetic_Hierarchical_Orthogroups/")
-        if not os.path.exists(hog_dir):
-            os.makedirs(hog_dir, exist_ok=True)
-        return os.path.join(hog_dir, "N0.tsv")
-    
+
     def ogs_all_id_fn(self):
         return self.wd_current + "OGsAll.tsv"
-    
+
     def ogs_id_fn(self, fixed=False, extension=".tsv"):
+        """The orthogroups as sequence IDs, before (MCL) and after (fixed) the update: legacy files (--keep-legacy) only."""
         if fixed:
             return os.path.join(self.get_legacy_dir(), "Fixed_Orthogroups_id" + extension)
         else:
@@ -889,7 +887,7 @@ class _FileHandler(object):
         prepend = ""
         if q_with_time:
             prepend = str(datetime.datetime.now()).rsplit(".", 1)[0] + " : "
-        with open(os.path.join(self.rd1, "Log.txt"), 'a') as outfile:
+        with open(os.path.join(self.rd1, "Log.txt"), 'a', encoding="utf-8", newline="\n") as outfile:
             outfile.write(prepend + text)
     
     def start_log(self, search_program=None, msa_program=None, tree_program=None, 
@@ -900,7 +898,7 @@ class _FileHandler(object):
         (state_from_log, PreviousFilesLocatorNew, when there is no
         run_state.json), and records the directories, species tree etc. again.
         """
-        with open(os.path.join(self.rd1, "Log.txt"), "w"):
+        with open(os.path.join(self.rd1, "Log.txt"), "w", encoding="utf-8", newline="\n"):
             pass
         self.write_to_log("Started OrthoFinder version " + __version__ + "\n", True)
         text = "Command Line: " + " ".join(sys.argv) + "\n\n"
@@ -1018,7 +1016,7 @@ class _FileHandler(object):
     def get_putative_xenelogs_dir(self):
         d = self.rd1 + "Putative_Xenologs/"
         if not os.path.exists(d): os.mkdir(d)
-        return d    
+        return d
 
     def get_dependencies_check_dir(self):
         d = self.get_working_directory_write() + "dependencies/"
