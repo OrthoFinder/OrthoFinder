@@ -98,7 +98,7 @@ OUTPUT_OPTIONS = {
     "options": [
         {"names": ("-n", "--name"), "value": "txt", "read": "name", "help": "Name to append to the results directory"},
         {"names": ("-o", "--output"), "value": "txt", "read": "output", "help": "Non-default results directory"},
-        {"names": ("-X",), "set": {"q_add_species_to_ids": False}, "help": "Don't add species names to sequence IDs"},
+        {"names": ("-X",), "set": {"q_add_species_to_ids": False}, "help": "Gene names without their species prefix in gene trees, alignments and Duplications.tsv"},
         {"names": ("-pof", "--pairwise-ortholog-files"), "set": {"save_space": False},
          "help": "Save the pairwise ortholog files. With many species (a file for each pair: n x (n-1) files), "
                  "it is better to run without it and then make only the files needed with the "
@@ -146,7 +146,7 @@ STOPPING_OPTIONS = {
         {"names": ("-og", "--only-groups"), "set": {"q_stop_after_mcl_groups": True}, "help": "Stop after the [dark_cyan]MCL[/dark_cyan] orthogroups (no gene trees, species tree or HOGs)"},
         {"names": ("-ogt", "--only-trees"), "set": {"q_stop_after_trees": True}, "help": "Stop after gene trees"},
         {"names": ("-ost", "--only-species-trees"), "set": {"q_stop_after_species_trees": True},
-         "help": "Stop after species trees"},
+         "help": "Stop after the rooted species tree (rooted by [dark_cyan]STRIDE[/dark_cyan] from the gene trees; no HOGs or orthologs)"},
     ],
 }
 

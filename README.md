@@ -253,7 +253,7 @@ Command-line options for OrthoFinder
 - **Output options**<br>
   | Parameter   | Description                                                                 |
   |-----------  |-----------------------------------------------------------------------------|
-  | `-X`      | Don’t add species names to sequence IDs.                                    |
+  | `-X`      | Gene names without their species prefix in gene trees, alignments and Duplications.tsv. |
   | `-n <txt>`      | Name to append to the results directory.                                    |
   | `-o <txt>`      | Specify a non-default results directory.                                    |
   | `-pof`    | Save the pairwise ortholog files. With many species (a file for each pair: n × (n−1) files), we recommend running without it and then making only the files you need with the `split_ortholog_files` tool (`--species`, `--partners`, `-t`): `split_ortholog_files <Results_dir>`, or `python tools/split_ortholog_files.py <Results_dir>` from the source code without installing OrthoFinder. |
@@ -282,7 +282,7 @@ Command-line options for OrthoFinder
   | `-op`     | Stop after preparing input files for BLAST.                                 |
   | `-og`     | Stop after the MCL orthogroups (no gene trees, species tree or HOGs): `Orthogroups/MCL_Orthogroups.tsv` etc. |
   | `-ogt`    | Stop after gene trees.                                                      |
-  | `-ost`    | Stop after species trees.                                                   |
+  | `-ost`    | Stop after the rooted species tree (STRIDE, from the gene trees).           |
 
 - **Workflow restart options**<br>
   | Parameter    | Description                                                   |

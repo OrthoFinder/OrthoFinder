@@ -48,19 +48,96 @@ def clean_species_name(fasta_filename):
 
 def species_prefixes(species_names_dict):
     """
-    {species ID (str): the start of its genes' names in the files that do not give
-    the species of each gene} (unless -X): its name, "." and " " as "_", then "_".
-    A file that gives the species (a column per species, e.g. Orthogroups.tsv)
-    has the gene names alone; the others (trees, alignments, FASTA files,
-    Orthogroups.txt, Duplications.tsv, the other genes of Putative_Xenologs) have
-    <species>_<gene>.
+    {species ID (str): the start of its genes' names in the gene trees, alignments
+    and Duplications.tsv} (unless -X): its name, "." and " " as "_", then "_".
+    The other files have the gene names alone, as in OrthoFinder 3.1.5
+    (Orthogroups.tsv/.txt, Orthogroup_Sequences, Single_Copy_Orthologue_Sequences,
+    Orthologues, Putative_Xenologs, ...), except where two species have genes of
+    the same name: prefixes_if_shared.
     """
     return {str(k): v.replace(".", "_").replace(" ", "_") + "_" for k, v in species_names_dict.items()}
 
 
-def with_species(names, prefixes):
-    """{sequence ID: name} as {sequence ID: <species>_<name>} (species_prefixes)."""
-    return {seq_id: prefixes[seq_id.split("_", 1)[0]] + name for seq_id, name in names.items()}
+def _names_of_species(names, species_to_use):
+    """(species, iterable of its genes' names) of a {sequence ID: name} (a GeneNameTable: as bytes)."""
+    if isinstance(names, GeneNameTable) and not names._extra:
+        for sp in species_to_use:
+            buf, offsets = names._buffers.get(sp), names._offsets.get(sp)
+            if buf is None:
+                continue
+            present = names._present.get(sp)
+            starts, ends = offsets[:-1].tolist(), offsets[1:].tolist()
+            yield sp, (buf[s:e] for i, (s, e) in enumerate(zip(starts, ends)) if present is None or present[i])
+        return
+    by_species = {str(sp): [] for sp in species_to_use}
+    for key, name in names.items():
+        these = by_species.get(key.partition("_")[0])
+        if these is not None:
+            these.append(name)
+    for sp in species_to_use:
+        yield sp, by_species[str(sp)]
+
+
+def shared_names(names, species_to_use):
+    """
+    The gene names that more than one of the species have (sorted), of a {sequence
+    ID: name}. The names are compared by their 64-bit hashes (numpy, not a set of
+    every name: 10s of millions of genes), and the few hashes in more than one
+    species then by the names themselves.
+    """
+    hashes = [np.unique(np.fromiter((hash(n) for n in these), dtype=np.int64))
+              for _, these in _names_of_species(names, species_to_use)]
+    if len(hashes) < 2:
+        return []
+    values, counts = np.unique(np.concatenate(hashes), return_counts=True)
+    candidates = set(values[counts > 1].tolist())
+    if not candidates:
+        return []
+    species_of = {}     # a candidate name -> the species that have it
+    for sp, these in _names_of_species(names, species_to_use):
+        for n in these:
+            if hash(n) in candidates:
+                species_of.setdefault(n, set()).add(sp)
+    shared = [n.decode("utf-8") if isinstance(n, bytes) else n for n, sps in species_of.items() if len(sps) > 1]
+    return sorted(shared)
+
+
+_shared_decided = []    # [(names, species, q_add_species_to_ids, prefixes)]: the last one
+
+
+def prefixes_if_shared(names, species_names_dict, species_to_use, q_add_species_to_ids):
+    """
+    The species_prefixes of the gene names in the files that do not give each
+    gene's species (Orthogroups.txt, Orthogroup_Sequences, Single_Copy sequences,
+    the "Other" genes of Putative_Xenologs) if two of the species have genes of the
+    same name, else None (the names alone, as in OrthoFinder 3.1.5): all the names,
+    not only the shared ones, so a file's names are all of one form. With -X never
+    (with a warning that names are shared). Decided once (the warning printed once)
+    for the same names and species.
+    """
+    species = tuple(sorted(int(sp) for sp in species_to_use))
+    if _shared_decided:
+        last_names, last_species, last_q, prefixes = _shared_decided[0]
+        if last_names is names and last_species == species and last_q == q_add_species_to_ids:
+            return prefixes
+    shared = shared_names(names, species)
+    prefixes = None
+    if shared:
+        examples = ", ".join(shared[:5]) + (", ..." if len(shared) > 5 else "")
+        if q_add_species_to_ids:
+            names_of = {str(k): v for k, v in species_names_dict.items()}   # (keys str or int)
+            prefixes = species_prefixes({sp: names_of[str(sp)] for sp in species})
+            print("WARNING: %d gene names are in more than one species (e.g. %s). So that the genes can be "
+                  "told apart, the gene names in Orthogroups.txt, Orthogroup_Sequences, the single-copy "
+                  "sequences and the \"Other\" column of Putative_Xenologs start with their species "
+                  "(<species>_<gene>)." % (len(shared), examples))
+        else:
+            print("WARNING: %d gene names are in more than one species (e.g. %s). With -X the gene names "
+                  "have no species prefix, so these genes cannot be told apart in the files that do not "
+                  "give each gene's species (gene trees, alignments, Duplications.tsv, Orthogroups.txt, "
+                  "Orthogroup_Sequences, ...)." % (len(shared), examples))
+    _shared_decided[:] = [(names, species, q_add_species_to_ids, prefixes)]
+    return prefixes
 
 
 def species_names(species_ids_fn, q_unused=True):

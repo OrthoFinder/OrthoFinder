@@ -49,7 +49,8 @@ def write_mcl_orthogroups(options):
         ids_dict = mcl.id_full_dict([sequence_ids_fn], func=gene_ids.FirstWordExtractor)
     except RuntimeError:   # the first words are not unique: the full accessions
         ids_dict = mcl.id_full_dict([sequence_ids_fn], func=gene_ids.FullAccession)
-    prefixes = gene_ids.species_prefixes(species_names_dict) if options.q_add_species_to_ids else None
+    # (no species given: <species>_<gene> if two species have genes of the same name)
+    prefixes = gene_ids.prefixes_if_shared(ids_dict, species_names_dict, species_to_use, options.q_add_species_to_ids)
     mcl.MCL.create_ogs(ogs, base + ".txt", None, ids_dict, prefixes)
     mcl.MCL.create_orthogroup_table(ogs, ids_dict, species_names_dict, species_to_use, base, write_ids=False)
     if options.orthoxml:

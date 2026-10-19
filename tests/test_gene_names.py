@@ -15,7 +15,7 @@ from orthofinder.utils import fasta_processor, gene_ids, orthoxml
     ("it's", "it_s"),
     ("name with spaces; semi", "name_with_spaces__semi"),
     ("gene:1", "gene_1"), ("gene,1", "gene_1"), ("x[1]", "x_1_"), ("(a)=b", "_a__b"),
-    ("tab\there", "tab_here"), ("nul\x00x", "nul_x"), ("nbsp x", "nbsp_x"), ("ls x", "ls_x"),
+    ("tab\there", "tab_here"), ("nul\x00x", "nul_x"), ("nbsp x", "nbsp_x"), ("ls\u2028x", "ls_x"),
     ("α-tubulin µ", "α-tubulin_µ"), ("🧬gene", "🧬gene"),
     ("<script>alert(1)</script>", "<script>alert_1_</script>"), ("a&b", "a&b"),
     ("back\\slash", "back\\slash"), ("#hash", "#hash"),
@@ -159,15 +159,14 @@ def test_files_of_older_versions(tmp_path):
 
 
 def test_species_prefixes_where_a_file_gives_no_species():
-    # trees, alignments, FASTA files, Orthogroups.txt, Duplications.tsv: <species>_<gene>
+    # gene trees, alignments, Duplications.tsv: <species>_<gene>
     prefixes = gene_ids.species_prefixes({0: "Homo.sapiens", 1: "Mus_musculus"})
     assert prefixes == {"0": "Homo_sapiens_", "1": "Mus_musculus_"}
-    assert gene_ids.with_species({"0_3": "g1", "1_0": "g1"}, prefixes) == {"0_3": "Homo_sapiens_g1", "1_0": "Mus_musculus_g1"}
 
 
-def test_xenologue_other_genes_have_their_species():
-    # Putative_Xenologs/<species>.tsv: its species' genes alone (the column is the
-    # species), the "Other" genes (of any species) as <species>_<gene>
+def test_xenologue_other_genes():
+    # Putative_Xenologs/<species>.tsv: the gene names alone, also the "Other" genes
+    # (of any species), as in OrthoFinder 3.1.5
     from collections import defaultdict
     from orthofinder.orthology import tree_analyser
 
@@ -176,13 +175,46 @@ def test_xenologue_other_genes_have_their_species():
         d[sp] = list(g)
         return d
     names = {"0_1": "a1", "1_2": "b2", "1_3": "b3"}
-    other = gene_ids.with_species(names, gene_ids.species_prefixes({0: "A", 1: "B"}))
     olog, sus = ["", ""], ["", ""]
     # the genes of species 0 are suspect: xenologues of those of species 1
     orthologs = [(defaultdict(list), genes("1", "2"), genes("0", "1"), defaultdict(list))]
     tree_analyser.get_lines_for_ortholog_files([(5, orthologs)], {"0": "A", "1": "B"}, [0, 1], names, True,
+                                               olog, sus)
+    assert sus == ["OG0000005\ta1\tb2\n", "OG0000005\tb2\ta1\n"]
+    # two species with genes of the same name: the "Other" genes as <species>_<gene>
+    other = {k: {"0": "A_", "1": "B_"}[k[0]] + v for k, v in names.items()}
+    olog, sus = ["", ""], ["", ""]
+    tree_analyser.get_lines_for_ortholog_files([(5, orthologs)], {"0": "A", "1": "B"}, [0, 1], names, True,
                                                olog, sus, other_names=other)
     assert sus == ["OG0000005\ta1\tB_b2\n", "OG0000005\tb2\tA_a1\n"]
+
+
+@pytest.mark.parametrize("as_table", [False, True])
+def test_shared_names_between_species(as_table):
+    names = {"0_0": "g1", "0_1": "g2", "0_2": "x", "1_0": "g1", "1_1": "y", "2_0": "g2", "2_1": "z",
+             "3_0": "y"}
+    if as_table:
+        names = gene_ids.GeneNameTable.build(names.items())
+    assert gene_ids.shared_names(names, [0, 1, 2]) == ["g1", "g2"]      # (y: species 1 and 3, 3 not used)
+    assert gene_ids.shared_names(names, [0, 1, 2, 3]) == ["g1", "g2", "y"]
+    assert gene_ids.shared_names(names, [1, 2]) == []
+    assert gene_ids.shared_names(names, [0]) == []
+
+
+def test_prefixes_only_if_names_are_shared(capsys):
+    species = {"0": "Homo.sapiens", "1": "Mus_musculus"}
+    unique = gene_ids.GeneNameTable.build({"0_0": "a", "1_0": "b"}.items())
+    assert gene_ids.prefixes_if_shared(unique, species, [0, 1], True) is None
+    assert "WARNING" not in capsys.readouterr().out
+    shared = gene_ids.GeneNameTable.build({"0_0": "a", "1_0": "a"}.items())
+    assert gene_ids.prefixes_if_shared(shared, species, [0, 1], True) == {"0": "Homo_sapiens_", "1": "Mus_musculus_"}
+    assert "1 gene names are in more than one species (e.g. a)" in capsys.readouterr().out
+    # decided once for the same names: no second warning
+    assert gene_ids.prefixes_if_shared(shared, species, [0, 1], True) is not None
+    assert capsys.readouterr().out == ""
+    # -X: never prefixed, but a warning
+    assert gene_ids.prefixes_if_shared(shared, species, [0, 1], False) is None
+    assert "With -X" in capsys.readouterr().out
 
 
 def test_gene_names_unique_as_the_smallest_free_number():

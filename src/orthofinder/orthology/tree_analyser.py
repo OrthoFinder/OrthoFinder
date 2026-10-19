@@ -66,7 +66,10 @@ class TreeAnalyser(object):
             q_split_paralogous_clades, 
             exist_msa=True,
             write_hog_tree=True,
+            other_names=None,
     ):
+        """other_names: {sequence ID: name} of the "Other" genes of the putative xenologues
+        (gene_ids.prefixes_if_shared), None: sequence_dict"""
         self.n_ogs = n_ogs
         self.d_results_orthologs = d_results_orthologs
         self.recon_trees_renamed_dir = recon_trees_renamed_dir
@@ -88,6 +91,7 @@ class TreeAnalyser(object):
         self.q_split_paralogous_clades = q_split_paralogous_clades
         self.exist_msa = exist_msa
         self.write_hog_tree = write_hog_tree
+        self.other_names = other_names
 
 
     def analyse_tree(self, iog, n_ortho_acc=None):
@@ -145,7 +149,7 @@ class TreeAnalyser(object):
                 ortholog_lines,
                 ortholog_sus_lines,
                 pair_counts=pair_counts,
-                other_names=self.spec_seq_dict,
+                other_names=self.other_names,
             )
 
             cached_hogs = get_hogs_from_tree(
@@ -557,8 +561,8 @@ def get_lines_for_ortholog_files(
     which avoids allocating five nspecies x nspecies matrices per tree.
 
     other_names: {sequence ID: name} of the "Other" genes of the putative
-    xenologues (of several species, so <species>_<gene> unless -X:
-    gene_ids.species_prefixes); default sequence_dict.
+    xenologues (of several species: <species>_<gene> if two species have genes
+    of the same name, gene_ids.prefixes_if_shared); default sequence_dict.
     """
     nsp = len(i_species_to_use)
     n_ortho = stats.NOrthoSp(nsp) if pair_counts is None else None

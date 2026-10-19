@@ -337,7 +337,10 @@ def infer_orthologs_and_write_results(
     fasta_writer = lambda genes: msa_trees.FastaWriter(file_handler.handler.get_species_seqs_dir(), species_to_use, genes)
     ogs = stats.add_unassigned_genes(new_ogs, og_set.all_used_sequence_ids())
     species_dict = {int(k): v for k, v in og_set.species_dict().items()}
-    ids_dict = og_set.spec_seq_dict()   # (the single-copy FASTA files: <species>_<gene>)
+    # (the single-copy FASTA files: as Orthogroups.txt, gene_ids.prefixes_if_shared)
+    prefixes = gene_ids.prefixes_if_shared(og_set.sequence_dict(), og_set.species_dict(),
+                                           og_set.species_to_use, options.q_add_species_to_ids)
+    ids_dict = og_set.spec_seq_dict() if prefixes else og_set.sequence_dict()
 
     if not options.keep_legacy:
         os.remove(file_handler.handler.ogs_all_id_fn())

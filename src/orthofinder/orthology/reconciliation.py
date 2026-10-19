@@ -36,6 +36,7 @@ from ..phylo import tree
 from ..utils import util, file_handler
 from ..utils import printing
 from ..utils import species_info
+from ..utils import gene_ids
 from ..phylo import taxa
 from . import stats
 
@@ -278,6 +279,12 @@ def do_orthologs_for_ortho_finder(
         iogs4 = list(og_set.get_i_ogs4())
         recon_trees_renamed_dir = file_handler.handler.get_ogs_recon_tree_dir(True)
         spec_seq_dict = og_set.spec_seq_dict()
+        # the "Other" genes of Putative_Xenologs (of the results pass only): as Orthogroups.txt
+        # (decided here, before the workers are forked)
+        other_names = None
+        if not write_hog_tree and gene_ids.prefixes_if_shared(
+                sequence_dict, species_dict, og_set.species_to_use, og_set.q_add_species_to_ids):
+            other_names = spec_seq_dict
         output_writer = ParentOutputWriter(
             d_results_orthologs=d_results_orthologs,
             species_dict=species_dict,
@@ -311,6 +318,7 @@ def do_orthologs_for_ortho_finder(
             q_split_paralogous_clades,
             exist_msa=exist_msa,
             write_hog_tree=write_hog_tree,
+            other_names=other_names,
         )
 
         total_tasks = len(iogs4)

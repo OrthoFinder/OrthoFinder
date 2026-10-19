@@ -176,7 +176,7 @@ class MCL:
     def create_ogs(predicted_ogs, output_filename, orthogroups_id_fn, id_dict, prefixes=None):
         """Orthogroups.txt-like files: output_filename with the gene names, orthogroups_id_fn
         with the sequence IDs (either may be None: not written). prefixes: of the gene
-        names (gene_ids.species_prefixes: the file gives no species), None: the names alone (-X)."""
+        names (gene_ids.prefixes_if_shared), None: the names alone."""
         if output_filename is not None:
             with open(output_filename, 'w', encoding="utf-8", newline="\n") as output_file:
                 for i_og, og in enumerate(predicted_ogs):

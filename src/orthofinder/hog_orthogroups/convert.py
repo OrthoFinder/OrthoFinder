@@ -40,8 +40,19 @@ def post_hogs_processing(
         for og in new_ogs:
             outfile.write(", ".join(sorted(og, key=species_info.seq_id_key)) + "\n")
 
-    # (Orthogroups.txt gives no species: <species>_<gene>, gene_ids.species_prefixes)
-    prefixes = gene_ids.species_prefixes(species_names_dict) if options.q_add_species_to_ids else None
+    og_set = HogOrthogroupSet(
+        options.min_seq,
+        file_handler.handler.get_working_directory1_read(),
+        species_info_obj.species_to_use,
+        species_info_obj.n_sp_all,
+        options.q_add_species_to_ids,
+        options.tree_program,
+        id_extractor=gene_ids.FirstWordExtractor,
+    )
+    # Orthogroups.txt and Orthogroup_Sequences give no species: the gene names alone, as
+    # in OrthoFinder 3.1.5, unless two species have genes of the same name (<species>_<gene>)
+    prefixes = gene_ids.prefixes_if_shared(og_set.sequence_dict(), og_set.species_dict(),
+                                           og_set.species_to_use, options.q_add_species_to_ids)
     ids_dict = HogOrthogroupFiles.write_orthogroup_files(
         new_ogs, [file_handler.handler.get_sequence_ids_fn()], results_base_filename, prefixes
     )
@@ -57,16 +68,6 @@ def post_hogs_processing(
         )
 
     # Write Orthogroup FASTA files
-    og_set = HogOrthogroupSet(
-        options.min_seq,
-        file_handler.handler.get_working_directory1_read(),
-        species_info_obj.species_to_use,
-        species_info_obj.n_sp_all,
-        options.q_add_species_to_ids,
-        options.tree_program,
-        id_extractor=gene_ids.FirstWordExtractor,
-    )
-
     ## ------------------ Fix Orthogroup_Sequences and Sequences_ids --------------------
     tree_gen = msa_trees.TreesForOrthogroups(None, None, None)
 
@@ -74,14 +75,16 @@ def post_hogs_processing(
     if not os.path.exists(d_seqs):
         os.mkdir(d_seqs)
 
-    # Update Orthogroup_Sequneces (as the alignments and trees: <species>_<gene>)
-    id_dict = og_set.spec_seq_dict()
+    # Update Orthogroup_Sequneces (as Orthogroups.txt: prefixes)
     tree_gen.write_fasta_files(
         file_handler.handler.get_species_seqs_dir(), species_info_obj.species_to_use,
-        og_set.get_ogs_all(), id_dict, q_id=False, q_results=True,
+        og_set.get_ogs_all(), og_set.spec_seq_dict() if prefixes else og_set.sequence_dict(),
+        q_id=False, q_results=True,
         n_processes=options.n_process_alg or 1,
     )
 
+    # (the alignments and trees: <species>_<gene>)
+    id_dict = og_set.spec_seq_dict()
     id_dict.update(
         og_set.species_dict()
     )  # same code will then also convert concatenated alignment for species tree
@@ -250,7 +253,7 @@ class HogOrthogroupSet(object):
 class HogOrthogroupFiles:
     @staticmethod
     def create_ogs(predicted_ogs, output_filename, id_dict, prefixes=None):
-        """prefixes: of the gene names (gene_ids.species_prefixes), None: the names alone (-X)"""
+        """prefixes: of the gene names (gene_ids.prefixes_if_shared), None: the names alone"""
         with open(output_filename, "w", encoding="utf-8", newline="\n") as output_file:
             for i_og, og in enumerate(predicted_ogs):
                 output_file.write("OG%07d: " % i_og)
