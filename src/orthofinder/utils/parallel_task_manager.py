@@ -326,12 +326,13 @@ def parallel_map(function, args_list, n_processes, progress=None, initializer=No
     return results
 
 
-# not used
-# How often to report an external program that is still running (seconds).
+# How often to check that a running external program is still using CPU (seconds).
 # There is deliberately no time limit: a program that is still running is
-# never stopped for being slow (a large alignment or tree can take hours).
-# Commands are only stopped when something has failed.
-COMMAND_WARN_INTERVAL = 1800.0
+# never stopped for being slow (a large alignment or tree can take hours), and
+# running for a long time is not reported. Only a program that used no CPU over
+# a whole interval is reported, as it may be stuck. Commands are only stopped
+# when something has failed.
+COMMAND_WARN_INTERVAL = 3600.0
 
 _live_commands = set()
 _live_commands_lock = threading.Lock()
@@ -347,8 +348,15 @@ def _format_duration(seconds):
     return "%dh %02dmin" % (hours, minutes) if hours else "%dmin" % minutes
 
 
-def _process_group_cpu_seconds(pgid):
-    """CPU seconds used so far by live processes in a process group (Linux only)."""
+def _session_cpu_seconds(sid):
+    """
+    CPU seconds used so far by the processes in a session (Linux only).
+
+    By session rather than process group, so a program that moves itself into
+    its own process group (e.g. GNU timeout) is still counted. Each process's
+    finished children (cutime, cstime) are included, so the total does not drop
+    when a step of a multi-step program (e.g. MAFFT's script) exits.
+    """
     if not os.path.isdir("/proc"):
         return None
     total_ticks = 0
@@ -364,11 +372,12 @@ def _process_group_cpu_seconds(pgid):
                 stat = f.read()
         except OSError:
             continue
-        # Fields after the "(comm)" field: state, ppid, pgrp, ..., utime, stime
+        # Fields after the "(comm)" field: state, ppid, pgrp, session, ...,
+        # utime, stime, cutime, cstime
         fields = stat.rsplit(")", 1)[-1].split()
         try:
-            if int(fields[2]) == pgid:
-                total_ticks += int(fields[11]) + int(fields[12])
+            if int(fields[3]) == sid:
+                total_ticks += sum(int(f) for f in fields[11:15])
         except (IndexError, ValueError):
             continue
     return total_ticks / os.sysconf("SC_CLK_TCK")
@@ -431,10 +440,10 @@ def run_monitored_command(command, env, stdout=None, stderr=None,
     """
     Run a shell command and return (returncode, stdout, stderr).
 
-    While it runs, a warning is printed every warn_interval seconds with the
-    elapsed time and the CPU time the command used in that interval, so a
-    slow program (using CPU) can be told apart from a stuck one (not using
-    CPU). The command is never stopped for taking long; only if another
+    Every warn_interval seconds the CPU time the command used in that interval
+    is checked (Linux only). Taking long is normal and is not reported; a
+    warning is printed only if it used no CPU in the interval, since it may be
+    stuck. The command is never stopped for taking long; only if another
     command fails or OrthoFinder itself is stopped (kill_running_commands).
     """
     if warn_interval is None:
@@ -469,31 +478,26 @@ def run_monitored_command(command, env, stdout=None, stderr=None,
     try:
         while True:
             try:
-                # The timeout only sets how often we report; it never stops the command.
+                # The timeout only sets how often we check it; it never stops the command.
                 out, err = popen.communicate(timeout=warn_interval)
                 return popen.returncode, out, err
             except subprocess.TimeoutExpired:
                 pass
 
-            elapsed = time.monotonic() - start
-
-            cpu_now = _process_group_cpu_seconds(popen.pid) if use_group else None
+            # A program still using CPU is just slow, which is normal: say nothing.
+            cpu_now = _session_cpu_seconds(popen.pid) if use_group else None
             if cpu_now is None:
-                cpu_text = ""
-            else:
-                cpu_used = max(0.0, cpu_now - cpu_prev)
-                cpu_prev = cpu_now
-                cpu_text = (
-                    "; CPU time used in the last %s: %s%s" % (
-                        _format_duration(warn_interval), _format_duration(cpu_used),
-                        " (not using CPU - it may be stuck, e.g. waiting on disk or network)"
-                        if cpu_used < 1.0 else "",
-                    )
-                )
+                continue
+            cpu_used = max(0.0, cpu_now - cpu_prev)
+            cpu_prev = cpu_now
+            if cpu_used >= 1.0:
+                continue
+            elapsed = time.monotonic() - start
             short_cmd = command if len(command) <= 300 else command[:300] + " ..."
             print(
-                "WARNING: external command still running after %s%s\n  %s"
-                % (_format_duration(elapsed), cpu_text, short_cmd)
+                "WARNING: external command has used no CPU in the last %s (running for %s); "
+                "it may be stuck, e.g. waiting on disk or network\n  %s"
+                % (_format_duration(warn_interval), _format_duration(elapsed), short_cmd)
             )
     except BaseException:
         _kill_command(popen)

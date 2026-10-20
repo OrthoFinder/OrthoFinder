@@ -215,3 +215,4 @@ testdata
 primary_*
 problematic_database/
 tests/_archive/
+release_of.sh
