@@ -70,9 +70,7 @@ def get_blast6_scores(seqs_info, blast_dir_list, i_species, j_species, q_exclude
     # up once (one file per pair of species; on a network filesystem each lookup is slow)
     path = None
     for d in blast_dir_list:
-        if d[-1] != os.sep:
-            d += os.sep
-        fn = d + "Blast%d_%d.txt" % (i_species_open, j_species_open)
+        fn = os.path.join(d, "Blast%d_%d.txt" % (i_species_open, j_species_open))
         if os.path.exists(fn + ".gz"):
             path = fn + ".gz"
         elif os.path.exists(fn):

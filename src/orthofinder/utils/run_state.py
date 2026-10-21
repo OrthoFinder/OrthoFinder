@@ -319,11 +319,13 @@ def record_file(results_dir, name, path):
 
 
 def dirs(results_dir, state):
-    """The directories in a state, as absolute paths (base: a list)."""
+    """The directories in a state, as absolute paths ending in the separator (base: a list)."""
+    def as_dir(recorded):
+        d = _resolve(results_dir, recorded)
+        return None if d is None else os.path.join(d, "")
     out = {}
     for name, value in state.get("dirs", {}).items():
-        out[name] = ([_resolve(results_dir, d) for d in value] if isinstance(value, list)
-                     else _resolve(results_dir, value))
+        out[name] = [as_dir(d) for d in value] if isinstance(value, list) else as_dir(value)
     return out
 
 

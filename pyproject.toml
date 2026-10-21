@@ -137,11 +137,11 @@ markers = [
 ]
 
 [tool.setuptools_scm]
-tag_regex = "^(?:v)?(?P<version>\\d+\\.\\d+\\.\\d+)$"
+tag_regex = "^(?:v)?(?P<version>\\d+\\.\\d+(?:\\.\\d+)?)$"
 write_to = "src/orthofinder/_version.py"
 version_scheme = "no-guess-dev"
 local_scheme = "no-local-version"
-fallback_version = "3.1.4"
+fallback_version = "3.1.5"
 
 [tool.ruff.lint.isort]
 split-on-trailing-comma = false

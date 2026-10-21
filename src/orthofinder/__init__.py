@@ -2,7 +2,10 @@ import multiprocessing as mp
 import os
 import sys
 
-from ._version import __version__
+try:
+    from ._version import __version__      # written by setuptools-scm when installed
+except ImportError:
+    __version__ = "unknown"                # run from the source without installing it
 
 
 def _available_cores():

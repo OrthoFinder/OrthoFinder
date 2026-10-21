@@ -80,8 +80,10 @@ Alternatively, you could install via github, or download the source code and ins
 ```bash
 python3 -m venv of3_env 
 . of3_env/bin/activate
-pip install git+https://github.com/OrthoFinder/OrthoFinder.git
+pip install git+https://github.com/OrthoFinder/OrthoFinder.git@v3.2
 ```
+
+The `@v3.2` installs that release. Without it, the latest development code on the main branch is installed, and its version shows as a development version (e.g. `3.2.post1.dev4`).
 
 ### Install locally from source code
 

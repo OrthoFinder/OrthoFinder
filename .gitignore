@@ -215,4 +215,10 @@ testdata
 primary_*
 problematic_database/
 tests/_archive/
-release_of.sh
+# Written by setuptools-scm when OrthoFinder is installed (the version from the git tag)
+src/orthofinder/_version.py
+# Release scripts (local only): GitHub release assets, then the Bioconda recipe
+release_github.sh
+release_bioconda.sh
+release-assets/
+bioconda-recipes/

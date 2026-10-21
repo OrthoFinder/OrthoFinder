@@ -293,7 +293,7 @@ def processes_new_fasta(
             sequence_sample = None if q_dna else SequenceTypeSample()
 
             q_utf8 = True
-            with open_input_fasta(fasta_dir + os.sep + fasta_filename) as fasta_file:
+            with open_input_fasta(os.path.join(fasta_dir, fasta_filename)) as fasta_file:
                 for i_line, line in enumerate(fasta_file):
                     
                     if line.isspace(): continue
@@ -304,7 +304,7 @@ def processes_new_fasta(
                             assign, q_header_utf8 = input_header(assign)
                             q_utf8 = q_utf8 and q_header_utf8
                         if len(assign) == 0:
-                            print("ERROR: %s contains a blank accession line on line %d" % (fasta_dir + os.sep + fasta_filename, i_line+1))
+                            print("ERROR: %s contains a blank accession line on line %d" % (os.path.join(fasta_dir, fasta_filename), i_line+1))
                             util.fail()
                         if assign in species_seen_dict[fasta_filename]:
                             species_seen_dict[fasta_filename][assign] += 1

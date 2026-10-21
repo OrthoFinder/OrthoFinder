@@ -13,6 +13,15 @@ from .printing import printer
 from . import file_io
 
 
+def as_dir(path):
+    """
+    A directory path as OrthoFinder keeps them: ending in the separator, so a
+    file name can be appended to it. Used wherever a directory path is made
+    (user arguments, os.path functions, paths read from Log.txt/run_state.json).
+    """
+    return os.path.join(path, "")
+
+
 def get_directory_name(
     base_dir_name,
     i,

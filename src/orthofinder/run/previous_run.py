@@ -1,4 +1,4 @@
-from ..utils import util, file_handler, file_io, gene_ids
+from ..utils import util, file_handler, file_io, gene_ids, paths
 import os
 from collections import Counter
 
@@ -461,7 +461,7 @@ class PreviousFilesLocator(object):
 class PreviousFilesLocatorNew(PreviousFilesLocator):
     def __init__(self, options, continuation_dir):
         PreviousFilesLocator.__init__(self)
-        if not continuation_dir.endswith("/"): continuation_dir += "/"
+        continuation_dir = paths.as_dir(continuation_dir)
         # self.home_for_results = continuationDir + "../"
         self.home_for_results = os.path.abspath(continuation_dir + "..") + os.sep
         if (options.q_start_from_fasta and not options.q_start_from_blast):
@@ -502,7 +502,7 @@ class PreviousFilesLocatorNew(PreviousFilesLocator):
                     wd_base_anchor = self._in_this_results_dir(line.rstrip()[len(wd_base_str):], log_fn, 1)
                     if not os.path.exists(wd_base_anchor):
                         # try to see if it's a relative directory to current one
-                        path, d_wd = os.path.split(wd_base_anchor[:-1])
+                        path, d_wd = os.path.split(wd_base_anchor.rstrip(os.sep))
                         path, d_res = os.path.split(path)
                         # wd_base_anchor = os.path.split(logFN)[0] + ("/../%s/%s/" % (d_res, d_wd))
                         wd_base_anchor = os.path.abspath(os.path.split(log_fn)[0] + ("/../%s/%s/" % (d_res, d_wd)))
@@ -530,7 +530,7 @@ class PreviousFilesLocatorNew(PreviousFilesLocator):
                     self.wd_trees = self._in_this_results_dir(line.rstrip()[len(wd_trees_str):], log_fn, 1)
                     if not os.path.exists(self.wd_trees):
                         # try to see if it's a relative directory to current one
-                        path, d_wd = os.path.split(self.wd_trees[:-1])
+                        path, d_wd = os.path.split(self.wd_trees.rstrip(os.sep))
                         path, d_res = os.path.split(path)
                         self.wd_trees = os.path.split(log_fn)[0] + ("/../%s/%s/" % (d_res, d_wd))
                         self.wd_trees = os.path.abspath(self.wd_trees)
@@ -540,7 +540,13 @@ class PreviousFilesLocatorNew(PreviousFilesLocator):
                     self.species_tree_rooted_ids_fn = os.path.join(self.wd_trees, "SpeciesTree_rooted_ids.txt") 
                     self.species_tree_unrooted_ids_fn = os.path.join(self.wd_trees, "SpeciesTree_unrooted_ids.txt")
 
+        # Log.txt may record a working directory without its final separator
+        # (older versions, or found again with os.path.abspath above)
+        if self.wd_trees is not None:
+            self.wd_trees = paths.as_dir(self.wd_trees)
         if wd_base_anchor is not None:
+            wd_base_anchor = paths.as_dir(wd_base_anchor)
+            earlier_wds = [paths.as_dir(d) for d in earlier_wds]
             # The earlier working directories the analysis reads from: listed in
             # Log.txt (this version), or followed from previous_wd.txt (older
             # versions, which wrote one in each working directory).
@@ -585,13 +591,10 @@ class PreviousFilesLocatorNew(PreviousFilesLocator):
                 wd = infile.readline().rstrip()
                 if not os.path.exists(wd):
                     # try to see if it's a relative directory to current one
-                    path, d_wd = os.path.split(wd[:-1])
+                    path, d_wd = os.path.split(wd.rstrip(os.sep))
                     path, d_res = os.path.split(path)
-                    wd = wd_base_anchor + ("/../../%s/%s/" % (d_res, d_wd))
-                    wd = os.path.abspath(wd)
-                    if wd[-1] != os.sep:
-                        wd += os.sep
-                chain.append(wd)
+                    wd = os.path.abspath(wd_base_anchor + ("/../../%s/%s/" % (d_res, d_wd)))
+                chain.append(paths.as_dir(wd))
         return chain
 
 
@@ -628,7 +631,7 @@ class PreviousFilesLocatorState(PreviousFilesLocator):
 class PreviousFilesLocatorOld(PreviousFilesLocator):
     def __init__(self, options, continuation_dir):
         PreviousFilesLocator.__init__(self)
-        if not continuation_dir.endswith("/"): continuation_dir += "/"
+        continuation_dir = paths.as_dir(continuation_dir)
         self.home_for_results = continuation_dir + "OrthoFinder/"
         if options.q_start_from_groups or options.q_start_from_trees:
             # User can specify it using clusters_id_pairs file, process this first to get the workingDirectory
@@ -665,8 +668,8 @@ class PreviousFilesLocatorOld(PreviousFilesLocator):
                 util.fail()
             q_specified_results_file = True
             # user has specified specific results file
-        elif user_arg[-1] != os.path.sep: 
-            user_arg += os.path.sep
+        else:
+            user_arg = paths.as_dir(user_arg)
         
         # find required files
         if q_specified_results_file:
@@ -800,8 +803,8 @@ def initialise_file_handler(
     """
     # 1 & 2
     # If starting from scratch, no need for a PreviousFileLocator
-    if fasta_dir is not None and fasta_dir[-1] != os.sep:
-        fasta_dir += os.sep
+    if fasta_dir is not None:
+        fasta_dir = paths.as_dir(fasta_dir)
     if options.q_start_from_fasta and not options.q_start_from_blast:
         pfl = None
         base_dir = results_dir_non_default if results_dir_non_default != None else fasta_dir + "OrthoFinder/"
@@ -823,8 +826,7 @@ def initialise_file_handler(
                 util.fail()
             base_dir = results_dir_non_default if results_dir_non_default is not None else pfl.get_home_for_results()
     if not os.path.exists(base_dir): os.mkdir(base_dir)
-    if base_dir[-1] != os.sep:
-        base_dir += os.sep
+    base_dir = paths.as_dir(base_dir)
     # 3 
     # RefactorDS - this might be suitable as a constructor now
     # base_dir - should now exist
@@ -840,9 +842,7 @@ def initialise_file_handler(
     if not working_dir:
         handler.create_output_directories(options, pfl, base_dir, fasta_dir)
     else:
-        if working_dir[-1] != os.sep:
-            working_dir += os.sep
         handler.wd_base = [working_dir]
         handler.wd_current = working_dir
-        handler.rd1 = os.path.dirname(working_dir)
+        handler.rd1 = os.path.dirname(os.path.normpath(working_dir))
         handler.wd_trees = working_dir

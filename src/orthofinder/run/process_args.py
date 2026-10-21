@@ -24,7 +24,7 @@ import time
 
 from .. import __version__, g_mcl_inflation, n_cores, n_threads_default, __location__
 from ..search import diamond_scoring
-from ..utils import util, file_handler, program_caller, printing
+from ..utils import util, file_handler, paths, program_caller, printing
 from ..utils.printing import printer
 from . import cli_options, helpinfo, previous_run
 
@@ -140,8 +140,8 @@ def assign_species_tree_program(options):
 def get_directory_argument(arg, args):
     """The directory given after option arg (an absolute path ending with a separator)."""
     directory = os.path.abspath(_value(arg, args))
-    if not os.path.isfile(directory) and directory[-1] != os.sep:
-        directory += os.sep
+    if not os.path.isfile(directory):
+        directory = paths.as_dir(directory)
     if not os.path.exists(directory):
         raise ArgumentError("Specified directory doesn't exist: %s" % directory)
     return directory

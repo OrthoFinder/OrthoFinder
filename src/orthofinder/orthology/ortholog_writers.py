@@ -9,7 +9,7 @@ import tempfile
 import time
 import traceback
 
-from ..utils import file_handler, file_io, util
+from ..utils import file_handler, file_io, paths, util
 from ..utils.util import csv_read_mode, csv_write_mode
 
 
@@ -814,8 +814,7 @@ def split_ortholog_files(d_orthologs, q_compress=False, buffer_bytes=None, n_pro
     n_processes: the species' files split at the same time (each into its own
     directory), sharing buffer_bytes.
     """
-    if not d_orthologs.endswith("/"):
-        d_orthologs += "/"
+    d_orthologs = paths.as_dir(d_orthologs)
     filenames = list(glob.glob(d_orthologs + "*.tsv") + glob.glob(d_orthologs + "*.tsv.gz"))
     species = [
         os.path.basename(fn)[:-len(".tsv.gz")] if fn.endswith(".gz") else os.path.basename(fn)[:-len(".tsv")]

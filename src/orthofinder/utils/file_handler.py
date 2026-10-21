@@ -104,7 +104,30 @@ def rename_earlier_result_names(results_dir):
     return renamed
 
 
+def _dir_attribute(name):
+    """An attribute holding a directory path, always kept ending in the separator (paths.as_dir)."""
+    key = "_" + name
+    def get(self):
+        return getattr(self, key)
+    def set(self, value):
+        setattr(self, key, None if value is None else paths.as_dir(value))
+    return property(get, set)
+
+
 class _FileHandler(object):
+    # Directories: file names are appended to them, so they always end in the separator
+    wd_current = _dir_attribute("wd_current")
+    wd_trees = _dir_attribute("wd_trees")
+    rd1 = _dir_attribute("rd1")
+
+    @property
+    def wd_base(self):
+        return self._wd_base
+
+    @wd_base.setter
+    def wd_base(self, dirs):
+        self._wd_base = [paths.as_dir(d) for d in dirs]
+
     def __init__(self):
         self.reset() 
 
@@ -169,11 +192,11 @@ class _FileHandler(object):
         os.mkdir(self.wd_current)
         self.wd_base = [self.wd_current]        
         if old_wd_base_list != None:
-            shutil.copy(old_wd_base_list[0] + "SpeciesIDs.txt", self.wd_current + "SpeciesIDs.txt")
-            shutil.copy(old_wd_base_list[0] + "SequenceIDs.txt", self.wd_current + "SequenceIDs.txt")
+            shutil.copy(os.path.join(old_wd_base_list[0], "SpeciesIDs.txt"), self.wd_current + "SpeciesIDs.txt")
+            shutil.copy(os.path.join(old_wd_base_list[0], "SequenceIDs.txt"), self.wd_current + "SequenceIDs.txt")
             # The earlier working directories are recorded in run_state.json and
             # Log.txt (start_log); older versions wrote previous_wd.txt instead.
-            self.wd_base.extend(old_wd_base_list)
+            self.wd_base = self.wd_base + list(old_wd_base_list)
         self.wd_trees = self.wd_current
         self.start_log(search_program=search_program, msa_program=msa_program, tree_program=tree_program,
                       scorematrix=scorematrix, gapopen=gapopen, gapextend=gapextend)
@@ -206,7 +229,7 @@ class _FileHandler(object):
         if use_base:
             self.wd_current = wd_base_list[0]
             if clusters_filename_pairs != None: self.clusters_filename = clusters_filename_pairs[:-len("_id_pairs.txt")]
-            self.rd1 = os.path.dirname(self.wd_current[:-1]) + os.sep
+            self.rd1 = os.path.dirname(os.path.normpath(self.wd_current))
             os.makedirs(self.wd_current, exist_ok=True)
             rename_earlier_result_names(self.rd1)  # continuing in an existing results directory
         else:    
@@ -265,7 +288,7 @@ class _FileHandler(object):
         if use_base:
             self.wd_current = wd1_list[0]
             if clusters_filename_pairs != None: self.clusters_filename = clusters_filename_pairs[:-len("_id_pairs.txt")]
-            self.rd1 = os.path.dirname(self.wd_current[:-1]) + os.sep
+            self.rd1 = os.path.dirname(os.path.normpath(self.wd_current))
             os.makedirs(self.wd_current, exist_ok=True)
             rename_earlier_result_names(self.rd1)  # continuing in an existing results directory
         else:    
@@ -511,12 +534,8 @@ class _FileHandler(object):
         """
         if len(self.wd_base) == 0: raise Exception("No wd1")
         if q_for_creation:
-            if self.wd_base[0][-1] != os.sep:
-                self.wd_base[0] += os.sep
             return "%sSpecies%d.fa" % (self.wd_base[0], i_species)
         for d in self.wd_base:
-            if d[-1] != os.sep:
-                d += os.sep
             fn = "%sSpecies%d.fa" % (d, i_species)
             if os.path.exists(fn): return fn
         raise Exception(fn + " not found")
@@ -554,13 +573,9 @@ class _FileHandler(object):
     def get_blast_results_fn(self, i_species_search, j_species_db, q_for_creation=False, raise_exception=True):
 
         if len(self.wd_base) == 0: raise Exception("No wd1")
-        if self.wd_base[0][-1] != os.sep:
-            self.wd_base[0] += os.sep
         if q_for_creation: 
             return "%sBlast%d_%d.txt" % (self.wd_base[0], i_species_search, j_species_db)     
         for d in self.wd_base:
-            if d[-1] != os.sep:
-                d += os.sep
             fn = "%sBlast%d_%d.txt" % (d, i_species_search, j_species_db)
             if os.path.exists(fn) or os.path.exists(fn + ".gz"): return fn
         if raise_exception:
