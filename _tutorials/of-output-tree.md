@@ -6,15 +6,15 @@
     font-size: 18px;
     line-height: 1.5;
   ">
-Results_May13/
+Results_Oct21/
    ├── Citation.txt
    ├── Comparative_Genomics_Statistics/
    │   ├── Duplications_per_Orthogroup.tsv
-   │   ├── OrthologuesStats_many-to-many.tsv
-   │   ├── OrthologuesStats_many-to-one.tsv
-   │   ├── OrthologuesStats_one-to-many.tsv
-   │   ├── OrthologuesStats_one-to-one.tsv
-   │   ├── OrthologuesStats_Totals.tsv
+   │   ├── OrthologsStats_many-to-many.tsv
+   │   ├── OrthologsStats_many-to-one.tsv
+   │   ├── OrthologsStats_one-to-many.tsv
+   │   ├── OrthologsStats_one-to-one.tsv
+   │   ├── OrthologsStats_Totals.tsv
    │   ├── Statistics_Overall.tsv
    ├── Gene_Duplication_Events/
    │   ├── Duplications.tsv
@@ -26,14 +26,14 @@ Results_May13/
    ├── Orthogroup_Sequences/
    │   ├── OG0000000.fa
    │   ├── OG000####.fa
-   │   └── OG0001116.fa
+   │   └── OG0001115.fa
    ├── Orthogroups/
    │   ├── Orthogroups.GeneCount.tsv
    │   ├── Orthogroups.tsv
    │   ├── Orthogroups.txt
-   │   ├── Orthogroups_SingleCopyOrthologues.txt
+   │   ├── Orthogroups_SingleCopyOrthologs.txt
    │   └── Orthogroups_UnassignedGenes.tsv
-   ├── Orthologues/
+   ├── Orthologs/
    │   ├── Species_1.tsv
    │   ├── Species_#.tsv
    ├── Phylogenetic_Hierarchical_Orthogroups/
@@ -47,25 +47,29 @@ Results_May13/
    │   ├── Species_#.tsv
    ├── Resolved_Gene_Trees/
    │   └── Resolved_Gene_Trees.txt
-   ├── Single_Copy_Orthologue_Sequences/
+   ├── Single_Copy_Ortholog_Sequences/
    │   ├── OG0000000.fa
    │   ├── OG000####.fa
-   │   └── OG0000325.fa
+   │   └── OG0000324.fa
    │   ├── Orthogroups_for_concatenated_alignment.txt
    └── WorkingDirectory/
        ├── Alignments_ids/
+       │   ├── Orthogroups_for_concatenated_alignment.txt
        ├── Blast0_0.txt.gz
        ├── Blast#_#.txt.gz
+       ├── blast_commands.txt
+       ├── checkpoint.txt
        ├── clusters_OrthoFinder_I1.2.txt
        ├── clusters_OrthoFinder_I1.2.txt_id_pairs.txt
        ├── dependencies/
        │   ├── SimpleTest.fa
        │   ├── Species0.fa
-       │   ├── Species0.fa.output.txt
-       │   └── test_search_results.txt.gz
+       │   ├── Species0.fa.msa.famsa.output.txt
+       │   └── Species0.fa.tree.fasttree.output.txt
        ├── N0.ids.tsv
        ├── OrthoFinder_graph.txt
        ├── pickle/
+       ├── run_state.json
        ├── SequenceIDs.txt
        ├── Sequences_ids/
        │   ├── OG0000000.fa

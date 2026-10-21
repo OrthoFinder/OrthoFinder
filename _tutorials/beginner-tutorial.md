@@ -1,8 +1,8 @@
 ---
 layout: post
 title:  "Beginner Tutorial"
-date:   2026-05-13 13:31:36 +0000
-updated: 2026-05-13
+date:   2026-10-21 11:51:51 +0000
+updated: 2026-10-21
 docs: /assets/docs/beginner-tutorial.pdf
 pdfs: https://github.com/OrthoFinder/OrthoFinder/blob/gh-pages/assets/docs/beginner-tutorial.pdf
 ---
@@ -88,7 +88,7 @@ or the [Advanced Tutorial]({{ site.baseurl }}/tutorials/advanced-tutorial/) page
 
 OrthoFinder creates a results directory named OrthoFinder inside the proteome
 directory, and puts the results here.
-My results directory `ExampleData/OrthoFinder/Results_May13` looks like this:
+My results directory `/tmp/claude-1001/-home-biol0178-orthofinder-dev-OrthoFinder/e4f3f739-81dd-4541-8267-4c5a0825a33f/scratchpad/ci/OrthoFinder/Results_Oct21` looks like this:
 
 {% include_relative of-output-tree.md %}
 
@@ -103,17 +103,17 @@ Open the file `Statistics_Overall.tsv` from the folder `Comparative_Genomics_Sta
 like Microsoft Excel, or in a text editor like Notepad.
 
 On the 5th line, we can see the `Percentage of genes in orthogroups`, which in my case
-is `81.0
+is `81.1
 `.
 
-|------------------------------------|------|
-| Number of species                  |    4 |
-| Number of genes                    | 2733 |
-| Number of genes in orthogroups     | 2215 |
-| Number of unassigned genes         |  518 |
-| Percentage of genes in orthogroups |   81 |
-| Percentage of unassigned genes     |   19 |
-| Number of orthogroups              |  599 |
+|------------------------------------|--------|
+| Number of species                  |    4   |
+| Number of genes                    | 2733   |
+| Number of genes in orthogroups     | 2216   |
+| Number of unassigned genes         |  517   |
+| Percentage of genes in orthogroups |   81.1 |
+| Percentage of unassigned genes     |   18.9 |
+| Number of orthogroups              |  599   |
 
 A good rule of thumb is that this number should be `>80%`. If not, you are likely missing
 some orthology relationships that actually exist. The best way to fix this would be better
@@ -128,12 +128,12 @@ You can see here that we capture most genes across all species.
 |                                    |   Mycoplasma_agalactiae |   Mycoplasma_gallisepticum |   Mycoplasma_genitalium |   Mycoplasma_hyopneumoniae |
 |------------------------------------|-------------------------|----------------------------|-------------------------|----------------------------|
 | Number of genes                    |                   820   |                      763   |                   476   |                      674   |
-| Number of genes in orthogroups     |                   650   |                      596   |                   417   |                      552   |
-| Number of unassigned genes         |                   170   |                      167   |                    59   |                      122   |
-| Percentage of genes in orthogroups |                    79.3 |                       78.1 |                    87.6 |                       81.9 |
-| Percentage of unassigned genes     |                    20.7 |                       21.9 |                    12.4 |                       18.1 |
+| Number of genes in orthogroups     |                   650   |                      597   |                   417   |                      552   |
+| Number of unassigned genes         |                   170   |                      166   |                    59   |                      122   |
+| Percentage of genes in orthogroups |                    79.3 |                       78.2 |                    87.6 |                       81.9 |
+| Percentage of unassigned genes     |                    20.7 |                       21.8 |                    12.4 |                       18.1 |
 
-The lowest percentage is the *`Mycoplasma_gallisepticum`*, but we still managed to assign `78.1` of its
+The lowest percentage is the *`Mycoplasma_gallisepticum`*, but we still managed to assign `78.2` of its
 genes to orthogroups. The key message here is that it’s always a good idea to look at
 this information before you start interpreting your results. If the numbers were too low for
 one species, we might want to consider sampling more species to fill in the long
@@ -159,28 +159,33 @@ species tree (use the `-s` option).
 
 Now that we are happy with our OrthoFinder run, we can start diving into the results.
 
-- ***Orthologues***<br>
-    We will start by finding orthologues of a gene that we are interested in.
-    Run OrthoFinder with the `-pof` option to save pairwise ortholog files. The resulting Orthologs directory will contain a separate subdirectory for each species.
+- ***Orthologs***<br>
+    We will start by finding orthologs of a gene that we are interested in.
+    The Orthologs directory has a compressed file for each species, `Orthologs/<species>.tsv.gz`,
+    listing its orthologs in all the other species.
 
-    Open `Orthologues/Orthologues_Mycoplasma_hyopneumoniae/Mycoplasma_hyopneumoniae__v__Mycoplasma_agalactiae.tsv`, in a spreadsheet program (specifying that it’s tab-delimited
-    if necessary). The file has three columns, `Orthogroup`, `Mycoplasma_hyopneumoniae`, and
-    `Mycoplasma_agalactiae`. Find `gi|71851854|gb|AAZ44462.1|` in the table, I can see that
-    the gene is in orthogroup `OG0000014` and that its orthologs are:
-    `gi|290752976|emb|CBH40952.1|,  gi|290752482|emb|CBH40454.1|,  gi|290752494|emb|CBH40466.1|`.
+    Search `Orthologs/Mycoplasma_hyopneumoniae.tsv.gz` for our gene, and keep the rows for `Mycoplasma_agalactiae`
+    (`zgrep "gi|71851854|gb|AAZ44462.1|" Orthologs/Mycoplasma_hyopneumoniae.tsv.gz | grep Mycoplasma_agalactiae`).
+    The file has four columns, `Orthogroup`, `Species` (the other species), `Mycoplasma_hyopneumoniae`
+    and `Orthologs`. I can see that the gene `gi|71851854|gb|AAZ44462.1|` is in orthogroup
+    `OG0000014` and that its orthologs in `Mycoplasma_agalactiae` are: `gi|290752482|emb|CBH40454.1|, gi|290752494|emb|CBH40466.1|, gi|290752976|emb|CBH40952.1|`.
+
+    For a file for each pair of species, run OrthoFinder with `-pof`, or write them afterwards
+    with `split_ortholog_files <results directory>`:
+    `Orthologs/Orthologs_Mycoplasma_hyopneumoniae/Mycoplasma_hyopneumoniae__v__Mycoplasma_agalactiae.tsv`.
 
 - ***Gene trees***<br>
-    Next, we are going to look at the gene tree to see how these orthologues arose.
-    OrthoFinder infers orthlologues from `resolved` gene trees using a Duplication-Loss-
+    Next, we are going to look at the gene tree to see how these orthologs arose.
+    OrthoFinder infers orthologs from `resolved` gene trees using a Duplication-Loss-
     Coalescence analysis to identify the more parsimonious interpretation of the tree (see
     the OrthoFinder2 [paper](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1832-y) for more details).
 
     All of the gene trees are in one file (`Resolved_Gene_Trees/Resolved_Gene_Trees.txt`).
-    Each line of the file contains the ID of an orthogroup (e.g. `OG0000008`:), followed by the
+    Each line of the file contains the ID of an orthogroup (e.g. `OG0000009`:), followed by the
     gene tree for that orthogroup. To find the tree for certain orthogroup, just search for the
     orthogroup ID.
 
-    We are going to view the tree for `OG0000008`.
+    We are going to view the tree for `OG0000009`.
 
     <p align="center" class="figure-wrapper">
         <img src="{{ site.baseurl }}/assets/images/gene_tree.png" alt="gene_tree" width="1000"/>
@@ -207,7 +212,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     events mapped to each node in the species tree. Gene-duplication events are
     considered `well-supported` if at least `50%` of the descendant species have retained
     both copies of the duplicated gene. For the node `N2`,
-    there were `6` of these well-supported gene duplication events. The numbers after the
+    there were `11` of these well-supported gene duplication events. The numbers after the
     species names are the number of `terminal` duplications that map to that species, rather
     than an internal node of the species tree.
 
@@ -219,9 +224,9 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
 |--------------|----------------------|------------------|-----------|----------|----------------------|----------------------|
 | OG0000000    | Mycoplasma_gallisept | n0               |         1 | Terminal | Mycoplasma_gallisept | Mycoplasma_gallisept |
 | OG0000000    | Mycoplasma_gallisept | n1               |         1 | Terminal | Mycoplasma_gallisept | Mycoplasma_gallisept |
-| OG0000000    | Mycoplasma_gallisept | n2               |         1 | Terminal | Mycoplasma_gallisept | Mycoplasma_gallisept |
-| OG0000000    | Mycoplasma_gallisept | n3               |         1 | Terminal | Mycoplasma_gallisept | Mycoplasma_gallisept |
-| OG0000000    | Mycoplasma_gallisept | n4               |         1 | Terminal | Mycoplasma_gallisept | Mycoplasma_gallisept |
+| OG0000000    | Mycoplasma_gallisept | n10              |         1 | Terminal | Mycoplasma_gallisept | Mycoplasma_gallisept |
+| OG0000000    | Mycoplasma_gallisept | n11              |         1 | Terminal | Mycoplasma_gallisept | Mycoplasma_gallisept |
+| OG0000000    | Mycoplasma_gallisept | n12              |         1 | Terminal | Mycoplasma_gallisept | Mycoplasma_gallisept |
 
     Each gene duplication event is cross-referenced to the species tree node, and the node
     in the gene tree. It also lists the genes descended from each of the two copies arising
@@ -234,11 +239,11 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
 - ***Orthogroups***<br>
     Often we’re interested in group-wise species comparisons, that is comparisons across a
     clade of species rather than between a pair of species. The generalisation of orthology
-    to multiple species is the orthogroup. Just like orthologues are the genes descended
+    to multiple species is the orthogroup. Just like orthologs are the genes descended
     from a single gene in the last common ancestor of a pair of species an orthogroup is the
     set of genes descended from a single gene in a group of species. Each gene tree from
     OrthoFinder, for example the one above, is for one orthogroup. The orthogroup gene
-    tree is the tree we need to look at if we want it to include all pairwise orthologues. And
+    tree is the tree we need to look at if we want it to include all pairwise orthologs. And
     even though some of the genes within an orthogroup can be paralogs of one another, if
     we tried to take any genes out then we would also be removing orthologs too.
 

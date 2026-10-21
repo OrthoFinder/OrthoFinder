@@ -61,7 +61,7 @@ Look at the figure below, which shows data for three species: human, mouse and c
 <p align="center" class="figure-wrapper">
   <img src="{{ site.baseurl }}/assets/images/Understanding_image1.png" alt="understanding orthology" width="800"/>
 </p>
-<p align="center" class="figure-caption"><strong>Figure 1: Orthologues, Orthogroups & Paralogues</strong></p>
+<p align="center" class="figure-caption"><strong>Figure 1: Orthologs, Orthogroups & Paralogs</strong></p>
 
 The tree in Figure 1A shows the evolutionary history of a gene. First, there was a speciation
 event where the chicken lineage diverged from the human-mouse ancestor. In the

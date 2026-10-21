@@ -33,35 +33,35 @@ genes.
 - **Orthogroups_SpeciesOverlaps.tsv**<br>
   A tab separated text file that contains the number of orthogroups shared between each species-pair as a square matrix.
 
-- **OrthologuesStats_*.tsv**<br> 
-  These files are tab separated text files containing matrices giving the numbers of orthologues in one-to-one, one-to-many and many-to-many relationships between each pair of species.
+- **OrthologsStats_*.tsv**<br> 
+  These files are tab separated text files containing matrices giving the numbers of orthologs in one-to-one, one-to-many and many-to-many relationships between each pair of species.
 
-  - **OrthologuesStats_one-to-one.tsv**<br> 
-    It is the number of one-to-one orthologues between each species pair.
+  - **OrthologsStats_one-to-one.tsv**<br> 
+    It is the number of one-to-one orthologs between each species pair.
 
-  - **OrthologuesStats_many-to-many.tsv**<br>
-    It contains the number of orthologues in
+  - **OrthologsStats_many-to-many.tsv**<br>
+    It contains the number of orthologs in
     a many-to-many relationship for each species pair (due to gene duplication
     events in both lineages post-speciation).
 
     Entry `(i,j)` is the number of genes in species `i` that are in a
     many-to-many orthology relationship with genes in species `j`.
 
-  - **OrthologuesStats_one-to-many.tsv**<br>
+  - **OrthologsStats_one-to-many.tsv**<br>
     Entry `(i,j)` gives the number of genes in
     species `i` that are in a one-to-many orthology relationship with genes from
     species `j`.
 
-  - **OrthologuesStats_many-to-one.tsv**<br>
+  - **OrthologsStats_many-to-one.tsv**<br>
     Entry `(i,j)` gives the number of genes in
     species `i` that are in a many-to-one orthology relationship with a gene from
     species `j`.
 
-- **OrthologuesStats_Total.tsv**<br> 
+- **OrthologsStats_Totals.tsv**<br> 
   It contains the totals for each species pair of
-  orthologues of whatever multiplicity.
+  orthologs of whatever multiplicity.
 
-  Entry `(i,j)` is the total number of genes in species `i` that have orthologues in species `j`.
+  Entry `(i,j)` is the total number of genes in species `i` that have orthologs in species `j`.
 
 - **Statistics_Overall.tsv**<br> 
   A tab separated text file that contains general statistics about orthogroup sizes and proportion of genes assigned to orthogroups.
@@ -120,19 +120,25 @@ the orthogroup.
 - **Orthogroups.GeneCount.tsv**<br> 
   A tab separated text file that contains counts of the number of genes for each species in each orthogroup.
 
-- **Orthogroups_SingleCopyOrthologues.txt**<br> 
+- **Orthogroups_SingleCopyOrthologs.txt**<br> 
   A list of orthogroups that contain
-  exactly one gene per species i.e. they contain one-to-one orthologues.
+  exactly one gene per species i.e. they contain one-to-one orthologs.
 
-### Orthologues Directory
+### Orthologs Directory
 
-One sub-directory for each species that in turn contains a file for each pairwise species
-comparison, listing the orthologs between that species pair.
+One compressed file for each species, `<species>.tsv.gz`, listing its orthologs in all the
+other species. Each row gives an orthogroup, another species, a set of genes of this species
+and their orthologs in the other species.
 
-Orthologues can be one-to-one, one-to-many or many-to-many depending on the gene
+With `-pof`, there is also one sub-directory for each species, `Orthologs_<species>/`, that in
+turn contains a file for each pairwise species comparison, `<species>__v__<other species>.tsv`,
+listing the orthologs between that species pair. For the results of a run without `-pof`,
+`split_ortholog_files <results directory>` writes these files afterwards.
+
+Orthologs can be one-to-one, one-to-many or many-to-many depending on the gene
 duplication events since the orthologs diverged.
 
-Each row in a file contains the gene(s) in one species that are orthologues of the gene(s) in
+Each row in a file contains the gene(s) in one species that are orthologs of the gene(s) in
 the other species and each row is cross-referenced to the orthogroup that contains those
 genes.
 
@@ -169,7 +175,7 @@ A rooted phylogenetic tree inferred for each orthogroup with 4 or more sequences
 resolved using the OrthoFinder hybrid species-overlap/duplication-loss coalescent
 model.
 
-### Single Copy Orthologue Sequences
+### Single Copy Ortholog Sequences
 
 The same files as the "Orthogroup Sequences" directory but restricted to only
 those orthogroups which contain exactly one gene per species.
