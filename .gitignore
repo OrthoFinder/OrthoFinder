@@ -196,7 +196,7 @@ everything/
 _site/
 _includes/
 _tutorials/
-docs/
+/docs/
 src/orthofinder/legacy/
 scoring_matrix/
 DEVNOTES.md
