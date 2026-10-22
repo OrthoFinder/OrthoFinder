@@ -196,7 +196,7 @@ everything/
 _site/
 _includes/
 _tutorials/
-docs/
+/docs/
 src/orthofinder/legacy/
 scoring_matrix/
 DEVNOTES.md
@@ -207,8 +207,16 @@ setup.py
 Species_*
 tests/data/dna/Genomes_Assign/
 tests/data/dna/Genomes_Core/OrthoFinder/
+tests/data/proteome/Core/OrthoFinder/
 .vscode/
 of_structure.sh
 testdata
 *.fa*
 primary_*
+problematic_database/
+tests/_archive/
+# Written by setuptools-scm when OrthoFinder is installed (the version from the git tag)
+src/orthofinder/_version.py
+# Release scripts and the Bioconda recipe (local only): packaging/release_github.sh,
+# packaging/release_bioconda.sh, packaging/bioconda/ and the files they make there
+packaging/

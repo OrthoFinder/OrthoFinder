@@ -2,9 +2,11 @@
 
 #!/usr/bin/env python3
 
-def main():
-    print(
-"""
+# The text, in pieces: those between the "preview" comment lines are of a feature not
+# yet released (view_results), left out of the released OrthoFinder (main), as are the
+# other features marked so (PREVIEW_OPTIONS in src/orthofinder/run/cli_options.py)
+TEXT = [
+    """
 OrthoFinder utility scripts
 ===========================
 
@@ -26,14 +28,37 @@ create_hog_fastas
 orthogroup_gene_count
     Convert orthogroup tables into gene-count tables.
 
-Run any command with --help for detailed usage.
+split_ortholog_files
+    Convert compact ortholog results into pairwise species files.
+
+""",
+    """species_tree_alignment
+    Write the concatenated alignment of the orthogroups chosen for a species
+    tree, from the results of a finished run (e.g. one with -ST astral-pro).
+
+mcl_orthogroup_sequences
+    Write the sequences of the MCL orthogroups (before the HOGs, e.g. of a
+    run with -og), a FASTA file for each, from the working directory.
+
+Run any command with --help for detailed usage. From the OrthoFinder
+directory, without installing OrthoFinder, each can also be run as a
+script: python tools/<command>.py (e.g. python tools/make_ultrametric.py --help)""",
+    """.
 
 Examples
 --------
 primary_transcript --help
 make_ultrametric --help
-"""
-    )
+split_ortholog_files --help
+""",
+    """species_tree_alignment --help
+mcl_orthogroup_sequences --help
+""",
+]
+
+
+def main():
+    print("".join(TEXT))
 
 if __name__ == "__main__":
     main()

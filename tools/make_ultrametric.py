@@ -44,7 +44,7 @@ src_dir = os.path.join(repo_root, "src")
 if os.path.isdir(os.path.join(src_dir, "orthofinder")) and src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
-# from orthofinder.tools import tree
+# from orthofinder.phylo import tree
 from orthofinder.utils import util
 
 
@@ -85,21 +85,21 @@ def make_zero_length_tree_ultrametric(t, root_age=None):
         else:
             n.dist = 0.0
 
-def AveDist(node):
+def ave_dist(node):
     return np.average([node.get_distance(l) for l in node.get_leaf_names()])
 
 
-def Fail():
+def fail():
     print("ERROR: An error occurred, please review error messages for more information.")
     sys.exit(1)
 
 
-def CheckTree(t):
+def check_tree(t):
     children = list(t.children)
 
     if len(children) != 2:
         print("Input tree must be rooted")
-        Fail()
+        fail()
 
 
 def is_tree_file(path):
@@ -122,7 +122,7 @@ def get_tree_files(input_path):
         return sorted(tree_files)
 
     print("ERROR: input path does not exist: %s" % input_path)
-    Fail()
+    fail()
 
 
 def process_input(input_path, root_age=None, output=None):
@@ -140,7 +140,7 @@ def process_input(input_path, root_age=None, output=None):
 
     if not tree_files:
         print("ERROR: no tree files found in directory: %s" % input_path)
-        Fail()
+        fail()
 
     if output is None:
         output_dir = os.path.join(input_path, "ultrametric_trees")
@@ -174,10 +174,10 @@ def root_to_node_distance(node):
 def make_ultrametric(tree_fn, root_age=None, output_file=None):
     if not os.path.exists(tree_fn):
         print("Input tree file does not exist: %s" % tree_fn)
-        Fail()
+        fail()
 
     t = Tree(tree_fn, parser=1)
-    CheckTree(t)
+    check_tree(t)
 
     leaves = list(t.leaves())
     heights = [root_to_node_distance(leaf) for leaf in leaves]
@@ -201,9 +201,9 @@ def make_ultrametric(tree_fn, root_age=None, output_file=None):
 #         Fail()
 
 #     t = tree.Tree(tree_fn, format=1)
-#     CheckTree(t)
+#     check_tree(t)
 
-#     d = AveDist(t)
+#     d = ave_dist(t)
 #     print("Average distance from root to leaves: %f" % d)
 
 #     for n in t.traverse("preorder"):
@@ -221,7 +221,7 @@ def make_ultrametric(tree_fn, root_age=None, output_file=None):
 #         if n.is_leaf():
 #             z = 0.0
 #         else:
-#             z = AveDist(n)
+#             z = ave_dist(n)
 
 #         print("Distance of parent node from root: %f" % x)
 #         print("Current branch length: %f" % y)

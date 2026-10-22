@@ -23,31 +23,8 @@
 #
 # For any enquiries send an email to David Emms
 # david_emms@hotmail.com
-import gzip
-import os
 import sys
-import csv 
-import glob
-import numpy as np
-import datetime
-from collections import namedtuple
-from ..citation import citation
-from ..tools import tree
 
-import shutil
-import traceback
-
-try:
-    from rich import print, progress
-    from rich.console import Console
-    from rich.theme import Theme
-
-except ImportError:
-    ...
-try:
-    width = os.get_terminal_size().columns
-except OSError as e:
-    width = 80
 
 PY2 = sys.version_info <= (3,)
 csv_write_mode = "wb" if PY2 else "wt"
@@ -55,131 +32,19 @@ csv_append_mode = "ab" if PY2 else "at"
 csv_read_mode = "rb" if PY2 else "rt"
 
 
-class OrthoPrinter:
-    def __init__(self):
-        self.console = Console(
-            theme=Theme({
-                "info": "deep_sky_blue2",
-                "path": "green4",
-                "orthofinder": "dark_goldenrod",
-                "other_methods": "dark_orange3", 
-                "version": "dark_cyan",
-                "success": "bold green",
-                "error": "bold red",
-                "warning": "bold yellow",
-                "default": "default on default" # bright_white
-            }), 
-            force_terminal=True
-        )
-
-    def print(self, *messages, style: str = "default", sep: str = " ", end: str = "\n"):
-        message = sep.join(map(str, messages))
-        self.console.print(message, style=style, end=end)
-
-printer = OrthoPrinter()
-
 from . import parallel_task_manager
-
-
-def print_traceback(e):
-    if PY2:
-        traceback.print_exc()
-    else:
-        traceback.print_tb(e.__traceback__)
-
-
-def stderr_exempt(stderr):
-    ok_line_starts = {
-        "diamond v",
-        "Licensed under the GNU GPL",
-        "Check http://github.com/",
-    }
-    try:
-        stderr = stderr.decode()
-    except (UnicodeDecodeError, AttributeError):
-        stderr = stderr.encode()
-    lines = stderr.split("\n")
-    for line in lines:
-        if line.rstrip() == "":
-            continue
-        if any(line.startswith(x) for x in ok_line_starts):
-            continue
-        return False
-    return True
 
 
 """
 Utilities
 -------------------------------------------------------------------------------
 """
-SequencesInfo = namedtuple(
-    "SequencesInfo", "nSeqs nSpecies speciesToUse seqStartingIndices nSeqsPerSpecies"
-)
-"""
-nSeqs: int - number of sequences in speciesToUse
-nSpecies: int - number in speciesToUse
-speciesToUse: List[int]
-seqStartingIndices: List[int] of size |speciesToUse|, reindexed from zero according to the speices present
-nSeqsPerSpecies: Dict[int, int] - indexed by OrthoFinder species ID, info on all species, nto just those included in analysis
-"""
-
-
-# Get Info from seqs IDs file?
-def GetSeqsInfo(inputDirectory_list, speciesToUse, nSpAll):
-    inputDirectory_list = list(inputDirectory_list)
-    speciesToUse = list(speciesToUse)
-    seqStartingIndices = [0]
-    nSeqs = 0
-    nSeqsPerSpecies = {}
-
-    for iFasta in range(nSpAll):
-        fastaFilename = None
-
-        for d in inputDirectory_list:
-            candidate = os.path.join(d, f"Species{iFasta}.fa")
-            if os.path.exists(candidate):
-                fastaFilename = candidate
-                break
-
-        if fastaFilename is None:
-            if iFasta in speciesToUse:
-                raise FileNotFoundError(
-                    f"Species{iFasta}.fa not found in any of the input "
-                    f"directories: {inputDirectory_list}"
-                )
-            continue
-        n = 0
-        with open(fastaFilename) as infile:
-            for line in infile:
-                if line.startswith(">"):
-                    n += 1
-
-        nSeqsPerSpecies[iFasta] = n
-
-        if iFasta in speciesToUse:
-            nSeqs += n
-            seqStartingIndices.append(nSeqs)
-
-    if seqStartingIndices:
-        seqStartingIndices = seqStartingIndices[:-1]
-
-    nSpecies = len(speciesToUse)
-
-    return SequencesInfo(
-        nSeqs=nSeqs,
-        nSpecies=nSpecies,
-        speciesToUse=speciesToUse,
-        seqStartingIndices=seqStartingIndices,
-        nSeqsPerSpecies=nSeqsPerSpecies,
-    )
-
-
     # seqStartingIndices = [0]
     # nSeqs = 0
     # nSeqsPerSpecies = dict()
     # for iFasta in range(nSpAll):
     #     for d in inputDirectory_list:
-    #         fastaFilename = os.path.join(d, "Species%d.fa" % iFasta) 
+    #         fastaFilename = os.path.join(d, "Species%d.fa" % iFasta)
     #         if os.path.exists(fastaFilename):
     #             break
     #     n = 0
@@ -204,61 +69,16 @@ def GetSeqsInfo(inputDirectory_list, speciesToUse, nSpAll):
     # )
 
 
-def SeqsInfoRecompute(seqs_info_orig, new_species_to_use):
-    """
-    Args:
-        seqs_info_orig
-        new_species_to_use: List[int]
-    Recomputes SeqsInfo for a subset of species:
-    - speciesToUse updated
-    - seqStartingIndices recomputed
-    - nSeqs updated
-    - nSpecies updated
-    """
-    seqStartingIndices = [0]
-    for isp in new_species_to_use:
-        seqStartingIndices.append(
-            seqStartingIndices[-1] + seqs_info_orig.nSeqsPerSpecies[isp]
-        )
-    nSeqs = seqStartingIndices[-1]
-    seqStartingIndices = seqStartingIndices[:-1]
-    return SequencesInfo(
-        nSeqs=nSeqs,
-        nSpecies=len(new_species_to_use),
-        speciesToUse=new_species_to_use,
-        seqStartingIndices=seqStartingIndices,
-        nSeqsPerSpecies=seqs_info_orig.nSeqsPerSpecies,
-    )
-
-
-class SpeciesInfo(object):
-    def __init__(self):
-        self.speciesToUse = (
-            []
-        )  #       seqsInfo.iSpeciesToUse   - which to include for this analysis
-        self.nSpAll = None  #       seqsInfo.nSpAll => 0, 1, ..., nSpAll - 1 are valid species indices
-        self.iFirstNewSpecies = None  #       iFirstNew   => (0, 1, ..., iFirstNew-1) are from previous and (iFirstNew, iFirstNew+1, ..., nSpecies-1) are the new species indices
-
-    def __str__(self):
-        return str((self.speciesToUse, self.nSpAll, self.iFirstNewSpecies))
-
-    def get_original_species(self):
-        if self.iFirstNewSpecies is None:
-            return self.speciesToUse
-        else:
-            return [iSp for iSp in self.speciesToUse if iSp < self.iFirstNewSpecies]
-
-
 # picProtocol = 1
 # version = "3.0.1"
 
 
-def PrintNoNewLine(text):
-    parallel_task_manager.PrintNoNewLine(text)
+def print_no_new_line(text):
+    parallel_task_manager.print_no_new_line(text)
 
 
-def PrintTime(message):
-    parallel_task_manager.PrintTime(message)
+def print_time(message):
+    parallel_task_manager.print_time(message)
 
 
 """
@@ -267,204 +87,22 @@ Directory and file management
 """
 
 
-def GetDirectoryName(
-    baseDirName,
-    i,
-    search_program,
-    msa_program,
-    tree_program,
-    scorematrix,
-    gapopen,
-    gapextend,
-    extended_filename,
-):
-
-    if not extended_filename:
-        if i == 0:
-            return baseDirName + os.sep
-        else:
-            return baseDirName + ("_%d" % i) + os.sep
-    else:
-        if scorematrix and os.path.isfile(scorematrix):
-            matrix_name = os.path.basename(scorematrix).split(".")[0]
-        else:
-            matrix_name = scorematrix if scorematrix else ""
-
-        if gapopen and gapextend:
-            gap_penalty = "-" + "-".join((gapopen, gapextend))
-        else:
-            gap_penalty = ""
-
-        if len(matrix_name) != 0 or len(gap_penalty) != 0:
-            extension = (
-                matrix_name
-                + gap_penalty
-                + "-"
-                + "-".join((search_program, msa_program, tree_program))
-            )
-        else:
-            extension = "-".join((search_program, msa_program, tree_program))
-
-        if i == 0:
-            return baseDirName + "_" + extension + os.sep
-        else:
-            return baseDirName + ("_%d" % i) + "_" + extension + os.sep
-
-
 """Call GetNameForNewWorkingDirectory before a call to CreateNewWorkingDirectory to find out what directory will be created"""
 
 
-def CreateNewWorkingDirectory(
-    baseDirectoryName,
-    qDate=True,
-    search_program=None,
-    msa_program=None,
-    tree_program=None,
-    scorematrix=None,
-    gapopen=None,
-    gapextend=None,
-    extended_filename=False,
-    makedir=True
-):
-    dateStr = datetime.date.today().strftime("%b%d") if qDate else ""
-    iAppend = 0
-    newDirectoryName = GetDirectoryName(
-        baseDirectoryName + dateStr,
-        iAppend,
-        search_program,
-        msa_program,
-        tree_program,
-        scorematrix,
-        gapopen,
-        gapextend,
-        extended_filename,
-    )
-    if makedir:
-        while os.path.exists(newDirectoryName):
-            iAppend += 1
-            newDirectoryName = GetDirectoryName(
-                baseDirectoryName + dateStr,
-                iAppend,
-                search_program,
-                msa_program,
-                tree_program,
-                scorematrix,
-                gapopen,
-                gapextend,
-                extended_filename,
-            )
-        os.mkdir(newDirectoryName)
-    return newDirectoryName
+def sort_array_pair_by_first(use_for_sort_ar, keep_aligned_ar, q_largest_first=False):
+    sorted_tuples = sorted(zip(use_for_sort_ar, keep_aligned_ar), reverse=q_largest_first)
+    use_for_sort_ar = [i for i, j in sorted_tuples]
+    keep_aligned_ar = [j for i, j in sorted_tuples]
+    return use_for_sort_ar, keep_aligned_ar
 
 
-# Unused
-def CreateNewPairedDirectories(
-    baseDirectoryName1,
-    baseDirectoryName2,
-    search_program=None,
-    msa_program=None,
-    tree_program=None,
-    scorematrix=None,
-    gapopen=None,
-    gapextend=None,
-    extended_filename=False,
-):
-    dateStr = datetime.date.today().strftime("%b%d")
-    iAppend = 0
-    newDirectoryName1 = GetDirectoryName(
-        baseDirectoryName1 + dateStr,
-        iAppend,
-        search_program,
-        msa_program,
-        tree_program,
-        scorematrix,
-        gapopen,
-        gapextend,
-        extended_filename,
-    )
-    newDirectoryName2 = GetDirectoryName(
-        baseDirectoryName2 + dateStr,
-        iAppend,
-        search_program,
-        msa_program,
-        tree_program,
-        scorematrix,
-        gapopen,
-        gapextend,
-        extended_filename,
-    )
-    while os.path.exists(newDirectoryName1) or os.path.exists(newDirectoryName2):
-        iAppend += 1
-        newDirectoryName1 = GetDirectoryName(
-            baseDirectoryName1 + dateStr,
-            iAppend,
-            search_program,
-            msa_program,
-            tree_program,
-            scorematrix,
-            gapopen,
-            gapextend,
-            extended_filename,
-        )
-        newDirectoryName2 = GetDirectoryName(
-            baseDirectoryName2 + dateStr,
-            iAppend,
-            search_program,
-            msa_program,
-            tree_program,
-            scorematrix,
-            gapopen,
-            gapextend,
-            extended_filename,
-        )
-    os.mkdir(newDirectoryName1)
-    os.mkdir(newDirectoryName2)
-    return newDirectoryName1, newDirectoryName2
+def success():
+    parallel_task_manager.success()
 
 
-def GetUnusedFilename(baseFilename, ext):
-    iAppend = 0
-    newFilename = baseFilename + ext
-    while os.path.exists(newFilename):
-        iAppend += 1
-        newFilename = baseFilename + ("_%d" % iAppend) + ext
-    return newFilename, iAppend
-
-
-def SortArrayPairByFirst(useForSortAr, keepAlignedAr, qLargestFirst=False):
-    sortedTuples = sorted(zip(useForSortAr, keepAlignedAr), reverse=qLargestFirst)
-    useForSortAr = [i for i, j in sortedTuples]
-    keepAlignedAr = [j for i, j in sortedTuples]
-    return useForSortAr, keepAlignedAr
-
-
-def GetSpeciesToUse(speciesIDsFN):
-    """Returns species indices (int) to use and total number of species available"""
-    speciesToUse = []
-    speciesToUse_names = []
-    nSkipped = 0
-    with open(speciesIDsFN, "r") as speciesF:
-        for line in speciesF:
-            line = line.rstrip()
-            if not line:
-                continue
-            if line.startswith("#"):
-                nSkipped += 1
-            else:
-                iSp, spName = line.split(": ")
-                if spName not in speciesToUse_names:
-                    speciesToUse.append(int(iSp))
-                    speciesToUse_names.append(spName)
-
-    return speciesToUse, len(speciesToUse) + nSkipped, speciesToUse_names
-
-
-def Success():
-    parallel_task_manager.Success()
-
-
-def Fail():
-    parallel_task_manager.Fail()
+def fail():
+    parallel_task_manager.fail()
 
 
 """
@@ -473,197 +111,10 @@ IDExtractor
 """
 
 
-def GetIDPairFromString(line):
-    return list(map(int, line.split("_")))
-
-
-class IDExtractor(object):
-    """IDExtractor deals with the fact that for different datasets a user will
-    want to extract a unique sequence ID from the fasta file accessions uin different
-    ways."""
-
-    def GetIDToNameDict(self):
-        raise NotImplementedError("Should not be implemented")
-
-
-class FullAccession(IDExtractor):
-    def __init__(self, idsFilename):
-        # only want the first part and nothing else (easy!)
-        self.idToNameDict = dict()
-        with open(idsFilename, "r") as idsFile:
-            for line in idsFile:
-                line = line.rstrip()
-                if not line:
-                    continue
-                #                if line.startswith("#"): continue
-                id, accession = line.split(": ", 1)
-                id = id.replace("#", "")
-                id = id.strip()
-                # Replace problematic characters
-                accession = (
-                    accession.replace(":", "_")
-                    .replace(",", "_")
-                    .replace("(", "_")
-                    .replace(")", "_")
-                )  # .replace(".", "_")
-                if id in self.idToNameDict:
-                    raise RuntimeError(
-                        "ERROR: A duplicate id was found in the fasta files: % s" % id
-                    )
-                self.idToNameDict[id] = accession
-
-    def GetIDToNameDict(self):
-        return self.idToNameDict
-
-
-class FirstWordExtractor(IDExtractor):
-    def __init__(self, idsFilename):
-        # only want the first part and nothing else (easy!)
-        self.idToNameDict = dict()
-        accs_in_species = []
-        with open(idsFilename, "r") as idsFile:
-            for line in idsFile:
-                id, rest = line.split(": ", 1)
-                accession = rest.split(None, 1)[0]
-                iSp = int(id.split("_")[0])
-                while len(accs_in_species) < iSp + 1:
-                    accs_in_species.append(set())
-                # Replace problematic characters
-                accession = (
-                    accession.replace(":", "_")
-                    .replace(",", "_")
-                    .replace("(", "_")
-                    .replace(")", "_")
-                )  # .replace(".", "_")
-                # Only ensure the accessions are unique within the species, there's no need to ensure global uniqueness
-                if accession in accs_in_species[iSp]:
-                    raise RuntimeError(
-                        "A duplicate accession was found using just first part: % s"
-                        % accession
-                    )
-                accs_in_species[iSp].add(accession)
-                if id in self.idToNameDict:
-                    raise RuntimeError(
-                        "ERROR: A duplicate id was found in the fasta files: % s" % id
-                    )
-                self.idToNameDict[id] = accession
-
-    def GetIDToNameDict(self):
-        return self.idToNameDict
-
-
-def HaveSupportValues(speciesTreeFN_ids):
-    qHaveSupport = False
-    try:
-        tree.Tree(speciesTreeFN_ids, format=2)
-        qHaveSupport = True
-    except:
-        pass
-    return qHaveSupport
-
-
-def RenameTreeTaxa(
-        treeFN_or_tree,
-        newTreeFilename,
-        idsMap,
-        qSupport,
-        qFixNegatives=False,
-        inFormat=None,
-        label=None,
-        qViaCopy=False,
-    ):
-    """
-    qViaCopy - create a copy of the tree and edit this copy. I.e. don't make changes to the original
-    """
-    if label != None:
-        qSupport = False
-    qHaveSupport = False
-    try:
-        if type(treeFN_or_tree) is tree.TreeNode:
-            if qViaCopy:
-                t = treeFN_or_tree.copy("newick")
-            else:
-                t = treeFN_or_tree
-        else:
-            qHaveSupport = False
-            if inFormat == None:
-                try:
-                    t = tree.Tree(treeFN_or_tree, format=2)
-                    qHaveSupport = True
-                except:
-                    t = tree.Tree(treeFN_or_tree)
-            else:
-                t = tree.Tree(treeFN_or_tree, format=inFormat)
-        for node in t.get_leaves():
-            node.name = idsMap[node.name]
-        if qFixNegatives:
-            tree_length = sum([n.dist for n in t.traverse() if n != t])
-            sliver = tree_length * 1e-6
-        iNode = 1
-        for n in t.traverse():
-            if qFixNegatives and n.dist < 0.0:
-                n.dist = sliver
-            if label != None:
-                if (not n.is_leaf()) and (not n.is_root()):
-                    n.name = label + ("%d" % iNode)
-                    iNode += 1
-        if label != None:
-            with open(newTreeFilename, "w") as outfile:
-                outfile.write(
-                    t.write(format=3)[:-1] + label + "0;"
-                )  # internal + terminal branch lengths, leaf names, node names. (tree library won't label root node)
-        elif t.name == "N0" or t.name == "n0":
-            with open(newTreeFilename, "w") as outfile:
-                outfile.write(
-                    t.write(format=3)[:-1] + t.name + ";"
-                )  # internal + terminal branch lengths, leaf names, node names. (tree library won't label root node)
-        else:
-            if qSupport or qHaveSupport:
-                t.write(outfile=newTreeFilename, format=2)
-            else:
-                t.write(outfile=newTreeFilename, format=5)
-    except:
-        pass
-
-
 """
 Find results of previous run    
 -------------------------------------------------------------------------------
 """
-
-
-def GetSpeciesDirectory():
-    # Confirms all required Sequence files and BLAST etc are present
-    pass
-
-
-def WriteCitation(d):
-    with open(d + "Citation.txt", "w") as outfile:
-        outfile.write(citation)
-
-
-def PrintCitation(d=None):
-    if d is not None:
-        WriteCitation(d)
-    print()
-    # printer.print(print_citation)
-    printer.print("\nCITATION:")
-    printer.print(" When publishing work that uses [dark_goldenrod]OrthoFinder[/dark_goldenrod] please cite:")
-    printer.print(" Emms D.M., Liu Y., Belcher L., Holmes J. & Kelly S. (2025), bioRxiv ", end="")
-    printer.print("[dark_cyan][link=https://doi.org/10.1101/2025.07.15.664860]https://doi.org/10.1101/2025.07.15.664860[/link]")
-    printer.print(" Emms D.M. & Kelly S. (2019), Genome Biology 20:238\n")
-
-    printer.print(" If you use the species tree in your work then please also cite:")
-    printer.print(" Emms D.M. & Kelly S. (2017), MBE 34(12): 3267-3278")
-    printer.print(" Emms D.M. & Kelly S. (2018), bioRxiv ", end="")
-    printer.print("[dark_cyan][link=https://doi.org/10.1101/267914]https://doi.org/10.1101/267914[/link]")
-
-def PrintUnderline(text, qHeavy=False):
-    print(("\n" + text))
-    n = len(text)
-    if text.startswith("\n"):
-        n -= 1
-    print((("=" if qHeavy else "-") * n))
 
 
 # def FlowText(text, n=60):
@@ -691,102 +142,9 @@ def PrintUnderline(text, qHeavy=False):
 #     return lines
 
 
-def number_open_files_exception_advice(n_species, q_at_trees):
-    """
-    Prints advice for user on "IOError: [Errno 24] Too many open files" exception
-    Args:
-        n_species - the number of species in the analysis
-        q_at_trees - has this error occurred at the orthologs from trees stage
-    """
-    # parallel_task_manager.RunCommand("ulimit -Hn")
-    n_req = n_species + 100
-    msg = (
-        "\nERROR: The system limits on the number of files a process can open is too low. For %d species \
-OrthoFinder needs to be able to open at least r=%d files. Please increase the limit and restart OrthoFinder\n\
-1. Check the hard and soft limits on the number of open files for your system:\n\
-    $ ulimit -Hn\n\
-    $ ulimit -Sn\n\
-2. If hard limit, h > r already, then you just need to increase the soft limit:\n\
-    $ ulimit -n %d\n\
-3. Alternatively, if h < r then you need to edit the file '/etc/security/limits.conf', this requires root privileges. \
-To increase the limit to %d for user  called 'emms' add the lines:\n\
-    emms hard nofile %d\n\
-    emms soft nofile %d\n"
-        % (n_species, n_req, n_req, n_req, n_req, n_req)
-    )
-    msg += "    (edit these lines to match your username)\n\
-4. Check the limit has now been updated (if you changed the hard limit you'll need to open a new session and confirm it's updated):\n\
-    $ ulimit -Sn"
-
-    if q_at_trees:
-        msg_part_2 = "5. Once the limit is updated restart OrthoFinder 'from trees' using the '-ft' command"
-    else:
-        msg_part_2 = (
-            "5. Once the limit is updated restart OrthoFinder with the original command"
-        )
-    msg_part_3 = (
-        "\nFor full details see: https://github.com/davidemms/OrthoFinder/issues/384"
-    )
-    print(msg + "\n" + msg_part_2 + "\n" + msg_part_3 + "\n")
-    print(
-        "Since this issue OrthoFinder has been updated to only require O(n) open files for n species rather than O(n^2)."
-    )
-    print("Please follow the above advice to ensure that it is able to.")
-
-
 """
 -------------------------------------------------------------------------------
 """
-
-
-class nOrtho_sp(object):
-    """matrix of number of genes in species i that have orthologues/an orthologue in species j"""
-
-    def __init__(self, nSp):
-        self.n = np.zeros((nSp, nSp))
-        self.n_121 = np.zeros((nSp, nSp))  # genes in i that have one orthologue in j
-        self.n_12m = np.zeros((nSp, nSp))  # genes in i that have many orthologues in j
-        self.n_m21 = np.zeros(
-            (nSp, nSp)
-        )  # genes in i that are in a many-to-one orthology relationship with genes in j
-        self.n_m2m = np.zeros(
-            (nSp, nSp)
-        )  # genes in i that are in a many-to-many orthology relationship with genes in j
-
-    def __iadd__(self, other):
-        self.n += other.n
-        self.n_121 += other.n_121
-        self.n_12m += other.n_12m
-        self.n_m21 += other.n_m21
-        self.n_m2m += other.n_m2m
-        return self
-
-
-class nOrtho_cache(object):
-    """matrix of approx number of unwritten cached orthologs"""
-
-    def __init__(self, nSp):
-        self.n = np.zeros((nSp, nSp))
-
-    def __iadd__(self, nOrtho_sp_obj):
-        self.n += nOrtho_sp_obj.n
-        return self
-
-    def get_i_j_to_write(self, n_max_cache, fewer_open_files=False):
-        if fewer_open_files:
-            # all genes for species i are collated
-            IJ = np.where(self.n.sum(axis=1) > n_max_cache)
-            I = list(IJ[0])
-            J = None
-            for i in I:
-                self.n[i, :] = 0
-        else:
-            IJ = np.where(self.n > n_max_cache)
-            I = list(IJ[0])
-            J = list(IJ[1])
-            for i, j in zip(I, J):
-                self.n[i, j] = 0
-        return I, J
 
 
 class Finalise(object):
@@ -794,130 +152,11 @@ class Finalise(object):
         pass
 
     def __exit__(self, type, value, traceback):
-        ptm = parallel_task_manager.ParallelTaskManager_singleton()
-        ptm.Stop()
-
-
-def writerow(fh, row):
-    # CSV format specifies CRLF line endings: https://tools.ietf.org/html/rfc4180
-    # fh.write("\t".join(map(str, row)) + "\r\n")
-    cleaned = [str(x).rstrip("\r\n") for x in row]
-    fh.write("\t".join(cleaned) + "\n")
-
-
-def getrow(row):
-    # CSV format specifies CRLF line endings: https://tools.ietf.org/html/rfc4180
-    # return "\t".join(map(str, row)) + "\r\n"
-    cleaned = [str(x).rstrip("\r\n") for x in row]
-    return "\t".join(cleaned) + "\n"
+        ptm = parallel_task_manager.ParallelTaskManagerSingleton()
+        ptm.stop()
 
 
 def version_parse_simple(sem_version):
     return list(map(int, sem_version.split(".")[:3]))
 
 
-def file_open(filename_with_gz, mode, gz):
-    if gz:
-        return gzip.open(filename_with_gz + ".gz", mode)
-    else:
-        return open(filename_with_gz, mode)
-
-
-def compress_files(src_dir, output_fn):
-    try:
-        with open(output_fn, "w") as writer:
-            filenames = []
-            with os.scandir(src_dir) as it:
-                for entry in it:
-                    if entry.is_file():
-                        # fn = entry.name.partition("_")[0]
-                        # fn = entry.name.partition(".")[0]
-                        filenames.append((entry.name.partition(".")[0], entry))
-            filenames = sorted(filenames)
-            for fn, entry in filenames:
-                try:
-                    with open(entry.path, "r") as infile:
-                        og_tree = "".join(line.strip() for line in infile)
-                    writer.write(f"{fn}: {og_tree}\n")
-                except IOError as e:
-                    print(f"ERROR reading file {entry.name}: {e}")
-    except IOError as e:
-        printer.print(f"ERROR writing to output file {output_fn}: {e}", style="error")
-
-
-def cleanup_path(path):
-    try:
-        if os.path.isfile(path) or os.path.islink(path):
-            os.remove(path)
-        elif os.path.isdir(path):
-            shutil.rmtree(path)
-    except OSError as e:
-        print("Error: %s - %s." % (e.filename, e.strerror))
-
-
-
-def get_progressbar(len_task, visible=True):
-    progressbar = progress.Progress(
-        progress.TextColumn("[progress.description]{task.description}"),
-        progress.BarColumn(bar_width=width // 2),
-        progress.SpinnerColumn(),
-        progress.MofNCompleteColumn(),
-        progress.TimeElapsedColumn(),
-        transient=False,
-        # progress.TextColumn("{task.completed}/{task.total}")
-    )
-
-    if "task" in locals():
-        progressbar.reset(task)
-        progressbar.remove_task(task)
-        task = progressbar.add_task(
-            "[yellow]Processing...", total=len_task, visible=visible,
-        )
-    else:
-        task = progressbar.add_task(
-            "[yellow]Processing...", total=len_task, visible=visible,
-        )
-    return progressbar, task
-
-def clear_dir(of3_dir):
-    if os.path.exists(of3_dir):
-        with os.scandir(of3_dir) as entries:
-            for entry in entries:
-                try:
-                    if entry.is_file() or entry.is_symlink():
-                        os.unlink(entry.path) 
-                    elif entry.is_dir():
-                        shutil.rmtree(entry.path) 
-                        
-                except Exception as e:
-                    printer.print(f'Failed to delete {entry.path}. Reason: {e}', style="error")
-
-
-def split_ortholog_files(d_ologs, q_compress=False):
-    if not d_ologs.endswith("/"):
-        d_ologs += "/"
-    filenames = list(glob.glob(d_ologs + "*.tsv") + glob.glob(d_ologs + "*.tsv.gz"))
-    species = [
-        os.path.splitext(os.path.splitext(os.path.basename(fn))[0])[0] if fn.endswith(".gz") else os.path.splitext(os.path.basename(fn))[0]
-        for fn in filenames]
-    for fn, sp0 in zip(filenames, species):
-        d_out = d_ologs + "Orthologues_" + sp0 + "/"
-        if not os.path.exists(d_out):
-            os.mkdir(d_out)
-        file_handles = []
-        csv_writers = {}
-        for sp1 in species:
-            if sp0 == sp1:
-                continue
-            if q_compress:
-                file_handles.append(gzip.open(d_out + '%s__v__%s.tsv.gz' % (sp0, sp1), csv_write_mode))
-            else:
-                file_handles.append(open(d_out + '%s__v__%s.tsv' % (sp0, sp1), csv_write_mode))
-            csv_writers[sp1] = csv.writer(file_handles[-1], delimiter="\t")
-            csv_writers[sp1].writerow(("Orthogroup", sp0, sp1))
-        with gzip.open(fn, csv_read_mode) if fn.endswith(".gz") else open(fn, csv_read_mode) as infile:
-            reader = csv.reader(infile, delimiter="\t")
-            next(reader)  # skip header
-            for row in reader:
-                if len(row) == 4: # OG,species,genes1,genes2
-                    csv_writers[row[1]].writerow(row[:1] + row[2:])

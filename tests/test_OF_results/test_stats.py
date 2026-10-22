@@ -2,7 +2,7 @@ from collections import Counter
 import pytest
 import pytest_check as check
 import numpy as np
-from orthofinder.comparative_genomics.stats import add_unassigned_genes, OrthogroupsMatrix
+from orthofinder.orthology.stats import add_unassigned_genes, orthogroups_matrix
 
 
 @pytest.mark.skipif(
@@ -24,7 +24,7 @@ class TestcComparativeStats:
         expected_n = int(expected_overall_stats_info["Number of species"])
         sequence_info_obj = of_obj.get_sequence_info_obj()
         ogset_obj = of_obj.get_og_obj()
-        project_n = sequence_info_obj.nSpecies
+        project_n = sequence_info_obj.n_species
         check.equal(
             project_n,
             expected_n,
@@ -32,31 +32,31 @@ class TestcComparativeStats:
         )
 
         # Prepare orthogroup data
-        ogs = add_unassigned_genes(ogset_obj.AllOGs(), ogset_obj.AllUsedSequenceIDs())
-        allOgs = [[list(map(int, g.split("_"))) for g in og] for og in ogs]
-        properOGs = [og for og in allOgs if len(og) > 1]
-        iogs_properOGs = [iog for iog, og in enumerate(allOgs) if len(og) > 1]
-        allGenes = [g for og in allOgs for g in og]
-        allGenesCounter = Counter([g[0] for g in allGenes])
-        nGenes = sum(allGenesCounter.values())
-        assignedGenesCounter = Counter([g[0] for og in properOGs for g in og])
-        nAssigned = sum(assignedGenesCounter.values())
+        ogs = add_unassigned_genes(ogset_obj.all_ogs(), ogset_obj.all_used_sequence_ids())
+        all_ogs = [[list(map(int, g.split("_"))) for g in og] for og in ogs]
+        proper_ogs = [og for og in all_ogs if len(og) > 1]
+        iogs_proper_ogs = [iog for iog, og in enumerate(all_ogs) if len(og) > 1]
+        all_genes = [g for og in all_ogs for g in og]
+        all_genes_counter = Counter([g[0] for g in all_genes])
+        n_genes = sum(all_genes_counter.values())
+        assigned_genes_counter = Counter([g[0] for og in proper_ogs for g in og])
+        n_assigned = sum(assigned_genes_counter.values())
 
-        speciesPresence = [set([g[0] for g in og]) for og in properOGs]
-        nOgs = len(properOGs)
-        speciesSpecificOGsCounter = Counter([next(iter(og_sp)) for og_sp in speciesPresence if len(og_sp) == 1])
-        iSpecies = sequence_info_obj.speciesToUse
+        species_presence = [set([g[0] for g in og]) for og in proper_ogs]
+        n_ogs = len(proper_ogs)
+        species_specific_ogs_counter = Counter([next(iter(og_sp)) for og_sp in species_presence if len(og_sp) == 1])
+        i_species = sequence_info_obj.species_to_use
 
         # Species specific orthogroups - gene-based
-        iSpeciesSpecificOGs = [i for i, og_sp in enumerate(speciesPresence) if len(og_sp) == 1]
-        iSpSpecificOGsGeneCounts = [
-            sum([len(properOGs[iog]) for iog in iSpeciesSpecificOGs if properOGs[iog][0][0] == iSp]) for iSp in
-            iSpecies]
+        i_species_specific_ogs = [i for i, og_sp in enumerate(species_presence) if len(og_sp) == 1]
+        i_sp_specific_ogs_gene_counts = [
+            sum([len(proper_ogs[iog]) for iog in i_species_specific_ogs if proper_ogs[iog][0][0] == i_sp]) for i_sp in
+            i_species]
 
         # --- Number of orthogroups ---
         print("[2] Number of orthogroups")
         expected_ogs = int(expected_overall_stats_info["Number of orthogroups"])
-        project_n = nOgs
+        project_n = n_ogs
         check.equal(
             project_n,
             expected_ogs,
@@ -66,7 +66,7 @@ class TestcComparativeStats:
         # --- Total number of species-specific orthogroups ---
         print("[3] Number of species-specific orthogroups")
         expected_n = int(expected_overall_stats_info["Number of species-specific orthogroups"])
-        project_n = sum(speciesSpecificOGsCounter.values())
+        project_n = sum(species_specific_ogs_counter.values())
         check.equal(
             project_n,
             expected_n,
@@ -76,7 +76,7 @@ class TestcComparativeStats:
         # --- Total number of genes ---
         print("[4] Total number of genes")
         expected_n = int(expected_overall_stats_info["Number of genes"])
-        project_n = nGenes
+        project_n = n_genes
         check.equal(
             project_n,
             expected_n,
@@ -86,7 +86,7 @@ class TestcComparativeStats:
         # --- Total number of genes in species-specific orthogroups ---
         print("[5] Total Number of genes in species-specific orthogroups")
         expected_n = int(expected_overall_stats_info["Number of genes in species-specific orthogroups"])
-        project_n = sum(iSpSpecificOGsGeneCounts)
+        project_n = sum(i_sp_specific_ogs_gene_counts)
         check.equal(
             project_n,
             expected_n,
@@ -96,7 +96,7 @@ class TestcComparativeStats:
         # --- Number of genes in orthogroups ---
         print("[6] Total gene count in orthogroups")
         expected_n = int(expected_overall_stats_info["Number of genes in orthogroups"])
-        project_n = nAssigned
+        project_n = n_assigned
         check.equal(
             project_n,
             expected_n,
@@ -106,7 +106,7 @@ class TestcComparativeStats:
         # --- Number of unassigned genes ---
         print("[7] Number of unassigned genes")
         expected_n = int(expected_overall_stats_info["Number of unassigned genes"])
-        project_n = nGenes - nAssigned
+        project_n = n_genes - n_assigned
         check.equal(
             project_n,
             expected_n,
@@ -114,13 +114,13 @@ class TestcComparativeStats:
         )
 
         # --- Prepare percentage data ---
-        percentFormat = "%0.1f"
-        pAssigned = 100. * nAssigned / nGenes
+        percent_format = "%0.1f"
+        p_assigned = 100. * n_assigned / n_genes
 
         # --- Percentage of genes in orthogroups ---
         print("[8] Percentage of genes in orthogroups")
         expected_n = float(expected_overall_stats_info["Percentage of genes in orthogroups"])
-        project_n = float(percentFormat % pAssigned)
+        project_n = float(percent_format % p_assigned)
         check.almost_equal(
             project_n,
             expected_n,
@@ -131,7 +131,7 @@ class TestcComparativeStats:
         # --- Percentage of unassigned genes ---
         print("[9] Percentage of unassigned genes")
         expected_n = float(expected_overall_stats_info["Percentage of unassigned genes"])
-        project_n = float(percentFormat % (100 * (nGenes - nAssigned) / nGenes))
+        project_n = float(percent_format % (100 * (n_genes - n_assigned) / n_genes))
         check.almost_equal(
             project_n,
             expected_n,
@@ -143,7 +143,7 @@ class TestcComparativeStats:
         # --- Percentage of genes in species-specific orthogroups ---
         print("[10] Percentage of genes in species-specific orthogroups")
         expected_n = float(expected_overall_stats_info["Percentage of genes in species-specific orthogroups"])
-        project_n = float(percentFormat % (100. * sum(iSpSpecificOGsGeneCounts) / nGenes))
+        project_n = float(percent_format % (100. * sum(i_sp_specific_ogs_gene_counts) / n_genes))
         check.almost_equal(
             project_n,
             expected_n,
@@ -153,13 +153,13 @@ class TestcComparativeStats:
 
 
         # 'averages'
-        l = list(sorted(list(map(len, properOGs))))
+        l = list(sorted(list(map(len, proper_ogs))))
         L = np.cumsum(l)
-        j, _ = next((i, x) for i, x in enumerate(L) if x > nAssigned / 2)
+        j, _ = next((i, x) for i, x in enumerate(L) if x > n_assigned / 2)
 
         l2 = list(reversed(list(map(len, ogs))))
         L2 = np.cumsum(l2)
-        j2, _ = next((i, x) for i, x in enumerate(L2) if x > nGenes / 2)
+        j2, _ = next((i, x) for i, x in enumerate(L2) if x > n_genes / 2)
         G50 = l2[j2]
         O50 = len(l2) - j2
 
@@ -226,17 +226,17 @@ class TestcComparativeStats:
         )
 
         # Single-copy orthogroups
-        ogMatrix = OrthogroupsMatrix(iSpecies, properOGs)  # use iogs_properOGs for indexing
-        nSpecies = len(iSpecies)
-        nPresent = (ogMatrix > np.zeros((1, nSpecies))).sum(1)
-        nCompleteOGs = list(nPresent).count(nSpecies)
-        singleCopyOGs = (ogMatrix == np.ones((1, nSpecies))).all(1).nonzero()[0]
-        nSingleCopy = len(singleCopyOGs)
+        og_matrix = orthogroups_matrix(i_species, proper_ogs)  # use iogs_properOGs for indexing
+        n_species = len(i_species)
+        n_present = (og_matrix > np.zeros((1, n_species))).sum(1)
+        n_complete_ogs = list(n_present).count(n_species)
+        single_copy_ogs = (og_matrix == np.ones((1, n_species))).all(1).nonzero()[0]
+        n_single_copy = len(single_copy_ogs)
 
         # --- O50 (all genes) ---
         print("[16] Number of orthogroups with all species present")
         expected_n = int(expected_overall_stats_info["Number of orthogroups with all species present"])
-        project_n = nCompleteOGs
+        project_n = n_complete_ogs
         check.equal(
             project_n,
             expected_n,
@@ -246,7 +246,7 @@ class TestcComparativeStats:
         # --- O50 (all genes) ---
         print("[17] Number of single-copy orthogroups")
         expected_n = int(expected_overall_stats_info["Number of single-copy orthogroups"])
-        project_n = nSingleCopy
+        project_n = n_single_copy
         check.equal(
             project_n,
             expected_n,
@@ -258,16 +258,16 @@ class TestcComparativeStats:
 
         sequence_info_obj = of_obj.get_sequence_info_obj()
         ogset_obj = of_obj.get_og_obj()
-        ogs = add_unassigned_genes(ogset_obj.AllOGs(), ogset_obj.AllUsedSequenceIDs())
-        allOgs = [[list(map(int, g.split("_"))) for g in og] for og in ogs]
-        properOGs = [og for og in allOgs if len(og) > 1]
-        speciesPresence = [set([g[0] for g in og]) for og in properOGs]
-        iSpecies = sequence_info_obj.speciesToUse
-        nSp = len(iSpecies)
+        ogs = add_unassigned_genes(ogset_obj.all_ogs(), ogset_obj.all_used_sequence_ids())
+        all_ogs = [[list(map(int, g.split("_"))) for g in og] for og in ogs]
+        proper_ogs = [og for og in all_ogs if len(og) > 1]
+        species_presence = [set([g[0] for g in og]) for og in proper_ogs]
+        i_species = sequence_info_obj.species_to_use
+        n_sp = len(i_species)
         # Species presence
-        n = list(map(len, speciesPresence))
+        n = list(map(len, species_presence))
         print()
-        for i in range(1, nSp + 1):
+        for i in range(1, n_sp + 1):
             print(f"Test {i} species in orthogroup")
             project_n = n.count(i)
             expected_n = expected_og_nspecies_info[i]

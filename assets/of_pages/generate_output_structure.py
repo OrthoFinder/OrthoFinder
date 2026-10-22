@@ -38,7 +38,7 @@ def get_path(Path):
             if "Species1.fa" in file:
                 altered_files += (file).replace("1","#") + "\n"
 
-    Orthologs = (altered_files.split("\n").index("\u251C" + "\u2500" + "\u2500" + " Orthologues/"))
+    Orthologs = (altered_files.split("\n").index("\u251C" + "\u2500" + "\u2500" + " Orthologs/"))
     HOGS = altered_files.split("\n").index("\u251C" + "\u2500" + "\u2500" + " Phylogenetic_Hierarchical_Orthogroups/")
     Misplaced = altered_files.split("\n").index("\u251C" + "\u2500" + "\u2500" + " Phylogenetically_Misplaced_Genes/")
     Xenologs = altered_files.split("\n").index("\u251C" + "\u2500" + "\u2500" + " Putative_Xenologs/")

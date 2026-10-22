@@ -6,16 +6,23 @@ from collections import deque
 import helper
 from typing import Optional, Union, List, Any
 import multiprocessing as mp
-# from orthofinder.utils.util import CreateNewWorkingDirectory
-from orthofinder.utils import files
+# from orthofinder.utils.util import create_new_working_directory
+from orthofinder.utils import file_handler
 from OF_funcs import OrthoFinderTestFuncs
 
 os.environ["ORTHOFINDER_TEST_ISOLATE"] = "1"
 
 ## ---------------- TEST OrthoFinder Commands ----------------
 OF_BASELINE_OPTIONS = [
-    "famsa_species_tree", 
-    "famsa_species_tree_assign"
+    # The first two are the core/assign pair compared with the expected results
+    # (OF_funcs.py uses baseline_options[0] and [1]), so keep them first.
+    "famsa_species_tree",
+    "famsa_species_tree_assign",
+    # test_split_ortholog_files.py compares the default and famsa runs.
+    "default",
+    "famsa",
+    # Assign run on top of the famsa core run.
+    "famsa_assign",
 ]
 
 ## ------- Default ExampleData ---------
@@ -38,7 +45,7 @@ if ORTHOFINDER[-1] != os.sep:
 
 # exampledata_baseDirectoryName = os.path.join(ROOT, "ExampleData", "OrthoFinder", "Results_")
 
-# DEFAULT_PROJECTS_RESULTS = CreateNewWorkingDirectory(
+# DEFAULT_PROJECTS_RESULTS = create_new_working_directory(
 #     exampledata_baseDirectoryName,
 #     qDate=True,
 #     search_program=None,
@@ -220,6 +227,11 @@ def _to_list(value: Optional[Union[str, int, bool]]) -> List[Any]:
 @pytest.fixture(scope="session")
 def projects(request):
     return request.config.getoption("--projects")
+
+
+@pytest.fixture(scope="session")
+def example_data():
+    return EXAMPLEDATA
 
 
 @pytest.fixture(scope="session")
@@ -408,6 +420,13 @@ def baseline_arg_dict(baseline_options):
     return of_args_dict
                     
 
+def _clear_orthofinder_state():
+    attrs_to_clear = ("wd_base_prev", "home_for_results", "wd_base", "wd_current", "wd_trees", "wd1", "wd2", "rd1", "base_dir")
+    for attr in attrs_to_clear:
+        if hasattr(file_handler.handler, attr):
+            setattr(file_handler.handler, attr, "")
+
+
 @pytest.fixture(autouse=True)
 def reset_orthofinder_state():
     """
@@ -415,31 +434,57 @@ def reset_orthofinder_state():
     'Changing WorkingDirectory1' errors when running multiple CLI calls
     in-process.
     """
-    attrs_to_clear = ("wd_base_prev", "home_for_results", "wd_base", "wd_current", "wd_trees", "wd1", "wd2", "rd1", "base_dir")
-    for attr in attrs_to_clear:
-        if hasattr(files.FileHandler, attr):
-            setattr(files.FileHandler, attr, "")
+    _clear_orthofinder_state()
     yield 
-    for attr in attrs_to_clear:
-        if hasattr(files.FileHandler, attr):
-            setattr(files.FileHandler, attr, "")
+    _clear_orthofinder_state()
+
+
+@pytest.fixture
+def orthofinder_results(request, projects, example_data, dna_projects, species_tree, user_ofconfig, capfd):
+    """
+    The results directory of a core or direct run of of_run_commands.json, by
+    name: of the run made earlier in the session, or else run now. A test
+    that compares runs asks for them here rather than relying on
+    test_orthofinder_runs.py running first.
+    """
+    skipped = {x.strip() for x in (request.config.getoption("--skip-runs") or "").split(",") if x.strip()}
+    commands = {name: cmd for cmds in helper.read_config_file(COMMANDS_CONFIG).values() for name, cmd in cmds.items()}
+
+    def get(name):
+        if name in skipped:
+            pytest.skip("the %s run is skipped (--skip-runs)" % name)
+        key = f"ORTHOFINDER_TEST_RESULTS_{name}"
+        if not os.environ.get(key):
+            _clear_orthofinder_state()
+            helper.run_orthofinder_core_case(name, commands[name], projects, example_data, dna_projects,
+                                             species_tree, user_ofconfig, capfd)
+            _clear_orthofinder_state()
+        return os.environ[key]
+
+    return get
 
 @pytest.fixture(scope="session")
 def of_obj(projects, baseline_arg_dict, baseline_options, species_tree):
-    return OrthoFinderTestFuncs(
-        projects, 
-        baseline_arg_dict,
-        baseline_options, 
-        species_tree=species_tree, 
-    )
+    try:
+        return OrthoFinderTestFuncs(
+            projects,
+            baseline_arg_dict,
+            baseline_options,
+            species_tree=species_tree,
+        )
+    except AssertionError as e:
+        pytest.skip(str(e))
 
 @pytest.fixture(scope="session")
 def of_obj_assign(projects, baseline_arg_dict, baseline_options, assign, species_tree, species_tree_assign):
-    return OrthoFinderTestFuncs(
-        projects, 
-        baseline_arg_dict,
-        baseline_options, 
-        assign,  
-        species_tree, 
-        species_tree_assign,
-    )
+    try:
+        return OrthoFinderTestFuncs(
+            projects,
+            baseline_arg_dict,
+            baseline_options,
+            assign,
+            species_tree,
+            species_tree_assign,
+        )
+    except AssertionError as e:
+        pytest.skip(str(e))

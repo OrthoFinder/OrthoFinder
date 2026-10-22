@@ -43,7 +43,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13", # tested
     "Programming Language :: Python :: 3.14", # tested
 ]
-dependencies = ["numpy", "scipy", "scikit-learn", "biopython", "rich", "ete4"]
+dependencies = ["numpy", "scipy", "scikit-learn", "biopython", "rich", "ete4", "pandas>=2.0"]
 
 [project.urls]
 repository = "https://github.com/OrthoFinder/OrthoFinder"
@@ -73,6 +73,9 @@ convert_orthofinder_tree_ids = "tools.convert_orthofinder_tree_ids:main"
 create_hog_fastas = "tools.create_hog_fastas:main"
 ncbi_primary_transcript = "tools.ncbi_primary_transcript:main"
 orthogroup_gene_count = "tools.orthogroup_gene_count:main"
+split_ortholog_files = "tools.split_ortholog_files:main"
+species_tree_alignment = "tools.species_tree_alignment:main"
+mcl_orthogroup_sequences = "tools.mcl_orthogroup_sequences:main"
 
 [tool.semantic_release]
 branch = "main"
@@ -91,6 +94,7 @@ include-package-data = true
 [tool.setuptools.package-data]
 "orthofinder.bin" = ["*"]
 "orthofinder.bin.mafft.bin" = ["*"]
+"orthofinder.bin.mafft.libexec" = ["*"]   # (the bundled MAFFT runs its programs there)
 "orthofinder.run" = ["*.json"]
 "ExampleData" = ["*"]
 "*" = ["LICENSE"]
@@ -117,8 +121,14 @@ exclude_lines = ["pragma: no cover", "if __name__ == .__main__.:"]
 
 [tool.pytest.ini_options]
 # addopts = "--cov=orthofinder"
-addopts = "--cov=orthofinder --cov-config=pyproject.toml"
+# (coverage reads its settings, [tool.coverage.*] below, from pyproject.toml in the
+# directory pytest is run from: not --cov-config=pyproject.toml, which fails elsewhere)
+addopts = "--cov=orthofinder"
 testpaths = ["tests"]
+# src/ first on sys.path: else "python -m pytest" in the repository imports the
+# launcher orthofinder.py (in the current directory) instead of the package
+pythonpath = ["src"]
+norecursedirs = ["tests/_archive"]  # tests set aside, not run
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "disabled: marks tests as disabled (deselect with '-m \"not disabled\"')",
@@ -126,8 +136,14 @@ markers = [
 ]
 
 [tool.setuptools_scm]
-tag_regex = "^(?:v)?(?P<version>\\d+\\.\\d+\\.\\d+)$"
+tag_regex = "^(?:v)?(?P<version>\\d+\\.\\d+(?:\\.\\d+)?)$"
 write_to = "src/orthofinder/_version.py"
 version_scheme = "no-guess-dev"
 local_scheme = "no-local-version"
-fallback_version = "3.1.4"
+fallback_version = "0+unknown"
+
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true

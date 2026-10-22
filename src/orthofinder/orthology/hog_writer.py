@@ -1,0 +1,607 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Aug  1 09:11:11 2017
+
+@author: david
+
+Perform directed 'reconciliation' first and then apply EggNOG method
+
+1 - root gene trees on outgroup: unique one this time
+2 - infer orthologs
+"""
+import sys
+import itertools
+from collections import defaultdict
+
+import multiprocessing as mp
+
+try:
+    from rich import print
+except ImportError:
+    ...
+
+from .ortholog_writers import BufferedFile, LazyFileCache
+from ..utils import util, file_handler, file_io
+
+
+PY2 = sys.version_info <= (3,)
+
+debug = False   # HOGs
+
+class HogWriter(object):
+    def __init__(
+            self, 
+            species_tree, 
+            species_tree_node_names, 
+            seq_ids, 
+            sp_ids, 
+            species_to_use,
+            write_to_rd,
+            write_output=True,
+            write_named=True,
+        ):
+        """
+        Prepare files, get ready to write.
+        write_named - write the HOG files with gene names (N0.tsv, N1.tsv, ...);
+            otherwise only N0.ids.tsv (the HOGs of N0 with sequence IDs), which
+            is all the update of the results files needs (hog_orthogroups.finalise), with
+            the same HOG IDs.
+        species_tree_node_names - list of species tree nodes
+        seq_ids - dict of sequence ids
+        sp_ids - dict of species ids
+        species_to_use - list of ints
+        """
+        self.sp_ids = sp_ids
+        self.seq_ids = seq_ids
+        if write_to_rd:
+            q_results = True
+        else:
+            q_results = False
+
+        self.fhs = dict()
+        self.i_sps = list(map(str, sorted(species_to_use)))   # list of strings
+        self.i_sp_to_index = {int(isp):i_col for i_col, isp in enumerate(self.i_sps)}
+        self.i_hog = defaultdict(int)
+        self.lock_i_hog = mp.Lock()
+        self.species_tree = species_tree
+        # Name -> node, first match in the same (level) order as species_tree & name.
+        self.species_tree_nodes = {}
+        for node in species_tree.traverse():
+            self.species_tree_nodes.setdefault(str(node.name), node)
+        species_names = [sp_ids[i] for i in self.i_sps]
+
+        self.write_output = write_output
+        self.write_named = write_named
+        self.q_results = q_results
+        self.node_names = list(species_tree_node_names)
+        self.species_names = species_names
+        self.hog_paths = {}
+        self.file_cache = LazyFileCache()
+
+        if write_output:
+            # (file_handler.get_hierarchical_orthogroups_fn: where each is written)
+            named = list(species_tree_node_names) if write_named else []
+            if q_results:
+                # not N0: the orthogroups are the results (Orthogroups.tsv)
+                named = [name for name in named if name != "N0"]
+            for name in named + ["N0.ids"]:
+                if not name.endswith(".ids"):
+                    fn = file_handler.handler.get_hierarchical_orthogroups_fn(
+                        name,
+                        q_results=q_results
+                    )
+                else:
+                    fn = file_handler.handler.get_hierarchical_orthogroups_fn(
+                        name,
+                        q_results=q_results,
+                        extension=".ids"
+                    )
+
+                self.hog_paths[name] = fn
+                
+                with open(fn, util.csv_write_mode, encoding="utf-8", newline="\n") as fh:
+                    file_io.write_unquoted(
+                        fh,
+                        ["HOG", "OG", "Gene Tree Parent Clade"] + species_names
+                    )
+
+        # Map from HOGs to genes that must be contained in them
+        self._index_species_tree(self.species_tree)
+
+
+    def _get_hog_handle(self, hog_name):
+        if not self.write_output or hog_name not in self.hog_paths:
+            return None      # not written (write_named=False: only N0.ids)
+        return BufferedFile(self.file_cache, self.hog_paths[hog_name])
+
+
+    def close_files(self):
+        if hasattr(self, "file_cache"):
+            self.file_cache.close_all()
+
+    def get_hog_index(self, hog_name):
+        with self.lock_i_hog:
+            i = self.i_hog[hog_name]
+            self.i_hog[hog_name] += 1
+            return i
+        
+    def write_hog_genes(self, genes, sp_node_name_list, og_name):
+        """
+        Write two & three gene HOGs.
+
+        This is now lazy: it opens only the target HOG file currently being written.
+        """
+        if not self.write_output:
+            return
+
+        if len(sp_node_name_list) == 0:
+            return
+
+        genes_per_species = defaultdict(list)
+        genes_per_species_ids = defaultdict(list)
+
+        for g in genes:
+            isp, _ = g.split("_")
+            genes_per_species[isp].append(self.seq_ids[g])
+            genes_per_species_ids[isp].append(g)
+
+        i_hogs = [
+            self.get_hog_index(sp_node_name)
+            for sp_node_name in sp_node_name_list
+        ]
+
+        row_genes = [
+            ", ".join(genes_per_species[isp])
+            for isp in self.i_sps
+        ]
+
+        for i_hog, sp_node_name in zip(i_hogs, sp_node_name_list):
+            hog_id = "%s.HOG%07d" % (sp_node_name, i_hog)
+            fh = self._get_hog_handle(sp_node_name)
+            if fh is not None:
+                file_io.write_unquoted(
+                    fh,
+                    [hog_id, og_name, "-"] + row_genes
+                )
+
+            if sp_node_name == "N0":
+                row_genes_ids = [
+                    ", ".join(genes_per_species_ids[isp])
+                    for isp in self.i_sps
+                ]
+                fh_ids = self._get_hog_handle("N0.ids")
+                if fh_ids is not None:
+                    file_io.write_unquoted(
+                        fh_ids,
+                        [hog_id, og_name, "-"] + row_genes_ids
+                    )
+
+
+    def write_clade_v2(self, n, og_name, split_paralogous_clades_from_same_hog=False):
+        """
+        Original HOG behaviour.
+
+        Do not use polytomy_boundary here.
+        HOG writing should depend on the original dup/sp_node/dups_below logic.
+        """
+        if n.is_leaf():
+            return []
+
+        if debug:
+            print("\nTree node: %s" % n.name)
+            print(n.sp_node)
+
+        if getattr(n, "dup", False) and n.sp_node == "N0":
+            n.add_feature("done", set())
+
+        ch = n.get_children()
+
+        if (
+                split_paralogous_clades_from_same_hog
+                and getattr(n, "dup", False)
+                and len(ch) == 2
+                and ch[0].sp_node == ch[1].sp_node
+            ):
+            hogs_to_write = (
+                set()
+                if n.sp_node.startswith("N")
+                else self.above_nodes[n.sp_node].copy()
+            )
+        else:
+            hogs_to_write = self.above_nodes[n.sp_node].copy()
+
+        if debug:
+            print("Dups below: " + str(n.dups_below))
+
+        stop_at_dups = lambda nn: nn.name in n.dups_below
+
+        sp_node = self.species_tree_nodes[str(n.sp_node)]
+
+        hogs_to_write.update({
+            nn.name
+            for nn in sp_node.traverse("preorder", is_leaf_fn=stop_at_dups)
+            if (not nn.is_leaf()) and (nn.name not in n.dups_below)
+        })
+
+        if not n.is_root():
+            hogs_to_write.difference_update(n.up.done)
+
+        n.add_feature(
+            "done",
+            hogs_to_write if n.is_root() else n.up.done.union(hogs_to_write)
+        )
+
+        if len(hogs_to_write) == 0:
+            return []
+
+        if debug:
+            print(hogs_to_write)
+
+        # Only collect the genes below n when there is something to write:
+        # doing it for every node is quadratic in the size of the gene tree.
+        genes_ids_per_species_id = self.get_descendant_genes(n)
+
+        return self.get_hog_file_entries(
+            hogs_to_write,
+            genes_ids_per_species_id,
+            og_name,
+            n.name
+        )
+
+
+    
+    # def write_clade_v2(self, n, og_name, split_paralogous_clades_from_same_hog=False):
+    #     """
+    #     Look at parent node to know when to start, look at dups below to know when 
+    #     to stop.
+    #     - Current MRCA could be excluded either because it's already been done or
+    #       because of a duplication below
+
+    #     - Species-specific clades could still be HOGs if they are all that remain
+    #       of that clade 
+    #       Args:
+    #         n - gene tree node
+    #         og_name - name to use in file output
+    #         split_paralogous_clades_from_same_hog - should clades which are within 
+    #             the same HOG but are paralogous be split up
+    #     """
+    #     if n.is_leaf():
+    #         return []
+    #     if debug: print("\nTree node: %s" % n.name)
+    #     if debug: print(n.sp_node)
+    #     if (n.dup and n.sp_node == "N0"): 
+    #         n.add_feature("done", set())
+    #     # self.comp_nodes[n.sp_node] is the set of HOGs relevant to this node
+
+    #     # Only skip doing HOGs for above if it is a dup and want to split paralogous clades from same HOG
+    #     ch = n.get_children()
+    #     if (split_paralogous_clades_from_same_hog and n.dup and (ch[0].sp_node == ch[1].sp_node)):
+    #         # continue to record single-species orthogroups
+    #         hogs_to_write = set() if n.sp_node.startswith("N") else self.comp_nodes[n.sp_node][0].copy()
+    #     else:
+    #         hogs_to_write = self.comp_nodes[n.sp_node][0].copy()
+        
+    #     # get scl & remove HOGs that can't be written yet due to duplications
+    #     # 0. Get the scl units below this node in the gene tree
+    #     # I.e. get genes (referenced by species ID) below each scl (the relevant gene tree nodes)
+    #     genes_ids_per_species_id = self.get_descendant_genes(n)
+
+    #     # scl_mrca = {nn.sp_node for nn in scl if not nn.is_leaf()}
+    #     if debug: print("Dups below: " + str(n.dups_below))
+    #     stop_at_dups = lambda nn : nn.name in n.dups_below
+    #     sp_node = self.species_tree & (n.sp_node)
+    #     # don't need skip for dups, that's recorded in dups_below
+    #     # traverse the species tree from the current node and record all nodes before hitting a duplication node from the gene tree
+    #     hogs_to_write.update({nn.name for nn in sp_node.traverse('preorder', is_leaf_fn = stop_at_dups) if (not nn.is_leaf()) and (not nn.name in n.dups_below)})
+        
+    #     if not n.is_root():
+    #         hogs_to_write.difference_update(n.up.done)
+
+    #     # 2. Write HOGs
+    #     n.add_feature("done", hogs_to_write if n.is_root() else n.up.done.union(hogs_to_write))
+    #     if len(hogs_to_write) == 0:
+    #         return []
+
+    #     if debug: print(hogs_to_write)
+    #     return self.get_hog_file_entries(hogs_to_write, genes_ids_per_species_id, og_name, n.name)
+
+
+
+
+    def get_descendant_genes(self, n):
+        """
+        Attempt at a simplified replacement to get_scl_units as shouldn't need to 
+        care about which scl a gene belongs to.
+        Args:
+            n - node under consideration
+        Returns:
+            dict:sp_id (int)->string of genes ids, comma separated
+        """
+        genes_per_species = defaultdict(list) # iCol (before 'name' columns) -> text string of genes
+        genes = n.get_leaves()
+        q_have_legitimate_gene = False # may be misplaced genes
+        for g in genes:
+            if "X" in g.features: continue
+            q_have_legitimate_gene = True
+            isp = int(g.name.split("_")[0])
+            genes_per_species[isp].append(g.name)
+        for k, v in genes_per_species.items():
+            genes_per_species[k] = ", ".join(v)
+        return genes_per_species
+
+    def get_hog_file_entries(self, hogs_to_write, genes_ids_per_species_id, og_name, gt_node_name):
+        """
+        Write the HOGs that can be determined from this gene tree node.
+        Args:
+            hogs_to_write - list of HOG names
+            genes_ids_per_species_id - dict:sp_id (int)->str, comma separated list of gene ids
+            og_name - OG name
+            gt_node_name - gene tree node name
+        Implementation:
+            - We have the HOGs that need writing plus knowledge of what scl units 
+              each HOG should contain. For each hog take the intersection of what 
+              we have with what the hog should contain.
+        """
+        ret = []
+        for h in hogs_to_write:
+            # print("HOG: " + h)
+            q_empty = True
+            # 2. We know the scl, these are the 'taxonomic units' available (clades or individual species in species tree for this node of the gene tree)
+            # Note there can be at most one of each. Only a subset of these will fall under this HOG.
+            units = self._species_below(h, genes_ids_per_species_id.keys())
+            # print("Units: " + str(units))
+            # A writer that writes files: only the rows of the files written (e.g. not
+            # N0's with gene names in either pass, the results being Orthogroups.tsv and
+            # N0[_mcl].ids.tsv), the N0.ids rows then numbered as N0's (write_cached_hogs).
+            # Else (write_output=False: the rows wanted themselves) all of them.
+            q_names = not self.write_output or h in self.hog_paths
+            q_ids = h == "N0" and (not self.write_output or "N0.ids" in self.hog_paths)
+            if not (q_names or q_ids):
+                continue
+            genes_row_ids = ["" for _ in self.i_sps]
+            genes_row = ["" for _ in self.i_sps]
+            # put the units into the row
+            for isp in units:
+                # translate the species ID to the species column it should be in
+                # after accounting for removed species
+                genes_row_ids[self.i_sp_to_index[isp]] = genes_ids_per_species_id[isp]
+                if q_names:
+                    genes_row[self.i_sp_to_index[isp]] = ", ".join(sorted([self.seq_ids[g] for g in genes_ids_per_species_id[isp].split(", ")]))
+                q_empty = False
+            if not q_empty: 
+                if q_names:
+                    ret.append((h, [og_name, gt_node_name] + genes_row))
+                if q_ids:
+                    ret.append(("N0.ids", [og_name, gt_node_name] + genes_row_ids))
+                # self.writers[h].writerow(["%s.HOG%07d" % (h, self.get_hog_index(h)),  og_name, gt_node_name] + genes_row)
+        return ret
+
+    # def close_files(self):
+    #     for fh in self.fhs.values():
+    #         fh.close()
+
+    @staticmethod
+    def get_skipped_nodes(n_sp_this, n_above_name, n_stop = None, n_gene=None):
+        """
+        Get the HOGs for the series of skipped species tree nodes above the current 
+        node. 
+        Args:
+            n_sp_this - ete3 node from species tree 
+            n_above_name - MRCA species tree node name for the gene tree node above
+            n_stop - a HOG name above the MRCA that should be the last one added
+            n_gene - ete3 node from the gene tree
+        Implementation/Questions:
+            - This is only used by the OGs with fewer than 4 taxa (and therefore 
+              no tree) now
+        """
+        n = n_sp_this
+        missed_sp_node_names = []
+        if n.name == n_above_name:
+            return missed_sp_node_names
+        n = n.up
+        while n is not None and n.name != n_above_name:
+            missed_sp_node_names.append(n.name)
+            if n.name == n_stop:
+                break
+            n = n.up
+        # if above node is a duplication then we won't have written out a HOG for that, pass the next node 
+        if n_stop is None:
+            if n_gene is not None and n_gene.up is not None and n_gene.up.dup and n is not None:
+                # then we also need to write the HOG above
+                missed_sp_node_names.append(n.name)
+        return missed_sp_node_names
+
+
+
+    def mark_dups_below(self, tree):
+        """
+        Original HOG duplication logic, with one safety fix:
+        every internal node always gets dups_below.
+        """
+        for n in tree.traverse("postorder"):
+            if n.is_leaf():
+                n.sp_node = n.name.split("_")[0]
+                continue
+
+            q_dup_evidenced = False
+
+            if getattr(n, "dup", False):
+                mrcas = [
+                    ch.name.split("_")[0] if ch.is_leaf() else ch.sp_node
+                    for ch in n.get_children()
+                ]
+
+                if len(set(mrcas)) == 1 and len(mrcas) > 1:
+                    n.add_feature("dup_level", mrcas[0])
+                    q_dup_evidenced = True
+                else:
+                    l = self.get_evidenced_dup_level(mrcas)
+
+                    if l is None:
+                        # Do not crash and do not continue.
+                        # This node is not a valid evidenced duplication.
+                        n.dup = False
+                    else:
+                        n.add_feature("dup_level", l)
+                        q_dup_evidenced = True
+
+            dups_below = set()
+
+            for ch in n.get_children():
+                if ch.is_leaf():
+                    continue
+                dups_below.update(getattr(ch, "dups_below", set()))
+
+            if (
+                    getattr(n, "dup", False)
+                    and q_dup_evidenced
+                    and getattr(n, "dup_level", "").startswith("N")
+                ):
+                dups_below.add(n.dup_level)
+
+            n.add_feature("dups_below", dups_below)
+
+        return tree
+
+
+    def get_evidenced_dup_level(self, mrcas):
+        """
+        Implementation
+        - V3.1: Currently, we need a representative from X and Y in both ch1 & ch2.
+        - What if we asked for evidence from each descendant clade of evidence of 
+          a duplication?
+            - Version that would be too stringent for duplication identification: 
+              genetree =(ch1, ch2)n, sptree = (X,Y) and ask for a
+              single representative of X that is in both ch1 & ch2 and similarly 
+              for Y in ch1 & ch2.
+            - Better version: V3.1 criterion (X & Y seen in ch1 & 2) plus two copies 
+              of a gene from X and two copies of a gene from Y in clade n (don't 
+              have to be correct topology such that they fall correctly in ch1 & 
+              ch2, just evidence of duplicated genes).
+                - Note, these two copies could arise from a separate & well-evidenced
+                  lower duplication. The idea was that this would strike the right
+                  balance, but can we do better? We'd have to identify the genes
+                  below that go into each component of the interpretation of the 
+                  tree. This is for another time, too much for now.
+
+        - a. get MRCA for ch1 & ch2 and then the lower of the two
+        - b. get all multi-copy species, get MRCA
+        - Get lower of a & b
+        """
+        # try each in turn and see if it is supported
+        attested = set()
+        for l1, l2 in itertools.combinations(mrcas, 2):
+            if l1 == l2:
+                attested.add(l1)
+            elif self._is_below(l2, l1):
+                attested.add(l2)
+            elif self._is_below(l1, l2):
+                attested.add(l1)
+        if len(attested) == 1:
+            return attested.pop()
+        elif len(attested) == 0:
+            print("WARNING: Unexpected gene tree topology")
+            print(mrcas)
+            # raise Exception()
+            return None
+        else:
+            # Get the highest in the tree: the attested level that is an
+            # ancestor of every other attested level. (This used to test a node
+            # name against a list of node objects, which is never true, so the
+            # duplication was always rejected.) If the levels are not all on
+            # one path from the root there is no single highest level.
+            attested = sorted(attested, key=lambda a: self.tin[str(a)])
+            for top in attested:
+                if all(self._is_below(str(other), str(top)) for other in attested if other != top):
+                    return top
+        print("WARNING: Unexpected gene tree topology 2")
+        print(mrcas)
+        # raise Exception()
+        return None
+
+    def write_cached_hogs(
+            self,
+            cached_hogs,
+            lock_hogs=None,
+        ):
+
+        if not self.write_output:
+            return
+
+        if not cached_hogs:
+            return
+
+        d = defaultdict(list)
+        for h, row in cached_hogs:
+            d[h].append(row)
+
+        if lock_hogs is not None:
+            lock_hogs.acquire()
+
+        try:
+            n0_ids = []      # HOG IDs given to this batch's N0 rows, in order
+            # N0 before N0.ids: each N0.ids row has the ID of its N0 row (the
+            # rows are in the same order), as write_hog_genes does, so the two
+            # files can be matched row by row. Without N0 rows (N0.tsv is not
+            # written: get_hog_file_entries) the N0.ids rows are numbered as N0's.
+            for h in sorted(d, key=lambda name: name == "N0.ids"):
+                hog_rows = d[h]
+                fh = self._get_hog_handle(h)
+                if fh is None and h != "N0":
+                    continue            # a level not written (write_named=False)
+                same_ids = h == "N0.ids" and len(hog_rows) == len(n0_ids)
+                level = "N0" if h == "N0.ids" else h
+                for i, r in enumerate(hog_rows):
+                    if same_ids:
+                        hog_id = n0_ids[i]
+                    else:
+                        hog_id = "%s.HOG%07d" % (level, self.get_hog_index(level))
+                        if h == "N0":
+                            n0_ids.append(hog_id)
+                    if fh is not None:
+                        file_io.write_unquoted(fh, [hog_id] + r)
+        finally:
+            if lock_hogs is not None:
+                lock_hogs.release()
+
+    def _index_species_tree(self, sp_tree):
+        """
+        Species-tree ancestry without a set of descendants per node.
+
+        Each node gets its preorder number tin and the end of its subtree tout,
+        so "X is strictly below Y" is tin[Y] < tin[X] < tout[Y]: two integers
+        per node. Storing the descendants of every node instead takes memory
+        that grows with nodes x subtree size (e.g. ~400 MB for an unbalanced
+        1,270-species tree, held in every worker process).
+
+        above_nodes[X] is the set of ancestors of X (needed as a set: it is
+        copied to start the set of HOGs to write at a gene-tree node).
+        """
+        self.tin = {}
+        self.tout = {}
+        self.above_nodes = {}
+        order = list(sp_tree.traverse("preorder"))
+        for i, n in enumerate(order):
+            self.tin[n.name] = i
+        subtree_size = {}
+        for n in reversed(order):            # children before parents
+            subtree_size[n.name] = 1 + sum(subtree_size[ch.name] for ch in n.get_children())
+            self.tout[n.name] = self.tin[n.name] + subtree_size[n.name]
+        for n in order:                       # parents before children
+            self.above_nodes[n.name] = (
+                set() if n.up is None else self.above_nodes[n.up.name] | {n.up.name}
+            )
+
+    def _is_below(self, x, y):
+        """True if species-tree node x is strictly below node y."""
+        return self.tin[y] < self.tin[x] < self.tout[y]
+
+    def _species_below(self, h, species_ids):
+        """The species IDs (ints) whose species-tree leaf is strictly below node h."""
+        lo, hi, tin = self.tin[h], self.tout[h], self.tin
+        return {
+            isp for isp in species_ids
+            if str(isp) in tin and lo < tin[str(isp)] < hi
+        }
+
+

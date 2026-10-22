@@ -17,7 +17,7 @@ TEST_ITEMS = [
     "duplications",
     "orthogroups",
     "resolved_gene_trees",
-    "orthologues",
+    "orthologs",
     "hogs"
 ]
 
@@ -153,8 +153,8 @@ def get_expected_results(expected_results_dir):
                         EXPECTED_RESULTS[cat_dir.lower()]["statistics_overall"]["og_nspecies"] = og_nspecies
 
                 elif os.path.isdir(test_item):
-                    # --------------- Orthologues -------------------
-                    if item.lower() == "orthologues":
+                    # --------------- Orthologs -------------------
+                    if item.lower() == "orthologs":
                         for file in os.listdir(test_item):
                             file_path = os.path.join(test_item, file)
                             base_species = ""
@@ -163,14 +163,14 @@ def get_expected_results(expected_results_dir):
                                     line = re.split(r"[\t]+", line.strip())
                                     if "Orthogroup" in line or len(line) < 4 or "#" in line:
                                         base_species = line[2]
-                                        EXPECTED_RESULTS[cat_dir.lower()]["orthologues"][base_species] = {}
+                                        EXPECTED_RESULTS[cat_dir.lower()]["orthologs"][base_species] = {}
                                     else:
-                                        if line[0] not in EXPECTED_RESULTS[cat_dir.lower()]["orthologues"][base_species]:
+                                        if line[0] not in EXPECTED_RESULTS[cat_dir.lower()]["orthologs"][base_species]:
                                              
-                                            EXPECTED_RESULTS[cat_dir.lower()]["orthologues"][base_species][line[0]] = \
+                                            EXPECTED_RESULTS[cat_dir.lower()]["orthologs"][base_species][line[0]] = \
                                                 [(line[1], frozenset(re.split(r"[,\s;]+", line[2])),  frozenset(re.split(r"[,\s;]+", line[-1])))]
                                         else:
-                                            EXPECTED_RESULTS[cat_dir.lower()]["orthologues"][base_species][line[0]].append(
+                                            EXPECTED_RESULTS[cat_dir.lower()]["orthologs"][base_species][line[0]].append(
                                                 (line[1], frozenset(re.split(r"[,\s;]+", line[2])),  frozenset(re.split(r"[,\s;]+", line[-1])))
                                             )
 

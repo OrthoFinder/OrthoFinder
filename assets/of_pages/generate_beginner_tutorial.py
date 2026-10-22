@@ -1,4 +1,5 @@
 import os
+import gzip
 import argparse
 from datetime import datetime, timezone
 from ete4 import Tree
@@ -152,19 +153,24 @@ species tree (use the `-s` option).
 
 Now that we are happy with our OrthoFinder run, we can start diving into the results.
 
-- ***Orthologues***<br>
-    We will start by finding orthologues of a gene that we are interested in.
-    In the Orthologues directory there is a sub-directory for each species.
+- ***Orthologs***<br>
+    We will start by finding orthologs of a gene that we are interested in.
+    The Orthologs directory has a compressed file for each species, `Orthologs/<species>.tsv.gz`,
+    listing its orthologs in all the other species.
 
-    Open `{ortholog_path}`, in a spreadsheet program (specifying that it’s tab-delimited
-    if necessary). The file has three columns, `Orthogroup`, `{species1}`, and
-    `{species2}`. Find `{gene_of_interest}` in the table, I can see that
-    the gene is in orthogroup `{orthogroup}` and that its orthologs are:
-    `{orthologs}`.
+    Search `{ortholog_path}` for our gene, and keep the rows for `{species2}`
+    (`zgrep "{gene_of_interest}" {ortholog_path} | grep {species2}`).
+    The file has four columns, `Orthogroup`, `Species` (the other species), `{species1}`
+    and `Orthologs`. I can see that the gene `{gene_of_interest}` is in orthogroup
+    `{orthogroup}` and that its orthologs in `{species2}` are: `{orthologs}`.
+
+    For a file for each pair of species, run OrthoFinder with `-pof`, or write them afterwards
+    with `split_ortholog_files <results directory>`:
+    `Orthologs/Orthologs_{species1}/{species1}__v__{species2}.tsv`.
 
 - ***Gene trees***<br>
-    Next, we are going to look at the gene tree to see how these orthologues arose.
-    OrthoFinder infers orthlologues from `resolved` gene trees using a Duplication-Loss-
+    Next, we are going to look at the gene tree to see how these orthologs arose.
+    OrthoFinder infers orthologs from `resolved` gene trees using a Duplication-Loss-
     Coalescence analysis to identify the more parsimonious interpretation of the tree (see
     the OrthoFinder2 [paper](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1832-y) for more details).
 
@@ -221,11 +227,11 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
 - ***Orthogroups***<br>
     Often we’re interested in group-wise species comparisons, that is comparisons across a
     clade of species rather than between a pair of species. The generalisation of orthology
-    to multiple species is the orthogroup. Just like orthologues are the genes descended
+    to multiple species is the orthogroup. Just like orthologs are the genes descended
     from a single gene in the last common ancestor of a pair of species an orthogroup is the
     set of genes descended from a single gene in a group of species. Each gene tree from
     OrthoFinder, for example the one above, is for one orthogroup. The orthogroup gene
-    tree is the tree we need to look at if we want it to include all pairwise orthologues. And
+    tree is the tree we need to look at if we want it to include all pairwise orthologs. And
     even though some of the genes within an orthogroup can be paralogs of one another, if
     we tried to take any genes out then we would also be removing orthologs too.
 
@@ -328,28 +334,47 @@ def get_Statistics_PerSpecies(target_dir):
     return tabulate(table, header, tablefmt="github"), lowest_percent_species, lowest_percent_value
 
 
-def get_ortholog(target_dir, species1, species2):
-    # pick some thing??Mycoplasma_hyopneumoniae v  Mycoplasma_agalactiae
-    orthologs_target_path = "/".join([
-        target_dir,
-        "Orthologues",
-        "_".join(("Orthologues", species1)),
-        "__v__".join((species1, species2)) + ".tsv"
-    ])
-    ## first three columns will also be the same here...Orthogroup	Mycoplasma_hyopneumoniae	Mycoplasma_agalactiae
-    with open(orthologs_target_path) as ortholog_file:
+def ortholog_rows(target_dir, species1, species2):
+    """(orthogroup, genes of species1, their orthologs in species2) for each row of the
+    orthologs of species1 in species2: from Orthologs/<species1>.tsv.gz (the default),
+    or the pairwise file written with -pof."""
+    orthologs_dir = os.path.join(target_dir, "Orthologs")
+    for fn in (species1 + ".tsv.gz", species1 + ".tsv"):
+        path = os.path.join(orthologs_dir, fn)
+        if os.path.exists(path):
+            opener = gzip.open if fn.endswith(".gz") else open
+            with opener(path, "rt", encoding="utf-8") as ortholog_file:
+                next(ortholog_file)     # Orthogroup, Species, <species1>, Orthologs
+                for line in ortholog_file:
+                    orthogroup, species, genes, orthologs = line.rstrip("\n").split("\t")
+                    if species == species2:
+                        yield orthogroup, genes.split(", "), orthologs.split(", ")
+            return
+    path = os.path.join(orthologs_dir, "Orthologs_" + species1, species1 + "__v__" + species2 + ".tsv")
+    with open(path, encoding="utf-8") as ortholog_file:
+        next(ortholog_file)             # Orthogroup, <species1>, <species2>
         for line in ortholog_file:
-            no_genes = 0
-            for i in line.split("\t"):
-                no_genes += 1
-                no_genes += i.count(",")
-            no_genes -= 1
-            if no_genes == 4 and line.split("\t")[0].count(",") == 0:
-                gene_of_interest = line.split("\t")[1]
-                orthologs = line.rstrip().split("\t")[2].split(",")
-                orthogroup = line.split("\t")[0]
-                break
-    return gene_of_interest,orthologs,orthogroup
+            orthogroup, genes, orthologs = line.rstrip("\n").split("\t")
+            yield orthogroup, genes.split(", "), orthologs.split(", ")
+
+
+def ortholog_file_path(target_dir, species1):
+    """The orthologs file of species1, relative to the results directory, as the tutorial names it."""
+    for fn in (species1 + ".tsv.gz", species1 + ".tsv"):
+        if os.path.exists(os.path.join(target_dir, "Orthologs", fn)):
+            return "Orthologs/" + fn
+    return "Orthologs/" + species1 + ".tsv.gz"
+
+
+def get_ortholog(target_dir, species1, species2):
+    """A gene of species1 with orthologs in species2, four genes in all (e.g. one to three)."""
+    for orthogroup, genes, orthologs in ortholog_rows(target_dir, species1, species2):
+        if len(genes) == 1 and len(genes) + len(orthologs) == 4:
+            return genes[0], orthologs, orthogroup
+    for orthogroup, genes, orthologs in ortholog_rows(target_dir, species1, species2):
+        if len(genes) == 1 and len(orthologs) > 1:
+            return genes[0], orthologs, orthogroup
+    raise SystemExit("No gene of %s with several orthologs in %s" % (species1, species2))
 
 
 
@@ -441,9 +466,7 @@ if __name__ == "__main__":
         statisitcs_per_species=statisitcs_per_species,
         lowest_percent_species=lowest_percent_species,
         lowest_percent_value=lowest_percent_value,
-        ortholog_path=os.path.join("Orthologues",
-                                    "_".join(("Orthologues", species1)),
-                                    "__v__".join((species1, species2)) + ".tsv"),
+        ortholog_path=ortholog_file_path(target_dir, species1),
         species1=species1,
         species2=species2,
         gene_of_interest=gene_of_interest,

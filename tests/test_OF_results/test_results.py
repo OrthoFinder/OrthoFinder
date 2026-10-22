@@ -29,16 +29,16 @@ def test_recon_tree(of_and_expected_recon_tree):
     reason="Skipping OrthoFinder results test"
 )
 @pytest.mark.order(8)
-def test_orthologues(of_and_expected_orthologues):
-    of_obj, expected = of_and_expected_orthologues
-    of_orthologues = of_obj.get_orthologues()
-    per_species_triplets, per_species_locations = helper._index_of_orthologues(of_orthologues)
+def test_orthologs(of_and_expected_orthologs):
+    of_obj, expected = of_and_expected_orthologs
+    of_orthologs = of_obj.get_orthologs()
+    per_species_triplets, per_species_locations = helper._index_of_orthologs(of_orthologs)
 
     missing = []   
     relocations = []  
 
     for species, expected_ogs in expected.items():
-        assert species in per_species_triplets, f"No orthologues found for species {species}."
+        assert species in per_species_triplets, f"No orthologs found for species {species}."
 
         for og_expected, entries in expected_ogs.items():
             for e in entries:
@@ -61,7 +61,7 @@ def test_orthologues(of_and_expected_orthologues):
                 f"{species} missing triplet from expected {og_exp}: "
                 f"(partner={partner}, A={sorted(a)}, B={sorted(b)})"
             )
-        raise AssertionError("Some expected orthologues were not found:\n" + "\n".join(msgs))
+        raise AssertionError("Some expected orthologs were not found:\n" + "\n".join(msgs))
 
 @pytest.mark.skipif(
     "config.getoption('--skip-of-test')",

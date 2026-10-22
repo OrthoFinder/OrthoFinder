@@ -2,7 +2,7 @@
 # print_citation = """
 # CITATION:
 # When publishing work that uses OrthoFinder please cite:
-# Emms D.M. & Kelly S. (2019), Genome Biology 20:238  
+# Emms D.M. & Kelly S. (2019), Genome Biology 20:238
 
 # If you use the species tree in your work then please also cite:
 # Emms D.M. & Kelly S. (2017), MBE 34(12): 3267-3278
@@ -12,6 +12,10 @@
 # Citation
 citation = """
 When publishing work that uses OrthoFinder please cite:
+
+Emms D.M., Liu Y., Belcher L., Holmes J. & Kelly S. OrthoFinder: improved
+phylogenetic orthology inference with enhanced accuracy and scalability (2026),
+Nature Methods 23:1327–1333.
 
 Emms D.M. & Kelly S. OrthoFinder: phylogenetic orthology inference for comparative 
 genomics (2019), Genome Biology 20:238
@@ -76,4 +80,4 @@ doi:10.1371/journal.pone.0009490
 BLAST protein alignment:
 Altschul, S.F., Gish, W., Miller, W., Myers, E.W. & Lipman, D.J. Basic local
 alignment search tool (1990) J. Mol. Biol. 215:403-410
-"""   
+"""
