@@ -40,12 +40,13 @@ def print_help(prog_caller):
     for group in cli_options.OPTION_GROUPS:
         if group.get("hidden"):   # e.g. the development options
             continue
+        shown = [o for o in group["options"] if o["help"] is not None and cli_options.is_available(o)]
+        if not shown:   # (e.g. only preview options)
+            continue
         table = Table(show_header=False, box=None, expand=False)
         table.add_column("Option", justify="left", width=width, no_wrap=False, overflow="fold")
         table.add_column("Description", justify="left", overflow="fold")
-        for option in group["options"]:
-            if option["help"] is None:   # not in the help
-                continue
+        for option in shown:
             for row in option_rows(option, prog_caller):
                 table.add_row(*row)
         console.print("[bold]%s:[/bold]" % group["title"])

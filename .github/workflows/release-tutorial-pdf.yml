@@ -1,0 +1,75 @@
+name: Tutorial PDF for a release
+
+# When a release is published on GitHub (packaging/release_github.sh PUBLISH=1), build the
+# tutorial PDF for it from assets/of_pages/tutorial_pdf/ (the version in its install
+# commands and links set to the release) and attach it to the release as
+# OrthoFinder3_tutorial.pdf. Before that, run OrthoFinder on ExampleData and warn
+# if the numbers the tutorial quotes have changed (the text then needs updating).
+# Run it by hand (Actions > Tutorial PDF for a release > Run workflow) to build it
+# again for a release: the PDF on the release is replaced.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. v3.2"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  tutorial-pdf:
+    # (not for pre-releases)
+    if: github.event_name != 'release' || !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout the release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install OrthoFinder
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+
+      - name: Check the tutorial's numbers against a run on ExampleData
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/example"
+          cp ExampleData/*.faa "$RUNNER_TEMP/example/"
+          orthofinder -f "$RUNNER_TEMP/example" -t 4 -n tutorial > "$RUNNER_TEMP/run.log" 2>&1 || { tail -50 "$RUNNER_TEMP/run.log"; exit 1; }
+          python3 - "$RUNNER_TEMP/example/OrthoFinder/Results_tutorial" assets/of_pages/tutorial_pdf/OrthoFinder3.2_tutorial.html <<'EOF'
+          import csv, sys
+          results, html_fn = sys.argv[1:]
+          with open(results + "/Comparative_Genomics_Statistics/Statistics_Overall.tsv", encoding="utf-8") as f:
+              stats = {row[0]: row[1] for row in csv.reader(f, delimiter="\t") if len(row) >= 2}
+          html = open(html_fn, encoding="utf-8").read()
+          summary = "OrthoFinder assigned %s genes (%s%% of total) to %s orthogroups." % (
+              stats["Number of genes in orthogroups"], stats["Percentage of genes in orthogroups"], stats["Number of orthogroups"])
+          if summary in html:
+              print("The tutorial's numbers match the run on ExampleData: " + summary)
+          else:
+              print("::warning title=Tutorial numbers::The run on ExampleData now gives \"%s\", which the tutorial "
+                    "does not quote: update the numbers in OrthoFinder3.2_tutorial.html (and the figures, with "
+                    "draw_trees.py). The PDF was still built." % summary)
+          EOF
+
+      - name: Build the PDF
+        run: assets/of_pages/tutorial_pdf/build_pdf.sh -v "$TAG" "$RUNNER_TEMP/OrthoFinder3_tutorial.pdf"
+
+      - name: Attach it to the release
+        run: gh release upload "$TAG" "$RUNNER_TEMP/OrthoFinder3_tutorial.pdf" --clobber --repo "$GITHUB_REPOSITORY"

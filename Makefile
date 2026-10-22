@@ -39,7 +39,8 @@ ENV_NAME ?= $(ORTHOFINDER_ENV_DEFAULT)
 
 # ----------------------------------------------- versions of the programs ----
 # The latest stable releases (checked 2026-10-11).
-ORTHOFINDER_VERSION ?= 3.1.5
+# OrthoFinder: empty for the latest release on Bioconda (ORTHOFINDER_VERSION=3.2 for another)
+ORTHOFINDER_VERSION ?=
 DIAMOND_VERSION ?= 2.2.8
 MCL_VERSION ?= 22-282
 CIMFOMFA_VERSION ?= 22-273
@@ -68,7 +69,8 @@ FASTTREE_CFLAGS ?= -O3 -finline-functions -funroll-loops -DUSE_SINGLE
 # The BLAST+ programs installed (the release has ~30)
 BLAST_PROGRAMS ?= blastp blastn makeblastdb
 
-# RAxML: the binary built, and its makefile
+# RAxML: the binary installed (the names of the bioconda package), the makefile that
+# builds it, and the name that makefile gives it (the AVX ones build "...-AVX")
 RAXML_BINARY_VERSION ?= raxmlHPC
 RAXML_MAKEFILE_MAP = \
 	raxmlHPC:Makefile.gcc \
@@ -78,6 +80,7 @@ RAXML_MAKEFILE_MAP = \
 	raxmlHPC-PTHREADS-SSE3:Makefile.SSE3.PTHREADS.gcc \
 	raxmlHPC-PTHREADS-AVX2:Makefile.AVX.PTHREADS.gcc
 RAXML_MAKEFILE := $(or $(word 2, $(subst :, ,$(filter $(RAXML_BINARY_VERSION):%,$(RAXML_MAKEFILE_MAP)))),Makefile.gcc)
+RAXML_BUILT_NAME := $(patsubst %-AVX2,%-AVX,$(RAXML_BINARY_VERSION))
 
 # ------------------------------------------------------------ the sources ----
 ORTHOFINDER_REPO := https://github.com/OrthoFinder/OrthoFinder.git
@@ -331,7 +334,7 @@ install_raxml: bin_dir
 	clone $(RAXML_REPO) v$(RAXML_VERSION) "$$tmp/src"
 	cd "$$tmp/src"
 	run make -j$(JOBS) -f $(RAXML_MAKEFILE) || fail "could not build RAxML"
-	put "$$tmp/src/$(RAXML_BINARY_VERSION)" $(RAXML_BINARY_VERSION)
+	put "$$tmp/src/$(RAXML_BUILT_NAME)" $(RAXML_BINARY_VERSION)
 
 install_raxmlng: bin_dir
 	@$(SH_FUNCTIONS)
@@ -461,10 +464,10 @@ define conda_install
 echo "$(2) is already installed: $$(command -v $(3)). Skipping it (FORCE=true installs it again)."
 exit 0
 fi
-echo "Installing $(2) $(4) in the conda environment $(ENV_NAME)..."
+echo "Installing $(2) $(or $(4),(the latest version)) in the conda environment $(ENV_NAME)..."
 . "$$(conda info --base)/etc/profile.d/conda.sh"
 conda activate $(ENV_NAME)
-conda install -y bioconda::$(1)=$(4) || { echo "Error: Failed to install $(2)."; exit 1; }
+conda install -y bioconda::$(1)$(if $(4),=$(4)) || { echo "Error: Failed to install $(2)."; exit 1; }
 endef
 
 conda_install_diamond: create_conda_env
@@ -513,7 +516,7 @@ conda_install_tools: conda_install_diamond conda_install_mcl conda_install_famsa
 	@echo "The programs OrthoFinder uses by default are installed in $(ENV_NAME)."
 
 conda_install: conda_install_orthofinder conda_install_tools
-	@echo "You have now installed OrthoFinder $(ORTHOFINDER_VERSION) and its dependencies in $(ENV_NAME)!"
+	@echo "You have now installed OrthoFinder$(if $(ORTHOFINDER_VERSION), $(ORTHOFINDER_VERSION)) and its dependencies in $(ENV_NAME)!"
 
 clean_conda_env: check_conda
 	@. "$$(conda info --base)/etc/profile.d/conda.sh"

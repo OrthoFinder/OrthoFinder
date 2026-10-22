@@ -104,11 +104,11 @@ def main(args=None):
     ogs = [[Seq(g) for g in og] for og in mcl.get_predicted_ogs(orthogroups_fn)]
     if settings.get("tree_program") in ["raxml", "raxml-ng"]:
         ogs = [og for og in ogs if len(og) >= min_seq]
-    og_matrix, iogs4 = concatenated_alignment.orthogroup_matrix(ogs, min_seq)
-    if og_matrix.shape[1] < 4:
+    occupancy, iogs4 = concatenated_alignment.orthogroup_occupancy(ogs, min_seq)
+    if occupancy.n_species < 4:
         print("ERROR: a species tree is only inferred for four or more species", file=sys.stderr)
         return 1
-    i_ogs, f_single_copy = concatenated_alignment.determine_orthogroups_for_species_tree(og_matrix, iogs4)
+    i_ogs, f_single_copy = concatenated_alignment.determine_orthogroups_for_species_tree(occupancy, iogs4)
 
     align_dir = first_with(working_dirs, "Alignments_ids")
     if align_dir is None:

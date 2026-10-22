@@ -17,7 +17,9 @@ OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and a
 - [Simple Usage](#simple-usage)
 - [Advanced Usage - Scaling to Thousands of Species](#advanced-usage---scaling-to-thousands-of-species)
 - [Command line Options](#command-line-options)
+<!-- preview -->
 - [Viewing the results in a web browser](#viewing-the-results-in-a-web-browser)
+<!-- /preview -->
 - [Output files](#output-files)
 - [Citation](#citation)
 - [System Requirements](#system-requirements)
@@ -53,9 +55,11 @@ These changes are in OrthoFinder v3.2 and later. Some of them change the names a
 
 4. **The default species tree differs between the core run and `--assign`.** A core run (`-f`) infers the species tree from the concatenated alignment of the single-copy orthogroups. An `--assign` run infers it from the gene trees with ASTRAL-Pro. `-ST` (e.g. `-ST astral-pro`) makes a core run infer it from the gene trees as well; the concatenated alignment is then not needed, and these two files of a core run are not written: `WorkingDirectory/Alignments_ids/SpeciesTreeAlignment.fa` (the concatenated alignment) and `Species_Tree/Orthogroups_for_concatenated_alignment.txt` (the orthogroups used for it). If you need them, write them afterwards from the results with the `species_tree_alignment` tool (in [`tools/`](tools/species_tree_alignment.py)): `species_tree_alignment <Results_dir>` (`-o <dir>` to write them elsewhere, `--species-names` to name the rows by species).
 
+<!-- preview -->
 5. **Scoring matrices and gap penalties for DIAMOND searches**: `--matrix` (e.g. `BLOSUM45`, default `BLOSUM62`), `--custom-matrix <file>` for a matrix file of your own, and `-go`/`--gapopen` and `-ge`/`--gapextend` for the gap penalties. A restart or `--assign` from the results uses the same scoring. See [Sequence search scoring options (DIAMOND)](#command-line-options).
 
 6. **The results in a web browser**: `--tree-view` (the species tree, the resolved gene trees with their alignments, and a species tree explorer), `--stats-view` (the statistics, with interactive plots) and `--groups-view` (the genes of each orthogroup and HOG, searchable). `--view` writes all three, linked to each other, and `OrthoFinder_Results.html` to open them, a tab for each. For the results of a finished run: `view_results <Results_dir>`. The pages work offline in any recent browser, in light or dark colours. See [Viewing the results in a web browser](#viewing-the-results-in-a-web-browser).
+<!-- /preview -->
 
 7. **The orthogroups in OrthoXML format**, for other tools: `--orthoxml` writes `Orthogroups/Orthogroups.orthoxml`, the orthogroups with their HOGs nested in them: the species tree as the taxonomy, and gene duplications as paralog groups. The MCL orthogroups (e.g. with `-og`) are written as `Orthogroups/MCL_Orthogroups.orthoxml`. See [Output options](#command-line-options).
 
@@ -219,12 +223,13 @@ Command-line options for OrthoFinder
   | Parameter | Description                               | Default   | Options                                                                                     |
   |-----------|-------------------------------------------|-----------|---------------------------------------------------------------------------------------------|
   | `-M`      | Method for gene tree inference.           | `msa`     | `dendroblast`, `msa`                                                                        |
-  | `-S`      | Sequence search program                   | `diamond` | `diamond`, `diamond_ultra_sens`, `blastp`, `mmseqs`, `blastn` |
+  | `-S`      | Sequence search program. `blast` is BLAST+ for either kind of input: `blastp` for protein sequences, `blastn` with `-d` (nucleotide sequences) | `diamond` (`blastn` with `-d`) | `diamond`, `diamond_ultra_sens`, `blast`, `blastp`, `blastn`, `mmseqs` |
   | `-A`      | MSA program, requires `-M msa`            | `famsa`   | `famsa`, `mafft`, `muscle`,                                                          |
   | `-T`      | Tree inference method, requires `-M msa`  | `fasttree`| `fasttree`, `fasttree_fastest`, `raxml`, `iqtree`                               |
   | `-ST`     | Species tree program, from the gene trees, requires `-M msa` | a tree of the concatenated alignment; `astral-pro` with `--assign` | `astral-pro` |
   | `-I`      | MCL inflation parameter                   | `1.2`     | usually `1.2`–`5` (larger values give smaller orthogroups; see the [MCL manual](https://micans.org/mcl/man/mcl.html)) |
 
+<!-- preview -->
 - **Sequence search scoring options (DIAMOND)**<br>
   | Parameter        | Description                                                               |
   |------------------|---------------------------------------------------------------------------|
@@ -245,6 +250,7 @@ Command-line options for OrthoFinder
   - The 20 standard amino acids are needed (DIAMOND would otherwise find no hits); others, such as `B`, `Z`, `X` and `*`, are optional.
   - DIAMOND has no default gap penalties for a custom matrix, so `--gapopen` and `--gapextend` are needed. Not every pair works with every matrix: if DIAMOND cannot compute its statistics for them ("The ALP library failed to compute the statistical parameters for this matrix"), try others.
   - The file can be anywhere: give its path with `--custom-matrix`. OrthoFinder checks it before the run starts, and keeps a copy with the results (`WorkingDirectory/custom_scoring_matrix.txt`) that the searches use. A restart from those results (e.g. `-b` or `--assign`) uses the same matrix without `--custom-matrix` being given again, even if the original file has since been moved or changed.
+<!-- /preview -->
 
 - **Input options**<br>
   | Parameter | Description                               |
@@ -262,6 +268,7 @@ Command-line options for OrthoFinder
   | `--orthoxml` | Also write the orthogroups in [OrthoXML](https://orthoxml.org) format, for other tools, with their HOGs nested in them: `Orthogroups/Orthogroups.orthoxml`. The MCL orthogroups are written as `Orthogroups/MCL_Orthogroups.orthoxml`. |
   | `-mog` | Also keep the MCL orthogroups (before the HOGs) in a full run: `Orthogroups/MCL_Orthogroups.tsv` etc. They are always written with `-og`, `-ogt` or `-ost`, or if the run fails. |
 
+<!-- preview -->
 - **Viewing the results in a web browser**<br>
   | Parameter | Description |
   |-----------|-------------|
@@ -271,12 +278,15 @@ Command-line options for OrthoFinder
   | `--view` | All three pages, linked to each other, and `OrthoFinder_Results.html` to open them, a tab for each (also with two of them). |
 
   See [Viewing the results in a web browser](#viewing-the-results-in-a-web-browser) for finished runs and results on a server.
+<!-- /preview -->
 
 - **Parallel processing options**<br>
   | Parameter | Description                                 | Default |
   |-----------|---------------------------------------------|---------|
-  | `-t`      | Number of parallel sequence search threads. | `All available`    |
-  | `-a`      | Number of parallel analysis threads.        | `16 or t/8 (whichever lower)`     |
+  | `-t`      | Number of parallel sequence search threads. | Half the CPU cores available (on a cluster, those of the job), at least 1 |
+  | `-a`      | Number of parallel analysis threads.        | A quarter of `-t`, at least 1 |
+
+  `orthofinder -h` shows these defaults for the computer it runs on.
 
 - **Workflow stopping options**<br>
   | Parameter | Description                                                                 |
@@ -305,6 +315,7 @@ Command-line options for OrthoFinder
   | `-h`             | Print this help text.                                                     |
   | `-v`             | Print version.                                                     |
 
+<!-- preview -->
 ## Viewing the results in a web browser
 
 OrthoFinder can write three linked pages to explore the results, plus `OrthoFinder_Results.html` to open them in tabs:
@@ -347,6 +358,7 @@ python tools/view_results/view_results.py <Results_dir>      # from the OrthoFin
 ```
 
 Light or dark colours: **Colours**, at the top right of each page.
+<!-- /preview -->
 
 ## Output files
 
@@ -418,24 +430,45 @@ OrthoFinder extends its phylogenetic approach to orthogroups, defining orthogrou
 - Introduced the orthogroup inference method<br>
   [6] *Emms, D.M., Kelly, S*. **OrthoFinder: solving fundamental biases in whole genome comparisons dramatically improves orthogroup inference accuracy**. Genome Biol 16, 157 (2015). [![DOT:10.1186/s13059-015-0721-2](https://img.shields.io/badge/DOI-10.1186%2Fs13059--015--0723--2-blue)](https://doi.org/10.1186/s13059-015-0721-2)
 
-## System Requirements 
+## System Requirements
 
-**Operating system** 
+**Operating system**
 
-OrthoFinder was designed to run on Linux (including WSL2). 
+OrthoFinder runs on Linux (including WSL2 on Windows) and macOS. The programs bundled with OrthoFinder (in the `orthofinder-linux-intel` release and the source code) are for Linux on Intel/AMD (x86-64) processors; elsewhere, install them with conda (or see [Dependencies](#dependencies)).
 
-We have tested OrthoFinder v3.1 on debian 12.9, centOS v8, macOS 14.4.1, macOS 13.2.1. 
+OrthoFinder v3.2 is tested on Ubuntu 24.04, and its tests run on GitHub Actions (Ubuntu) with Python 3.11, 3.12, 3.13 and 3.14. OrthoFinder v3.1 was tested on Debian 12.9, CentOS 8, macOS 14.4.1 and macOS 13.2.1.
+
+**Python**
+
+Python `>=3.11`, and these packages, which pip and conda install with OrthoFinder:
+
+| Package | Required | Tested with (v3.2) |
+|---------|----------|--------------------|
+| NumPy | any | 2.4.0 |
+| SciPy | any | 1.16.3 |
+| scikit-learn | any | 1.8.0 |
+| Biopython | any | 1.86 |
+| Rich | any | 14.2.0 |
+| ete4 | any | 4.4.0 |
+| pandas | `>=2.0` | 3.0.6 |
 
 **Dependencies**
-- Python `>=3.11`
-- Diamond `>=2.1.7,<2.2`
-- Famsa `>=2.2.3`
-- Fasttree `>=2.1.11`
-- Numpy `>=2.3.2`
-- Scipy `>=1.16`
-- Biopython `>=1.85`
-- Rich `>=14.1.0`
-- Scikit-learn `>=1.7.1`
+
+The programs OrthoFinder runs. Those bundled with OrthoFinder are built for Linux on Intel/AMD (x86-64) processors only, including WSL2 on Windows: there, they are used when no other copy is installed. On other systems (macOS, or ARM processors such as Apple silicon or ARM servers), install the programs yourself, e.g. with conda, which installs them all.
+
+| Program | Used for | Bundled version | Required |
+|---------|----------|-----------------|----------|
+| DIAMOND | the sequence searches (default) | 2.2.8 | `>=2.1.7` |
+| MCL | the orthogroups | 22-282 | |
+| FAMSA | the alignments (default) | 2.5.2 | `>=2.2.3` |
+| FastTree | the gene trees and species tree (default) | 2.2.0 | `>=2.1.11` |
+| ASTRAL-Pro (ASTER) | the species tree with `--assign`, or `-ST astral-pro` | 1.25 | |
+| FastME | the trees with `-M dendroblast` | 2.1.6.3 | |
+| MAFFT | `-A mafft` | 7.526 | |
+| BLAST+ | `-S blast`, `blastp`, `blastn` (and the default with `-d`) | not bundled | |
+| MMseqs2 | `-S mmseqs` | not bundled | |
+| MUSCLE | `-A muscle` | not bundled | |
+| RAxML, IQ-TREE | `-T raxml`, `-T iqtree3` | not bundled | |
 
 ## Meet the team
 

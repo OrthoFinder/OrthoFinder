@@ -265,6 +265,8 @@ def do_orthogroups(
         )
 
     if not q_unassigned:
+        # (files of each orthogroup left by orthogroups inferred before, e.g. a -b restart)
+        file_handler.handler.remove_orthogroup_files()
         post_clustering_orthogroups(
             clusters_filename_pairs,
             species_info_obj,

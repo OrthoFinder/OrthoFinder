@@ -8,6 +8,7 @@ import subprocess
 import pytest
 
 from orthofinder.orthology import stats_page
+from orthofinder.run import cli_options
 
 
 def make_results(d):
@@ -142,6 +143,7 @@ def test_command(tmp_path, capsys):
 
 
 @pytest.mark.skipif(shutil.which("orthofinder") is None, reason="needs the orthofinder command")
+@pytest.mark.skipif(not cli_options.PREVIEW_OPTIONS, reason="the pages are not in the help of the released OrthoFinder")
 def test_options_in_the_help():  # the pages and --view
     result = subprocess.run(["orthofinder", "-h"], capture_output=True, text=True, check=False,
                             env={**os.environ, "COLUMNS": "200"})

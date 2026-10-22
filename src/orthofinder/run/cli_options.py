@@ -12,6 +12,7 @@ not in the help (DEVELOPMENT_OPTIONS). An option:
     "read":    (with a value) the reader of process_args that reads it (READERS)
     "field":   the Options attribute a reader sets, "what": what it is, in messages
     "choices": a function(prog_caller): the values listed under it in the help
+    "preview": True for an option of a feature not yet released (PREVIEW_OPTIONS)
 --config <file> is read before the others (process_args.program_caller_with_configs).
 """
 from .. import g_mcl_inflation, n_cores, n_threads_default
@@ -19,9 +20,25 @@ from ..search import diamond_scoring
 
 OF = "[dark_goldenrod]OrthoFinder[/dark_goldenrod]"
 
+# The options marked "preview" (the pages to view the results, the scoring of the DIAMOND
+# searches): True on the development branch (dev_master), where they are in the help and
+# can be used; False on main, the released OrthoFinder, where they are neither (the
+# script that makes main from dev_master sets it, and removes their documentation).
+PREVIEW_OPTIONS = True
+
 
 def _dir(text):
     return text.replace("<dir>", "<[bright_magenta]dir[/bright_magenta]>")
+
+
+def _search_choices(prog_caller):
+    """The -S choices: the search methods configured (not those for a custom matrix), with
+    "blast" (BLAST+ blastp or blastn: process_args.resolve_search_program) after DIAMOND's."""
+    methods = [m for m in prog_caller.list_search_methods() if m not in diamond_scoring.CUSTOM_MATRIX_METHODS.values()]
+    if "blast" not in methods and ("blastp" in methods or "blastn" in methods):
+        i = max((k + 1 for k, m in enumerate(methods) if m.startswith("diamond")), default=0)
+        methods.insert(i, "blast")
+    return methods
 
 
 def _path(path):
@@ -58,9 +75,11 @@ METHOD_OPTIONS = {
          "help": 'Method for gene tree inference. Options [dark_cyan]"dendroblast"[/dark_cyan] & '
                  '[dark_cyan]"msa"[/dark_cyan] [Default = [dark_cyan]msa[/dark_cyan]]'},
         {"names": ("-S", "--search"), "value": "txt", "read": "search",
-         "help": "Sequence search program [Default = [dark_cyan]diamond[/dark_cyan]]",
-         "choices": lambda pc: [m for m in pc.list_search_methods()
-                                if m not in diamond_scoring.CUSTOM_MATRIX_METHODS.values()]},
+         "help": "Sequence search program [Default = [dark_cyan]diamond[/dark_cyan]; "
+                 "[dark_cyan]blastn[/dark_cyan] with [dark_cyan]-d[/dark_cyan]]. "
+                 "[dark_cyan]blast[/dark_cyan]: BLAST+ for either input, [dark_cyan]blastp[/dark_cyan] "
+                 "for protein sequences, [dark_cyan]blastn[/dark_cyan] with [dark_cyan]-d[/dark_cyan]",
+         "choices": lambda pc: _search_choices(pc)},
         {"names": ("-A", "--msa-program"), "value": "txt", "read": "msa",
          "help": 'MSA program, requires [dark_cyan]"-M msa"[/dark_cyan] [Default = [dark_cyan]famsa[/dark_cyan]]',
          "choices": lambda pc: [m for m in pc.list_msa_methods() if m != "mafft_memsave"]},
@@ -87,9 +106,9 @@ PARALLEL_OPTIONS = {
                  f"here [deep_sky_blue2]{n_threads_default}[/deep_sky_blue2] of [deep_sky_blue2]{n_cores}[/deep_sky_blue2]]"},
         {"names": ("-a", "--algthreads"), "value": "int", "read": "threads", "field": "n_process_alg",
          "what": "OrthoFinder threads",
-         "help": "Number of parallel analysis threads [Default = an eighth of [dark_cyan]-t[/dark_cyan], "
-                 "from [deep_sky_blue2]1[/deep_sky_blue2] to [deep_sky_blue2]16[/deep_sky_blue2], "
-                 f"here [deep_sky_blue2]{min(16, max(1, n_threads_default // 8))}[/deep_sky_blue2]]"},
+         "help": "Number of parallel analysis threads [Default = a quarter of [dark_cyan]-t[/dark_cyan], "
+                 "at least [deep_sky_blue2]1[/deep_sky_blue2], "
+                 f"here [deep_sky_blue2]{max(1, n_threads_default // 4)}[/deep_sky_blue2]]"},
     ],
 }
 
@@ -119,17 +138,17 @@ OUTPUT_OPTIONS = {
 ADDITIONAL_OUTPUT_OPTIONS = {
     "title": "ADDITIONAL OUTPUT OPTIONS",
     "options": [
-        {"names": ("--tree-view",), "set": {"tree_view": True},
+        {"names": ("--tree-view",), "preview": True, "set": {"tree_view": True},
          "help": "A page to view the trees in a web browser: each resolved gene tree with its "
                  "alignment (clades can be collapsed, a tree saved as SVG), a species tree explorer "
                  "(the HOGs at each node, an orthogroup's duplications and losses, each species' "
                  "genes) and all genes on the species tree: " + _path("Resolved_Gene_Trees/Resolved_Gene_Trees.html")},
-        {"names": ("--stats-view",), "set": {"stats_view": True},
+        {"names": ("--stats-view",), "preview": True, "set": {"stats_view": True},
          "help": "A page of the run's statistics with interactive plots (overall, species, "
                  "orthogroups, duplications, HOGs): " + _path("Comparative_Genomics_Statistics/Statistics.html")},
-        {"names": ("--groups-view",), "set": {"groups_view": True},
+        {"names": ("--groups-view",), "preview": True, "set": {"groups_view": True},
          "help": "A page of the genes of each orthogroup and HOG, searchable: " + _path("Orthogroups/Groups.html")},
-        {"names": ("--view",), "set": {"tree_view": True, "stats_view": True, "groups_view": True},
+        {"names": ("--view",), "preview": True, "set": {"tree_view": True, "stats_view": True, "groups_view": True},
          "help": "All three pages ([dark_cyan]--tree-view[/dark_cyan], [dark_cyan]--stats-view[/dark_cyan], "
                  "[dark_cyan]--groups-view[/dark_cyan]), linked to each other, and " + _path("OrthoFinder_Results.html") + " to "
                  "open them, a tab for each (also with two of them). With many species they can be large: each "
@@ -172,19 +191,19 @@ OTHER_OPTIONS = {
         {"names": ("-z",), "set": {"q_trim": False},
          "help": "Don't trim MSAs (columns>=[deep_sky_blue2]90[/deep_sky_blue2]% gap, min. alignment length "
                  "[deep_sky_blue2]500[/deep_sky_blue2])"},
-        {"names": ("--matrix",), "value": "txt", "read": "scoring",
+        {"names": ("--matrix",), "preview": True, "value": "txt", "read": "scoring",
          "help": "Scoring matrix of the [dark_cyan]DIAMOND[/dark_cyan] searches [Default = [dark_cyan]BLOSUM62[/dark_cyan]]",
          "choices": lambda pc: list(diamond_scoring.DIAMOND_MATRICES)},
-        {"names": ("--custom-matrix",), "value": "file", "read": "scoring",
+        {"names": ("--custom-matrix",), "preview": True, "value": "file", "read": "scoring",
          "help": "A scoring matrix file for the [dark_cyan]DIAMOND[/dark_cyan] searches, requires [dark_cyan]--gapopen[/dark_cyan] and "
                  "[dark_cyan]--gapextend[/dark_cyan]\n"
                  "In NCBI's format (e.g. the files at " + _link("https://ftp.ncbi.nlm.nih.gov/blast/matrices/") + "): a line of "
                  "one-letter amino acid codes, then for each code, in that order, a line of the code and its integer "
                  "scores. The 20 standard amino acids are needed; lines starting with # are comments."},
-        {"names": ("-go", "--gapopen"), "value": "int", "read": "scoring",
+        {"names": ("-go", "--gapopen"), "preview": True, "value": "int", "read": "scoring",
          "help": "Gap open penalty of the [dark_cyan]DIAMOND[/dark_cyan] searches, [dark_cyan]--gapopen[/dark_cyan] "
                  "[Default = the matrix's, e.g. [deep_sky_blue2]11[/deep_sky_blue2] for BLOSUM62]"},
-        {"names": ("-ge", "--gapextend"), "value": "int", "read": "scoring",
+        {"names": ("-ge", "--gapextend"), "preview": True, "value": "int", "read": "scoring",
          "help": "Gap extend penalty of the [dark_cyan]DIAMOND[/dark_cyan] searches, [dark_cyan]--gapextend[/dark_cyan] "
                  "[Default = the matrix's, e.g. [deep_sky_blue2]1[/deep_sky_blue2] for BLOSUM62]"},
         {"names": ("-h", "--help"), "read": "help", "help": "Print this help text"},
@@ -255,6 +274,11 @@ OPTION_GROUPS = (
 
 # Each option by each of its names
 OPTIONS_BY_NAME = {name: option for group in OPTION_GROUPS for option in group["options"] for name in option["names"]}
+
+
+def is_available(option):
+    """Whether an option can be used and is in the help: not a preview one, unless PREVIEW_OPTIONS."""
+    return PREVIEW_OPTIONS or not option.get("preview")
 
 
 def help_label(option):

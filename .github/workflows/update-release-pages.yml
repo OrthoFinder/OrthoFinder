@@ -1,0 +1,75 @@
+name: Update website for a release
+
+# When a release is published on GitHub (packaging/release_github.sh PUBLISH=1), update
+# the website on the gh-pages branch: the download page names the new version,
+# and the release gets a post with its release notes (the Older Versions page
+# lists the posts). GitHub Pages then rebuilds the site from gh-pages.
+# Run it by hand (Actions > Update website for a release > Run workflow) to
+# redo it for a release; running it again changes nothing.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. v3.2"
+        required: true
+
+permissions:
+  contents: write
+
+# One update of gh-pages at a time (the tutorial job in orthofinder-python-main.yml too)
+concurrency:
+  group: gh-pages-update
+  cancel-in-progress: false
+
+jobs:
+  release-pages:
+    # (not for pre-releases)
+    if: github.event_name != 'release' || !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Get the release notes and date
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body > "$RUNNER_TEMP/notes.md"
+          DATE=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json publishedAt --jq .publishedAt | cut -c1-10)
+          echo "RELEASE_DATE=$DATE" >> "$GITHUB_ENV"
+          echo "Release $TAG published $DATE; notes:"
+          cat "$RUNNER_TEMP/notes.md"
+
+      - name: Checkout gh-pages into ./site
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: site
+
+      - name: Update the download page and add the release post
+        run: |
+          python3 assets/of_pages/update_release_pages.py site "$TAG" \
+            --date "$RELEASE_DATE" --notes-file "$RUNNER_TEMP/notes.md"
+
+      - name: Commit and push (gh-pages)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd site
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/download.markdown _posts
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Docs: release $TAG [skip ci]"
+            git push origin gh-pages
+          fi

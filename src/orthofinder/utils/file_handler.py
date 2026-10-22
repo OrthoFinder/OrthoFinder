@@ -988,8 +988,24 @@ class _FileHandler(object):
             for i, d in enumerate([self.wd_current + "Distances/", self.get_results_trees_dir(), self.wd_current + "Trees_ids/"]):
                 if not os.path.exists(d): os.mkdir(d)
     
+    def remove_orthogroup_files(self):
+        """
+        Remove the files of each orthogroup (sequences, alignments, gene trees) of
+        orthogroups inferred before, in this run's results and working directories, as
+        the orthogroups have just been inferred again (a -b restart in the results it is
+        given): an orthogroup with the same number is then other genes (e.g. with a
+        species removed), and the sequence files there would be used for it.
+        """
+        for d in (self.rd1 + "Orthogroup_Sequences/", self.rd1 + "Single_Copy_Ortholog_Sequences/",
+                  self.rd1 + "MultipleSequenceAlignments/", self.wd_current + "Sequences_ids/",
+                  self.wd_current + "Alignments_ids/", self.wd_current + "Trees_ids/",
+                  self.wd_current + "Gene_Trees/", self.wd_current + "Distances/",
+                  self.wd_current + "Resolved_Gene_Trees_ids/"):
+            if os.path.isdir(d):
+                shutil.rmtree(d)
+
     def get_orthogroup_results_fn_base(self):
-        if self.rd1 == None: 
+        if self.rd1 == None:
             raise Exception("No rd1")
         if self.i_results_version == None:
             raise Exception("Base results identifier has not been created")

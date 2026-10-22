@@ -295,6 +295,8 @@ def _read_options(args, prog_caller):
         option = cli_options.OPTIONS_BY_NAME.get(arg)
         if option is None:
             raise ArgumentError("Unrecognised argument: %s" % arg)
+        if not cli_options.is_available(option):
+            raise ArgumentError("%s is not available in this version of OrthoFinder" % arg)
         if "set" in option:
             for attribute, value in option["set"].items():
                 setattr(r.options, attribute, value)
@@ -311,9 +313,11 @@ def _read_options(args, prog_caller):
             raise ArgumentError(str(e))
         options.score_matrix_given = True
 
-    # the default number of algorithm threads
+    # the default number of algorithm threads: a quarter of -t, at least 1 (each is a process
+    # with its own copy of the data, so fewer than -t; -t is at most the cores, so this is
+    # at most a quarter of them)
     if options.n_process_alg is None:
-        options.n_process_alg = min(16, max(1, int(options.n_blast / 8)))
+        options.n_process_alg = default_alg_threads(options.n_blast)
     return (options, r.fasta_dir, r.continuation_dir, r.results_dir_non_default, r.q_selected_msa,
             r.q_selected_tree, r.user_specified_m)
 
@@ -341,6 +345,11 @@ def _read_core(r, option, arg, args):
     _once(r, option)
     r.options.q_fast_add = True
     r.continuation_dir = get_directory_argument(arg, args)
+
+
+def default_alg_threads(n_blast):
+    """The default number of analysis threads (-a): a quarter of the search threads (-t), at least 1."""
+    return max(1, n_blast // 4)
 
 
 def _read_threads(r, option, arg, args):

@@ -74,7 +74,9 @@ create_hog_fastas = "tools.create_hog_fastas:main"
 ncbi_primary_transcript = "tools.ncbi_primary_transcript:main"
 orthogroup_gene_count = "tools.orthogroup_gene_count:main"
 split_ortholog_files = "tools.split_ortholog_files:main"
+# preview (not in the released OrthoFinder: PREVIEW_OPTIONS in src/orthofinder/run/cli_options.py)
 view_results = "tools.view_results.view_results:main"
+# /preview
 species_tree_alignment = "tools.species_tree_alignment:main"
 mcl_orthogroup_sequences = "tools.mcl_orthogroup_sequences:main"
 
@@ -141,7 +143,7 @@ tag_regex = "^(?:v)?(?P<version>\\d+\\.\\d+(?:\\.\\d+)?)$"
 write_to = "src/orthofinder/_version.py"
 version_scheme = "no-guess-dev"
 local_scheme = "no-local-version"
-fallback_version = "3.1.5"
+fallback_version = "0+unknown"
 
 [tool.ruff.lint.isort]
 split-on-trailing-comma = false

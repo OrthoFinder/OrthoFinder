@@ -34,7 +34,7 @@ jobs:
     name: ${{ matrix.os }} / py${{ matrix.python }} / tests
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
-    continue-on-error: true
+    # (a failing test fails the run: packaging/release_github.sh publishes only a commit whose run passed)
     strategy:
       fail-fast: false
       matrix:
@@ -133,7 +133,12 @@ jobs:
   update-example-output-doc:
     name: Update example output tree (docs)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test     # (the website is only updated from a commit whose tests passed)
     runs-on: ubuntu-latest
+    # One update of gh-pages at a time (update-release-pages.yml too)
+    concurrency:
+      group: gh-pages-update
+      cancel-in-progress: false
 
     steps:
       - name: Checkout main

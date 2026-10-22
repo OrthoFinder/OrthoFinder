@@ -1,3 +1,7 @@
 # git archive fills in .git_archival.txt (the commit and release tag), so
 # setuptools-scm gets the version of a release archive without git history
 .git_archival.txt  export-subst
+# Not in the release archives (release_github.sh, GitHub's "Source code"): the
+# tutorial PDFs and the sources of the website and tutorial PDF
+assets/docs/**     export-ignore
+assets/of_pages/** export-ignore
