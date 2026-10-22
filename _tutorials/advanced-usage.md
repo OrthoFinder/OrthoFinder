@@ -13,6 +13,11 @@ pdfs: https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/advanc
 To run OrthoFinder3 on default setting, you will need diamond, famsa, fasttree, MCL
 If you install OrthoFinder using a recommended method, you shouldn’t need to install
 any of the dependencies manually, but in case you do;
+
+The programs bundled with OrthoFinder (in the `orthofinder-linux-intel` release and the
+source code) are built for Linux on Intel/AMD (x86-64) processors only, including WSL2 on
+Windows. On other systems, such as macOS or computers with ARM processors (e.g. Apple
+silicon), install the programs yourself, for example with conda:
 ```bash
 # Diamond
 https://github.com/bbuchfink/diamond
