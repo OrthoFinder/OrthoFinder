@@ -1,8 +1,8 @@
 ---
 layout: post
 title:  "Beginner Tutorial"
-date:   2026-10-21 11:51:51 +0000
-updated: 2026-10-21
+date:   2026-10-23 14:35:19 +0000
+updated: 2026-10-23
 docs: /assets/docs/beginner-tutorial.pdf
 pdfs: https://github.com/OrthoFinder/OrthoFinder/blob/gh-pages/assets/docs/beginner-tutorial.pdf
 ---
@@ -88,7 +88,7 @@ or the [Advanced Tutorial]({{ site.baseurl }}/tutorials/advanced-tutorial/) page
 
 OrthoFinder creates a results directory named OrthoFinder inside the proteome
 directory, and puts the results here.
-My results directory `ExampleData/OrthoFinder/Results_Oct21` looks like this.
+My results directory `ExampleData/OrthoFinder/Results_Oct23` looks like this.
 
 {% include_relative of-output-tree.md %}
 
