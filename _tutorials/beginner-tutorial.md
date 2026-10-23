@@ -16,7 +16,7 @@ This tutorial will cover:
 
 OrthoFinder requires as input the amino acid sequences for all the protein coding genes in
 your species of interest. We provide a separate tutorial for
-[getting input files]({{ site.baseurl}}/tutorials/gettting-input-data/) for OrthoFinder.
+[getting input files]({{ site.baseurl}}/tutorials/getting-input-data/) for OrthoFinder.
 
 All these steps will be done on the command line so that you can just copy and
 paste the commands yourself. If you are not familiar with the command line there

@@ -46,6 +46,7 @@ excerpt_separator: "<!--more-->"
 theme: minima
 plugins:
   - jekyll-feed
+  - jekyll-redirect-from
   - jekyll-github-metadata
   - jekyll-seo-tag
 

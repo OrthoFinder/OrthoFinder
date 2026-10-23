@@ -107,4 +107,4 @@ permalink: /faq/
 
 ---
 
-*Still have questions? Please head to our [dicussion section](https://github.com/OrthoFinder/OrthoFinder/issues) on GitHub to check for the similiar questions and answers. If no solutions were found, please open an new issue.*
+*Still have questions? Please head to our [discussion section](https://github.com/OrthoFinder/OrthoFinder/issues) on GitHub to check for the similar questions and answers. If no solutions were found, please open an new issue.*

@@ -85,7 +85,7 @@ within a species (e.g. HuA & HuB).
 The chicken gene diverged from the other genes when the lineage leading to chicken
 split from the lineage leading to human and mouse. Therefore, the chicken gene ChC is
 an ortholog of HuA & HuB in human and an ortholog of MoA & MoB in mouse.
-Depending on what happend after the genes diverged, orthologs can be in one-to-one
+Depending on what happened after the genes diverged, orthologs can be in one-to-one
 relationships (HuA - MoA), many-to-one (HuA & HuB - ChC), or many-to-many (no
 examples in this tree, but would occur if there were a duplication in chicken). All of these
 relationships are identified by OrthoFinder.

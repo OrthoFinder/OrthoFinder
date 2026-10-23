@@ -9,7 +9,7 @@ pdfs: https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/advanc
 
 
 OrthoFinder3 provides a new workflow to assign new genes from new species to an already 
-inferred set of orthogroups for a smaller, core group of species. If you are analysing `>100` species, we reccommend that you use this scalable implementation.
+inferred set of orthogroups for a smaller, core group of species. If you are analysing `>100` species, we recommend that you use this scalable implementation.
 
 To do this effectively, we need to pick a good set of core species. If we are running
 OrthoFinder on some bees, some moths, and some flies, we want to build our core 

@@ -9,7 +9,7 @@ permalink: /tutorial/
 These tutorials take you from getting the input files to interpreting the results of OrthoFinder.
 If you are new to OrthoFinder, read them in this order:
 
-1. [Getting Input Data]({{ site.baseurl }}/tutorials/gettting-input-data/): download the proteomes of your species from Ensembl, NCBI or Phytozome, and keep one transcript per gene.
+1. [Getting Input Data]({{ site.baseurl }}/tutorials/getting-input-data/): download the proteomes of your species from Ensembl, NCBI or Phytozome, and keep one transcript per gene.
 2. [Beginner Tutorial]({{ site.baseurl }}/tutorials/beginner-tutorial/): install OrthoFinder, run it on the example data, and explore its results.
 3. [Guide to Results]({{ site.baseurl }}/tutorials/guide-to-results/): what each results file contains.
 

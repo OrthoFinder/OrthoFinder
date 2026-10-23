@@ -1,9 +1,10 @@
 ---
+redirect_from: /tutorials/gettting-input-data/
 layout: post
 title:  "Getting Input Data"
 date:   2025-05-01 09:04:16 +0000
 updated: 2025-05-06
-docs: /assets/docs/gettting-input-data.pdf
+docs: /assets/docs/getting-input-data.pdf
 pdfs: https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/gettting-input-data.pdf
 ---
 

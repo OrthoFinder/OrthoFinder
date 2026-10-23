@@ -149,7 +149,7 @@ species tree) by analysing the rooted gene trees.
 
 - **N1.tsv**<br>
   It is a tab separated text file. Each row contains the genes belonging to a single
-  orthogroup. The genes from each orthogroup are organized into columns, one per
+  orthogroup. The genes from each orthogroup are organised into columns, one per
   species. Additional columns give the HOG (Hierarchical Orthogroup) ID and the node
   in the gene tree from which the HOG was determined
 
@@ -187,7 +187,7 @@ those orthogroups which contain exactly one gene per species.
 
 - **SpeciesTree_rooted_node_labels.txt**<br>
   The same tree as above but with the
-  nodes given labels (instead of support values) to allow other results files to crossreference
+  nodes given labels (instead of support values) to allow other results files to cross-reference
   branches/nodes in the species tree (e.g. location of gene duplication
   events).
 

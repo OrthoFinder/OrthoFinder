@@ -60,10 +60,10 @@ mkdir OrthoFinder && \
   tar -xz --strip-components=1 -C OrthoFinder
 ```
 
-Next, you can run the following commands to install OrthoFinder inside the of3_env virtural environment.
+Next, you can run the following commands to install OrthoFinder inside the of3_env virtual environment.
 ```bash
 cd OrthoFinder
-python3 -m venv of3_env # Create an virtural environment named of3_env
+python3 -m venv of3_env # Create an virtual environment named of3_env
 . of3_env/bin/activate # Activate of3_env
 pip install .
 ```
