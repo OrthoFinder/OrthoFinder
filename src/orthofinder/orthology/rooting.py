@@ -134,7 +134,7 @@ def get_roots(tree, species_tree_rooted, GeneToSpecies):
 #                        print(m)
                         scores_list.append(outgroup_ingroup_separation_score(sp_up, sp_down, sett1, sett2, n_recip, nt1, nt2))
                     elif clades.count(TF) >= 2:  
-                        # (A,A,A)-excluded, (A,A,AB)-ignore as want A to be bigest without including B, (A,AB,AB), (AB,AB,AB) 
+                        # (A,A,A)-excluded, (A,A,AB)-ignore as want A to be biggest without including B, (A,AB,AB), (AB,AB,AB) 
                         i = 0
                         roots_list.append(nodes[i])
                         sp_down = nodes[i].sp_down

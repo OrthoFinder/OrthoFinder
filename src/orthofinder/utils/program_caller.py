@@ -1047,7 +1047,7 @@ class ProgramCaller(object):
 #         qListOfList - if False then commands_and_filenames is a list of (cmd, actual_target_fn) tuples
 #                       if True then commands_and_filenames is a list of lists of (cmd, actual_target_fn) tuples where the elements
 #                       of the inner list need to be run in the order they appear.
-#         q_print_on_error - If error code returend print stdout & stederr
+#         q_print_on_error - If error code returned print stdout & stderr
 #     """
 #     cmd_queue = Queue()
 #     i = -1

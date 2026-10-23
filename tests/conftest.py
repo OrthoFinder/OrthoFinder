@@ -122,14 +122,14 @@ def pytest_addoption(parser):
         "--run-all",
         action="store_true",
         default=False,  
-        help="Decide wether or not to test all available OrthoFinder command options.",
+        help="Decide whether or not to test all available OrthoFinder command options.",
     )
 
     parser.addoption(
         "--skip-of-test",
         action="store_true",
         default=False,  
-        help="Decide wether or not to test OrthoFinder results with the expected results.",
+        help="Decide whether or not to test OrthoFinder results with the expected results.",
     )
     
     parser.addoption(

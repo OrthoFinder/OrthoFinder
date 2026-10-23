@@ -135,7 +135,7 @@ class Node(object):
         i - 0,1,2: set of clades with respect to order in get_grandrelative_clades_stored
         j - 0,1,2: set of clades with respect to order in get_grandrelative_clades_stored
         
-        Returns the actuall genes in the clades
+        Returns the actual genes in the clades
         """
         if self.node.is_root():
             children = self.node.get_children()
@@ -415,7 +415,7 @@ def supported_hierachies(t, G, S, GeneToSpecies, species, dict_clades, clade_nam
             edges2 = clade_index.smallest_containing(s2)
             for k1 in edges1.intersection(edges2):
                 if len(k1) == 1:
-                    # terminal duplciations dealt with above (since no extra info about species tree topology is needed)
+                    # terminal duplications dealt with above (since no extra info about species tree topology is needed)
                     break
                 elif k1 == species:
                     # putative ancient duplication
@@ -926,7 +926,7 @@ def get_root(species_tree_fn, trees_dir, gene_to_species_map, n_processors, q_wr
       
 # if __name__ == "__main__":
 #     parser = argparse.ArgumentParser()
-#     parser.add_argument("gene_trees", help = "Directory conaining gene trees (with -d argument) or filename of a single gene tree to analyse (no -d argument)")
+#     parser.add_argument("gene_trees", help = "Directory containing gene trees (with -d argument) or filename of a single gene tree to analyse (no -d argument)")
 #     parser.add_argument("-s", "--separator", choices=("dot", "dash", "second_dash", "3rd_dash", "hyphen"), help="Separator been species name and gene name in gene tree taxa")
 #     parser.add_argument("-S", "--Species_tree", help="Unrooted species tree in newick format")
 #     parser.add_argument("-d", "--directory", action="store_true", help="Process all trees in input directory")

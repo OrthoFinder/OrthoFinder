@@ -216,13 +216,13 @@ def _read_newick_from_string(nw, root_node, format):
     current_parent = None
 
     # Ok, this is my own way of reading newick structures. I find it
-    # more flexible and elegant than other docummented methods. Don't
-    # know if I'm loosing much efficiency. It Starts by splitting the
+    # more flexible and elegant than other documented methods. Don't
+    # know if I'm losing much efficiency. It Starts by splitting the
     # structure using open parentheses. Each of the resulting chunks
     # represent an internal node. So for each chunk I create a new node
-    # that hungs from the current parent node.  Each internal node chunk
+    # that hangs from the current parent node.  Each internal node chunk
     # may contain information about terminal nodes hanging from the
-    # internal and clossing parenthessis (closing previously opened
+    # internal and closing parenthesis (closing previously opened
     # internal nodes).
     #
     # Enjoy.
@@ -243,17 +243,17 @@ def _read_newick_from_string(nw, root_node, format):
             # Any resulting sub-chunk resulting from splitting by commas can
             # be considered (tpologically) as a child to the current parent
             # node. We only discard chunks if they are empty and in the last
-            # possition, meaining that the next brother is not terminal bu
+            # position, meaning that the next brother is not terminal but
             # internal node (will be visited in the next newick chunk)
             if leaf.strip() == '' and i == len(possible_leaves)-1:
                 continue
-            # Leaf text strings may end with a variable number of clossing
+            # Leaf text strings may end with a variable number of closing
             # parenthesis. For each ')' we read the information of the
             # current node, close it and go up one more node.
             clossing_nodes = leaf.split(")")
             # first par contain leaf info
             _read_node_data(clossing_nodes[0], current_parent, "leaf", format)
-            # The next parts containg clossing nodes and info about the
+            # The next parts containing closing nodes and info about the
             # internal nodes.
             if len(clossing_nodes)>1:
                 for closing_internal in clossing_nodes[1:]:

@@ -215,7 +215,7 @@ def get_gene_name_ncbi(acc_line):
     #
     # To deal with that, we remove the ID (e.g. XP_024356342.1) if it says 'isoform'
     # so that the lines are identical, but not when it doesn't say 'isoform'
-    # so that the lines are different. If I were writting the script from scratch
+    # so that the lines are different. If I were writing the script from scratch
     # for NCBI files I'd do it a different way, but this is a way to handle it so 
     # that it works with the existing logic in the file.
     if original != acc_line:
