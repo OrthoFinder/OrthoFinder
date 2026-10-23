@@ -28,20 +28,20 @@ For more information please visit [our website](https://orthofinder.github.io/Or
 
 ## What's new in v3.2
 
-These changes are in OrthoFinder v3.2 and later. Some of them change the names and files of the results: please check them if you have scripts that read OrthoFinder results.
+These changes are in OrthoFinder v3.2 and later. Some of them change the names and files of the results. Please check them if you have scripts that read OrthoFinder results.
 
-1. **Stopping and restarting an analysis at each stage**, also for `--assign`:
-   - Stop after a stage: `-op` (the search commands, written to `WorkingDirectory/blast_commands.txt`, e.g. to run on a cluster), `-og` (the MCL orthogroups, before the gene trees and the phylogenetic hierarchical orthogroups), `-ogt` (gene trees) or `-ost` (species tree). The end of the run prints the command to continue it.
-   - The MCL orthogroups (before the HOGs) are written as `Orthogroups/MCL_Orthogroups.tsv` (and `.txt`, `.GeneCount.tsv`, `_UnassignedGenes.tsv`) when a run stops after a stage, or if it fails or is interrupted (Ctrl-C, a job time limit) after them. In a full run they are kept only with `-mog`. `Orthogroups.tsv` etc. are the final orthogroups, from the HOGs. Their sequences, a FASTA file for each, can be written with `mcl_orthogroup_sequences <Results_dir>`.
-   - Restart from a stage: `-b` (search results), `-fg` (the MCL orthogroups: after `-og`, or from a run that went further (after `-ogt` or `-ost`, or a complete run), to infer the alignments and gene trees again, e.g. with other `-A`/`-T`), `-fgt` (gene trees) or `-fst` (species tree), given the results directory.
-   - A restart writes its results to the results directory it is given, the one of the stopped run: it does not create a new one. `--assign` is different: it always creates a new results directory, next to the core run's (`--core`), and leaves the core run's results as they are. That directory can in turn be the core of another `--assign` run, to add species in several stages (e.g. `--assign <new species 2> --core <results of the first --assign>`). An `--assign` run that stopped is restarted from its new directory, and continues in it.
-   - A restart continues with the settings of the run (search program, scoring, `-M`, `-A`, `-T`, `-ST`, `-I` etc., kept in `WorkingDirectory/run_state.json`), unless they are given again.
-   - With `-b`, OrthoFinder runs only the searches whose results are missing or incomplete, e.g. after `-op`, or after a run that was interrupted (Ctrl-C, a job time limit) or failed. The finished searches are recorded in `WorkingDirectory/checkpoint.txt`; the results of an interrupted search are moved aside (`.incomplete`) and the search is run again.
-   - With `-op`, the search commands are no longer printed to the terminal: they are written to `WorkingDirectory/blast_commands.txt`. A restart with `-b` reuses the search results that are there, and runs only the missing ones, with the search program of the run.
+1. **Stopping and restarting an analysis at each stage**, also for `--assign`.
+   - Stop after a stage with `-op` (the search commands, written to `WorkingDirectory/blast_commands.txt`, e.g. to run on a cluster), `-og` (the MCL orthogroups, before the gene trees and the phylogenetic hierarchical orthogroups), `-ogt` (gene trees) or `-ost` (species tree). The end of the run prints the command to continue it.
+   - The MCL orthogroups (before the HOGs) are written as `Orthogroups/MCL_Orthogroups.tsv` (and `.txt`, `.GeneCount.tsv`, `_UnassignedGenes.tsv`) when a run stops after a stage, or if it fails or is interrupted (e.g. Ctrl-C or a job timeout) after them. In a full run they are kept only with `-mog`. `Orthogroups.tsv` etc. are the final orthogroups, from the HOGs. Their sequences, a FASTA file for each, can be written with `mcl_orthogroup_sequences <Results_dir>`.
+   - Restart from a stage with `-b` (search results), `-fg` (the MCL orthogroups), `-fgt` (gene trees) or `-fst` (species tree), given the results directory. `-fg` restarts after `-og`, or from a run that went further (after `-ogt` or `-ost`, or a complete run) to infer the alignments and gene trees again, e.g. with other `-A`/`-T`.
+   - A restart writes its results to the results directory it is given, the one of the stopped run. It does not create a new one. `--assign` is different. It always creates a new results directory, next to the core run's (`--core`), and leaves the core run's results as they are. That directory can in turn be the core of another `--assign` run, to add species in several stages (e.g. `--assign <new species 2> --core <results of the first --assign>`). An `--assign` run that stopped is restarted from its new directory, and continues in it.
+   - A restart continues with the same run settings as the original (search program, scoring, `-M`, `-A`, `-T`, `-ST`, `-I` etc., kept in `WorkingDirectory/run_state.json`), unless they are given again.
+   - With `-b`, OrthoFinder runs only the searches whose results are missing or incomplete, e.g. after `-op`, or after a run that was interrupted (e.g. Ctrl-C or a job timeout) or failed. The finished searches are recorded in `WorkingDirectory/checkpoint.txt`. The results of an interrupted search are moved aside (`.incomplete`) and the search is run again.
+   - With `-op`, the search commands are no longer printed to the terminal. They are written to `WorkingDirectory/blast_commands.txt` instead. A restart with `-b` reuses the search results that are there, and runs only the missing ones, with the search program of the run.
 
-2. **Pairwise ortholog files only with `-pof`.** By default, the orthologs are written as one compressed file per species, `Orthologs/<species>.tsv.gz`, which takes far less space and far fewer files with many species. With `-pof`, OrthoFinder writes a file for each pair of species as before, `Orthologs/Orthologs_<species>/<species>__v__<other species>.tsv`. For the results of a run without `-pof`, `split_ortholog_files <Results_dir>` writes the pairwise files afterwards (`python tools/split_ortholog_files.py <Results_dir>` from the source code, without installing OrthoFinder: it needs only Python 3). With many species we recommend this rather than `-pof`: it can write only the files you need (`--species`, `--partners`), in parallel (`-t`), and the analysis isn't kept waiting for them.
+2. **Pairwise ortholog files only with `-pof`.** By default, the orthologs are written as one compressed file per species, `Orthologs/<species>.tsv.gz`. This reduces the number of files on large runs. With `-pof`, OrthoFinder writes a file for each pair of species as before, `Orthologs/Orthologs_<species>/<species>__v__<other species>.tsv`. For the results of a run without `-pof`, `split_ortholog_files <Results_dir>` writes the pairwise files afterwards (`python tools/split_ortholog_files.py <Results_dir>` from the source code, without installing OrthoFinder, as it needs only Python 3). With many species we recommend this rather than `-pof`, because it can write only the files you need (`--species`, `--partners`), in parallel (`-t`), and the analysis isn't kept waiting for them.
 
-3. **"Orthologue" is now "ortholog"**, in the names of the results and in the messages:
+3. **"Orthologue" is now "ortholog"**, in the names of the results and in the messages.
 
    | Before v3.2 | From v3.2 |
    |-------------|-----------|
@@ -51,23 +51,23 @@ These changes are in OrthoFinder v3.2 and later. Some of them change the names a
    | `Comparative_Genomics_Statistics/OrthologuesStats_*.tsv` | `Comparative_Genomics_Statistics/OrthologsStats_*.tsv` |
    | `Orthogroups/Orthogroups_SingleCopyOrthologues.txt` | `Orthogroups/Orthogroups_SingleCopyOrthologs.txt` |
 
-   The contents of the files are unchanged. A restart (`-b`, `-fg`, `-fgt`, `-fst`) in results from an earlier version first renames the old names to the new ones.
+   The contents of the files are unchanged. Restarting (`-b`, `-fg`, `-fgt`, `-fst`) from the results of an earlier OrthoFinder version renames these files and directories to the new names.
 
 4. **A core run and an `--assign` run infer the species tree differently.**
    - A core run (`-f`) infers it from the concatenated alignment of the single-copy orthogroups.
    - An `--assign` run infers it from the gene trees, with ASTRAL-Pro.
-   - With `-ST astral-pro`, a core run also infers the species tree from the gene trees, using ASTRAL-Pro, instead of from the concatenated alignment. It then makes no concatenated alignment, so two files are not in its results: `WorkingDirectory/Alignments_ids/SpeciesTreeAlignment.fa` (the alignment) and `Species_Tree/Orthogroups_for_concatenated_alignment.txt` (the orthogroups in it).
+   - With `-ST astral-pro`, a core run also infers the species tree from the gene trees, using ASTRAL-Pro, instead of from the concatenated alignment. It then makes no concatenated alignment, so two files are not in its results, `WorkingDirectory/Alignments_ids/SpeciesTreeAlignment.fa` (the alignment) and `Species_Tree/Orthogroups_for_concatenated_alignment.txt` (the orthogroups in it).
    - To make these two files afterwards, run [`species_tree_alignment`](tools/species_tree_alignment.py) `<Results_dir>`. `-o <dir>` writes them to another directory, and `--species-names` names the rows by species instead of by ID.
 
 
-5. **Gene and species names are the same in every results file, on every OS.** A name is made once from the FASTA header (or file name, for a species), and each character a name cannot hold is replaced by `_`: spaces and tabs, `: ; ( ) , [ ] =` and quotes (`'` `"`), and for a species also `* ? < > | \ /`. E.g. `>sp|P12345|X_HUMAN Protein X` gives `sp|P12345|X_HUMAN_Protein_X`, and `Homo sapiens.fa` the species `Homo_sapiens`. The tables, gene trees, alignments, sequences, ortholog files and pages then all use the same name, every tree is standard Newick, and the tab-separated files have no quoted cells, so any program (spreadsheets, R, pandas, `cut`) reads the names as they are. The original headers are in `WorkingDirectory/SequenceIDs.txt`. A species tree given with `-s` may name the species either way (`Homo sapiens`, `'Homo sapiens'` or `Homo_sapiens`). All results files are UTF-8 text with `\n` line endings, the same bytes on Linux, macOS and Windows. Input FASTA files may be UTF-8 (with or without a byte order mark), have Windows or old Mac line endings, or (with a warning) be in Windows-1252.
+5. **Gene and species names are the same in every results file, on every OS.** A name is made once from the FASTA header (or file name, for a species), and each character a name cannot hold is replaced by `_`. These are spaces and tabs, `: ; ( ) , [ ] =` and quotes (`'` `"`), and for a species also `* ? < > | \ /`. E.g. `>sp|P12345|X_HUMAN Protein X` gives `sp|P12345|X_HUMAN_Protein_X`, and `Homo sapiens.fa` the species `Homo_sapiens`. The tables, gene trees, alignments, sequences, ortholog files and pages then all use the same name, every tree is standard Newick, and the tab-separated files have no quoted cells, so any program (spreadsheets, R, pandas, `cut`) reads the names as they are. The original headers are in `WorkingDirectory/SequenceIDs.txt`. A species tree given with `-s` may name the species either way (`Homo sapiens`, `'Homo sapiens'` or `Homo_sapiens`). All results files are UTF-8 text with `\n` line endings, the same bytes on Linux, macOS and Windows. Input FASTA files may be UTF-8 (with or without a byte order mark), have Windows or old Mac line endings, or (with a warning) be in Windows-1252.
 
 <!-- preview -->
-6. **Scoring matrices and gap penalties for DIAMOND searches**: `--matrix` (e.g. `BLOSUM45`, default `BLOSUM62`), `--custom-matrix <file>` for a matrix file of your own, and `-go`/`--gapopen` and `-ge`/`--gapextend` for the gap penalties. A restart or `--assign` from the results uses the same scoring. See [Sequence search scoring options (DIAMOND)](#command-line-options).
+6. **Scoring matrices and gap penalties for DIAMOND searches** with `--matrix` (e.g. `BLOSUM45`, default `BLOSUM62`), `--custom-matrix <file>` for a matrix file of your own, and `-go`/`--gapopen` and `-ge`/`--gapextend` for the gap penalties. A restart or `--assign` from the results uses the same scoring. See [Sequence search scoring options (DIAMOND)](#command-line-options).
 
-7. **The results in a web browser**: `--tree-view` (the species tree, the resolved gene trees with their alignments, and a species tree explorer), `--stats-view` (the statistics, with interactive plots) and `--groups-view` (the genes of each orthogroup and HOG, searchable). `--view` writes all three, linked to each other, and `OrthoFinder_Results.html` to open them, a tab for each. For the results of a finished run: `view_results <Results_dir>`. The pages work offline in any recent browser, in light or dark colours. See [Viewing the results in a web browser](#viewing-the-results-in-a-web-browser).
+7. **The results in a web browser** with `--tree-view` (the species tree, the resolved gene trees with their alignments, and a species tree explorer), `--stats-view` (the statistics, with interactive plots) and `--groups-view` (the genes of each orthogroup and HOG, searchable). `--view` writes all three, linked to each other, and `OrthoFinder_Results.html` to open them, a tab for each. For the results of a finished run, use `view_results <Results_dir>`. The pages work offline in any recent browser, in light or dark colours. See [Viewing the results in a web browser](#viewing-the-results-in-a-web-browser).
 
-8. **The orthogroups in OrthoXML format**, for other tools: `--orthoxml` writes `Orthogroups/Orthogroups.orthoxml`. Each orthogroup of `Orthogroups.tsv` (a HOG of the root of the species tree, N0) is a group, with the HOGs of the nodes below it nested inside, the species tree as the taxonomy, and gene duplications as paralog groups. The MCL orthogroups are never in this file: when they are written (e.g. with `-og` or `-mog`), they are in `Orthogroups/MCL_Orthogroups.orthoxml`. See [Output options](#command-line-options).
+8. **The orthogroups in OrthoXML format**, for other tools. `--orthoxml` writes `Orthogroups/Orthogroups.orthoxml`. Each orthogroup of `Orthogroups.tsv` (a HOG of the root of the species tree, N0) is a group, with the HOGs of the nodes below it nested inside, the species tree as the taxonomy, and gene duplications as paralog groups. The MCL orthogroups are never in this file. When they are written (e.g. with `-og` or `-mog`), they are in `Orthogroups/MCL_Orthogroups.orthoxml`. See [Output options](#command-line-options).
 <!-- /preview -->
 
 ## Installation
@@ -117,11 +117,11 @@ pip install .
 
 Whether you've installed OrthoFinder directly from GitHub or downloaded and set it up locally, the OrthoFinder package will only be available within the `of3_env` virtual environment. This avoids potential conflicts with Python dependencies.
 
-To deactivate the virtual environment when you are finished, run:
+To deactivate the virtual environment when you are finished, run
 ```bash
 deactivate
 ```
-To activate the virtual environment you have created, run:
+To activate the virtual environment you have created, run
 
 ```bash
 . of3_env/bin/activate
@@ -131,19 +131,19 @@ To activate the virtual environment you have created, run:
 Once you have installed OrthoFinder, you can print the help information and version, and test it on the [example data](https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.2/ExampleData.tar.gz).
 
 ```bash
-orthofinder --help # Print out help informatioin
+orthofinder --help # Print the help information
 orthofinder --version # Check the version
 orthofinder -f ExampleData # Test OrthoFinder on an example dataset - this should take a few minutes to run. 
 ```
 
 ### Uninstalling
 
-To uninstall on conda:
+To uninstall on conda, run
 ```bash
 conda deactivate
 conda remove -n of3_env --all
 ```
-To remove the virtual environment where OrthoFinder is installed:
+To remove the virtual environment where OrthoFinder is installed, run
 ```bash
 deactivate
 cd ..
@@ -163,14 +163,14 @@ OrthoFinder requires one FASTA file for each species. Each file should contain t
 
 If your proteomes contain multiple transcript isoforms per gene, we provide the script `primary_transcript.py` to retain only the longest isoform for each gene. This script should be run before running OrthoFinder.
 
-If you are using OrthoFinder v3.2 or later, and installed OrthoFinder into your environment, the script is installed automatically and can be run directly as `primary_transcript`. It accepts:
+If you are using OrthoFinder v3.2 or later, and installed OrthoFinder into your environment, the script is installed automatically and can be run directly as `primary_transcript`. It accepts
 
 - a single FASTA file
 - a directory containing FASTA files
 - a single .tar, .tar.gz, .tgz, or .zip archive
 - a directory containing archive files (.tar, .tar.gz, .tgz, .zip)
 
-For example:
+For example
 ```bash
 primary_transcript proteomes/
 ```
@@ -178,7 +178,7 @@ or
 ```bash
 primary_transcript proteins.fa
 ```
-For older OrthoFinder versions, run the script manually for each FASTA file:
+For older OrthoFinder versions, run the script manually for each FASTA file
 ```bash
 for f in *.fa; do
     python primary_transcript.py "$f"
@@ -206,7 +206,7 @@ orthofinder [options] --assign <additional> --core <Results_dir>
 
 To choose which 64 species to include in the core, aim to capture a broad range of the evolutionary diversity of your species.
 
-The core run infers the species tree from the concatenated alignment of single-copy orthogroups; the `--assign` run infers it from the gene trees with ASTRAL-Pro (`-ST` chooses another species tree program).
+The core run infers the species tree from the concatenated alignment of single-copy orthogroups. The `--assign` run infers it from the gene trees with ASTRAL-Pro (`-ST` chooses another species tree program).
 
 <p align="center">
   <img src="assets/images/core_assign_figure.jpg" alt="core_assign_figure" width="800"/>
@@ -228,22 +228,22 @@ Command-line options for OrthoFinder
   | Parameter | Description                               | Default   | Options                                                                                     |
   |-----------|-------------------------------------------|-----------|---------------------------------------------------------------------------------------------|
   | `-M`      | Method for gene tree inference.           | `msa`     | `dendroblast`, `msa`                                                                        |
-  | `-S`      | Sequence search program. `blast` is BLAST+ for either kind of input: `blastp` for protein sequences, `blastn` with `-d` (nucleotide sequences) | `diamond` (`blastn` with `-d`) | `diamond`, `diamond_ultra_sens`, `blast`, `blastp`, `blastn`, `mmseqs` |
-  | `-A`      | MSA program, requires `-M msa`            | `famsa`   | `famsa`, `mafft`, `muscle`,                                                          |
+  | `-S`      | Sequence search program. `blast` is BLAST+ for either kind of input, `blastp` for protein sequences or `blastn` with `-d` (nucleotide sequences) | `diamond` (`blastn` with `-d`) | `diamond`, `diamond_ultra_sens`, `blast`, `blastp`, `blastn`, `mmseqs` |
+  | `-A`      | MSA program, requires `-M msa`            | `famsa`   | `famsa`, `mafft`, `muscle`                                                           |
   | `-T`      | Tree inference method, requires `-M msa`  | `fasttree`| `fasttree`, `fasttree_fastest`, `raxml`, `iqtree`                               |
-  | `-ST`     | Species tree program, from the gene trees, requires `-M msa` | a tree of the concatenated alignment; `astral-pro` with `--assign` | `astral-pro` |
-  | `-I`      | MCL inflation parameter                   | `1.2`     | usually `1.2`–`5` (larger values give smaller orthogroups; see the [MCL manual](https://micans.org/mcl/man/mcl.html)) |
+  | `-ST`     | Species tree program, from the gene trees, requires `-M msa` | a tree of the concatenated alignment, or `astral-pro` with `--assign` | `astral-pro` |
+  | `-I`      | MCL inflation parameter                   | `1.2`     | usually `1.2`–`5` (larger values give smaller orthogroups, see the [MCL manual](https://micans.org/mcl/man/mcl.html)) |
 
 <!-- preview -->
 - **Sequence search scoring options (DIAMOND)**<br>
   | Parameter        | Description                                                               |
   |------------------|---------------------------------------------------------------------------|
-  | `--matrix`       | Scoring matrix of the DIAMOND searches (default `BLOSUM62`): `BLOSUM45`, `BLOSUM50`, `BLOSUM62`, `BLOSUM80`, `BLOSUM90`, `PAM250`, `PAM70` or `PAM30`. |
-  | `--custom-matrix` | A scoring matrix file for the DIAMOND searches (see below); requires `--gapopen` and `--gapextend`. |
-  | `-go`, `--gapopen` | Gap open penalty of the DIAMOND searches (default: the matrix's, `11` for `BLOSUM62`), as DIAMOND allows for the matrix. |
-  | `-ge`, `--gapextend` | Gap extend penalty of the DIAMOND searches (default: the matrix's, `1` for `BLOSUM62`), as DIAMOND allows for the matrix. |
+  | `--matrix`       | Scoring matrix of the DIAMOND searches (default `BLOSUM62`), one of `BLOSUM45`, `BLOSUM50`, `BLOSUM62`, `BLOSUM80`, `BLOSUM90`, `PAM250`, `PAM70` or `PAM30`. |
+  | `--custom-matrix` | A scoring matrix file for the DIAMOND searches (see below). Requires `--gapopen` and `--gapextend`. |
+  | `-go`, `--gapopen` | Gap open penalty of the DIAMOND searches (by default the matrix's, `11` for `BLOSUM62`), as DIAMOND allows for the matrix. |
+  | `-ge`, `--gapextend` | Gap extend penalty of the DIAMOND searches (by default the matrix's, `1` for `BLOSUM62`), as DIAMOND allows for the matrix. |
 
-  **Custom scoring matrices (`--custom-matrix`)**: a text file in the format of NCBI's matrices, e.g. any file from https://ftp.ncbi.nlm.nih.gov/blast/matrices/ as it is:
+  **Custom scoring matrices (`--custom-matrix`)** are text files in the format of NCBI's matrices, e.g. any file from https://ftp.ncbi.nlm.nih.gov/blast/matrices/ as it is.
   ```
   # comment lines start with #
      A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  Z  X  *
@@ -251,10 +251,10 @@ Command-line options for OrthoFinder
   R -1  5  0 -2 -3  1  0 -2  0 -3 -2  2 -1 -3 -2 -1 -1 -3 -2 -3 -1  0 -1 -4
   ...
   ```
-  - The first line is the one-letter amino acid codes; then, for each code in that order, a line of the code and its integer score with each code of the first line.
-  - The 20 standard amino acids are needed (DIAMOND would otherwise find no hits); others, such as `B`, `Z`, `X` and `*`, are optional.
-  - DIAMOND has no default gap penalties for a custom matrix, so `--gapopen` and `--gapextend` are needed. Not every pair works with every matrix: if DIAMOND cannot compute its statistics for them ("The ALP library failed to compute the statistical parameters for this matrix"), try others.
-  - The file can be anywhere: give its path with `--custom-matrix`. OrthoFinder checks it before the run starts, and keeps a copy with the results (`WorkingDirectory/custom_scoring_matrix.txt`) that the searches use. A restart from those results (e.g. `-b` or `--assign`) uses the same matrix without `--custom-matrix` being given again, even if the original file has since been moved or changed.
+  - The first line is the one-letter amino acid codes. Then, for each code in that order, a line of the code and its integer score with each code of the first line.
+  - The 20 standard amino acids are needed (DIAMOND would otherwise find no hits). Others, such as `B`, `Z`, `X` and `*`, are optional.
+  - DIAMOND has no default gap penalties for a custom matrix, so `--gapopen` and `--gapextend` are needed. Not every pair works with every matrix. If DIAMOND cannot compute its statistics for them ("The ALP library failed to compute the statistical parameters for this matrix"), try others.
+  - The file can be anywhere. Give its path with `--custom-matrix`. OrthoFinder checks it before the run starts, and keeps a copy with the results (`WorkingDirectory/custom_scoring_matrix.txt`) that the searches use. A restart from those results (e.g. `-b` or `--assign`) uses the same matrix without `--custom-matrix` being given again, even if the original file has since been moved or changed.
 <!-- /preview -->
 
 - **Input options**<br>
@@ -269,21 +269,21 @@ Command-line options for OrthoFinder
   | `-X`      | Gene names without their species prefix in gene trees, alignments and Duplications.tsv. |
   | `-n <txt>`      | Name to append to the results directory.                                    |
   | `-o <txt>`      | Specify a non-default results directory.                                    |
-  | `-pof`    | Save the pairwise ortholog files. With many species (a file for each pair: n × (n−1) files), we recommend running without it and then making only the files you need with the `split_ortholog_files` tool (`--species`, `--partners`, `-t`): `split_ortholog_files <Results_dir>`, or `python tools/split_ortholog_files.py <Results_dir>` from the source code without installing OrthoFinder. |
-  | `-mog` | Also keep the MCL orthogroups (before the HOGs) in a full run: `Orthogroups/MCL_Orthogroups.tsv` etc. They are always written with `-og`, `-ogt` or `-ost`, or if the run fails. |
+  | `-pof`    | Save the pairwise ortholog files. With many species (a file for each pair, n × (n−1) files), we recommend running without it and then making only the files you need with the `split_ortholog_files` tool (`--species`, `--partners`, `-t`), as `split_ortholog_files <Results_dir>`, or `python tools/split_ortholog_files.py <Results_dir>` from the source code without installing OrthoFinder. |
+  | `-mog` | Also keep the MCL orthogroups (before the HOGs) in a full run, as `Orthogroups/MCL_Orthogroups.tsv` etc. They are always written with `-og`, `-ogt` or `-ost`, or if the run fails. |
 
 <!-- preview -->
 - **OrthoXML output**<br>
   | Parameter | Description |
   |-----------|-------------|
-  | `--orthoxml` | Also write the orthogroups in [OrthoXML](https://orthoxml.org) format, for other tools: `Orthogroups/Orthogroups.orthoxml`, each orthogroup of `Orthogroups.tsv` with the HOGs of the nodes below the root nested in it. The MCL orthogroups, when written (e.g. `-og`, `-mog`), are in `Orthogroups/MCL_Orthogroups.orthoxml`. |
+  | `--orthoxml` | Also write the orthogroups in [OrthoXML](https://orthoxml.org) format, for other tools, as `Orthogroups/Orthogroups.orthoxml`, each orthogroup of `Orthogroups.tsv` with the HOGs of the nodes below the root nested in it. The MCL orthogroups, when written (e.g. `-og`, `-mog`), are in `Orthogroups/MCL_Orthogroups.orthoxml`. |
 <!-- /preview -->
 
 <!-- preview -->
 - **Viewing the results in a web browser**<br>
   | Parameter | Description |
   |-----------|-------------|
-  | `--tree-view` | Also write a page to view the species tree and the resolved gene trees in a web browser, with each gene tree's alignment, and a species tree explorer: the HOGs at each node, an orthogroup's duplications and losses on the species tree, each species' genes; and all genes on the species tree, each orthogroup's gene tree where it was gained (`Resolved_Gene_Trees/Resolved_Gene_Trees.html`). |
+  | `--tree-view` | Also write a page to view the species tree and the resolved gene trees in a web browser, with each gene tree's alignment, and a species tree explorer (the HOGs at each node, an orthogroup's duplications and losses on the species tree, each species' genes, and all genes on the species tree, each orthogroup's gene tree where it was gained) in `Resolved_Gene_Trees/Resolved_Gene_Trees.html`. |
   | `--stats-view` | Also write a page of the run's statistics with interactive plots (`Comparative_Genomics_Statistics/Statistics.html`). |
   | `--groups-view` | Also write a page of the genes of each orthogroup and HOG, searchable (`Orthogroups/Groups.html`). |
   | `--view` | All three pages, linked to each other, and `OrthoFinder_Results.html` to open them, a tab for each (also with two of them). |
@@ -303,7 +303,7 @@ Command-line options for OrthoFinder
   | Parameter | Description                                                                 |
   |-----------|-----------------------------------------------------------------------------|
   | `-op`     | Stop after preparing input files for BLAST.                                 |
-  | `-og`     | Stop after the MCL orthogroups (no gene trees, species tree or HOGs): `Orthogroups/MCL_Orthogroups.tsv` etc. |
+  | `-og`     | Stop after the MCL orthogroups (no gene trees, species tree or HOGs), written as `Orthogroups/MCL_Orthogroups.tsv` etc. |
   | `-ogt`    | Stop after gene trees.                                                      |
   | `-ost`    | Stop after the rooted species tree (STRIDE, from the gene trees).           |
 
@@ -329,7 +329,7 @@ Command-line options for OrthoFinder
 <!-- preview -->
 ## Viewing the results in a web browser
 
-OrthoFinder can write three linked pages to explore the results, plus `OrthoFinder_Results.html` to open them in tabs:
+OrthoFinder can write three linked pages to explore the results, plus `OrthoFinder_Results.html` to open them in tabs.
 
 | Page | What it shows |
 |------|---------------|
@@ -337,7 +337,7 @@ OrthoFinder can write three linked pages to explore the results, plus `OrthoFind
 | `Comparative_Genomics_Statistics/Statistics.html` | The run's statistics, with interactive plots |
 | `Orthogroups/Groups.html` | The genes of each orthogroup and HOG, searchable |
 
-The pages work offline in any recent browser and scale to thousands of species: each loads only the data it shows. Gene search matches the start of a gene name.
+The pages work offline in any recent browser and scale to thousands of species, because each loads only the data it shows. Gene search matches the start of a gene name.
 
 **Write the pages**
 
@@ -348,19 +348,19 @@ view_results <Results_dir>                       # for a finished run (same opti
 
 **Open them**
 
-- On your own computer: open `<Results_dir>/OrthoFinder_Results.html` (Linux: `xdg-open <Results_dir>/OrthoFinder_Results.html`). Keep the results directory together: each page reads its data from the folders next to it.
-- On a server or cluster: serve them and open them through an SSH tunnel:
+- On your own computer, open `<Results_dir>/OrthoFinder_Results.html` (on Linux, `xdg-open <Results_dir>/OrthoFinder_Results.html`). Keep the results directory together, because each page reads its data from the folders next to it.
+- On a server or cluster, serve them and open them through an SSH tunnel.
 
   ```bash
   view_results <Results_dir> --serve               # on the server: prints the address and the ssh command
   ssh -N -L 8000:localhost:8000 <user>@<server>    # on your computer, then open http://localhost:8000
   ```
 
-  `--port` sets the port (default 8000, or the next free one). The server listens only on the server itself; `--host 0.0.0.0` makes it reachable by anyone on the network, with no password.
+  `--port` sets the port (default 8000, or the next free one). The server listens only on the server itself. `--host 0.0.0.0` makes it reachable by anyone on the network, with no password.
 
 **Without OrthoFinder installed**
 
-`tools/view_results` works on its own and needs only Python 3 and ete4 (`pip install ete4`). Copy it (or `view_results.zip`, written by `make view_results_zip` to `dist/`) next to the results:
+`tools/view_results` works on its own and needs only Python 3 and ete4 (`pip install ete4`). Copy it (or `view_results.zip`, written by `make view_results_zip` to `dist/`) next to the results.
 
 ```bash
 python view_results/view_results.py <Results_dir> [--serve]
@@ -368,12 +368,12 @@ python -m view_results <Results_dir> [--serve]               # the same, from th
 python tools/view_results/view_results.py <Results_dir>      # from the OrthoFinder source directory
 ```
 
-Light or dark colours: **Colours**, at the top right of each page.
+Choose light or dark colours with **Colours**, at the top right of each page.
 <!-- /preview -->
 
 ## Output files
 
-A standard OrthoFinder run produces a set of files describing the orthogroups, orthologs, gene trees, resolve gene trees, the rooted species tree, gene duplication events, and comparative genomic statistics for the set of species being analysed. These files are located in an intuitive directory structure.
+A standard OrthoFinder run produces a set of files describing the orthogroups, orthologs, gene trees, resolved gene trees, the rooted species tree, gene duplication events, and comparative genomic statistics for the set of species being analysed. These files are located in an intuitive directory structure.
 
 Full details on the output files and directories can be found [here](http://orthofinder.github.io/OrthoFinder/tutorials/guide-to-results/). The directories that are useful for most users are
 
@@ -383,7 +383,7 @@ Full details on the output files and directories can be found [here](http://orth
 - `Orthogroups.GeneCount.tsv` is a tab separated text file that contains counts of the number of genes for each species in each orthogroup.
 - `Orthogroups_SingleCopyOrthologs.txt` is a list of orthogroups that contain exactly one gene per species
 - `Orthogroups_UnassignedGenes.tsv` is a tab separated text file that contains all of the genes that were not assigned to any orthogroup.
-- `MCL_Orthogroups.tsv` etc. are the MCL orthogroups, before the HOGs: written by a run that stops early (e.g. `-og`) or fails, or with `-mog`.
+- `MCL_Orthogroups.tsv` etc. are the MCL orthogroups, before the HOGs, written by a run that stops early (e.g. `-og`) or fails, or with `-mog`.
 <!-- preview -->
 - With `--orthoxml`, `Orthogroups.orthoxml` has the orthogroups of `Orthogroups.tsv` in OrthoXML format, each with the HOGs of the nodes below the root nested in it.
 <!-- /preview -->
@@ -397,9 +397,9 @@ OrthoFinder extends its phylogenetic approach to orthogroups, defining orthogrou
 </p>
 
 - Each file is a phylogenetic hierarchical orthogroup (HOG) for a different node of the species tree.
-- Each row of a file contain the genes belonging to a single orthogroup.
+- Each row of a file contains the genes belonging to a single orthogroup.
 - Each species is represented by a single column.
-- From v3.1, there is no `N0.tsv`: its orthogroups are in `Orthogroups/Orthogroups.tsv`
+- From v3.1, there is no `N0.tsv`. Its orthogroups are in `Orthogroups/Orthogroups.tsv`.
 
 **```/Orthologs```**
 - `<species>.tsv.gz` for each species lists its orthologs in all the other species.

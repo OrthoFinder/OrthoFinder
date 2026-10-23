@@ -23,7 +23,7 @@ def run_blast_db_command(command):
         programs.with_paths(command),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        env=programs.with_env(parallel_task_manager.my_env),
+        env=programs.with_env(parallel_task_manager.my_env, command),
         shell=True,
     )
     stdout, stderr = capture.communicate()
