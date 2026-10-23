@@ -14,7 +14,8 @@ width = 22  # of the column of the options
 
 def option_rows(option, prog_caller):
     """The rows of an option in the help: (option, text); the values it takes listed under it."""
-    lines = option["help"].split("\n")
+    text = option["help"] + (option.get("preview_help", "") if cli_options.PREVIEW_OPTIONS else "")
+    lines = text.split("\n")
     rows = [(cli_options.help_label(option), lines[0])] + [("", line) for line in lines[1:]]
     if "choices" in option:
         rows.append(("", "Options: " + ", ".join(option["choices"](prog_caller))))

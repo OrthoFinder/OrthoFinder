@@ -13,6 +13,7 @@ not in the help (DEVELOPMENT_OPTIONS). An option:
     "field":   the Options attribute a reader sets, "what": what it is, in messages
     "choices": a function(prog_caller): the values listed under it in the help
     "preview": True for an option of a feature not yet released (PREVIEW_OPTIONS)
+    "preview_help": text added to "help" when the preview options are available (about one)
 --config <file> is read before the others (process_args.program_caller_with_configs).
 """
 from .. import g_mcl_inflation, n_cores, n_threads_default
@@ -123,15 +124,15 @@ OUTPUT_OPTIONS = {
                  "it is better to run without it and then make only the files needed with the "
                  "[dark_cyan]split_ortholog_files[/dark_cyan] tool ([dark_cyan]tools/split_ortholog_files.py[/dark_cyan] "
                  "in the source code)"},
-        {"names": ("--orthoxml", "-x"), "set": {"orthoxml": True},
+        {"names": ("--orthoxml", "-x"), "preview": True, "set": {"orthoxml": True},
          "help": "The orthogroups of Orthogroups.tsv in OrthoXML format, for other tools, each with the "
                  "HOGs of the nodes below the root nested in it: " + _path("Orthogroups/Orthogroups.orthoxml")},
         {"names": ("-mog", "--mcl-orthogroups"), "set": {"mcl_orthogroups": True},
          "help": "Also keep the [dark_cyan]MCL[/dark_cyan] orthogroups (before the HOGs): " +
-                 _path("Orthogroups/MCL_Orthogroups.tsv") + " etc. (with [dark_cyan]--orthoxml[/dark_cyan] also " +
-                 _path("MCL_Orthogroups.orthoxml") + "). They are always written with a stop option "
+                 _path("Orthogroups/MCL_Orthogroups.tsv") + " etc. They are always written with a stop option "
                  "([dark_cyan]-og[/dark_cyan], [dark_cyan]-ogt[/dark_cyan], [dark_cyan]-ost[/dark_cyan]) "
-                 "or if the run fails"},
+                 "or if the run fails",
+         "preview_help": " (with [dark_cyan]--orthoxml[/dark_cyan] also " + _path("MCL_Orthogroups.orthoxml") + ")"},
     ],
 }
 

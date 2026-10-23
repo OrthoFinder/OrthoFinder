@@ -6,7 +6,8 @@ import pytest
 from orthofinder.run import cli_options, helpinfo, process_args
 
 PREVIEW = ("--tree-view", "--stats-view", "--groups-view", "--view",
-           "--matrix", "--custom-matrix", "-go", "--gapopen", "-ge", "--gapextend")
+           "--matrix", "--custom-matrix", "-go", "--gapopen", "-ge", "--gapextend",
+           "--orthoxml", "-x")
 
 
 def test_the_preview_options():
@@ -23,13 +24,14 @@ def help_text(capsys):
 def test_help(monkeypatch, capsys, on):
     monkeypatch.setattr(cli_options, "PREVIEW_OPTIONS", on)
     text = help_text(capsys)
-    for name in ("--view", "--tree-view", "--matrix", "--custom-matrix", "--gapopen", "--gapextend"):
-        assert (name in text) == on, name
+    for name in ("--view", "--tree-view", "--matrix", "--custom-matrix", "--gapopen", "--gapextend", "--orthoxml"):
+        assert (name in text) == on, name     # (also in the help of other options: -mog)
     assert ("ADDITIONAL OUTPUT OPTIONS" in text) == on     # (only preview options)
     assert "-y" in text and "-pof" in text                 # the others
 
 
-@pytest.mark.parametrize("args", [["--view"], ["--stats-view"], ["--matrix", "BLOSUM45"], ["-go", "11"]])
+@pytest.mark.parametrize("args", [["--view"], ["--stats-view"], ["--matrix", "BLOSUM45"], ["-go", "11"],
+                                  ["--orthoxml"], ["-x"]])
 def test_released_rejects_them(monkeypatch, tmp_path, args):
     monkeypatch.setattr(cli_options, "PREVIEW_OPTIONS", False)
     with pytest.raises(process_args.ArgumentError, match="not available in this version"):
