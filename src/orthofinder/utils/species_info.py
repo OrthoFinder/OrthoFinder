@@ -37,7 +37,7 @@ SequencesInfo = namedtuple(
 n_seqs: int - number of sequences in species_to_use
 n_species: int - number in species_to_use
 species_to_use: List[int]
-seq_starting_indices: List[int] of size |species_to_use|, reindexed from zero according to the speices present
+seq_starting_indices: List[int] of size |species_to_use|, reindexed from zero according to the species present
 n_seqs_per_species: Dict[int, int] - indexed by OrthoFinder species ID, info on all species, nto just those included in analysis
 """
 

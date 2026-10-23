@@ -250,7 +250,7 @@ def _run_parallel_commands_and_move_results_file(
         qListOfList - if False then commands_and_filenames is a list of (cmd, actual_target_fn) tuples
                       if True then commands_and_filenames is a list of lists of (cmd, actual_target_fn) tuples where the elements
                       of the inner list need to be run in the order they appear.
-        q_print_on_error - If error code returend print stdout & stederr
+        q_print_on_error - If error code returned print stdout & stderr
     """
     queued = collections.deque(cmd_unit for cmd_unit in commands_and_filenames if cmd_unit is not None)
     total_commands = len(queued)

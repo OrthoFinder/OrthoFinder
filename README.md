@@ -5,7 +5,7 @@
   <img src="assets/images/coreassignfigure-images-2.png" alt="concept_figure" width="800"/>
 </p>
 
-OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and analyzes the gene trees to identify the rooted species tree. The method subsequently identifies all gene duplication events in the complete set of gene trees, and analyses them at both gene tree and species tree level. OrthoFinder further analyzes all of this phylogenetic information to identify the complete set of orthologs between all species, and provides extensive comparative genomics statistics.
+OrthoFinder identifies orthogroups, infers gene trees for all orthogroups, and analyses the gene trees to identify the rooted species tree. The method subsequently identifies all gene duplication events in the complete set of gene trees, and analyses them at both gene tree and species tree level. OrthoFinder further analyses all of this phylogenetic information to identify the complete set of orthologs between all species, and provides extensive comparative genomics statistics.
 
 > [!IMPORTANT]
 > **From v3.1, `N0.tsv` is no longer in `Phylogenetic_Hierarchical_Orthogroups/`.** Its orthogroups are in `Orthogroups/Orthogroups.tsv`. If your scripts read `N0.tsv`, read `Orthogroups/Orthogroups.tsv` instead.
@@ -97,10 +97,10 @@ mkdir OrthoFinder && \
   tar -xz --strip-components=1 -C OrthoFinder
 ```
 
-Next, you can run the following commands to install OrthoFinder inside the of3_env virtural environment.
+Next, you can run the following commands to install OrthoFinder inside the of3_env virtual environment.
 ```bash
 cd OrthoFinder
-python3 -m venv of3_env # Create an virtural environment named of3_env
+python3 -m venv of3_env # Create an virtual environment named of3_env
 . of3_env/bin/activate # Activate of3_env
 pip install .
 ```
@@ -191,7 +191,7 @@ orthofinder [options] -f <core>
 Then, add the additional species to the results of the core run
 
 ```python
-orthofinder [options] --assign <additional> --core <Results_Dir>
+orthofinder [options] --assign <additional> --core <Results_dir>
 ```
 
 To choose which 64 species to include in the core, aim to capture a broad range of the evolutionary diversity of your species.
@@ -285,11 +285,11 @@ A standard OrthoFinder run produces a set of files describing the orthogroups, o
 Full details on the output files and directories can be found [here](http://orthofinder.github.io/OrthoFinder/tutorials/guide-to-results/). The directories that are useful for most users are
 
 **```/Orthogroups```**
-- `Orthogroups.tsv` is the main orthogroup file. Each row contains the genes belonging to a single orthogroup. The genes from each orthogroup are organized into columns, one per species. 
+- `Orthogroups.tsv` is the main orthogroup file. Each row contains the genes belonging to a single orthogroup. The genes from each orthogroup are organised into columns, one per species. 
 - `Orthogroups.txt` is a text file with each line showing the genes in a single orthogroup. It differs from Orthogroups.tsv in that it doesn’t show the species which each gene belongs to.
 - `Orthogroups.GeneCount.tsv` is a tab separated text file that contains counts of the number of genes for each species in each orthogroup.
 - `Orthogroups_SingleCopyOrthologs.txt` is a list of orthogroups that contain exactly one gene per species
-- `Orthogrouops_UnassignedGenes.tsv` is a tab separated text file that contains all of the genes that were not assigned to any orthogroup.
+- `Orthogroups_UnassignedGenes.tsv` is a tab separated text file that contains all of the genes that were not assigned to any orthogroup.
 - `MCL_Orthogroups.tsv` etc. are the MCL orthogroups, before the HOGs: written by a run that stops early (e.g. `-og`) or fails, or with `-mog`.
 
 **```/Phylogenetic_Hierarchical_Orthogroups```**
@@ -320,7 +320,7 @@ OrthoFinder extends its phylogenetic approach to orthogroups, defining orthogrou
 - `SpeciesTree_rooted_node_labels.txt` is the same tree, but with nodes labels instead of support values. This labelled version is useful for interpreting and analysing the results of the gene duplication analyses.
 
 ```/Gene_Duplication_Events```
-- `Duplications.tsv` has a row for each gene duplication event, with information on orthogroup in which it occured, the species that contain the duplicated gene, the node in the species tree on which the gene duplication event occured, and the support score for the gene duplication event.
+- `Duplications.tsv` has a row for each gene duplication event, with information on orthogroup in which it occurred, the species that contain the duplicated gene, the node in the species tree on which the gene duplication event occurred, and the support score for the gene duplication event.
 - `SpeciesTree_Gene_Duplications_0.5_Support.txt` provides a summation of the above duplications over the branches of the species tree.
 
 **```/Orthogroup_Sequences```**

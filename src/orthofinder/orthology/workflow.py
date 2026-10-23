@@ -454,7 +454,7 @@ def root_species_tree(
         file_handler.handler.clean_working_dir2()
         
     if q_multiple:
-        print("\nWARNING: Multiple potential species tree roots were identified, only one will be analyed.")
+        print("\nWARNING: Multiple potential species tree roots were identified, only one will be analysed.")
         for i, (r, species_tree_fn) in enumerate(zip(roots, rooted_species_tree_fn)):
             unanalysed_species_tree = file_handler.handler.get_species_tree_results_fn(i, False)
             taxa.rename_tree_taxa(species_tree_fn, unanalysed_species_tree, og_set.species_dict(),

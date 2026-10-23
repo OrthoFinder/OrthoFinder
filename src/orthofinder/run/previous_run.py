@@ -339,7 +339,7 @@ def check_user_species_tree(species_tree_fn, exp_species):
     try:
         t = tree.Tree(species_tree_fn, format=1)
     except Exception as e:
-        print("\nERROR: Incorrectly formated user-supplied species tree")
+        print("\nERROR: Incorrectly formatted user-supplied species tree")
         print(str(e))
         util.fail()
     # (the names as in the results, e.g. "Homo sapiens" as Homo_sapiens: gene_ids.user_tree_species)
@@ -712,7 +712,7 @@ class PreviousFilesLocatorOld(PreviousFilesLocator):
                 print("With corresponding cluster files:")
                 for fn in clusters_files:
                     print("    " + fn)
-                print("\nPlease run with only one set of results in directories or specifiy the specific clusters_OrthoFinder_*.txt_id_pairs.txt file on the command line")
+                print("\nPlease run with only one set of results in directories or specify the specific clusters_OrthoFinder_*.txt_id_pairs.txt file on the command line")
                 util.fail()        
                 
             if len(clusters_files) != 1 or len(orthogroup_files) != 1:

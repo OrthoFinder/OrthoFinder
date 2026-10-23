@@ -744,7 +744,7 @@ class _FileHandler(object):
         """
         The results species tree (rooted, accessions, support values)
         i: index for species tree, starting at 0
-        qUnique: bool, has a unique root been identified (as it may not be known exatly which branch the root belongs on)
+        qUnique: bool, has a unique root been identified (as it may not be known exactly which branch the root belongs on)
         E.g. if there were just one species tree, the correct call would be get_species_tree_results_fn(0,True)
         """
         d = self.rd1 + "Species_Tree/"

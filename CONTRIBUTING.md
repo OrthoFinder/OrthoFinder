@@ -82,7 +82,7 @@ Before you submit a pull request, check that it meets these guidelines:
 
 Please note that the `OrthoFinder` project is released with a Code of Conduct. By contributing to this project you agree to abide by its terms.
 
-## Commiting Guidelines
+## Committing Guidelines
 
 `OrthoFinder` uses [Python Semantic Release (PSR)](https://python-semantic-release.readthedocs.io/en/latest/) to automatically bump version numbers based on keywords it finds in commit messages.
 

@@ -279,7 +279,7 @@ def run_for_ortho_finder(dir_in, d_working, species_to_use, species_tree_ids_fn_
 #     print((text[1:] + "\n"))
 #     parser = argparse.ArgumentParser()
 #     parser.add_argument("species_map", help = "Map file from gene names to species names, or SpeciesIDs.txt file from OrthoFinder")
-#     parser.add_argument("gene_trees", help = "Directory conaining gene trees")
+#     parser.add_argument("gene_trees", help = "Directory containing gene trees")
 #     parser.add_argument("-q", "--quiet", help = "Only print sparse output", action="store_true")
 # #    parser.add_argument("-a", "--astral_jar", help = "ASTRAL jar file. Use ASTRAL to combine STAG species tree estimates instead of greedy consensus tree.")
 #     args = parser.parse_args()

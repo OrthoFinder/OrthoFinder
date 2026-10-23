@@ -256,7 +256,7 @@ def construct_tree(compatible_splits, split_lengths, taxa_index, taxa_ordered, n
     
 def consensus_tree(trees_dir):
     """
-    Calcualtes a greedy consensus tree for the set of trees
+    Calculates a greedy consensus tree for the set of trees
     
     Args:
         trees_dir - directory containing the input trees    

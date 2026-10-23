@@ -70,7 +70,7 @@ def get_kmers(s, k):
     """
     Return a list of all kmers of length k in the sequences, s.
     Args:
-        s - seqeunce (str)
+        s - sequence (str)
         k - kmer length
     """
     kmers = [s[i:i+k] for i in range(len(s)-k+1)]

@@ -301,7 +301,7 @@ class TreeNode(object):
     # Topology management
     def add_child(self, child=None, name=None, dist=None, support=None):
         """
-        Adds a new child to this node. If child node is not suplied
+        Adds a new child to this node. If child node is not supplied
         as an argument, a new node instance will be created.
 
         :argument None child: the node instance to be added as a child.
@@ -420,7 +420,7 @@ class TreeNode(object):
 
     def detach(self):
         """
-        Detachs this node (and all its descendants) from its parent
+        Detaches this node (and all its descendants) from its parent
         and returns the referent to itself.
 
         Detached node conserves all its structure of descendants, and can
@@ -571,7 +571,7 @@ class TreeNode(object):
 
     def get_sisters(self):
         """ 
-        Returns an indepent list of sister nodes. 
+        Returns an independent list of sister nodes. 
         """
         if self.up!=None:
             return [ch for ch in self.up.children if ch!=self]
@@ -917,7 +917,7 @@ class TreeNode(object):
 
     def iter_search_nodes(self, **conditions):
         """ 
-        Search nodes in an interative way. Matches are being yield as
+        Search nodes in an iterative way. Matches are being yield as
         they are being found. This avoids to scan the full tree
         topology before returning the first matches. Useful when
         dealing with huge trees.

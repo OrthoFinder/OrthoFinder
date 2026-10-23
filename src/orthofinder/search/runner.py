@@ -59,7 +59,7 @@ def run_search(
     only_missing=False,
 ):
     """
-    n_genes_per_species: List[int] - optional, for use with unassigned genes. If a species has zero unassigned genes, don't search with/agaisnt it.
+    n_genes_per_species: List[int] - optional, for use with unassigned genes. If a species has zero unassigned genes, don't search with/against it.
     only_missing: run only the searches whose results are missing or incomplete (continuing a run)
     """
     name_to_print = options.search_program
