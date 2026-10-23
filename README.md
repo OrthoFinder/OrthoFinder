@@ -53,10 +53,14 @@ These changes are in OrthoFinder v3.2 and later. Some of them change the names a
 
    The contents of the files are unchanged. A restart (`-b`, `-fg`, `-fgt`, `-fst`) in results from an earlier version first renames the old names to the new ones.
 
-4. **The default species tree differs between the core run and `--assign`.** A core run (`-f`) infers the species tree from the concatenated alignment of the single-copy orthogroups. An `--assign` run infers it from the gene trees with ASTRAL-Pro. `-ST` (e.g. `-ST astral-pro`) makes a core run infer it from the gene trees as well; the concatenated alignment is then not needed, and these two files of a core run are not written: `WorkingDirectory/Alignments_ids/SpeciesTreeAlignment.fa` (the concatenated alignment) and `Species_Tree/Orthogroups_for_concatenated_alignment.txt` (the orthogroups used for it). If you need them, write them afterwards from the results with the `species_tree_alignment` tool (in [`tools/`](tools/species_tree_alignment.py)): `species_tree_alignment <Results_dir>` (`-o <dir>` to write them elsewhere, `--species-names` to name the rows by species).
+4. **A core run and an `--assign` run infer the species tree differently.**
+   - A core run (`-f`) infers it from the concatenated alignment of the single-copy orthogroups.
+   - An `--assign` run infers it from the gene trees, with ASTRAL-Pro.
+   - With `-ST astral-pro`, a core run also infers it from the gene trees. It then makes no concatenated alignment, so two files are not in its results: `WorkingDirectory/Alignments_ids/SpeciesTreeAlignment.fa` (the alignment) and `Species_Tree/Orthogroups_for_concatenated_alignment.txt` (the orthogroups in it).
+   - To make these two files afterwards, run [`species_tree_alignment`](tools/species_tree_alignment.py) `<Results_dir>`. `-o <dir>` writes them to another directory, and `--species-names` names the rows by species instead of by ID.
 
 
-5. **The orthogroups in OrthoXML format**, for other tools: `--orthoxml` writes `Orthogroups/Orthogroups.orthoxml`, the orthogroups with their HOGs nested in them: the species tree as the taxonomy, and gene duplications as paralog groups. The MCL orthogroups (e.g. with `-og`) are written as `Orthogroups/MCL_Orthogroups.orthoxml`. See [Output options](#command-line-options).
+5. **The orthogroups in OrthoXML format**, for other tools: `--orthoxml` writes `Orthogroups/Orthogroups.orthoxml`. Each orthogroup of `Orthogroups.tsv` (a HOG of the root of the species tree, N0) is a group, with the HOGs of the nodes below it nested inside, the species tree as the taxonomy, and gene duplications as paralog groups. The MCL orthogroups are never in this file: when they are written (e.g. with `-og` or `-mog`), they are in `Orthogroups/MCL_Orthogroups.orthoxml`. See [Output options](#command-line-options).
 
 6. **Gene and species names are the same in every results file, on every OS.** A name is made once from the FASTA header (or file name, for a species), and each character a name cannot hold is replaced by `_`: spaces and tabs, `: ; ( ) , [ ] =` and quotes (`'` `"`), and for a species also `* ? < > | \ /`. E.g. `>sp|P12345|X_HUMAN Protein X` gives `sp|P12345|X_HUMAN_Protein_X`, and `Homo sapiens.fa` the species `Homo_sapiens`. The tables, gene trees, alignments, sequences, ortholog files and pages then all use the same name, every tree is standard Newick, and the tab-separated files have no quoted cells, so any program (spreadsheets, R, pandas, `cut`) reads the names as they are. The original headers are in `WorkingDirectory/SequenceIDs.txt`. A species tree given with `-s` may name the species either way (`Homo sapiens`, `'Homo sapiens'` or `Homo_sapiens`). All results files are UTF-8 text with `\n` line endings, the same bytes on Linux, macOS and Windows. Input FASTA files may be UTF-8 (with or without a byte order mark), have Windows or old Mac line endings, or (with a warning) be in Windows-1252.
 
@@ -266,7 +270,7 @@ Command-line options for OrthoFinder
   | `-n <txt>`      | Name to append to the results directory.                                    |
   | `-o <txt>`      | Specify a non-default results directory.                                    |
   | `-pof`    | Save the pairwise ortholog files. With many species (a file for each pair: n × (n−1) files), we recommend running without it and then making only the files you need with the `split_ortholog_files` tool (`--species`, `--partners`, `-t`): `split_ortholog_files <Results_dir>`, or `python tools/split_ortholog_files.py <Results_dir>` from the source code without installing OrthoFinder. |
-  | `--orthoxml` | Also write the orthogroups in [OrthoXML](https://orthoxml.org) format, for other tools, with their HOGs nested in them: `Orthogroups/Orthogroups.orthoxml`. The MCL orthogroups are written as `Orthogroups/MCL_Orthogroups.orthoxml`. |
+  | `--orthoxml` | Also write the orthogroups in [OrthoXML](https://orthoxml.org) format, for other tools: `Orthogroups/Orthogroups.orthoxml`, each orthogroup of `Orthogroups.tsv` with the HOGs of the nodes below the root nested in it. The MCL orthogroups, when written (e.g. `-og`, `-mog`), are in `Orthogroups/MCL_Orthogroups.orthoxml`. |
   | `-mog` | Also keep the MCL orthogroups (before the HOGs) in a full run: `Orthogroups/MCL_Orthogroups.tsv` etc. They are always written with `-og`, `-ogt` or `-ost`, or if the run fails. |
 
 <!-- preview -->
@@ -373,7 +377,7 @@ Full details on the output files and directories can be found [here](http://orth
 - `Orthogroups.GeneCount.tsv` is a tab separated text file that contains counts of the number of genes for each species in each orthogroup.
 - `Orthogroups_SingleCopyOrthologs.txt` is a list of orthogroups that contain exactly one gene per species
 - `Orthogrouops_UnassignedGenes.tsv` is a tab separated text file that contains all of the genes that were not assigned to any orthogroup.
-- With `--orthoxml`, `Orthogroups.orthoxml` has the orthogroups in OrthoXML format, each with its HOGs nested in it.
+- With `--orthoxml`, `Orthogroups.orthoxml` has the orthogroups of `Orthogroups.tsv` in OrthoXML format, each with the HOGs of the nodes below the root nested in it.
 - `MCL_Orthogroups.tsv` etc. are the MCL orthogroups, before the HOGs: written by a run that stops early (e.g. `-og`) or fails, or with `-mog`.
 
 **```/Phylogenetic_Hierarchical_Orthogroups```**

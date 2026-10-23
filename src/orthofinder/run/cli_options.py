@@ -124,8 +124,8 @@ OUTPUT_OPTIONS = {
                  "[dark_cyan]split_ortholog_files[/dark_cyan] tool ([dark_cyan]tools/split_ortholog_files.py[/dark_cyan] "
                  "in the source code)"},
         {"names": ("--orthoxml", "-x"), "set": {"orthoxml": True},
-         "help": "The orthogroups in OrthoXML format, for other tools, with their HOGs nested in them: " +
-                 _path("Orthogroups/Orthogroups.orthoxml")},
+         "help": "The orthogroups of Orthogroups.tsv in OrthoXML format, for other tools, each with the "
+                 "HOGs of the nodes below the root nested in it: " + _path("Orthogroups/Orthogroups.orthoxml")},
         {"names": ("-mog", "--mcl-orthogroups"), "set": {"mcl_orthogroups": True},
          "help": "Also keep the [dark_cyan]MCL[/dark_cyan] orthogroups (before the HOGs): " +
                  _path("Orthogroups/MCL_Orthogroups.tsv") + " etc. (with [dark_cyan]--orthoxml[/dark_cyan] also " +
