@@ -235,10 +235,13 @@ def main(args=None):
             sys.exit()
 
         # printer.print(f"OrthoFinder finished in {time_elapsed:5f}s", end="\n" * 2, style="info")
-        printer.print(
-            f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] finished in ", end=""
-        )
-        printer.print(f"[green]{time_elapsed:5f}[/green]s", end="\n" * 2)
+        if exit_code not in (None, 0):   # (stopped by an error: not "finished")
+            printer.print(f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] stopped after {time_elapsed:5f}s", end="\n" * 2)
+        else:
+            printer.print(
+                f"[dark_goldenrod]OrthoFinder[/dark_goldenrod] finished in ", end=""
+            )
+            printer.print(f"[green]{time_elapsed:5f}[/green]s", end="\n" * 2)
         file_handler.handler.reset()
         sys.exit(exit_code)
 

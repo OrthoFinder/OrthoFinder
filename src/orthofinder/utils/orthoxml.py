@@ -167,14 +167,20 @@ def hog_groups(results_dir, gene_ids):
       - a HOG of the child node within it: its group; several: a paralogGroup
         of their groups (a duplication on the branch to the child)
       - a species' gene: the gene; several: a paralogGroup of them
-    A gene of a HOG in no HOG of the child node (e.g. an orthogroup without a
-    gene tree) is in the HOG's group directly. A group of a single member is
+    A gene of a HOG in no HOG of the child node of its species (e.g. an
+    orthogroup without a gene tree, or a copy whose other genes were lost) is a
+    copy at that child, as its HOGs are: several such genes of a species are a
+    paralogGroup (never orthologs of each other), and those of several species an
+    orthologGroup. These are OrthoFinder's orthologs (Orthologs/), checked with
+    orthoxml-tools export-pairs, except where the gene tree and the HOGs differ
+    (a gene placed against the species tree). A group of a single member is
     replaced by that member (an OrthoXML group has two or more), e.g. a HOG of
     the genes of one child: at the top level, that member then has the id of
     the orthogroup, and its own as the property "HOG". A paralogGroup is not a
     top-level group: a root HOG is always an orthologGroup, as OMA and
     orthoxml-tools (e.g. to-nhx) expect, although the OrthoXML schema requires
-    two members.
+    two members: orthoxml-tools validate reports these groups, but its converters
+    (to-csv, to-nhx) skip a top-level paralogGroup.
 
     Each orthologGroup has, as in OMA: the taxonId of its node in the taxonomy
     (the species tree), the node's name as the property TaxRange, and the score
@@ -201,7 +207,7 @@ def hog_groups(results_dir, gene_ids):
     hogs = {}                    # (node, i) -> (HOG id, gene tree parent clade, {species})
     n_hogs = {}                  # node -> number of HOGs
     kids = defaultdict(list)     # (node, i) -> [(child node, j)]
-    genes = defaultdict(list)    # (node, i) -> [(child species node or None, gene id)]
+    genes = defaultdict(list)    # (node, i) -> [(child node of its species, species, gene id)]: in no HOG of the child
     tables = {species_tree: hog_table(species_tree)}
     for node in preorder:
         if node.is_leaf():
@@ -221,10 +227,11 @@ def hog_groups(results_dir, gene_ids):
                 kids[(node, hog_of_gene[child_genes[0]])].append((child, j))
                 for g in child_genes:
                     del hog_of_gene[g]
-        species_child = {child.name: child for child in node.children if child.is_leaf()}
+        # (the child node each species is in: the species itself, or the clade it is in)
+        species_child = {leaf: child for child in node.children for leaf in child.get_leaf_names()}
         for i, (_, _, sp_genes) in enumerate(table):
             for sp, ids in sp_genes.items():
-                genes[(node, i)].extend((species_child.get(sp), g) for g in ids if g in hog_of_gene)
+                genes[(node, i)].extend((species_child.get(sp), sp, g) for g in ids if g in hog_of_gene)
 
     # 2. The group of each HOG, children first: ("gene", id) or
     # (tag, id, taxonId, [(score, value)], [(property, value)], [members])
@@ -236,15 +243,26 @@ def hog_groups(results_dir, gene_ids):
             members = []
             key_kids, key_genes = kids.pop(key, []), genes.pop(key, [])
             for child in node.children:
-                if child.is_leaf():
-                    parts = [("gene", g) for c, g in key_genes if c is child]
-                else:
-                    parts = [built.pop(k) for k in key_kids if k[0] is child]
+                parts = [built.pop(k) for k in key_kids if k[0] is child]
+                # The genes of the child's species in no HOG of the child: each species'
+                # genes one copy (several: a paralogGroup, never orthologs of each other),
+                # a copy at the child as a HOG of it is (e.g. one whose other genes were
+                # lost, or an orthogroup without a gene tree); the species' copies
+                # orthologs of each other, as OrthoFinder has them without a gene tree
+                by_species = defaultdict(list)
+                for c, sp, g in key_genes:
+                    if c is child:
+                        by_species[sp].append(("gene", g))
+                copies = [ids[0] if len(ids) == 1 else ("paralogGroup", None, None, [], [], ids)
+                          for ids in by_species.values()]
+                if len(copies) == 1:
+                    parts.append(copies[0])
+                elif copies:
+                    parts.append(("orthologGroup", None, taxon_ids[child], [], [("TaxRange", child.name)], copies))
                 if len(parts) == 1:
                     members.append(parts[0])
                 elif parts:
                     members.append(("paralogGroup", None, None, [], [], parts))
-            members += [("gene", g) for c, g in key_genes if c is None]
             hog_id, parent_clade, hog_species = hogs.pop(key)
             scores = [(COMPLETENESS[0], round(len(hog_species) / n_species[node], 4))]
             properties = [("TaxRange", node.name)]

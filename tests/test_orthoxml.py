@@ -129,8 +129,9 @@ def test_with_hogs(tmp_path):
         # a single member: the HOG of N1, with the orthogroup's id and its own as "HOG"
         ("orthologGroup", "OG0000002", "N1", complete,
          {"TaxRange": "N1", "gene tree parent clade": "n0", "HOG": "N1.HOG0000003"}, ["a3", "b3"]),
-        # not in a HOG of N1: in the orthogroup's group directly; 2 of the 3 species
-        ("orthologGroup", "OG0000003", "N0", {"CompletenessScore": 0.6667}, n0, ["c3", "a4"]),
+        # not in a HOG of N1: in the orthogroup's group directly (in the order of the
+        # species tree); 2 of the 3 species
+        ("orthologGroup", "OG0000003", "N0", {"CompletenessScore": 0.6667}, n0, ["a4", "c3"]),
         # a root HOG is an orthologGroup, also of a single member (as in OMA and orthoxml-tools)
         ("orthologGroup", "OG0000004", "N0", {"CompletenessScore": 0.3333}, n0, [paralogs("c4", "c5")]),
     ]
@@ -144,3 +145,39 @@ def test_without_species_tree(tmp_path):
     assert root.get("version") == "0.3" and root.find("o:taxonomy", NS) is None
     assert [g.get("id") for g in root.findall("o:groups/o:orthologGroup", NS)] == [
         "OG0000000", "OG0000001", "OG0000002", "OG0000003", "OG0000004"]
+
+
+def test_genes_in_no_hog_of_a_child(tmp_path):
+    """
+    The genes of an orthogroup in no HOG of a child node are with the copies of that
+    child: genes of one species are never orthologs of each other (e.g. an orthogroup
+    without a gene tree), and a copy at the child in no HOG of it (its other genes
+    lost) is a paralog of the child's HOGs, not their ortholog. As OrthoFinder's
+    orthologs (Orthologs/).
+    """
+    columns = [("Sp_A", "a"), ("Sp_B", "b"), ("Sp_C", "c")]
+    og_dir = tmp_path / "Orthogroups"
+    og_dir.mkdir()
+    write_table(og_dir / "Orthogroups.tsv", columns,
+                [["a0", "a1", "c0"],               # no gene tree: in-paralogs in Sp_A
+                 ["a2", "b2", "a3", "b3", "a4", "c1"]])   # two HOGs at N1, and a4: a third copy at N1
+    write_table(og_dir / "Orthogroups_UnassignedGenes.tsv", columns, [], start=2)
+    (tmp_path / "Species_Tree").mkdir()
+    (tmp_path / "Species_Tree" / "SpeciesTree_rooted_node_labels.txt").write_text("((Sp_A:1,Sp_B:1)N1:1,Sp_C:1)N0;\n")
+    hog_dir = tmp_path / "Phylogenetic_Hierarchical_Orthogroups"
+    hog_dir.mkdir()
+    (hog_dir / "N1.tsv").write_text("HOG\tOG\tGene Tree Parent Clade\tSp_A\tSp_B\tSp_C\n"
+                                     "N1.HOG0000000\tOG0000001\tn3\ta2\tb2\t\n"
+                                     "N1.HOG0000001\tOG0000001\tn4\ta3\tb3\t\n")
+    species = [(name, name + ".fa") for name, _ in columns]
+    root, genes = parse(orthoxml.write_results(str(tmp_path), species))
+    taxa = {t.get("id"): t.get("name") for t in root.iter(f"{{{orthoxml.NAMESPACE}}}taxon")}
+    groups = [shape(g, genes, taxa) for g in root.find("o:groups", NS)]
+
+    def members(group):
+        """The group with only its structure: (tag, [members]) or a gene."""
+        return group if isinstance(group, str) else (group[0], [members(m) for m in group[5]])
+    assert members(groups[0]) == ("orthologGroup", [("paralogGroup", ["a0", "a1"]), "c0"])
+    n1_copies = members(groups[1])[1][0]
+    assert n1_copies == ("paralogGroup", [("orthologGroup", ["a2", "b2"]), ("orthologGroup", ["a3", "b3"]), "a4"])
+    assert members(groups[1])[1][1] == "c1"

@@ -573,8 +573,8 @@ orthofinder [options] --assign &lt;additional_dir&gt; --core &lt;core_results_di
   <dt>Orthogroups.GeneCount.tsv</dt><dd>The number of genes of each species in each orthogroup, and the total.</dd>
   <dt>Orthogroups_SingleCopyOrthologs.txt</dt><dd>The orthogroups with exactly one gene from each species, i.e. one-to-one orthologs.</dd>
   <dt>Orthogroups_UnassignedGenes.tsv</dt><dd>The genes not assigned to any orthogroup, each as an orthogroup of its own, in the format of <code>Orthogroups.tsv</code>.</dd>
-  <dt>Orthogroups.orthoxml</dt><dd>With <code>--orthoxml</code>: the orthogroups in OrthoXML format, for other tools, with their HOGs nested in them, the species tree as the taxonomy and the gene duplications as paralog groups.</dd>
-  <dt>MCL_Orthogroups.*</dt><dd>The orthogroups from the MCL clustering of the search results, before the gene trees (<code>.tsv</code>, <code>.txt</code>, <code>.GeneCount.tsv</code>, <code>_UnassignedGenes.tsv</code>, and with <code>--orthoxml</code> <code>.orthoxml</code>). Written when a run stops after a stage (<code>-og</code>, <code>-ogt</code>, <code>-ost</code>) or fails after them, and kept in a full run with <code>-mog</code>. Their sequences can be written with the <code>mcl_orthogroup_sequences</code> tool.</dd>
+  <dt>MCL_Orthogroups.*</dt><dd>The orthogroups from the MCL clustering of the search results, before the gene trees (<code>.tsv</code>, <code>.txt</code>, <code>.GeneCount.tsv</code>, <code>_UnassignedGenes.tsv</code>).
+Written when a run stops after a stage (<code>-og</code>, <code>-ogt</code>, <code>-ost</code>) or fails after them, and kept in a full run with <code>-mog</code>. Their sequences can be written with the <code>mcl_orthogroup_sequences</code> tool.</dd>
 </dl>
 
 <h2 id="s4-6"><span class="secnum">4.6</span> Orthologs</h2>
@@ -671,7 +671,6 @@ orthofinder -fg ExampleData/OrthoFinder/Results_og_only/</code></pre>
   <tr><td><code>-o &lt;dir&gt;</code></td><td>A results directory other than <code>OrthoFinder/</code> in the input directory</td></tr>
   <tr><td><code>-s &lt;file&gt;</code></td><td>A rooted species tree to use, instead of inferring one</td></tr>
   <tr><td><code>-pof</code></td><td>Write the ortholog files for each pair of species (see <a href="#s1-4">1.4</a>)</td></tr>
-  <tr><td><code>--orthoxml</code></td><td>Write the orthogroups in OrthoXML format</td></tr>
   <tr><td><code>-mog</code></td><td>Keep the MCL orthogroups in a full run</td></tr>
   <tr><td><code>-X</code></td><td>Name the genes without their species prefix in the gene trees, alignments and <code>Duplications.tsv</code></td></tr>
   <tr><td><code>-y</code></td><td>Split paralogous clades below the root of a HOG into separate HOGs</td></tr>

@@ -860,11 +860,28 @@ def success():
     sys.exit()
 
 
+ISSUES_URL = "https://github.com/OrthoFinder/OrthoFinder/issues"
+
+
+def _results_dir():
+    """The results directory of the run, if it has one yet (else None)."""
+    try:
+        from . import file_handler      # (not at the top: file_handler imports this module)
+        d = file_handler.handler.rd1
+    except Exception:
+        return None
+    return d if d and os.path.isdir(d) else None
+
+
 def fail():
+    """Stop OrthoFinder after an error (already printed): what to do next."""
     sys.stderr.flush()
     ptm = ParallelTaskManagerSingleton()
     ptm.stop()
-    printer.print(
-        "ERROR: An error occurred, ***please review the error messages*** they may contain useful information about the problem.", style="error"
-    )
+    printer.print("\nOrthoFinder stopped because of the error above.", style="error")
+    results_dir = _results_dir()
+    printer.print("If the message does not say how to fix it, search for it at %s, or open an issue "
+                  "there with the command you ran and the error%s" % (ISSUES_URL, ", and attach this file:" if results_dir else "."))
+    if results_dir:
+        printer.print("    %s" % os.path.join(results_dir, "Log.txt"))
     sys.exit(1)
