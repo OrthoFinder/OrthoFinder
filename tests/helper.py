@@ -4,9 +4,12 @@ import re
 import traceback
 import json
 from collections import defaultdict
+import shutil
 import pytest
+from orthofinder.run import cli_options
 from orthofinder.run.main import main
 from orthofinder.run.process_args import get_file_argument
+from orthofinder.utils import parallel_task_manager
 
 
 
@@ -15,6 +18,36 @@ ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 def strip_ansi(text):
     return ANSI_RE.sub("", text or "")
+
+
+# The programs each search method (-S) runs that are not bundled with OrthoFinder
+SEARCH_PROGRAMS = {"blastp": ["makeblastdb", "blastp"], "blastn": ["makeblastdb", "blastn"], "mmseqs": ["mmseqs"]}
+
+
+def search_method(args):
+    """The search method a run uses: -S, else blastn with -d (else DIAMOND); blast is blastp, or blastn with -d."""
+    dna = "-d" in args or "--dna" in args
+    method = next((args[i + 1] for i, a in enumerate(args[:-1]) if a in ("-S", "--search")), None)
+    if method is None:
+        method = "blastn" if dna else "diamond"
+    if method == "blast":
+        method = "blastn" if dna else "blastp"
+    return method
+
+
+def skip_unless_runnable(name, args):
+    """
+    Skip a run case that uses an option this version does not have (a preview
+    one on main), or a search program that is not installed (e.g. on CI).
+    """
+    unavailable = [a for a in args if a in cli_options.OPTIONS_BY_NAME
+                   and not cli_options.is_available(cli_options.OPTIONS_BY_NAME[a])]
+    if unavailable:
+        pytest.skip("%s: %s not available in this version" % (name, ", ".join(unavailable)))
+    path = parallel_task_manager.my_env["PATH"]
+    missing = [p for p in SEARCH_PROGRAMS.get(search_method(args), []) if shutil.which(p, path=path) is None]
+    if missing:
+        pytest.skip("%s: %s not installed" % (name, ", ".join(missing)))
 
 
 def assert_no_orthofinder_failure(name, code, out, err):
@@ -62,6 +95,7 @@ def run_orthofinder_core_case(
                       .replace("USER_CONFIG", user_ofconfig)
 
     args = s.split()[1:] + ["-n", name]
+    skip_unless_runnable(name, args)
 
     code, out, err, text = _run_main(args, capfd)
 
@@ -129,6 +163,7 @@ def run_orthofinder_assign_case(
     )
 
     args = s.split()[1:] + ["-n", name]
+    skip_unless_runnable(name, args)
 
     code, out, err, text = _run_main(args, capfd)
 

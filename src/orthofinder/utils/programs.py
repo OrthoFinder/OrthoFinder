@@ -7,7 +7,7 @@ parallel_task_manager.program_dirs in order (the PATH OrthoFinder runs
 commands with). Every command OrthoFinder then runs starts the chosen copy:
 with_paths puts its full path in place of the program's name, and with_env
 adds the environment variables that copy needs (the bundled MAFFT's
-MAFFT_BINARIES).
+MAFFT_BINARIES), also for a program run by name before it is chosen.
 """
 import os
 import re
@@ -110,9 +110,18 @@ def with_paths(command):
     return "".join(parts)
 
 
-def with_env(env):
-    """env with the variables the chosen copies need (env itself if there are none)."""
+def with_env(env, command=None):
+    """
+    env with the variables the chosen copies need (env itself if there are
+    none), and those of the copies on env's PATH of the programs command runs
+    by name (e.g. the bundled MAFFT in the dependency test that chooses it).
+    """
     extra = {k: v for values in _env.values() for k, v in values.items()}
+    for program in command_programs(command) if command else []:
+        if program not in _chosen and can_choose(program):
+            location = shutil.which(program, path=env.get("PATH"))
+            if location:
+                extra.update(bundled_env(location))
     if not extra:
         return env
     env = dict(env)

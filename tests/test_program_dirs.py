@@ -84,6 +84,15 @@ def test_bundled_mafft_needs_its_libexec():
     assert programs.with_env(env) is env
 
 
+def test_bundled_mafft_run_by_name_before_it_is_chosen():
+    """The dependency test that chooses the copy runs it by name, from PATH: the bundled one needs its libexec."""
+    programs.forget("mafft")
+    env = {"PATH": os.pathsep.join(["/nonexistent", os.path.join(__location__, "bin", "mafft", "bin")])}
+    assert programs.with_env(env, "mafft --anysymbol in > out")["MAFFT_BINARIES"] == \
+        os.path.join(__location__, "bin", "mafft", "libexec")
+    assert programs.with_env(env, "famsa in out") is env
+
+
 def _out(capsys):
     return re.sub(r"\x1b\[[0-9;]*m", "", capsys.readouterr().out)
 

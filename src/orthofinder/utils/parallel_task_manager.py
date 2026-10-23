@@ -460,7 +460,7 @@ def run_monitored_command(command, env, stdout=None, stderr=None,
     # lists the commands, so a command starting at the same moment is either in its
     # list or sees the abort here and is stopped.
     popen = subprocess.Popen(
-        programs.with_paths(command), env=programs.with_env(env), shell=True,
+        programs.with_paths(command), env=programs.with_env(env, command), shell=True,
         stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr,
         start_new_session=use_group,
     )

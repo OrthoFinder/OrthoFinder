@@ -63,7 +63,7 @@ INPUT_OPTIONS = {
         {"names": ("--core",), "value": "dir", "read": "core",
          "help": _dir("The results directory of the finished analysis, for [dark_cyan]--assign[/dark_cyan]")},
         {"names": ("-d", "--dna"), "set": {"dna": True},
-         "help": "Input is DNA sequences (searched with [dark_cyan]BLAST+ blastn[/dark_cyan] by default, or [dark_cyan]-S mmseqs[/dark_cyan]; [dark_cyan]DIAMOND[/dark_cyan] cannot be used)."},
+         "help": "Input is DNA sequences (searched with [dark_cyan]BLAST+ blastn[/dark_cyan] by default, or [dark_cyan]-S mmseqs[/dark_cyan], as [dark_cyan]DIAMOND[/dark_cyan] cannot be used)."},
         {"names": ("-s", "--speciestree"), "value": "file", "read": "species_tree",
          "help": "User-specified rooted species tree"},
     ],
@@ -76,10 +76,10 @@ METHOD_OPTIONS = {
          "help": 'Method for gene tree inference. Options [dark_cyan]"dendroblast"[/dark_cyan] & '
                  '[dark_cyan]"msa"[/dark_cyan] [Default = [dark_cyan]msa[/dark_cyan]]'},
         {"names": ("-S", "--search"), "value": "txt", "read": "search",
-         "help": "Sequence search program [Default = [dark_cyan]diamond[/dark_cyan]; "
+         "help": "Sequence search program [Default = [dark_cyan]diamond[/dark_cyan], or "
                  "[dark_cyan]blastn[/dark_cyan] with [dark_cyan]-d[/dark_cyan]]. "
-                 "[dark_cyan]blast[/dark_cyan]: BLAST+ for either input, [dark_cyan]blastp[/dark_cyan] "
-                 "for protein sequences, [dark_cyan]blastn[/dark_cyan] with [dark_cyan]-d[/dark_cyan]",
+                 "[dark_cyan]blast[/dark_cyan] is BLAST+ for either input, [dark_cyan]blastp[/dark_cyan] "
+                 "for protein sequences or [dark_cyan]blastn[/dark_cyan] with [dark_cyan]-d[/dark_cyan]",
          "choices": lambda pc: _search_choices(pc)},
         {"names": ("-A", "--msa-program"), "value": "txt", "read": "msa",
          "help": 'MSA program, requires [dark_cyan]"-M msa"[/dark_cyan] [Default = [dark_cyan]famsa[/dark_cyan]]',
@@ -89,12 +89,12 @@ METHOD_OPTIONS = {
          "choices": lambda pc: [m for m in pc.list_tree_methods() if m != "raxml-ng"]},
         {"names": ("-ST", "--species-tree-program"), "value": "txt", "read": "species_tree_program",
          "help": 'Species tree program, from the gene trees, requires [dark_cyan]"-M msa"[/dark_cyan] '
-                 "[Default = a tree of the concatenated alignment of single-copy orthogroups; "
-                 "with --assign, [dark_cyan]astral-pro[/dark_cyan]]",
+                 "[Default = a tree of the concatenated alignment of single-copy orthogroups, or "
+                 "[dark_cyan]astral-pro[/dark_cyan] with --assign]",
          "choices": lambda pc: pc.list_species_tree_methods()},
         {"names": ("-I", "--inflation"), "value": "num", "read": "float", "field": "mcl_inflation",
          "what": "MCL inflation parameter",
-         "help": f"[dark_cyan]MCL[/dark_cyan] inflation parameter, usually [deep_sky_blue2]1.2[/deep_sky_blue2]-[deep_sky_blue2]5[/deep_sky_blue2]; larger values give smaller orthogroups "
+         "help": f"[dark_cyan]MCL[/dark_cyan] inflation parameter, usually [deep_sky_blue2]1.2[/deep_sky_blue2]-[deep_sky_blue2]5[/deep_sky_blue2] (larger values give smaller orthogroups) "
                  f"[Default = [deep_sky_blue2]{g_mcl_inflation:0.1f}[/deep_sky_blue2]]"},
     ],
 }
@@ -120,15 +120,15 @@ OUTPUT_OPTIONS = {
         {"names": ("-o", "--output"), "value": "txt", "read": "output", "help": "Non-default results directory"},
         {"names": ("-X",), "set": {"q_add_species_to_ids": False}, "help": "Gene names without their species prefix in gene trees, alignments and Duplications.tsv"},
         {"names": ("-pof", "--pairwise-ortholog-files"), "set": {"save_space": False},
-         "help": "Save the pairwise ortholog files. With many species (a file for each pair: n x (n-1) files), "
+         "help": "Save the pairwise ortholog files. With many species (a file for each pair, n x (n-1) files), "
                  "it is better to run without it and then make only the files needed with the "
                  "[dark_cyan]split_ortholog_files[/dark_cyan] tool ([dark_cyan]tools/split_ortholog_files.py[/dark_cyan] "
                  "in the source code)"},
         {"names": ("--orthoxml", "-x"), "preview": True, "set": {"orthoxml": True},
          "help": "The orthogroups of Orthogroups.tsv in OrthoXML format, for other tools, each with the "
-                 "HOGs of the nodes below the root nested in it: " + _path("Orthogroups/Orthogroups.orthoxml")},
+                 "HOGs of the nodes below the root nested in it, in " + _path("Orthogroups/Orthogroups.orthoxml")},
         {"names": ("-mog", "--mcl-orthogroups"), "set": {"mcl_orthogroups": True},
-         "help": "Also keep the [dark_cyan]MCL[/dark_cyan] orthogroups (before the HOGs): " +
+         "help": "Also keep the [dark_cyan]MCL[/dark_cyan] orthogroups (before the HOGs), as " +
                  _path("Orthogroups/MCL_Orthogroups.tsv") + " etc. They are always written with a stop option "
                  "([dark_cyan]-og[/dark_cyan], [dark_cyan]-ogt[/dark_cyan], [dark_cyan]-ost[/dark_cyan]) "
                  "or if the run fails",
@@ -140,20 +140,20 @@ ADDITIONAL_OUTPUT_OPTIONS = {
     "title": "ADDITIONAL OUTPUT OPTIONS",
     "options": [
         {"names": ("--tree-view",), "preview": True, "set": {"tree_view": True},
-         "help": "A page to view the trees in a web browser: each resolved gene tree with its "
+         "help": "A page to view the trees in a web browser, with each resolved gene tree and its "
                  "alignment (clades can be collapsed, a tree saved as SVG), a species tree explorer "
                  "(the HOGs at each node, an orthogroup's duplications and losses, each species' "
-                 "genes) and all genes on the species tree: " + _path("Resolved_Gene_Trees/Resolved_Gene_Trees.html")},
+                 "genes) and all genes on the species tree, in " + _path("Resolved_Gene_Trees/Resolved_Gene_Trees.html")},
         {"names": ("--stats-view",), "preview": True, "set": {"stats_view": True},
          "help": "A page of the run's statistics with interactive plots (overall, species, "
-                 "orthogroups, duplications, HOGs): " + _path("Comparative_Genomics_Statistics/Statistics.html")},
+                 "orthogroups, duplications, HOGs), in " + _path("Comparative_Genomics_Statistics/Statistics.html")},
         {"names": ("--groups-view",), "preview": True, "set": {"groups_view": True},
-         "help": "A page of the genes of each orthogroup and HOG, searchable: " + _path("Orthogroups/Groups.html")},
+         "help": "A page of the genes of each orthogroup and HOG, searchable, in " + _path("Orthogroups/Groups.html")},
         {"names": ("--view",), "preview": True, "set": {"tree_view": True, "stats_view": True, "groups_view": True},
          "help": "All three pages ([dark_cyan]--tree-view[/dark_cyan], [dark_cyan]--stats-view[/dark_cyan], "
                  "[dark_cyan]--groups-view[/dark_cyan]), linked to each other, and " + _path("OrthoFinder_Results.html") + " to "
-                 "open them, a tab for each (also with two of them). With many species they can be large: each "
-                 "can also be written on its own. For the results of a finished run: "
+                 "open them, a tab for each (also with two of them). With many species they can be large, so each "
+                 "can also be written on its own. For the results of a finished run, use "
                  "[dark_cyan]view_results[/dark_cyan] <[bright_magenta]dir[/bright_magenta]>"},
     ],
 }
@@ -166,7 +166,7 @@ STOPPING_OPTIONS = {
         {"names": ("-og", "--only-groups"), "set": {"q_stop_after_mcl_groups": True}, "help": "Stop after the [dark_cyan]MCL[/dark_cyan] orthogroups (no gene trees, species tree or HOGs)"},
         {"names": ("-ogt", "--only-trees"), "set": {"q_stop_after_trees": True}, "help": "Stop after gene trees"},
         {"names": ("-ost", "--only-species-trees"), "set": {"q_stop_after_species_trees": True},
-         "help": "Stop after the rooted species tree (rooted by [dark_cyan]STRIDE[/dark_cyan] from the gene trees; no HOGs or orthologs)"},
+         "help": "Stop after the rooted species tree (rooted by [dark_cyan]STRIDE[/dark_cyan] from the gene trees, with no HOGs or orthologs)"},
     ],
 }
 
@@ -198,9 +198,9 @@ OTHER_OPTIONS = {
         {"names": ("--custom-matrix",), "preview": True, "value": "file", "read": "scoring",
          "help": "A scoring matrix file for the [dark_cyan]DIAMOND[/dark_cyan] searches, requires [dark_cyan]--gapopen[/dark_cyan] and "
                  "[dark_cyan]--gapextend[/dark_cyan]\n"
-                 "In NCBI's format (e.g. the files at " + _link("https://ftp.ncbi.nlm.nih.gov/blast/matrices/") + "): a line of "
+                 "In NCBI's format (e.g. the files at " + _link("https://ftp.ncbi.nlm.nih.gov/blast/matrices/") + "), a line of "
                  "one-letter amino acid codes, then for each code, in that order, a line of the code and its integer "
-                 "scores. The 20 standard amino acids are needed; lines starting with # are comments."},
+                 "scores. The 20 standard amino acids are needed. Lines starting with # are comments."},
         {"names": ("-go", "--gapopen"), "preview": True, "value": "int", "read": "scoring",
          "help": "Gap open penalty of the [dark_cyan]DIAMOND[/dark_cyan] searches, [dark_cyan]--gapopen[/dark_cyan] "
                  "[Default = the matrix's, e.g. [deep_sky_blue2]11[/deep_sky_blue2] for BLOSUM62]"},
@@ -241,14 +241,14 @@ DEVELOPMENT_OPTIONS = {
         {"names": ("--keep-resolved-gene-trees",), "set": {"keep_resolved_gene_trees": True},
          "help": "Keep the resolved gene trees as separate files in the working directory (removed by default)"},
         {"names": ("--keep-legacy",), "set": {"keep_legacy": True},
-         "help": "Write the legacy files in WorkingDirectory/Legacy (not written by default): the HOGs from "
-                 "before the orthogroups are updated and the orthogroups as sequence IDs; and keep the "
+         "help": "Write the legacy files in WorkingDirectory/Legacy (not written by default), i.e. the HOGs from "
+                 "before the orthogroups are updated and the orthogroups as sequence IDs, and keep the "
                  "working files the update uses"},
         {"names": ("--no-print-info",), "set": {"print_info": False},
          "help": "Don't print the progress messages of the ortholog inference"},
         {"names": ("--concat-alignment",), "set": {"species_tree_alignment": True},
          "help": "With [dark_cyan]-ST[/dark_cyan], also write the concatenated alignment of the orthogroups "
-                 "for the species tree: " + _path("WorkingDirectory/Alignments_ids/SpeciesTreeAlignment.fa")},
+                 "for the species tree, in " + _path("WorkingDirectory/Alignments_ids/SpeciesTreeAlignment.fa")},
     ],
 }
 

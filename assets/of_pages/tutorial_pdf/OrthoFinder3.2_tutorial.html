@@ -102,7 +102,7 @@
 <section class="cover">
   <div class="badge">Tutorial · version 3.2</div>
   <h1 class="title">OrthoFinder</h1>
-  <div class="sub">A step-by-step tutorial: installing, running and interpreting OrthoFinder</div>
+  <div class="sub">A step-by-step tutorial on installing, running and interpreting OrthoFinder</div>
   <div class="meta">
     David Emms, Jonathan Holmes, Laurence Belcher, Yi Liu &amp; Steven Kelly<br>
     Department of Biology, University of Oxford<br>
@@ -122,7 +122,7 @@
         <li><a href="#s1-4"><span class="tocnum">1.4</span>Exploring the results of OrthoFinder</a></li>
       </ol>
     </li>
-    <li><a href="#ch2"><span class="tocnum">2</span>Advanced tutorial: adding species to a core analysis</a>
+    <li><a href="#ch2"><span class="tocnum">2</span>Advanced tutorial on adding species to a core analysis</a>
       <ol>
         <li><a href="#s2-1"><span class="tocnum">2.1</span>The core and assign workflow</a></li>
         <li><a href="#s2-2"><span class="tocnum">2.2</span>Choosing the core species</a></li>
@@ -178,24 +178,24 @@
 
 <section class="chapter" id="ch1">
 <h1><span class="chlabel">Chapter 1</span>Beginner tutorial</h1>
-<p>This tutorial will cover:</p>
+<p>This tutorial covers the following.</p>
 <ol>
   <li><a href="#s1-1">Installing OrthoFinder</a></li>
   <li><a href="#s1-2">Input files for OrthoFinder</a></li>
   <li><a href="#s1-3">Running OrthoFinder</a></li>
   <li><a href="#s1-4">Exploring the results of OrthoFinder</a></li>
 </ol>
-<p>All the steps are done on the command line, so that you can copy and paste the commands. If you are not familiar with the command line, there are many online tutorials and reference pages; <a href="https://www.techspot.com/guides/835-linux-command-line-basics/">here is a short one that covers the basics</a>.</p>
-<p>Throughout this tutorial we use the example data that comes with OrthoFinder: the proteomes of four <i>Mycoplasma</i> species (<i>M. agalactiae</i>, <i>M. gallisepticum</i>, <i>M. genitalium</i> and <i>M. hyopneumoniae</i>). They are small, so every step runs in seconds, and every number and gene name in this tutorial is from a real run of OrthoFinder v3.2 on them. Your numbers may differ very slightly.</p>
+<p>All the steps are done on the command line, so that you can copy and paste the commands. If you are not familiar with the command line, there are many online tutorials and reference pages. <a href="https://www.techspot.com/guides/835-linux-command-line-basics/">here is a short one that covers the basics</a>.</p>
+<p>Throughout this tutorial we use the example data that comes with OrthoFinder, the proteomes of four <i>Mycoplasma</i> species (<i>M. agalactiae</i>, <i>M. gallisepticum</i>, <i>M. genitalium</i> and <i>M. hyopneumoniae</i>). They are small, so every step runs in seconds, and every number and gene name in this tutorial is from a real run of OrthoFinder v3.2 on them. Your numbers may differ very slightly.</p>
 
 <h2 id="s1-1"><span class="secnum">1.1</span> Installing OrthoFinder</h2>
-<p>OrthoFinder runs on Linux (including WSL2 on Windows) and macOS, and needs Python 3.11 or later. There are three ways of installing it. Conda is the simplest, because it installs everything OrthoFinder depends on; we recommend it if you are new to the command line.</p>
+<p>OrthoFinder runs on Linux (including WSL2 on Windows) and macOS, and needs Python 3.11 or later. There are three ways of installing it. Conda is the simplest, because it installs everything OrthoFinder depends on. We recommend it if you are new to the command line.</p>
 
 <h3 id="s1-1-1"><span class="secnum">1.1.1</span> Install with conda (recommended)</h3>
-<p>If you don't have conda, install Miniconda first, following <a href="https://docs.anaconda.com/miniconda/">the instructions on its website</a>. Then create an environment for OrthoFinder and install it from Bioconda:</p>
+<p>If you don't have conda, install Miniconda first, following <a href="https://docs.anaconda.com/miniconda/">the instructions on its website</a>. Then create an environment for OrthoFinder and install it from Bioconda.</p>
 <pre><code>conda create -n of3_env -c conda-forge -c bioconda python=3.12 orthofinder=3.2
 conda activate of3_env</code></pre>
-<p>On a Mac with an Apple silicon chip (M1, M2, M3 …), some of the programs OrthoFinder uses are only available for Intel Macs. Create the environment for Intel instead (macOS runs it with Rosetta):</p>
+<p>On a Mac with an Apple silicon chip (M1, M2, M3 …), some of the programs OrthoFinder uses are only available for Intel Macs. Create the environment for Intel instead (macOS runs it with Rosetta).</p>
 <pre><code>CONDA_SUBDIR=osx-64 conda create -n of3_env -c conda-forge -c bioconda python=3.12 orthofinder=3.2
 conda activate of3_env
 conda config --env --set subdir osx-64</code></pre>
@@ -207,7 +207,7 @@ pip install git+https://github.com/OrthoFinder/OrthoFinder.git@v3.2</code></pre>
 <p>The <code>@v3.2</code> installs the release. Without it, pip installs the latest development code on the main branch, and <code>orthofinder -v</code> then shows a development version such as <code>3.2.post1.dev4</code>.</p>
 
 <h3 id="s1-1-3"><span class="secnum">1.1.3</span> Install from the release files</h3>
-<p>Each release on <a href="https://github.com/OrthoFinder/OrthoFinder/releases">GitHub</a> has two archives of the source code:</p>
+<p>Each release on <a href="https://github.com/OrthoFinder/OrthoFinder/releases">GitHub</a> has two archives of the source code.</p>
 <ul>
   <li><code>orthofinder-linux-intel-3.2.tar.gz</code> also contains the programs OrthoFinder runs (DIAMOND, FAMSA, FastTree, MCL, MAFFT …), built for Linux on Intel/AMD processors. Use it on a Linux machine where you can't install them yourself.</li>
   <li><code>orthofinder-3.2.tar.gz</code> is the source code only (it is the archive the Bioconda package is built from). OrthoFinder then uses the programs installed on your system.</li>
@@ -224,38 +224,38 @@ pip install .</code></pre>
 <h3 id="s1-1-4"><span class="secnum">1.1.4</span> Test your installation</h3>
 <pre><code>orthofinder -h      # print the help text: all the command-line options
 orthofinder -v      # print the version</code></pre>
-<p>Then test OrthoFinder on the example dataset. It is in the source code, in <code>ExampleData/</code>, and can be downloaded on its own from the release page (<code>ExampleData.tar.gz</code>):</p>
+<p>Then test OrthoFinder on the example dataset. It is in the source code, in <code>ExampleData/</code>, and can be downloaded on its own from the release page (<code>ExampleData.tar.gz</code>).</p>
 <pre><code>wget https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.2/ExampleData.tar.gz
 tar -xzf ExampleData.tar.gz
 orthofinder -f ExampleData/</code></pre>
-<p>At the start of each run, OrthoFinder checks that it can run each program it needs, for example:</p>
+<p>At the start of each run, OrthoFinder checks that it can run each program it needs, as in this example.</p>
 <pre class="out"><code>Checking required programs are installed
 ========================================
 Test can run "mcl" - ok
 Test can run "famsa" - ok
 Test can run "fasttree" - ok</code></pre>
-<p>If a test fails, OrthoFinder stops and says which program is missing (see <a href="#s5-6">5.6</a> to install it). If you get any other error, the best first step is to search for the error message; you can also look for it, or ask, on the <a href="https://github.com/OrthoFinder/OrthoFinder/issues">GitHub issues page</a>.</p>
+<p>If a test fails, OrthoFinder stops and says which program is missing (see <a href="#s5-6">5.6</a> to install it). If you get any other error, the best first step is to search for the error message. You can also look for it, or ask, on the <a href="https://github.com/OrthoFinder/OrthoFinder/issues">GitHub issues page</a>.</p>
 
 <h2 id="s1-2"><span class="secnum">1.2</span> Input files for OrthoFinder</h2>
-<p>OrthoFinder needs one FASTA file for each species, all in one directory. Each file contains the amino acid sequences of all the protein-coding genes of that species, with <strong>one sequence per gene</strong>. The name of the file (without its extension) is the name of the species in all the results, so short, clear names such as <code>Homo_sapiens.fa</code> keep the results tidy. The files must end in <code>.fa</code>, <code>.faa</code>, <code>.fasta</code>, <code>.fas</code>, <code>.pep</code> or <code>.fna</code>, and be uncompressed (run <code>gunzip</code> on <code>.gz</code> files first); other files in the directory are ignored.</p>
-<p>The proteomes downloaded from most databases contain several sequences for many genes, one for each transcript (isoform). Running OrthoFinder on them takes longer and gives less accurate results, so keep only the longest transcript of each gene with the <code>primary_transcript</code> tool, which is installed with OrthoFinder:</p>
+<p>OrthoFinder needs one FASTA file for each species, all in one directory. Each file contains the amino acid sequences of all the protein-coding genes of that species, with <strong>one sequence per gene</strong>. The name of the file (without its extension) is the name of the species in all the results, so short, clear names such as <code>Homo_sapiens.fa</code> keep the results tidy. The files must end in <code>.fa</code>, <code>.faa</code>, <code>.fasta</code>, <code>.fas</code>, <code>.pep</code> or <code>.fna</code>, and be uncompressed (run <code>gunzip</code> on <code>.gz</code> files first). Other files in the directory are ignored.</p>
+<p>The proteomes downloaded from most databases contain several sequences for many genes, one for each transcript (isoform). Running OrthoFinder on them takes longer and gives less accurate results, so keep only the longest transcript of each gene with the <code>primary_transcript</code> tool, which is installed with OrthoFinder.</p>
 <pre><code>primary_transcript Proteomes/</code></pre>
 <p>This writes the files to <code>Proteomes/primary_transcripts/</code>, ready for OrthoFinder. Section <a href="#ch6">6</a> shows how to download proteomes from Ensembl, NCBI and Phytozome and prepare them. For this tutorial, the example data is already prepared.</p>
 <p>OrthoFinder can also be run on nucleotide sequences with <code>-d</code> (see <a href="#s5-3">5.3</a>), but protein sequences give much more accurate results.</p>
 
 <h2 id="s1-3"><span class="secnum">1.3</span> Running OrthoFinder</h2>
-<p>We are now ready to run OrthoFinder on the four proteomes in <code>ExampleData/</code>:</p>
+<p>We are now ready to run OrthoFinder on the four proteomes in <code>ExampleData/</code>.</p>
 <pre><code>orthofinder -f ExampleData/ -t 8</code></pre>
-<p><code>-t</code> is the number of threads for the sequence searches, the slowest step for large datasets. By default OrthoFinder uses half the CPU cores of the machine (on a cluster, the cores allocated to the job). <code>-a</code> sets the threads for the rest of the analysis (by default a quarter of <code>-t</code>, at least 1; <code>orthofinder -h</code> shows both defaults for your computer); with many species, more analysis threads make the later stages faster but need more memory.</p>
-<p>OrthoFinder prints its progress as it runs through these stages:</p>
+<p><code>-t</code> is the number of threads for the sequence searches, the slowest step for large datasets. By default OrthoFinder uses half the CPU cores of the machine (on a cluster, the cores allocated to the job). <code>-a</code> sets the threads for the rest of the analysis (by default a quarter of <code>-t</code>, at least 1, and <code>orthofinder -h</code> shows both defaults for your computer). With many species, more analysis threads make the later stages faster but need more memory.</p>
+<p>OrthoFinder prints its progress as it runs through these stages.</p>
 <ol>
-  <li><strong>Sequence search</strong>: an all-versus-all DIAMOND search of the proteins of every species against every species.</li>
-  <li><strong>Orthogroups</strong>: the genes are clustered into orthogroups with MCL, from the search results.</li>
-  <li><strong>Gene trees</strong>: a multiple sequence alignment (FAMSA) and gene tree (FastTree) for each orthogroup.</li>
-  <li><strong>Species tree</strong>: inferred from the concatenated alignment of the single-copy orthogroups, and rooted from the gene duplication events in the gene trees (STRIDE).</li>
-  <li><strong>Reconciliation</strong>: each gene tree is rooted and resolved against the species tree, to find the gene duplication events, the hierarchical orthogroups (HOGs) and the orthologs.</li>
+  <li><strong>Sequence search.</strong> An all-versus-all DIAMOND search of the proteins of every species against every species.</li>
+  <li><strong>Orthogroups.</strong> The genes are clustered into orthogroups with MCL, from the search results.</li>
+  <li><strong>Gene trees.</strong> A multiple sequence alignment (FAMSA) and gene tree (FastTree) for each orthogroup.</li>
+  <li><strong>Species tree.</strong> Inferred from the concatenated alignment of the single-copy orthogroups, and rooted from the gene duplication events in the gene trees (STRIDE).</li>
+  <li><strong>Reconciliation.</strong> Each gene tree is rooted and resolved against the species tree, to find the gene duplication events, the hierarchical orthogroups (HOGs) and the orthologs.</li>
 </ol>
-<p>At the end it prints a summary and the location of the results:</p>
+<p>At the end it prints a summary and the location of the results.</p>
 <pre class="out"><code>Summary:
  OrthoFinder assigned 2216 genes (81.1% of total) to 599 orthogroups.
  50% of genes were in orthogroups with 4 or more genes (G50 was 4) and were
@@ -266,11 +266,11 @@ Test can run "fasttree" - ok</code></pre>
 Results directory:
     ExampleData/OrthoFinder/Results_Oct21/</code></pre>
 <p>The results directory is named after the date. <code>-n &lt;name&gt;</code> names it <code>Results_&lt;name&gt;</code> instead, and <code>-o &lt;dir&gt;</code> puts it somewhere else than <code>OrthoFinder/</code> in the input directory. A run with the same name or date as an earlier run gets a number (<code>Results_Oct21_1</code>), so results are never overwritten.</p>
-<div class="note"><p><strong>How long will it take?</strong> The example data takes about ten seconds. For tens of species with typical eukaryotic proteomes, expect hours: most of the time is the sequence search, which grows with the square of the number of species. For more than about 100 species, use the core and assign workflow of section <a href="#ch2">2</a> instead.</p></div>
+<div class="note"><p><strong>How long will it take?</strong> The example data takes about ten seconds. For tens of species with typical eukaryotic proteomes, expect hours. Most of the time is the sequence search, which grows with the square of the number of species. For more than about 100 species, use the core and assign workflow of section <a href="#ch2">2</a> instead.</p></div>
 
 <!-- ===================================================================== -->
 <h2 id="s1-4"><span class="secnum">1.4</span> Exploring the results of OrthoFinder</h2>
-<p>OrthoFinder creates the results directory inside <code>ExampleData/OrthoFinder/</code>. Its contents (with most per-orthogroup files left out) look like this:</p>
+<p>OrthoFinder creates the results directory inside <code>ExampleData/OrthoFinder/</code>. Its contents (with most per-orthogroup files left out) look like this.</p>
 <pre class="out"><code>Results_Oct21/
 ├── Citation.txt
 ├── Log.txt
@@ -311,13 +311,13 @@ Results directory:
 │   ├── SpeciesTree_rooted.txt
 │   └── SpeciesTree_rooted_node_labels.txt
 └── WorkingDirectory/</code></pre>
-<p>All the tables are tab-separated text files. They can be opened in a spreadsheet program such as Excel or LibreOffice Calc (choose "tab" as the separator if asked), in R (<code>read.delim</code>) or Python (<code>pandas.read_csv(..., sep="\t")</code>), or looked at on the command line. The trees are text files in Newick format, which tree viewers such as <a href="https://itol.embl.de/">iTOL</a>, <a href="https://github.com/husonlab/dendroscope3">Dendroscope</a> or FigTree open. The <code>.gz</code> files are compressed: read them with <code>zcat</code>, <code>zgrep</code> or <code>zless</code>, or uncompress them with <code>gunzip</code>. Section <a href="#ch4">4</a> describes every file.</p>
+<p>All the tables are tab-separated text files. They can be opened in a spreadsheet program such as Excel or LibreOffice Calc (choose "tab" as the separator if asked), in R (<code>read.delim</code>) or Python (<code>pandas.read_csv(..., sep="\t")</code>), or looked at on the command line. The trees are text files in Newick format, which tree viewers such as <a href="https://itol.embl.de/">iTOL</a>, <a href="https://github.com/husonlab/dendroscope3">Dendroscope</a> or FigTree open. The <code>.gz</code> files are compressed. Read them with <code>zcat</code>, <code>zgrep</code> or <code>zless</code>, or uncompress them with <code>gunzip</code>. Section <a href="#ch4">4</a> describes every file.</p>
 
-<h3 id="s1-4-1"><span class="secnum">1.4.1</span> Step 1: Quality control</h3>
-<p>Before diving into the orthogroups, check the quality of the run: that most genes of all species have been assigned to orthogroups, and that the species tree looks right.</p>
+<h3 id="s1-4-1"><span class="secnum">1.4.1</span> Step 1. Quality control</h3>
+<p>Before diving into the orthogroups, check the quality of the run, i.e. that most genes of all species have been assigned to orthogroups, and that the species tree looks right.</p>
 
 <h4 id="s1-4-1-1"><span class="secnum">1.4.1.1</span> The proportion of genes in orthogroups</h4>
-<p>Open <code>Comparative_Genomics_Statistics/Statistics_Overall.tsv</code>. Its first lines are:</p>
+<p>Open <code>Comparative_Genomics_Statistics/Statistics_Overall.tsv</code>. Its first lines are shown below.</p>
 <table>
   <tr><td>Number of species</td><td class="n">4</td></tr>
   <tr><td>Number of genes</td><td class="n">2733</td></tr>
@@ -334,9 +334,9 @@ Results directory:
   <tr><td>Number of orthogroups with all species present</td><td class="n">274</td></tr>
   <tr><td>Number of single-copy orthogroups</td><td class="n">250</td></tr>
 </table>
-<p>On the 5th line is the <strong>percentage of genes in orthogroups</strong>, here 81.1%. A good rule of thumb is that it should be above 80%. If it is much lower, OrthoFinder is likely missing orthology relationships that exist, usually because some species are too distantly related to the others: the best fix is better species sampling, adding species that fill the gaps in the tree. An "unassigned gene" is a gene that is not in an orthogroup with any other gene; each unassigned gene is listed, as an orthogroup of its own, in <code>Orthogroups/Orthogroups_UnassignedGenes.tsv</code>.</p>
-<p>The later lines of the file give the distribution of orthogroup sizes: how many orthogroups have, on average, less than one gene per species, one gene per species, two, and so on. A few very large orthogroups often come from large gene families or transposable elements.</p>
-<p>Now open <code>Statistics_PerSpecies.tsv</code> from the same directory. It gives the same statistics for each species:</p>
+<p>On the 5th line is the <strong>percentage of genes in orthogroups</strong>, here 81.1%. A good rule of thumb is that it should be above 80%. If it is much lower, OrthoFinder is likely missing orthology relationships that exist, usually because some species are too distantly related to the others. The best fix is better species sampling, adding species that fill the gaps in the tree. An "unassigned gene" is a gene that is not in an orthogroup with any other gene. Each unassigned gene is listed, as an orthogroup of its own, in <code>Orthogroups/Orthogroups_UnassignedGenes.tsv</code>.</p>
+<p>The later lines of the file give the distribution of orthogroup sizes, i.e. how many orthogroups have, on average, less than one gene per species, one gene per species, two, and so on. A few very large orthogroups often come from large gene families or transposable elements.</p>
+<p>Now open <code>Statistics_PerSpecies.tsv</code> from the same directory. It gives the same statistics for each species.</p>
 <table class="wide">
   <tr><th></th><th>M. agalactiae</th><th>M. gallisepticum</th><th>M. genitalium</th><th>M. hyopneumoniae</th></tr>
   <tr><td>Number of genes</td><td class="n">820</td><td class="n">763</td><td class="n">476</td><td class="n">674</td></tr>
@@ -345,60 +345,60 @@ Results directory:
   <tr><td>Number of species-specific orthogroups</td><td class="n">37</td><td class="n">11</td><td class="n">3</td><td class="n">33</td></tr>
   <tr><td>Genes in species-specific orthogroups (%)</td><td class="n">20.9</td><td class="n">12.5</td><td class="n">1.3</td><td class="n">15.9</td></tr>
 </table>
-<p>Most genes of every species are in orthogroups. The lowest is <i>M. gallisepticum</i>, with 78.2%. Always look at these numbers before interpreting the results: if one species has a much lower percentage than the others, it is either distantly related to all of them (add species in between), or there is a problem with its proteome, such as a poor annotation, many fragmented genes, or many transcripts per gene that were not filtered out.</p>
+<p>Most genes of every species are in orthogroups. The lowest is <i>M. gallisepticum</i>, with 78.2%. Always look at these numbers before interpreting the results. If one species has a much lower percentage than the others, it is either distantly related to all of them (add species in between), or there is a problem with its proteome, such as a poor annotation, many fragmented genes, or many transcripts per gene that were not filtered out.</p>
 
 <h4 id="s1-4-1-2"><span class="secnum">1.4.1.2</span> The species tree</h4>
-<p>Next, look at the species tree, <code>Species_Tree/SpeciesTree_rooted.txt</code>. Go to <a href="https://itol.embl.de/">itol.embl.de</a>, click "Upload a tree" and drag and drop the file onto the page (or open it in another tree viewer):</p>
+<p>Next, look at the species tree, <code>Species_Tree/SpeciesTree_rooted.txt</code>. Go to <a href="https://itol.embl.de/">itol.embl.de</a>, click "Upload a tree" and drag and drop the file onto the page (or open it in another tree viewer).</p>
 <figure>
   <img src="images/species_tree.png" style="width: 70%">
-  <figcaption>Figure 1.1: The rooted species tree of the example data, with the labels of its internal nodes (from <code>SpeciesTree_rooted_node_labels.txt</code>).</figcaption>
+  <figcaption>Figure 1.1. The rooted species tree of the example data, with the labels of its internal nodes (from <code>SpeciesTree_rooted_node_labels.txt</code>).</figcaption>
 </figure>
-<p>Do a common-sense check that the tree agrees with what is known about the species, so that you are not rewriting the history of life on Earth. Here, <i>M. genitalium</i> and <i>M. gallisepticum</i> are sister species, as are <i>M. hyopneumoniae</i> and <i>M. agalactiae</i>, as expected. <code>SpeciesTree_rooted_node_labels.txt</code> is the same tree with its internal nodes named N0 (the root), N1, N2 …; the other results files use these names, so keep this tree at hand.</p>
-<p>If the tree is wrong, the orthogroups are not affected, but the gene duplication events, the hierarchical orthogroups, and the orthologs and paralogs within each orthogroup may be. The most common cause is a wrong root. You can rerun the last stages of OrthoFinder with a corrected tree, which is quick because the sequence searches and gene trees are reused (see <a href="#s5-1">5.1</a>):</p>
+<p>Do a common-sense check that the tree agrees with what is known about the species, so that you are not rewriting the history of life on Earth. Here, <i>M. genitalium</i> and <i>M. gallisepticum</i> are sister species, as are <i>M. hyopneumoniae</i> and <i>M. agalactiae</i>, as expected. <code>SpeciesTree_rooted_node_labels.txt</code> is the same tree with its internal nodes named N0 (the root), N1, N2 …. The other results files use these names, so keep this tree at hand.</p>
+<p>If the tree is wrong, the orthogroups are not affected, but the gene duplication events, the hierarchical orthogroups, and the orthologs and paralogs within each orthogroup may be. The most common cause is a wrong root. You can rerun the last stages of OrthoFinder with a corrected tree, which is quick because the sequence searches and gene trees are reused (see <a href="#s5-1">5.1</a>).</p>
 <pre><code>orthofinder -fgt ExampleData/OrthoFinder/Results_Oct21/ -s corrected_species_tree.txt</code></pre>
-<p>The tree given with <code>-s</code> must be rooted and in Newick format, with the species named as in the results (e.g. <code>Mycoplasma_agalactiae</code>, or <code>Mycoplasma agalactiae</code>); branch lengths are optional:</p>
+<p>The tree given with <code>-s</code> must be rooted and in Newick format, with the species named as in the results (e.g. <code>Mycoplasma_agalactiae</code>, or <code>Mycoplasma agalactiae</code>). Branch lengths are optional.</p>
 <pre><code>((Mycoplasma_genitalium,Mycoplasma_gallisepticum),(Mycoplasma_hyopneumoniae,Mycoplasma_agalactiae));</code></pre>
 
-<h3 id="s1-4-2"><span class="secnum">1.4.2</span> Step 2: Interpreting the results</h3>
-<p>Now that we are happy with the run, we can start diving into the results. We will follow one gene through them: the gene <code>gi|144227417|gb|AAZ44095.2|</code> of <i>M. hyopneumoniae</i>.</p>
+<h3 id="s1-4-2"><span class="secnum">1.4.2</span> Step 2. Interpreting the results</h3>
+<p>Now that we are happy with the run, we can start diving into the results. We will follow one gene through them, the gene <code>gi|144227417|gb|AAZ44095.2|</code> of <i>M. hyopneumoniae</i>.</p>
 
 <h4 id="s1-4-2-1"><span class="secnum">1.4.2.1</span> Orthologs</h4>
-<p>First, we find the orthologs of our gene in <i>M. agalactiae</i>. The orthologs of each species are in the directory <code>Orthologs/</code>, in one compressed file per species, <code>Orthologs/&lt;species&gt;.tsv.gz</code>. Each row gives, for one orthogroup and one other species, a set of genes of this species and their orthologs in the other species. The columns are:</p>
+<p>First, we find the orthologs of our gene in <i>M. agalactiae</i>. The orthologs of each species are in the directory <code>Orthologs/</code>, in one compressed file per species, <code>Orthologs/&lt;species&gt;.tsv.gz</code>. Each row gives, for one orthogroup and one other species, a set of genes of this species and their orthologs in the other species. The columns are as follows.</p>
 <table>
   <tr><th>Orthogroup</th><th>Species</th><th>Mycoplasma_hyopneumoniae</th><th>Orthologs</th></tr>
   <tr><td>the orthogroup</td><td>the other species</td><td>genes of this species</td><td>their orthologs in the other species</td></tr>
 </table>
-<p>Search the file of <i>M. hyopneumoniae</i> for our gene, and keep the row for <i>M. agalactiae</i>:</p>
+<p>Search the file of <i>M. hyopneumoniae</i> for our gene, and keep the row for <i>M. agalactiae</i>.</p>
 <pre><code>zgrep "AAZ44095.2" Orthologs/Mycoplasma_hyopneumoniae.tsv.gz | grep Mycoplasma_agalactiae</code></pre>
 <pre class="out"><code>OG0000035  Mycoplasma_agalactiae  gi|144227417|gb|AAZ44095.2|  gi|290752267|emb|CBH40238.1|, gi|290752987|emb|CBH40963.1|</code></pre>
-<p>The gene is in orthogroup <strong>OG0000035</strong>, and it has <strong>two orthologs</strong> in <i>M. agalactiae</i>: <code>gi|290752267|emb|CBH40238.1|</code> and <code>gi|290752987|emb|CBH40963.1|</code>.</p>
-<p>If you prefer a file for each pair of species, as written by OrthoFinder before v3.2, run OrthoFinder with <code>-pof</code>, or write them afterwards from the results with the <code>split_ortholog_files</code> tool:</p>
+<p>The gene is in orthogroup <strong>OG0000035</strong>, and it has <strong>two orthologs</strong> in <i>M. agalactiae</i>, <code>gi|290752267|emb|CBH40238.1|</code> and <code>gi|290752987|emb|CBH40963.1|</code>.</p>
+<p>If you prefer a file for each pair of species, as written by OrthoFinder before v3.2, run OrthoFinder with <code>-pof</code>, or write them afterwards from the results with the <code>split_ortholog_files</code> tool.</p>
 <pre><code>split_ortholog_files ExampleData/OrthoFinder/Results_Oct21/
 # only some of the files, e.g. M. hyopneumoniae against M. agalactiae:
 split_ortholog_files ExampleData/OrthoFinder/Results_Oct21/ --species Mycoplasma_hyopneumoniae --partners Mycoplasma_agalactiae</code></pre>
-<p>This writes <code>Orthologs/Orthologs_Mycoplasma_hyopneumoniae/Mycoplasma_hyopneumoniae__v__Mycoplasma_agalactiae.tsv</code> and the other pairs: tables with three columns, <code>Orthogroup</code>, <code>Mycoplasma_hyopneumoniae</code> and <code>Mycoplasma_agalactiae</code>. With many species there are n × (n − 1) such files (almost a million for 1,000 species), which is why they are no longer written by default.</p>
-<p>The numbers of orthologs between each pair of species are in <code>Comparative_Genomics_Statistics/OrthologsStats_*.tsv</code>: for example, <i>M. hyopneumoniae</i> and <i>M. agalactiae</i> have 357 one-to-one orthologs (<code>OrthologsStats_one-to-one.tsv</code>).</p>
+<p>This writes <code>Orthologs/Orthologs_Mycoplasma_hyopneumoniae/Mycoplasma_hyopneumoniae__v__Mycoplasma_agalactiae.tsv</code> and the other pairs, tables with three columns <code>Orthogroup</code>, <code>Mycoplasma_hyopneumoniae</code> and <code>Mycoplasma_agalactiae</code>. With many species there are n × (n − 1) such files (almost a million for 1,000 species), which is why they are no longer written by default.</p>
+<p>The numbers of orthologs between each pair of species are in <code>Comparative_Genomics_Statistics/OrthologsStats_*.tsv</code>. For example, <i>M. hyopneumoniae</i> and <i>M. agalactiae</i> have 357 one-to-one orthologs (<code>OrthologsStats_one-to-one.tsv</code>).</p>
 
 <h4 id="s1-4-2-2"><span class="secnum">1.4.2.2</span> Gene trees</h4>
-<p>Next, we look at the gene tree to see how these orthologs arose. OrthoFinder infers the orthologs from the <strong>resolved gene trees</strong>: each gene tree is rooted and reconciled with the species tree, using a hybrid species-overlap / duplication-loss-coalescence model to find the most parsimonious interpretation of the tree (see the OrthoFinder 2 paper). The resolved trees of all orthogroups are in one file, <code>Resolved_Gene_Trees/Resolved_Gene_Trees.txt</code>, a line for each orthogroup with four or more genes (the minimum for a tree):</p>
+<p>Next, we look at the gene tree to see how these orthologs arose. OrthoFinder infers the orthologs from the <strong>resolved gene trees</strong>. Each gene tree is rooted and reconciled with the species tree, using a hybrid species-overlap / duplication-loss-coalescence model to find the most parsimonious interpretation of the tree (see the OrthoFinder 2 paper). The resolved trees of all orthogroups are in one file, <code>Resolved_Gene_Trees/Resolved_Gene_Trees.txt</code>, a line for each orthogroup with four or more genes (the minimum for a tree).</p>
 <pre class="out"><code>OG0000035: ((Mycoplasma_gallisepticum_gi|31541051|gb|AAP56353.1|:0.94131,Mycoplasma_genitalium_gi|3845066|gb|AAC72490.1|:0.87787)n1:0.168517,(Mycoplasma_hyopneumoniae_gi|144227417|gb|AAZ44095.2|:0.90289,(Mycoplasma_agalactiae_gi|290752987|emb|CBH40963.1|:2.10194,Mycoplasma_agalactiae_gi|290752267|emb|CBH40238.1|:0.616644)n3:0.068516)n2:0.168517)n0;</code></pre>
-<p>In the trees each gene is named with its species as a prefix, so that you can see the species in any tree viewer (<code>-X</code> leaves the prefix out). The internal nodes are named n0, n1 …. To view one tree, write it to its own file and open it in iTOL or Dendroscope:</p>
+<p>In the trees each gene is named with its species as a prefix, so that you can see the species in any tree viewer (<code>-X</code> leaves the prefix out). The internal nodes are named n0, n1 …. To view one tree, write it to its own file and open it in iTOL or Dendroscope.</p>
 <pre><code>grep "^OG0000035:" Resolved_Gene_Trees/Resolved_Gene_Trees.txt | cut -d " " -f 2 &gt; OG0000035_tree.txt</code></pre>
 <figure>
   <img src="images/gene_tree.png" style="width: 92%">
-  <figcaption>Figure 1.2: The resolved gene tree of orthogroup OG0000035, with the names of its internal nodes.</figcaption>
+  <figcaption>Figure 1.2. The resolved gene tree of orthogroup OG0000035, with the names of its internal nodes.</figcaption>
 </figure>
-<p>The gene tree shows that the two <i>M. agalactiae</i> genes arose from a <strong>gene duplication</strong> (node n3) in the lineage leading to <i>M. agalactiae</i>, after it split from <i>M. hyopneumoniae</i>. The result is a one-to-two orthology relationship: both <i>M. agalactiae</i> genes are equally related to the one <i>M. hyopneumoniae</i> gene. Orthology relationships are often not one-to-one, and it is important to know it: you don't want to spend months on experiments on "the ortholog" only to find out later that there are two.</p>
+<p>The gene tree shows that the two <i>M. agalactiae</i> genes arose from a <strong>gene duplication</strong> (node n3) in the lineage leading to <i>M. agalactiae</i>, after it split from <i>M. hyopneumoniae</i>. The result is a one-to-two orthology relationship. Both <i>M. agalactiae</i> genes are equally related to the one <i>M. hyopneumoniae</i> gene. Orthology relationships are often not one-to-one, and it is important to know it. You don't want to spend months on experiments on "the ortholog" only to find out later that there are two.</p>
 <p>The multiple sequence alignment the tree was inferred from is <code>MultipleSequenceAlignments/OG0000035.fa</code>, and the sequences of the genes are in <code>Orthogroup_Sequences/OG0000035.fa</code>.</p>
 
 <h4 id="s1-4-2-3"><span class="secnum">1.4.2.3</span> Gene duplications</h4>
-<p>Having the gene trees means that OrthoFinder can identify all the gene duplication events, and map each of them to the branch of the species tree where it occurred. The directory <code>Gene_Duplication_Events/</code> has two files to explore them. First, open <code>Gene_Duplication_Events/SpeciesTree_Gene_Duplications_0.5_Support.txt</code> in iTOL (in iTOL, go to the "Advanced" tab of the Control Panel and choose "Display" next to "Node IDs" to see the node labels):</p>
+<p>Having the gene trees means that OrthoFinder can identify all the gene duplication events, and map each of them to the branch of the species tree where it occurred. The directory <code>Gene_Duplication_Events/</code> has two files to explore them. First, open <code>Gene_Duplication_Events/SpeciesTree_Gene_Duplications_0.5_Support.txt</code> in iTOL (in iTOL, go to the "Advanced" tab of the Control Panel and choose "Display" next to "Node IDs" to see the node labels).</p>
 <figure>
   <img src="images/duplication_tree.png" style="width: 70%">
-  <figcaption>Figure 1.3: The number of well-supported gene duplication events on each branch of the species tree.</figcaption>
+  <figcaption>Figure 1.3. The number of well-supported gene duplication events on each branch of the species tree.</figcaption>
 </figure>
-<p>Each node is named with its label, an underscore, and the number of <strong>well-supported</strong> gene duplication events on the branch leading to it. A duplication is well supported if at least 50% of the species descended from it have kept both copies of the duplicated gene. For example, 5 duplications occurred in the common ancestor of <i>M. hyopneumoniae</i> and <i>M. agalactiae</i> (N1), and 123 on the branch leading to <i>M. agalactiae</i>; the numbers after the species names are the "terminal" duplications, those on the branch leading to that one species. The same numbers, with the numbers of all duplications, are in <code>Comparative_Genomics_Statistics/Duplications_per_Species_Tree_Node.tsv</code>.</p>
-<p>All the duplication events are listed in <code>Gene_Duplication_Events/Duplications.tsv</code>, one per row. The one in our orthogroup is:</p>
+<p>Each node is named with its label, an underscore, and the number of <strong>well-supported</strong> gene duplication events on the branch leading to it. A duplication is well supported if at least 50% of the species descended from it have kept both copies of the duplicated gene. For example, 5 duplications occurred in the common ancestor of <i>M. hyopneumoniae</i> and <i>M. agalactiae</i> (N1), and 123 on the branch leading to <i>M. agalactiae</i>. The numbers after the species names are the "terminal" duplications, those on the branch leading to that one species. The same numbers, with the numbers of all duplications, are in <code>Comparative_Genomics_Statistics/Duplications_per_Species_Tree_Node.tsv</code>.</p>
+<p>All the duplication events are listed in <code>Gene_Duplication_Events/Duplications.tsv</code>, one per row. The one in our orthogroup is shown below.</p>
 <table class="wide">
   <tr><th>Orthogroup</th><th>Species Tree Node</th><th>Gene Tree Node</th><th>Support</th><th>Type</th><th>Genes 1</th><th>Genes 2</th></tr>
   <tr><td>OG0000035</td><td>Mycoplasma_agalactiae</td><td>n3</td><td>1.0</td><td>Terminal</td><td><code>Mycoplasma_agalactiae_gi|290752987|emb|CBH40963.1|</code></td><td><code>Mycoplasma_agalactiae_gi|290752267|emb|CBH40238.1|</code></td></tr>
@@ -406,8 +406,8 @@ split_ortholog_files ExampleData/OrthoFinder/Results_Oct21/ --species Mycoplasma
 <p>Each event is cross-referenced to the orthogroup (and its gene tree) in which it occurred, the node of the gene tree (n3 in Figure 1.2) and the node of the species tree (here the branch leading to <i>M. agalactiae</i>). It also lists the genes descended from each of the two copies. The events are also counted for each orthogroup in <code>Comparative_Genomics_Statistics/Duplications_per_Orthogroup.tsv</code>.</p>
 
 <h4 id="s1-4-2-4"><span class="secnum">1.4.2.4</span> Orthogroups</h4>
-<p>Often we are interested in comparisons across a group of species rather than between a pair of species. The generalisation of orthology to many species is the <strong>orthogroup</strong>: just as orthologs are the genes descended from a single gene in the last common ancestor of a pair of species, an orthogroup is the set of genes descended from a single gene in the last common ancestor of a group of species (section <a href="#ch3">3</a>). Each gene tree is the tree of one orthogroup, and contains all the orthologs between the species in it. Some genes in an orthogroup are paralogs of each other, but taking any of them out would also remove orthologs.</p>
-<p>So to compare the "equivalent" genes in a set of species, compare the genes of an orthogroup. The orthogroups are in <code>Orthogroups/Orthogroups.tsv</code>, a row for each orthogroup and a column for each species, largest orthogroups first. Our orthogroup is:</p>
+<p>Often we are interested in comparisons across a group of species rather than between a pair of species. The generalisation of orthology to many species is the <strong>orthogroup</strong>. Just as orthologs are the genes descended from a single gene in the last common ancestor of a pair of species, an orthogroup is the set of genes descended from a single gene in the last common ancestor of a group of species (section <a href="#ch3">3</a>). Each gene tree is the tree of one orthogroup, and contains all the orthologs between the species in it. Some genes in an orthogroup are paralogs of each other, but taking any of them out would also remove orthologs.</p>
+<p>So to compare the "equivalent" genes in a set of species, compare the genes of an orthogroup. The orthogroups are in <code>Orthogroups/Orthogroups.tsv</code>, a row for each orthogroup and a column for each species, largest orthogroups first. Here is the row of our orthogroup.</p>
 <table class="wide">
   <tr><th>Orthogroup</th><th>Mycoplasma_agalactiae</th><th>Mycoplasma_gallisepticum</th><th>Mycoplasma_genitalium</th><th>Mycoplasma_hyopneumoniae</th></tr>
   <tr><td>OG0000035</td><td><code>gi|290752267|emb|CBH40238.1|</code>, <code>gi|290752987|emb|CBH40963.1|</code></td><td><code>gi|31541051|gb|AAP56353.1|</code></td><td><code>gi|3845066|gb|AAC72490.1|</code></td><td><code>gi|144227417|gb|AAZ44095.2|</code></td></tr>
@@ -416,8 +416,8 @@ split_ortholog_files ExampleData/OrthoFinder/Results_Oct21/ --species Mycoplasma
 <div class="note"><p>The orthogroups in <code>Orthogroups.tsv</code> are the hierarchical orthogroups of the root of the species tree (N0), inferred from the gene trees. They are more accurate than the orthogroups from the MCL clustering of the search results, which OrthoFinder computes first. The MCL orthogroups are written as <code>Orthogroups/MCL_Orthogroups.tsv</code> when a run is stopped after them (<code>-og</code>) or fails, and kept in a full run with <code>-mog</code>.</p></div>
 
 <h4 id="s1-4-2-5"><span class="secnum">1.4.2.5</span> Hierarchical orthogroups</h4>
-<p>OrthoFinder also infers the orthogroups at each node of the species tree: the <strong>phylogenetic hierarchical orthogroups (HOGs)</strong>. A HOG at node N1 is the set of genes descended from a single gene in the ancestor of the species below N1. The directory <code>Phylogenetic_Hierarchical_Orthogroups/</code> has a file for each internal node: <code>N1.tsv</code>, <code>N2.tsv</code>, …. There is no <code>N0.tsv</code>: the HOGs of the root are the orthogroups in <code>Orthogroups/Orthogroups.tsv</code>. Compare the node names with <code>Species_Tree/SpeciesTree_rooted_node_labels.txt</code> (Figure 1.1) to see the species included.</p>
-<p>Our orthogroup OG0000035 has a HOG at each of the two nodes:</p>
+<p>OrthoFinder also infers the orthogroups at each node of the species tree, the <strong>phylogenetic hierarchical orthogroups (HOGs)</strong>. A HOG at node N1 is the set of genes descended from a single gene in the ancestor of the species below N1. The directory <code>Phylogenetic_Hierarchical_Orthogroups/</code> has a file for each internal node, <code>N1.tsv</code>, <code>N2.tsv</code>, …. There is no <code>N0.tsv</code>, because the HOGs of the root are the orthogroups in <code>Orthogroups/Orthogroups.tsv</code>. Compare the node names with <code>Species_Tree/SpeciesTree_rooted_node_labels.txt</code> (Figure 1.1) to see the species included.</p>
+<p>Our orthogroup OG0000035 has a HOG at each of the two nodes.</p>
 <table class="wide">
   <tr><th>HOG</th><th>OG</th><th>Gene Tree Parent Clade</th><th>M. agalactiae</th><th>M. gallisepticum</th><th>M. genitalium</th><th>M. hyopneumoniae</th></tr>
   <tr><td>N1.HOG0000036</td><td>OG0000035</td><td>n0</td><td><code>…CBH40238.1|</code>, <code>…CBH40963.1|</code></td><td></td><td></td><td><code>…AAZ44095.2|</code></td></tr>
@@ -429,39 +429,39 @@ split_ortholog_files ExampleData/OrthoFinder/Results_Oct21/ --species Mycoplasma
 <p>For each orthogroup there is a FASTA file in <code>Orthogroup_Sequences/</code> with the sequences of its genes, and the orthogroups with one gene from every species are also in <code>Single_Copy_Ortholog_Sequences/</code>.</p>
 
 <h4 id="s1-4-2-7"><span class="secnum">1.4.2.7</span> Other results files</h4>
-<p>We have now covered the main results files that most users need, but OrthoFinder writes much more: the putative xenologs, the phylogenetically misplaced genes, the statistics of orthologs between each pair of species, and so on. Section <a href="#ch4">4</a> describes every file.</p>
+<p>We have now covered the main results files that most users need, but OrthoFinder writes much more, including the putative xenologs, the phylogenetically misplaced genes, the statistics of orthologs between each pair of species, and so on. Section <a href="#ch4">4</a> describes every file.</p>
 
 </section>
 
 <section class="chapter" id="ch2">
-<h1><span class="chlabel">Chapter 2</span>Advanced tutorial: adding species to a core analysis</h1>
+<h1><span class="chlabel">Chapter 2</span>Advanced tutorial on adding species to a core analysis</h1>
 <h2 id="s2-1"><span class="secnum">2.1</span> The core and assign workflow</h2>
-<p>The time and memory of a standard OrthoFinder run grow with the square of the number of species, because the proteome of every species is searched against that of every other species. OrthoFinder 3 provides a second workflow for large analyses (more than about 100 species), and for adding species to an existing analysis:</p>
+<p>The time and memory of a standard OrthoFinder run grow with the square of the number of species, because the proteome of every species is searched against that of every other species. OrthoFinder 3 provides a second workflow for large analyses (more than about 100 species), and for adding species to an existing analysis.</p>
 <ol>
   <li>Run a standard analysis on a <strong>core</strong> set of species, chosen to cover the diversity of all the species.</li>
   <li><strong>Assign</strong> the genes of the other species to the orthogroups of the core analysis. OrthoFinder makes a sequence profile of each core orthogroup, and searches the genes of the new species against the profiles (the SHOOT method) instead of against all the genes of all the species. The genes that are not assigned to a core orthogroup are then clustered into new orthogroups with a standard OrthoFinder analysis, restricted to the clades of species they come from.</li>
 </ol>
 <figure>
   <img src="images/core_assign_figure.jpg" style="width: 80%">
-  <figcaption>Figure 2.1: The core and assign workflow.</figcaption>
+  <figcaption>Figure 2.1. The core and assign workflow.</figcaption>
 </figure>
 <pre><code>orthofinder [options] -f &lt;core_dir&gt;
 orthofinder [options] --assign &lt;additional_dir&gt; --core &lt;core_results_dir&gt;</code></pre>
 <p>The assign run then infers the gene trees of all the orthogroups, including the new species, the species tree, the gene duplications, the HOGs and the orthologs, as a standard run does, and writes the same results files.</p>
-<p>This workflow also makes it quick to add new species to an earlier analysis. For example, a research group working on angiosperms could share the results of a core analysis of a diverse set of species, to which each member adds the species they study. The results of an assign run can in turn be the core of another one, to add species in several stages:</p>
+<p>This workflow also makes it quick to add new species to an earlier analysis. For example, a research group working on angiosperms could share the results of a core analysis of a diverse set of species, to which each member adds the species they study. The results of an assign run can in turn be the core of another one, to add species in several stages.</p>
 <pre><code>orthofinder --assign &lt;new_species_2&gt; --core &lt;results_of_the_first_assign_run&gt;</code></pre>
 <div class="note"><p>The core analysis must have been run with multiple sequence alignments and gene trees (<code>-M msa</code>, the default). Species cannot be added to results run with <code>-M dendroblast</code>, which was the default in OrthoFinder 2.</p></div>
 
 <h2 id="s2-2"><span class="secnum">2.2</span> Choosing the core species</h2>
-<p>The core species should capture the evolutionary diversity of all the species: the orthogroups of the core analysis are the ones the other species are assigned to, so a clade with no core species gets only the orthogroups shared with distant species. If we were analysing bees, moths and flies, the core should include species from all three, rather than, for example, only moths, which would give less accurate orthogroups and a longer run. We recommend about 64 core species. A good way to choose them is from a species tree of all the species (for example from the NCBI Taxonomy, or the literature): pick species spread evenly across the tree, preferring those with the best genome annotations.</p>
+<p>The core species should capture the evolutionary diversity of all the species. The orthogroups of the core analysis are the ones the other species are assigned to, so a clade with no core species gets only the orthogroups shared with distant species. If we were analysing bees, moths and flies, the core should include species from all three, rather than, for example, only moths, which would give less accurate orthogroups and a longer run. We recommend about 64 core species. A good way to choose them is from a species tree of all the species (for example from the NCBI Taxonomy, or the literature). Pick species spread evenly across the tree, preferring those with the best genome annotations.</p>
 
 <h2 id="s2-3"><span class="secnum">2.3</span> Running it on the example data</h2>
-<p>The example data has two more <i>Mycoplasma</i> species in <code>ExampleData/AdditionalSpecies/</code>: <i>M. arthritidis</i> and <i>M. haemocanis</i>. Using the results of section <a href="#ch1">1</a> as the core, add them to the analysis:</p>
+<p>The example data has two more <i>Mycoplasma</i> species in <code>ExampleData/AdditionalSpecies/</code>, <i>M. arthritidis</i> and <i>M. haemocanis</i>. Using the results of section <a href="#ch1">1</a> as the core, add them to the analysis.</p>
 <pre><code>orthofinder --assign ExampleData/AdditionalSpecies/ --core ExampleData/OrthoFinder/Results_Oct21/</code></pre>
-<p>An assign run always creates a new results directory, <strong>next to the core results</strong>, and leaves the core results as they are: here <code>ExampleData/OrthoFinder/Results_Oct21_1/</code>. Its files are the same as those of a standard run, for all six species:</p>
+<p>An assign run always creates a new results directory, <strong>next to the core results</strong>, and leaves the core results as they are, here <code>ExampleData/OrthoFinder/Results_Oct21_1/</code>. Its files are the same as those of a standard run, for all six species.</p>
 <pre class="out"><code>Summary:
  OrthoFinder assigned 3778 genes (84.3% of total) to 692 orthogroups.</code></pre>
-<p>Some differences from a standard run:</p>
+<p>There are some differences from a standard run.</p>
 <ul>
   <li>The species tree is inferred from the gene trees with ASTRAL-Pro, rather than from a concatenated alignment of single-copy orthogroups (<code>-ST</code> chooses the program).</li>
   <li>To save memory with many species, an assign run uses FAMSA alignments and the fastest FastTree setting (<code>-T fasttree_fastest</code>) unless <code>-A</code> or <code>-T</code> is given.</li>
@@ -470,18 +470,18 @@ orthofinder [options] --assign &lt;additional_dir&gt; --core &lt;core_results_di
 </ul>
 <figure>
   <img src="images/assign_species_tree.png" style="width: 72%">
-  <figcaption>Figure 2.2: The species tree of the assign run, with the two added species.</figcaption>
+  <figcaption>Figure 2.2. The species tree of the assign run, with the two added species.</figcaption>
 </figure>
-<p>The new species are placed in the tree where expected: <i>M. arthritidis</i> with <i>M. agalactiae</i>, and <i>M. haemocanis</i> in the same clade as <i>M. hyopneumoniae</i>. Note that the node names are those of the new tree: N1 of the assign run is not N1 of the core run.</p>
+<p>The new species are placed in the tree where expected, <i>M. arthritidis</i> with <i>M. agalactiae</i>, and <i>M. haemocanis</i> in the same clade as <i>M. hyopneumoniae</i>. Note that the node names are those of the new tree, so N1 of the assign run is not N1 of the core run.</p>
 
 <h2 id="s2-4"><span class="secnum">2.4</span> Using outgroups</h2>
-<p>The orthogroups of the root of the species tree (<code>Orthogroups.tsv</code>) depend on how the root is placed, and the deepest splits of the tree are the hardest to infer. Including one or more <strong>outgroup</strong> species, more distantly related to all the others, makes the orthogroups of the species you are interested in more accurate. Use the HOGs of the node that is the common ancestor of your species of interest, in <code>Phylogenetic_Hierarchical_Orthogroups/N&lt;x&gt;.tsv</code>, rather than <code>Orthogroups.tsv</code>: look up the node in <code>Species_Tree/SpeciesTree_rooted_node_labels.txt</code>. Check that the species tree is rooted between the outgroup and the other species; if it is not, rerun with the correct tree (<code>-fgt &lt;results&gt; -s &lt;tree&gt;</code>, see <a href="#s1-4">1.4</a>).</p>
+<p>The orthogroups of the root of the species tree (<code>Orthogroups.tsv</code>) depend on how the root is placed, and the deepest splits of the tree are the hardest to infer. Including one or more <strong>outgroup</strong> species, more distantly related to all the others, makes the orthogroups of the species you are interested in more accurate. Use the HOGs of the node that is the common ancestor of your species of interest, in <code>Phylogenetic_Hierarchical_Orthogroups/N&lt;x&gt;.tsv</code>, rather than <code>Orthogroups.tsv</code>. Look up the node in <code>Species_Tree/SpeciesTree_rooted_node_labels.txt</code>. Check that the species tree is rooted between the outgroup and the other species. If it is not, rerun with the correct tree (<code>-fgt &lt;results&gt; -s &lt;tree&gt;</code>, see <a href="#s1-4">1.4</a>).</p>
 </section>
 
 <section class="chapter" id="ch3">
 <h1><span class="chlabel">Chapter 3</span>Understanding orthology</h1>
 <h2 id="s3-1"><span class="secnum">3.1</span> Orthogroups, orthologs and paralogs</h2>
-<p>First, we need to define the key terms:</p>
+<p>First, we need to define the key terms.</p>
 <dl>
   <dt>Orthogroup</dt><dd>The group of genes descended from a single gene in the last common ancestor of a group of species.</dd>
   <dt>Orthologs</dt><dd>Pairs of genes descended from a single gene in the last common ancestor of two species.</dd>
@@ -491,34 +491,34 @@ orthofinder [options] --assign &lt;additional_dir&gt; --core &lt;core_results_di
 <p>Orthologs describe relationships between pairs of species, but the idea extends to larger groups of species. Humans, mice and chickens share a common ancestor that lived a few hundred million years ago, before the dinosaurs had even emerged. The genes across all three species descended from a single gene in this ancestor form an orthogroup.</p>
 <figure>
   <img src="images/Understanding_image1.png" style="width: 88%">
-  <figcaption>Figure 3.1: Orthologs, orthogroups and paralogs, for three species: human, mouse and chicken.</figcaption>
+  <figcaption>Figure 3.1. Orthologs, orthogroups and paralogs, for three species, human, mouse and chicken.</figcaption>
 </figure>
 <p>The tree in Figure 3.1A shows the evolutionary history of a gene. First, there was a speciation event where the chicken lineage diverged from the human-mouse ancestor. In the human-mouse ancestor, there was a gene duplication event at X, producing two copies of the gene in that ancestor, Y and Z. When human and mouse diverged, they each inherited gene Y (becoming HuA and MoA) and gene Z (HuB and MoB). In general, a gene duplication event can be identified because it creates two copies of a gene in a species (e.g. HuA and HuB).</p>
-<p>The mouse gene MoB is more closely related to a human gene than it is to the other mouse gene MoA. This is because the duplication occurred in the ancestor, so each mouse gene is most closely related to its human ortholog (e.g. HuA and MoA), both descended from a single gene. By contrast, HuA and MoB diverged at the gene duplication event. They are not descended from a single gene in the common ancestor of human and mouse, so they are not orthologs: they are paralogs (Figure 3.1C). Paralogs diverged at a gene duplication event in a common ancestor. Such a duplication must have occurred further back in time than the speciation, so paralogs between a pair of species are always less closely related than orthologs between that pair. Paralogs can also be within a species (e.g. HuA and HuB).</p>
-<p>The chicken gene diverged from the other genes when the lineage leading to chicken split from the lineage leading to human and mouse. Therefore the chicken gene ChC is an ortholog of both HuA and HuB in human, and of both MoA and MoB in mouse. Depending on what happened after the genes diverged, orthologs can be in one-to-one relationships (HuA – MoA), many-to-one (HuA and HuB – ChC) or many-to-many (no example in this tree, but there would be one after a duplication in chicken). OrthoFinder identifies all of these relationships: they are counted in <code>Comparative_Genomics_Statistics/OrthologsStats_*.tsv</code>.</p>
+<p>The mouse gene MoB is more closely related to a human gene than it is to the other mouse gene MoA. This is because the duplication occurred in the ancestor, so each mouse gene is most closely related to its human ortholog (e.g. HuA and MoA), both descended from a single gene. By contrast, HuA and MoB diverged at the gene duplication event. They are not descended from a single gene in the common ancestor of human and mouse, so they are not orthologs. They are paralogs (Figure 3.1C). Paralogs diverged at a gene duplication event in a common ancestor. Such a duplication must have occurred further back in time than the speciation, so paralogs between a pair of species are always less closely related than orthologs between that pair. Paralogs can also be within a species (e.g. HuA and HuB).</p>
+<p>The chicken gene diverged from the other genes when the lineage leading to chicken split from the lineage leading to human and mouse. Therefore the chicken gene ChC is an ortholog of both HuA and HuB in human, and of both MoA and MoB in mouse. Depending on what happened after the genes diverged, orthologs can be in one-to-one relationships (HuA – MoA), many-to-one (HuA and HuB – ChC) or many-to-many (no example in this tree, but there would be one after a duplication in chicken). OrthoFinder identifies all of these relationships, and they are counted in <code>Comparative_Genomics_Statistics/OrthologsStats_*.tsv</code>.</p>
 
 <h2 id="s3-2"><span class="secnum">3.2</span> Why orthogroups?</h2>
 <p>There are several reasons why orthogroups are the right way to analyse orthology relationships between species.</p>
 <h3 id="s3-2-1"><span class="secnum">3.2.1</span> Orthogroups allow you to analyse all of your data</h3>
-<p>All the genes in an orthogroup are descended from a single ancestral gene, so they all started out with the same sequence and function. Gene duplication and loss occur frequently in evolution, so restricting an analysis to one-to-one orthologs (the single-copy orthogroups) leaves out much of the data, and more of it with every species added: each species is another lineage in which a gene can be duplicated or lost. In the example data, the 250 single-copy orthogroups of the four species contain 37% of their genes; with the two species added in section <a href="#s2-3">2.3</a>, the 168 single-copy orthogroups of the six species contain 22%. With tens of species, or species with large genomes and many gene families, the single-copy orthogroups are a small fraction of the data. By analysing orthogroups you can analyse all of your data.</p>
+<p>All the genes in an orthogroup are descended from a single ancestral gene, so they all started out with the same sequence and function. Gene duplication and loss occur frequently in evolution, so restricting an analysis to one-to-one orthologs (the single-copy orthogroups) leaves out much of the data, and more of it with every species added, because each species is another lineage in which a gene can be duplicated or lost. In the example data, the 250 single-copy orthogroups of the four species contain 37% of their genes. With the two species added in section <a href="#s2-3">2.3</a>, the 168 single-copy orthogroups of the six species contain 22%. With tens of species, or species with large genomes and many gene families, the single-copy orthogroups are a small fraction of the data. By analysing orthogroups you can analyse all of your data.</p>
 <h3 id="s3-2-2"><span class="secnum">3.2.2</span> Orthogroups allow you to define the unit of comparison</h3>
 <p>With orthogroups, you choose where to define the limits of the unit of comparison. For example, if you chose to analyse only human and mouse in Figure 3.1, there would be two orthogroups (the descendants of Y and of Z) rather than one. The hierarchical orthogroups of OrthoFinder give you these units for every clade of the species tree (<a href="#s3-3">3.3</a>).</p>
 <h3 id="s3-2-3"><span class="secnum">3.2.3</span> Orthogroups are the only way to identify orthologs</h3>
-<p>Orthology is defined by phylogeny. It cannot be defined by amino acid content, codon bias, GC content or other measures of sequence similarity; methods that use such scores to define orthologs without phylogeny can only provide guesses. The only way to be sure that an orthology assignment is correct is by a phylogenetic reconstruction of all the genes descended from a single gene in the last common ancestor of the species considered, and this set of genes is an orthogroup. Thus the only way to define orthology is by analysing orthogroups.</p>
+<p>Orthology is defined by phylogeny. It cannot be defined by amino acid content, codon bias, GC content or other measures of sequence similarity. Methods that use such scores to define orthologs without phylogeny can only provide guesses. The only way to be sure that an orthology assignment is correct is by a phylogenetic reconstruction of all the genes descended from a single gene in the last common ancestor of the species considered, and this set of genes is an orthogroup. Thus the only way to define orthology is by analysing orthogroups.</p>
 <p>For a comprehensive overview of orthology and the OrthoFinder approach, you can watch <a href="https://www.youtube.com/watch?v=L6eXJAE5J7g">David Emms' talk at the 2020 symposium on Phylogenomics and Comparative Genomics</a>.</p>
 
 <h2 id="s3-3"><span class="secnum">3.3</span> Hierarchical orthogroups</h2>
-<p>An orthogroup is defined for a group of species, and so depends on the species: it is the set of genes descended from one gene in their last common ancestor. OrthoFinder therefore infers the orthogroups for every clade of the species tree, the phylogenetic hierarchical orthogroups (HOGs). They are inferred from the rooted gene trees: the HOGs of a node N are the clades of each gene tree descended from a single gene in the ancestor at N.</p>
+<p>An orthogroup is defined for a group of species, and so depends on the species. It is the set of genes descended from one gene in their last common ancestor. OrthoFinder therefore infers the orthogroups for every clade of the species tree, the phylogenetic hierarchical orthogroups (HOGs). They are inferred from the rooted gene trees. The HOGs of a node N are the clades of each gene tree descended from a single gene in the ancestor at N.</p>
 <figure>
   <img src="images/hog.png" style="width: 62%">
-  <figcaption>Figure 3.2: Hierarchical orthogroups: an orthogroup at each node of the species tree.</figcaption>
+  <figcaption>Figure 3.2. Hierarchical orthogroups, an orthogroup at each node of the species tree.</figcaption>
 </figure>
 <p>Inferring the orthogroups from the gene trees, rather than from sequence similarity alone, makes them more accurate. This is why, from OrthoFinder v3.1, <code>Orthogroups/Orthogroups.tsv</code> contains the HOGs of the root of the species tree (N0).</p>
 </section>
 
 <section class="chapter" id="ch4">
 <h1><span class="chlabel">Chapter 4</span>A complete guide to the OrthoFinder results files</h1>
-<p>Definitions of some terms used in these files:</p>
+<p>Some terms used in these files are defined below.</p>
 <dl>
   <dt>Species-specific orthogroup</dt><dd>An orthogroup that consists entirely of genes from one species.</dd>
   <dt>G50</dt><dd>The number of genes in the orthogroup such that 50% of genes are in orthogroups of that size or larger.</dd>
@@ -526,38 +526,38 @@ orthofinder [options] --assign &lt;additional_dir&gt; --core &lt;core_results_di
   <dt>Single-copy orthogroup</dt><dd>An orthogroup with exactly one gene (and no more) from each species. These orthogroups are ideal for inferring a species tree and many other analyses.</dd>
   <dt>Unassigned gene</dt><dd>A gene that has not been put into an orthogroup with any other gene.</dd>
 </dl>
-<p>Gene and species names are the same in every results file. A name is made once from the FASTA header (or the file name, for a species), replacing each character that a results file cannot hold by <code>_</code>: spaces and tabs, <code>: ; ( ) , [ ] =</code> and quotes (and for a species also <code>* ? &lt; &gt; | \ /</code>). For example <code>&gt;sp|P12345|X_HUMAN Protein X</code> gives <code>sp|P12345|X_HUMAN_Protein_X</code>, and <code>Homo sapiens.fa</code> the species <code>Homo_sapiens</code>. All results files are UTF-8 text, the tables are tab-separated with no quoted cells, and the trees are standard Newick.</p>
+<p>Gene and species names are the same in every results file. A name is made once from the FASTA header (or the file name, for a species), replacing each character that a results file cannot hold by <code>_</code>. These are spaces and tabs, <code>: ; ( ) , [ ] =</code> and quotes (and for a species also <code>* ? &lt; &gt; | \ /</code>). For example <code>&gt;sp|P12345|X_HUMAN Protein X</code> gives <code>sp|P12345|X_HUMAN_Protein_X</code>, and <code>Homo sapiens.fa</code> the species <code>Homo_sapiens</code>. All results files are UTF-8 text, the tables are tab-separated with no quoted cells, and the trees are standard Newick.</p>
 
 <h2 id="s4-1"><span class="secnum">4.1</span> Comparative_Genomics_Statistics</h2>
 <dl>
   <dt>Statistics_Overall.tsv</dt><dd>General statistics about the orthogroup sizes and the proportion of genes assigned to orthogroups (<a href="#s1-4-1">1.4.1</a>).</dd>
   <dt>Statistics_PerSpecies.tsv</dt><dd>The same information as <code>Statistics_Overall.tsv</code>, for each species.</dd>
-  <dt>Duplications_per_Orthogroup.tsv</dt><dd>The number of gene duplication events in each orthogroup: all of them, and those with at least 50% support.</dd>
+  <dt>Duplications_per_Orthogroup.tsv</dt><dd>The number of gene duplication events in each orthogroup, all of them and those with at least 50% support.</dd>
   <dt>Duplications_per_Species_Tree_Node.tsv</dt><dd>The number of gene duplication events on each branch of the species tree (named by the node or species below it).</dd>
-  <dt>OrthologsStats_*.tsv</dt><dd>Matrices of the numbers of orthologs in one-to-one, one-to-many and many-to-many relationships between each pair of species:
+  <dt>OrthologsStats_*.tsv</dt><dd>Matrices of the numbers of orthologs in one-to-one, one-to-many and many-to-many relationships between each pair of species.
     <ul>
-      <li><code>OrthologsStats_one-to-one.tsv</code>: the number of one-to-one orthologs between each pair of species.</li>
-      <li><code>OrthologsStats_many-to-many.tsv</code>: entry (i, j) is the number of genes in species i in a many-to-many orthology relationship with genes in species j (due to gene duplication events in both lineages after the speciation).</li>
-      <li><code>OrthologsStats_one-to-many.tsv</code>: entry (i, j) is the number of genes in species i in a one-to-many orthology relationship with genes in species j.</li>
-      <li><code>OrthologsStats_many-to-one.tsv</code>: entry (i, j) is the number of genes in species i in a many-to-one orthology relationship with a gene in species j.</li>
-      <li><code>OrthologsStats_Totals.tsv</code>: entry (i, j) is the total number of genes in species i with orthologs in species j, of whatever multiplicity.</li>
+      <li><code>OrthologsStats_one-to-one.tsv</code>. The number of one-to-one orthologs between each pair of species.</li>
+      <li><code>OrthologsStats_many-to-many.tsv</code>. Entry (i, j) is the number of genes in species i in a many-to-many orthology relationship with genes in species j (due to gene duplication events in both lineages after the speciation).</li>
+      <li><code>OrthologsStats_one-to-many.tsv</code>. Entry (i, j) is the number of genes in species i in a one-to-many orthology relationship with genes in species j.</li>
+      <li><code>OrthologsStats_many-to-one.tsv</code>. Entry (i, j) is the number of genes in species i in a many-to-one orthology relationship with a gene in species j.</li>
+      <li><code>OrthologsStats_Totals.tsv</code>. Entry (i, j) is the total number of genes in species i with orthologs in species j, of whatever multiplicity.</li>
     </ul>
     There is a walk-through of an example of these files in <a href="https://github.com/davidemms/OrthoFinder/issues/259">GitHub issue #259</a>.</dd>
 </dl>
 
 <h2 id="s4-2"><span class="secnum">4.2</span> Gene_Duplication_Events</h2>
 <dl>
-  <dt>Duplications.tsv</dt><dd>All the gene duplication events found by examining each node of each orthogroup gene tree, one per row. The columns are:
+  <dt>Duplications.tsv</dt><dd>All the gene duplication events found by examining each node of each orthogroup gene tree, one per row. The columns are as follows.
     <ol type="a">
       <li><strong>Orthogroup</strong>.</li>
-      <li><strong>Species Tree Node</strong>: the branch of the species tree on which the duplication occurred, named by the node or species below it (see <code>Species_Tree/SpeciesTree_rooted_node_labels.txt</code>).</li>
-      <li><strong>Gene Tree Node</strong>: the node of the orthogroup's resolved gene tree (in <code>Resolved_Gene_Trees/Resolved_Gene_Trees.txt</code>).</li>
-      <li><strong>Support</strong>: the proportion of the expected species in which both copies of the duplicated gene are present.</li>
-      <li><strong>Type</strong>: "Terminal", a duplication on a terminal branch of the species tree (in one species); "Non-Terminal", a duplication on an internal branch, and therefore shared by more than one species; "Non-Terminal: STRIDE", a non-terminal duplication that also passes the very stringent STRIDE checks of the topology the gene tree should have after the duplication.</li>
-      <li><strong>Genes 1</strong>: the genes descended from one of the copies of the duplicated gene.</li>
-      <li><strong>Genes 2</strong>: the genes descended from the other copy.</li>
+      <li><strong>Species Tree Node.</strong> The branch of the species tree on which the duplication occurred, named by the node or species below it (see <code>Species_Tree/SpeciesTree_rooted_node_labels.txt</code>).</li>
+      <li><strong>Gene Tree Node.</strong> The node of the orthogroup's resolved gene tree (in <code>Resolved_Gene_Trees/Resolved_Gene_Trees.txt</code>).</li>
+      <li><strong>Support.</strong> The proportion of the expected species in which both copies of the duplicated gene are present.</li>
+      <li><strong>Type.</strong> "Terminal" is a duplication on a terminal branch of the species tree (in one species). "Non-Terminal" is a duplication on an internal branch, and therefore shared by more than one species. "Non-Terminal: STRIDE" is a non-terminal duplication that also passes the very stringent STRIDE checks of the topology the gene tree should have after the duplication.</li>
+      <li><strong>Genes 1.</strong> The genes descended from one of the copies of the duplicated gene.</li>
+      <li><strong>Genes 2.</strong> The genes descended from the other copy.</li>
     </ol></dd>
-  <dt>SpeciesTree_Gene_Duplications_0.5_Support.txt</dt><dd>The above duplications summed over the branches of the species tree, as a Newick tree: the number after each node or species name is the number of gene duplication events with at least 50% support on the branch leading to it. The branch lengths are those of <code>Species_Tree/SpeciesTree_rooted.txt</code>.</dd>
+  <dt>SpeciesTree_Gene_Duplications_0.5_Support.txt</dt><dd>The above duplications summed over the branches of the species tree, as a Newick tree. The number after each node or species name is the number of gene duplication events with at least 50% support on the branch leading to it. The branch lengths are those of <code>Species_Tree/SpeciesTree_rooted.txt</code>.</dd>
 </dl>
 
 <h2 id="s4-3"><span class="secnum">4.3</span> MultipleSequenceAlignments</h2>
@@ -569,7 +569,7 @@ orthofinder [options] --assign &lt;additional_dir&gt; --core &lt;core_results_di
 <h2 id="s4-5"><span class="secnum">4.5</span> Orthogroups</h2>
 <dl>
   <dt>Orthogroups.tsv</dt><dd>The main orthogroup file (the hierarchical orthogroups of the root, N0). Each row contains the genes of one orthogroup, in a column for each species, separated by commas.</dd>
-  <dt>Orthogroups.txt</dt><dd>The orthogroups, one per line, as <code>OG0000000: gene gene …</code>. It differs from <code>Orthogroups.tsv</code> in that it doesn't show the species of each gene; it is in the format of OrthoMCL, for programs that read it.</dd>
+  <dt>Orthogroups.txt</dt><dd>The orthogroups, one per line, as <code>OG0000000: gene gene …</code>. It differs from <code>Orthogroups.tsv</code> in that it doesn't show the species of each gene. It is in the format of OrthoMCL, for programs that read it.</dd>
   <dt>Orthogroups.GeneCount.tsv</dt><dd>The number of genes of each species in each orthogroup, and the total.</dd>
   <dt>Orthogroups_SingleCopyOrthologs.txt</dt><dd>The orthogroups with exactly one gene from each species, i.e. one-to-one orthologs.</dd>
   <dt>Orthogroups_UnassignedGenes.tsv</dt><dd>The genes not assigned to any orthogroup, each as an orthogroup of its own, in the format of <code>Orthogroups.tsv</code>.</dd>
@@ -580,13 +580,13 @@ Written when a run stops after a stage (<code>-og</code>, <code>-ogt</code>, <co
 <h2 id="s4-6"><span class="secnum">4.6</span> Orthologs</h2>
 <dl>
   <dt>&lt;species&gt;.tsv.gz</dt><dd>One compressed file for each species, listing its orthologs in all the other species. Each row gives an orthogroup, another species, a set of genes of this species and their orthologs in the other species. Orthologs can be one-to-one, one-to-many or many-to-many, depending on the gene duplication events since the orthologs diverged.</dd>
-  <dt>Orthologs_&lt;species&gt;/&lt;species&gt;__v__&lt;other species&gt;.tsv</dt><dd>With <code>-pof</code>, or written afterwards by <code>split_ortholog_files</code>: a file for each pair of species, listing the orthologs between them. Each row contains the gene(s) in one species that are orthologs of the gene(s) in the other species, cross-referenced to their orthogroup.</dd>
+  <dt>Orthologs_&lt;species&gt;/&lt;species&gt;__v__&lt;other species&gt;.tsv</dt><dd>With <code>-pof</code>, or written afterwards by <code>split_ortholog_files</code>. A file for each pair of species, listing the orthologs between them. Each row contains the gene(s) in one species that are orthologs of the gene(s) in the other species, cross-referenced to their orthogroup.</dd>
 </dl>
 
 <h2 id="s4-7"><span class="secnum">4.7</span> Phylogenetic_Hierarchical_Orthogroups</h2>
 <p>OrthoFinder infers the HOGs, the orthogroups at each hierarchical level (each node of the species tree), by analysing the rooted gene trees.</p>
 <dl>
-  <dt>N1.tsv, N2.tsv, …</dt><dd>The HOGs of the clade of species below node N1, N2 etc. of the species tree. Each row contains the genes of one HOG, in a column for each species. The first columns are the HOG ID (e.g. <code>N1.HOG0000036</code>), the orthogroup it is part of, and the clade of the orthogroup's gene tree it was taken from. There is no N0.tsv: the HOGs of the root are <code>Orthogroups/Orthogroups.tsv</code>.</dd>
+  <dt>N1.tsv, N2.tsv, …</dt><dd>The HOGs of the clade of species below node N1, N2 etc. of the species tree. Each row contains the genes of one HOG, in a column for each species. The first columns are the HOG ID (e.g. <code>N1.HOG0000036</code>), the orthogroup it is part of, and the clade of the orthogroup's gene tree it was taken from. There is no N0.tsv, because the HOGs of the root are <code>Orthogroups/Orthogroups.tsv</code>.</dd>
 </dl>
 
 <h2 id="s4-8"><span class="secnum">4.8</span> Phylogenetically_Misplaced_Genes</h2>
@@ -597,7 +597,7 @@ Written when a run stops after a stage (<code>-og</code>, <code>-ogt</code>, <co
 
 <h2 id="s4-10"><span class="secnum">4.10</span> Resolved_Gene_Trees</h2>
 <dl>
-  <dt>Resolved_Gene_Trees.txt</dt><dd>A rooted phylogenetic tree for each orthogroup with four or more genes, resolved using the OrthoFinder hybrid species-overlap / duplication-loss-coalescent model: a line for each orthogroup, <code>OG0000000: &lt;Newick tree&gt;</code>. The genes are named with their species as a prefix (without it with <code>-X</code>), and the internal nodes are named n0, n1 … (as in <code>Gene_Duplication_Events/Duplications.tsv</code>).</dd>
+  <dt>Resolved_Gene_Trees.txt</dt><dd>A rooted phylogenetic tree for each orthogroup with four or more genes, resolved using the OrthoFinder hybrid species-overlap / duplication-loss-coalescent model, with a line for each orthogroup, <code>OG0000000: &lt;Newick tree&gt;</code>. The genes are named with their species as a prefix (without it with <code>-X</code>), and the internal nodes are named n0, n1 … (as in <code>Gene_Duplication_Events/Duplications.tsv</code>).</dd>
 </dl>
 
 <h2 id="s4-11"><span class="secnum">4.11</span> Single_Copy_Ortholog_Sequences</h2>
@@ -605,14 +605,14 @@ Written when a run stops after a stage (<code>-og</code>, <code>-ogt</code>, <co
 
 <h2 id="s4-12"><span class="secnum">4.12</span> Species_Tree</h2>
 <dl>
-  <dt>SpeciesTree_rooted.txt</dt><dd>The species tree, rooted with STRIDE from the gene duplication events, with support values at the internal nodes. In a standard run it is inferred from the concatenated alignment of the single-copy orthogroups; in an <code>--assign</code> run, or with <code>-ST astral-pro</code>, from the gene trees with ASTRAL-Pro; or it is the tree given with <code>-s</code>.</dd>
+  <dt>SpeciesTree_rooted.txt</dt><dd>The species tree, rooted with STRIDE from the gene duplication events, with support values at the internal nodes. In a standard run it is inferred from the concatenated alignment of the single-copy orthogroups. In an <code>--assign</code> run, or with <code>-ST astral-pro</code>, it is inferred from the gene trees with ASTRAL-Pro. Otherwise it is the tree given with <code>-s</code>.</dd>
   <dt>SpeciesTree_rooted_node_labels.txt</dt><dd>The same tree, with its internal nodes named (N0, N1, …) instead of support values, so that other results files can refer to the nodes and branches of the species tree (e.g. the location of the gene duplication events, or the HOG files).</dd>
-  <dt>Orthogroups_for_concatenated_alignment.txt</dt><dd>The orthogroups whose alignments were concatenated to infer the species tree (standard runs only; the <code>species_tree_alignment</code> tool writes it, and the alignment, from results without it).</dd>
+  <dt>Orthogroups_for_concatenated_alignment.txt</dt><dd>The orthogroups whose alignments were concatenated to infer the species tree (standard runs only, and the <code>species_tree_alignment</code> tool writes it, and the alignment, from results without it).</dd>
 </dl>
 
 
 <h2 id="s4-13"><span class="secnum">4.13</span> WorkingDirectory</h2>
-<p>The files OrthoFinder needs to continue or restart an analysis, or to add species to it. Most of them are named with internal IDs rather than gene and species names. Some that are useful:</p>
+<p>The files OrthoFinder needs to continue or restart an analysis, or to add species to it. Most of them are named with internal IDs rather than gene and species names. Some useful ones are listed below.</p>
 <dl>
   <dt>SpeciesIDs.txt, SequenceIDs.txt</dt><dd>The IDs OrthoFinder gave to the species and genes (e.g. <code>0: Mycoplasma_agalactiae.faa</code>, and <code>0_12</code> for the 13th gene of species 0), and the original FASTA headers.</dd>
   <dt>Species*.fa, Blast*_*.txt.gz</dt><dd>The input sequences with IDs, and the results of each sequence search (species i against species j), reused by <code>-b</code>.</dd>
@@ -634,11 +634,11 @@ Written when a run stops after a stage (<code>-og</code>, <code>-ogt</code>, <co
   <tr><td>the gene trees</td><td><code>-ogt</code></td><td>the gene trees</td><td><code>-fgt &lt;dir&gt;</code></td></tr>
   <tr><td>the rooted species tree</td><td><code>-ost</code></td><td>the species tree</td><td><code>-fst &lt;dir&gt;</code></td></tr>
 </table>
-<p>At the end of a stopped run, OrthoFinder prints the command to continue it. For example, to look at the orthogroups before running the gene trees:</p>
+<p>At the end of a stopped run, OrthoFinder prints the command to continue it. For example, to look at the orthogroups before running the gene trees, run the commands below.</p>
 <pre><code>orthofinder -f ExampleData/ -og -n og_only
 orthofinder -fg ExampleData/OrthoFinder/Results_og_only/</code></pre>
 <ul>
-  <li>A restart writes its results to the results directory it is given, the one of the stopped run: it does not create a new one.</li>
+  <li>A restart writes its results to the results directory it is given, the one of the stopped run. It does not create a new one.</li>
   <li>A restart continues with the settings of the run (search program, scoring, <code>-M</code>, <code>-A</code>, <code>-T</code>, <code>-ST</code>, <code>-I</code> …, kept in <code>WorkingDirectory/run_state.json</code>), unless they are given again. For example <code>orthofinder -fg &lt;dir&gt; -T iqtree3</code> infers the gene trees again with IQ-TREE.</li>
   <li><code>-fg</code> also works on the results of a complete run, to redo the alignments and gene trees.</li>
   <li>With <code>-b</code>, OrthoFinder runs only the sequence searches whose results are missing or incomplete, e.g. after <code>-op</code> or after a run that was interrupted during the searches.</li>
@@ -646,22 +646,22 @@ orthofinder -fg ExampleData/OrthoFinder/Results_og_only/</code></pre>
 </ul>
 
 <h2 id="s5-2"><span class="secnum">5.2</span> Running the sequence searches separately</h2>
-<p>The <code>-op</code> option prepares the files in the format OrthoFinder needs, and writes the sequence search commands to <code>WorkingDirectory/blast_commands.txt</code>, without running them:</p>
+<p>The <code>-op</code> option prepares the files in the format OrthoFinder needs, and writes the sequence search commands to <code>WorkingDirectory/blast_commands.txt</code>, without running them.</p>
 <pre><code>orthofinder -f fasta_files_directory/ -op</code></pre>
-<p>This is useful to manage the searches yourself, for example to distribute them across the nodes of a cluster (there is one command for each pair of species, and each can run on its own). Once the searches are done, run the rest of the analysis with <code>-b</code> on the results directory:</p>
+<p>This is useful to manage the searches yourself, for example to distribute them across the nodes of a cluster (there is one command for each pair of species, and each can run on its own). Once the searches are done, run the rest of the analysis with <code>-b</code> on the results directory.</p>
 <pre><code>orthofinder -b fasta_files_directory/OrthoFinder/Results_&lt;date&gt;/</code></pre>
 <p>OrthoFinder checks which searches have finished, and runs any that are missing. It is possible to use pre-computed search results in the same way, provided they are in the format OrthoFinder expects (the tabular BLAST format, with the gene and species IDs of <code>SequenceIDs.txt</code> and <code>SpeciesIDs.txt</code>). If you run the searches yourself, we strongly recommend preparing the files with <code>-op</code> first.</p>
 
 <h2 id="s5-3"><span class="secnum">5.3</span> Choosing the methods and programs</h2>
 <table class="wide">
   <tr><th>Option</th><th>Choice</th><th>Default</th></tr>
-  <tr><td><code>-S</code> sequence search</td><td><code>diamond</code>, <code>diamond_ultra_sens</code>, <code>blast</code>, <code>blastp</code>, <code>blastn</code>, <code>mmseqs</code>. <code>blast</code> is BLAST+ for either kind of input: <code>blastp</code> for protein sequences, and <code>blastn</code> with <code>-d</code> (nucleotide sequences); <code>blastp</code> and <code>blastn</code> can also be given directly</td><td><code>diamond</code>; <code>blastn</code> with <code>-d</code></td></tr>
-  <tr><td><code>-M</code> gene tree method</td><td><code>msa</code> (alignments and maximum-likelihood trees), <code>dendroblast</code> (distance trees from the search results, faster, less accurate; the OrthoFinder 2 default)</td><td><code>msa</code></td></tr>
+  <tr><td><code>-S</code> sequence search</td><td><code>diamond</code>, <code>diamond_ultra_sens</code>, <code>blast</code>, <code>blastp</code>, <code>blastn</code>, <code>mmseqs</code>. <code>blast</code> is BLAST+ for either kind of input, <code>blastp</code> for protein sequences or <code>blastn</code> with <code>-d</code> (nucleotide sequences). <code>blastp</code> and <code>blastn</code> can also be given directly</td><td><code>diamond</code>, or <code>blastn</code> with <code>-d</code></td></tr>
+  <tr><td><code>-M</code> gene tree method</td><td><code>msa</code> (alignments and maximum-likelihood trees), <code>dendroblast</code> (distance trees from the search results, faster and less accurate, the OrthoFinder 2 default)</td><td><code>msa</code></td></tr>
   <tr><td><code>-A</code> alignment (with <code>-M msa</code>)</td><td><code>famsa</code>, <code>mafft</code>, <code>muscle</code></td><td><code>famsa</code></td></tr>
   <tr><td><code>-T</code> gene trees (with <code>-M msa</code>)</td><td><code>fasttree</code>, <code>fasttree_fastest</code>, <code>raxml</code>, <code>iqtree3</code></td><td><code>fasttree</code></td></tr>
-  <tr><td><code>-ST</code> species tree (with <code>-M msa</code>)</td><td><code>astral-pro</code> (from the gene trees)</td><td>the concatenated alignment of the single-copy orthogroups; ASTRAL-Pro with <code>--assign</code></td></tr>
-  <tr><td><code>-I</code> MCL inflation</td><td>usually 1.2 to 5: larger values give smaller orthogroups</td><td>1.2</td></tr>
-  <tr><td><code>-d</code></td><td>the input is nucleotide sequences: searched with BLAST+ <code>blastn</code> (by default, or with <code>-S blast</code>), or with <code>-S mmseqs</code>, whose commands then get the nucleotide search type; DIAMOND compares protein sequences only, so it cannot be used</td><td>protein</td></tr>
+  <tr><td><code>-ST</code> species tree (with <code>-M msa</code>)</td><td><code>astral-pro</code> (from the gene trees)</td><td>the concatenated alignment of the single-copy orthogroups, or ASTRAL-Pro with <code>--assign</code></td></tr>
+  <tr><td><code>-I</code> MCL inflation</td><td>usually 1.2 to 5 (larger values give smaller orthogroups)</td><td>1.2</td></tr>
+  <tr><td><code>-d</code></td><td>the input is nucleotide sequences, searched with BLAST+ <code>blastn</code> (by default, or with <code>-S blast</code>), or with <code>-S mmseqs</code>, whose commands then get the nucleotide search type. DIAMOND compares protein sequences only, so it cannot be used</td><td>protein</td></tr>
 </table>
 <p>The programs other than the defaults (BLAST+, MMseqs2, MUSCLE, RAxML, IQ-TREE) must be installed separately. More accurate tree programs, such as IQ-TREE, take much longer than FastTree.</p>
 
@@ -679,21 +679,21 @@ orthofinder -fg ExampleData/OrthoFinder/Results_og_only/</code></pre>
 </table>
 
 <h2 id="s5-5"><span class="secnum">5.5</span> Utility tools</h2>
-<p>These tools are installed with OrthoFinder (in <code>tools/</code> of the source code; most need only Python 3, so they can also be run as <code>python tools/&lt;tool&gt;.py</code> without installing OrthoFinder). <code>orthofinder-utils</code> lists them, and <code>&lt;tool&gt; -h</code> describes each.</p>
+<p>These tools are installed with OrthoFinder (in <code>tools/</code> of the source code, and most need only Python 3, so they can also be run as <code>python tools/&lt;tool&gt;.py</code> without installing OrthoFinder). <code>orthofinder-utils</code> lists them, and <code>&lt;tool&gt; -h</code> describes each.</p>
 <dl>
-  <dt>primary_transcript &lt;file or directory&gt;</dt><dd>Keep the longest transcript of each gene (<a href="#s6-4">6.4</a>). Works on FASTA files, directories (searched recursively) and <code>.zip</code>/<code>.tar.gz</code> archives, and recognises Ensembl and NCBI headers; a second argument (<code>last_dot</code>, <code>space</code>, <code>last_dot_before_first_space</code>) tells it how to find the gene of each transcript for other headers.</dd>
+  <dt>primary_transcript &lt;file or directory&gt;</dt><dd>Keep the longest transcript of each gene (<a href="#s6-4">6.4</a>). Works on FASTA files, directories (searched recursively) and <code>.zip</code>/<code>.tar.gz</code> archives, and recognises Ensembl and NCBI headers. A second argument (<code>last_dot</code>, <code>space</code>, <code>last_dot_before_first_space</code>) tells it how to find the gene of each transcript for other headers.</dd>
   <dt>ncbi_primary_transcript &lt;zip or directory&gt;</dt><dd>Keep the longest protein of each gene from NCBI genome downloads (a <code>.zip</code> with <code>protein.faa</code> and <code>genomic.gff</code>), using the GFF to link proteins to genes (<a href="#s6-2">6.2</a>).</dd>
-  <dt>split_ortholog_files &lt;results&gt;</dt><dd>Write the ortholog files for each pair of species from a run without <code>-pof</code>; <code>--species</code> and <code>--partners</code> write only some of them, <code>-t</code> in parallel.</dd>
+  <dt>split_ortholog_files &lt;results&gt;</dt><dd>Write the ortholog files for each pair of species from a run without <code>-pof</code>. <code>--species</code> and <code>--partners</code> write only some of them, <code>-t</code> in parallel.</dd>
   <dt>create_hog_fastas &lt;results&gt; &lt;node&gt;</dt><dd>Write a FASTA file for each HOG of a node of the species tree (e.g. <code>N1</code>, or <code>all</code>).</dd>
   <dt>mcl_orthogroup_sequences &lt;results&gt;</dt><dd>Write a FASTA file for each MCL orthogroup.</dd>
   <dt>orthogroup_gene_count &lt;file or directory&gt;</dt><dd>Gene-count tables (genes of each species in each orthogroup) from <code>Orthogroups.tsv</code>, <code>Orthogroups.txt</code> or HOG files.</dd>
   <dt>convert_orthofinder_tree_ids &lt;tree&gt; &lt;SequenceIDs.txt&gt; [SpeciesIDs.txt]</dt><dd>Convert the gene IDs of trees in the working directory (e.g. <code>0_12</code>) to the gene names, or back.</dd>
-  <dt>make_ultrametric &lt;tree&gt;</dt><dd>Make a rooted tree ultrametric (e.g. the species tree, for gene family evolution programs such as CAFE); <code>--root-age</code> sets the age of the root.</dd>
+  <dt>make_ultrametric &lt;tree&gt;</dt><dd>Make a rooted tree ultrametric (e.g. the species tree, for gene family evolution programs such as CAFE). <code>--root-age</code> sets the age of the root.</dd>
   <dt>species_tree_alignment &lt;results&gt;</dt><dd>Write the concatenated alignment of the single-copy orthogroups, and the list of the orthogroups, for a run whose species tree was inferred with <code>-ST</code>.</dd>
 </dl>
 
 <h2 id="s5-6"><span class="secnum">5.6</span> Manually installing the dependencies</h2>
-<p>If you installed OrthoFinder with conda, you shouldn't need to install any of the programs it runs. The programs bundled with OrthoFinder (in the <code>linux-intel</code> release and the source code) are built for Linux on Intel/AMD (x86-64) processors only, including WSL2 on Windows; on other systems, such as macOS or computers with ARM processors (e.g. Apple silicon), install them yourself, for example with conda. Otherwise, the default analysis needs DIAMOND, MCL, FAMSA and FastTree (and ASTRAL-Pro for <code>--assign</code>).</p>
+<p>If you installed OrthoFinder with conda, you shouldn't need to install any of the programs it runs. The programs bundled with OrthoFinder (in the <code>linux-intel</code> release and the source code) are built for Linux on Intel/AMD (x86-64) processors only, including WSL2 on Windows. On other systems, such as macOS or computers with ARM processors (e.g. Apple silicon), install them yourself, for example with conda. Otherwise, the default analysis needs DIAMOND, MCL, FAMSA and FastTree (and ASTRAL-Pro for <code>--assign</code>).</p>
 <table class="wide">
   <tr><th>Program</th><th>Needed for</th><th>Installation</th></tr>
   <tr><td>DIAMOND (<a href="#s2-1">2.1</a>)</td><td>sequence search (default)</td><td><code>conda install -c bioconda diamond</code>, or <a href="https://github.com/bbuchfink/diamond/wiki/2.-Installation">github.com/bbuchfink/diamond</a></td></tr>
@@ -708,74 +708,74 @@ orthofinder -fg ExampleData/OrthoFinder/Results_og_only/</code></pre>
 
 <section class="chapter" id="ch6">
 <h1><span class="chlabel">Chapter 6</span>Getting input data for OrthoFinder</h1>
-<p>Let's imagine we want to perform a phylogenomic analysis across a set of species: dingo (<i>Canis lupus dingo</i>), great spotted kiwi (<i>Apteryx haastii</i>), kakapo (<i>Strigops habroptila</i>), platypus (<i>Ornithorhynchus anatinus</i>), tammar wallaby (<i>Notamacropus eugenii</i>) and common wombat (<i>Vombatus ursinus</i>).</p>
-<p>OrthoFinder requires as input the amino acid sequences of all the protein-coding genes of each species. In this section we discuss how to get these files from three major websites:</p>
+<p>Let's imagine we want to perform a phylogenomic analysis across a set of species, dingo (<i>Canis lupus dingo</i>), great spotted kiwi (<i>Apteryx haastii</i>), kakapo (<i>Strigops habroptila</i>), platypus (<i>Ornithorhynchus anatinus</i>), tammar wallaby (<i>Notamacropus eugenii</i>) and common wombat (<i>Vombatus ursinus</i>).</p>
+<p>OrthoFinder requires as input the amino acid sequences of all the protein-coding genes of each species. In this section we discuss how to get these files from three major websites.</p>
 <ul>
-  <li><strong>Ensembl</strong>: recommended for eukaryotic species, especially vertebrates and model organisms.</li>
-  <li><strong>NCBI</strong>: recommended for prokaryotic species, and for eukaryotes not in Ensembl.</li>
-  <li><strong>Phytozome</strong>: recommended for plants.</li>
+  <li><strong>Ensembl.</strong> Recommended for eukaryotic species, especially vertebrates and model organisms.</li>
+  <li><strong>NCBI.</strong> Recommended for prokaryotic species, and for eukaryotes not in Ensembl.</li>
+  <li><strong>Phytozome.</strong> Recommended for plants.</li>
 </ul>
 <p>A key consideration when getting input data is <strong>transcripts</strong>. The amino acid sequences downloaded for a genome often include several sequences for the same gene, because a gene can produce several transcripts, each of which may produce a different protein (see, for example, <a href="http://www.ensembl.org/Homo_sapiens/Gene/Splice?db=core;g=ENSG00000075624;r=7:5527151-5563784">the transcripts of the human actin gene on Ensembl</a>). Running OrthoFinder on these files would take much longer than necessary and could lower the accuracy, so we keep only the longest transcript of each gene with the tools provided with OrthoFinder (<a href="#s6-4">6.4</a>).</p>
 
 <h2 id="s6-1"><span class="secnum">6.1</span> Getting data from Ensembl</h2>
-<p>First, go to the <a href="https://www.ensembl.org/info/about/species.html">Ensembl list of species</a> (or the <a href="https://beta.ensembl.org/species-selector">new Ensembl website</a>, which is updated more regularly). Search for the first species (<i>Canis lupus dingo</i>) and click on its link, which takes you to the Ensembl page of that species:</p>
+<p>First, go to the <a href="https://www.ensembl.org/info/about/species.html">Ensembl list of species</a> (or the <a href="https://beta.ensembl.org/species-selector">new Ensembl website</a>, which is updated more regularly). Search for the first species (<i>Canis lupus dingo</i>) and click on its link, which takes you to the Ensembl page of that species.</p>
 <figure><img src="images/GettingInput_image1.jpeg" style="width: 92%"></figure>
-<p>On the right, under "Gene annotation", click "Download FASTA" files for the genome. This takes you to a page with some folders:</p>
+<p>On the right, under "Gene annotation", click "Download FASTA" files for the genome. This takes you to a page with some folders.</p>
 <figure><img src="images/GettingInput_image2.png" style="width: 55%"></figure>
-<p>Click on the <code>pep/</code> folder, and then on the file that ends in <code>.pep.all.fa.gz</code>:</p>
+<p>Click on the <code>pep/</code> folder, and then on the file that ends in <code>.pep.all.fa.gz</code>.</p>
 <figure><img src="images/GettingInput_image3.jpeg" style="width: 60%"></figure>
-<p>Repeat this for the other species, saving the files in one folder on your computer, for example <code>Proteomes/</code>. The files can also be downloaded on the command line: right-click the file, copy its link, and run</p>
+<p>Repeat this for the other species, saving the files in one folder on your computer, for example <code>Proteomes/</code>. The files can also be downloaded on the command line. Right-click the file, copy its link, and run</p>
 <pre><code>wget &lt;the link you copied&gt;</code></pre>
-<p>The files are compressed (<code>.gz</code>) to save space; uncompress them with <code>gunzip *.gz</code> (or by double-clicking them). Ensembl headers name the gene of each transcript (<code>gene:ENSCAFG…</code>), which <code>primary_transcript</code> uses.</p>
+<p>The files are compressed (<code>.gz</code>) to save space. Uncompress them with <code>gunzip *.gz</code> (or by double-clicking them). Ensembl headers name the gene of each transcript (<code>gene:ENSCAFG…</code>), which <code>primary_transcript</code> uses.</p>
 
 <h2 id="s6-2"><span class="secnum">6.2</span> Getting data from NCBI</h2>
-<p>Go to <a href="https://www.ncbi.nlm.nih.gov/">www.ncbi.nlm.nih.gov</a> and search for the first species:</p>
+<p>Go to <a href="https://www.ncbi.nlm.nih.gov/">www.ncbi.nlm.nih.gov</a> and search for the first species.</p>
 <figure><img src="images/GettingInput_image4.png" style="width: 92%"></figure>
-<p>To find the genome of the species, scroll down to the "Genomes" section and click on "Assembly / Genome":</p>
+<p>To find the genome of the species, scroll down to the "Genomes" section and click on "Assembly / Genome".</p>
 <figure><img src="images/GettingInput_image5.jpeg" style="width: 92%"></figure>
-<p>There may be several genomes listed. Click on the one with the green tick, the reference genome:</p>
+<p>There may be several genomes listed. Click on the one with the green tick, the reference genome.</p>
 <figure><img src="images/GettingInput_image6.png" style="width: 92%"></figure>
-<p>Click the blue "Download" button, and tick the boxes for the curated "RefSeq only" annotation and for the GFF and protein FASTA files. You can also give the download a useful name, such as the name of the species:</p>
+<p>Click the blue "Download" button, and tick the boxes for the curated "RefSeq only" annotation and for the GFF and protein FASTA files. You can also give the download a useful name, such as the name of the species.</p>
 <figure><img src="images/GettingInput_image7.jpeg" style="width: 45%"></figure>
-<p>Click "Download", which downloads a zip file. Repeat this for each species. For some species in our list, like the kiwi, there is no RefSeq genome with protein sequences: for those, use Ensembl.</p>
-<p>The NCBI protein files have a sequence for each transcript: for the dingo, about 75,000 sequences for about 20,000 genes. The <code>ncbi_primary_transcript</code> tool keeps the longest protein of each gene, using the GFF file in the zip to link each protein to its gene (<a href="#s6-4">6.4</a>).</p>
-<p>To download data in bulk, use the <a href="https://www.ncbi.nlm.nih.gov/datasets/">NCBI Datasets</a> command-line tool, which downloads the same zip files, e.g.:</p>
+<p>Click "Download", which downloads a zip file. Repeat this for each species. For some species in our list, like the kiwi, there is no RefSeq genome with protein sequences. For those, use Ensembl.</p>
+<p>The NCBI protein files have a sequence for each transcript. For the dingo, there are about 75,000 sequences for about 20,000 genes. The <code>ncbi_primary_transcript</code> tool keeps the longest protein of each gene, using the GFF file in the zip to link each protein to its gene (<a href="#s6-4">6.4</a>).</p>
+<p>To download data in bulk, use the <a href="https://www.ncbi.nlm.nih.gov/datasets/">NCBI Datasets</a> command-line tool, which downloads the same zip files, e.g..</p>
 <pre><code>datasets download genome taxon "Ornithorhynchus anatinus" --reference --include protein,gff3 --filename Ornithorhynchus_anatinus.zip</code></pre>
 
 <h2 id="s6-3"><span class="secnum">6.3</span> Getting data from Phytozome</h2>
-<p>Go to the <a href="https://data.jgi.doe.gov/">Phytozome data portal</a>, and search for a species, such as <i>Oryza sativa</i>:</p>
+<p>Go to the <a href="https://data.jgi.doe.gov/">Phytozome data portal</a>, and search for a species, such as <i>Oryza sativa</i>.</p>
 <figure><img src="images/GettingInput_image8.jpeg" style="width: 80%"></figure>
-<p>Find the genome you want to download and click on it. The file we want ends in <code>primaryTranscriptOnly.fa.gz</code>: Phytozome has already kept one transcript per gene, so these files are ready for OrthoFinder. Select the file and click "Add to Cart":</p>
+<p>Find the genome you want to download and click on it. The file we want ends in <code>primaryTranscriptOnly.fa.gz</code>. Phytozome has already kept one transcript per gene, so these files are ready for OrthoFinder. Select the file and click "Add to Cart".</p>
 <figure><img src="images/GettingInput_image9.jpeg" style="width: 92%"></figure>
 <p>Repeat this for each species. When you are ready, click the shopping cart icon and press "Download" on the next page. You have to sign in, or register, to download the data. Place the files in one folder, and uncompress them (<code>gunzip *.gz</code>).</p>
 
 <h2 id="s6-4"><span class="secnum">6.4</span> Preparing the files</h2>
 <h3 id="s6-4-1"><span class="secnum">6.4.1</span> Keeping the longest transcript of each gene</h3>
-<p>For files from Ensembl (or any files whose headers name the gene of each transcript), uncompress them and run <code>primary_transcript</code> on the folder (it also reads <code>.zip</code> and <code>.tar.gz</code> archives of FASTA files):</p>
+<p>For files from Ensembl (or any files whose headers name the gene of each transcript), uncompress them and run <code>primary_transcript</code> on the folder (it also reads <code>.zip</code> and <code>.tar.gz</code> archives of FASTA files).</p>
 <pre><code>primary_transcript Proteomes/</code></pre>
-<p>The files with one transcript per gene are written to <code>Proteomes/primary_transcripts/</code>. If the headers don't name the gene, but the transcript IDs are the gene ID with a suffix (e.g. <code>AT1G01010.1</code>, <code>AT1G01010.2</code>), give the rule as a second argument: <code>primary_transcript Proteomes/ last_dot</code>.</p>
-<p>For the zip files from NCBI, run <code>ncbi_primary_transcript</code> on the folder with the zip files:</p>
+<p>The files with one transcript per gene are written to <code>Proteomes/primary_transcripts/</code>. If the headers don't name the gene, but the transcript IDs are the gene ID with a suffix (e.g. <code>AT1G01010.1</code>, <code>AT1G01010.2</code>), give the rule as a second argument, as in <code>primary_transcript Proteomes/ last_dot</code>.</p>
+<p>For the zip files from NCBI, run <code>ncbi_primary_transcript</code> on the folder with the zip files.</p>
 <pre><code>ncbi_primary_transcript NCBI_downloads/</code></pre>
 <p>which writes a FASTA file for each genome to <code>NCBI_downloads/primary_transcripts/</code>, ready for OrthoFinder.</p>
 <h3 id="s6-4-2"><span class="secnum">6.4.2</span> Naming the files</h3>
-<p>The name of each file is the name of the species in all the results, so shorten the file names: for example, rename <code>Canis_lupus_dingo.&lt;assembly&gt;.pep.all.fa</code> to <code>Canis_lupus_dingo.fa</code>. Put only the files of the species to analyse in the input folder, and check that each species has one file.</p>
-<p>The data is now ready for OrthoFinder: run <code>orthofinder -f Proteomes/primary_transcripts/</code> as in section <a href="#s1-3">1.3</a>.</p>
+<p>The name of each file is the name of the species in all the results, so shorten the file names. For example, rename <code>Canis_lupus_dingo.&lt;assembly&gt;.pep.all.fa</code> to <code>Canis_lupus_dingo.fa</code>. Put only the files of the species to analyse in the input folder, and check that each species has one file.</p>
+<p>The data is now ready for OrthoFinder. Run <code>orthofinder -f Proteomes/primary_transcripts/</code> as in section <a href="#s1-3">1.3</a>.</p>
 </section>
 
 <section class="chapter" id="ch7">
 <h1><span class="chlabel">Chapter 7</span>Citing OrthoFinder</h1>
-<p>When publishing work that uses OrthoFinder, please cite:</p>
+<p>When publishing work that uses OrthoFinder, please cite the following paper.</p>
 <p>Emms D.M., Liu Y., Belcher L., Holmes J. &amp; Kelly S. (2026). OrthoFinder: improved phylogenetic orthology inference with enhanced accuracy and scalability. <i>Nature Methods</i> 23, 1327–1333. <a href="https://doi.org/10.1038/s41592-026-03126-6">doi:10.1038/s41592-026-03126-6</a></p>
-<p>If you use the species tree in your work, please also cite:</p>
+<p>If you use the species tree in your work, please also cite the following papers.</p>
 <p>Emms D.M. &amp; Kelly S. (2017). STRIDE: Species Tree Root Inference from Gene Duplication Events. <i>Molecular Biology and Evolution</i> 34(12), 3267–3278. <a href="https://doi.org/10.1093/molbev/msx259">doi:10.1093/molbev/msx259</a></p>
 <p>Emms D.M. &amp; Kelly S. (2018). STAG: Species Tree Inference from All Genes. <i>bioRxiv</i>. <a href="https://doi.org/10.1101/267914">doi:10.1101/267914</a></p>
-<p>The methods introduced in earlier versions of OrthoFinder are described in:</p>
+<p>The methods introduced in earlier versions of OrthoFinder are described in the following papers.</p>
 <ul>
   <li>Emms D.M. &amp; Kelly S. (2022). SHOOT: phylogenetic gene search and ortholog inference. <i>Genome Biology</i> 23, 85. <a href="https://doi.org/10.1186/s13059-022-02652-8">doi:10.1186/s13059-022-02652-8</a></li>
   <li>Emms D.M. &amp; Kelly S. (2019). OrthoFinder: phylogenetic orthology inference for comparative genomics. <i>Genome Biology</i> 20, 238. <a href="https://doi.org/10.1186/s13059-019-1832-y">doi:10.1186/s13059-019-1832-y</a></li>
   <li>Emms D.M. &amp; Kelly S. (2015). OrthoFinder: solving fundamental biases in whole genome comparisons dramatically improves orthogroup inference accuracy. <i>Genome Biology</i> 16, 157. <a href="https://doi.org/10.1186/s13059-015-0721-2">doi:10.1186/s13059-015-0721-2</a></li>
 </ul>
-<p>OrthoFinder also uses DIAMOND, MCL, FAMSA, FastTree and (for <code>--assign</code>) ASTRAL-Pro: please cite the programs you use, which are listed in <code>Citation.txt</code> in the results directory.</p>
+<p>OrthoFinder also uses DIAMOND, MCL, FAMSA, FastTree and (for <code>--assign</code>) ASTRAL-Pro. Please cite the programs you use, which are listed in <code>Citation.txt</code> in the results directory.</p>
 </section>
 </body>
 </html>
