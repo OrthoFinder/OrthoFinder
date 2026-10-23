@@ -56,12 +56,12 @@ hundred million years ago, before the dinosaurs had even emerged. We can describ
 group of genes across all three species that were descended from a single gene in this
 ancestor - these genes form an orthogroup.
 
-Look at the figure below, which shows data for three species: human, mouse and chicken.
+Look at the figure below, which shows data for three species, human, mouse and chicken.
 
 <p align="center" class="figure-wrapper">
   <img src="{{ site.baseurl }}/assets/images/Understanding_image1.png" alt="understanding orthology" width="800"/>
 </p>
-<p align="center" class="figure-caption"><strong>Figure 1: Orthologs, Orthogroups & Paralogs</strong></p>
+<p align="center" class="figure-caption"><strong>Figure 1. Orthologs, Orthogroups & Paralogs</strong></p>
 
 The tree in Figure 1A shows the evolutionary history of a gene. First, there was a speciation
 event where the chicken lineage diverged from the human-mouse ancestor. In the
@@ -93,7 +93,7 @@ relationships are identified by OrthoFinder.
 ### Why Orthogroups?
 
 There are several reasons why Orthogroups are the relevant way of analysing orthology
-relationships between species:
+relationships between species.
 
 <ul class="tight-bullets">
   <li>

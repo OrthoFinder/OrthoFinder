@@ -8,7 +8,7 @@ pdfs: https://github.com/OrthoFinder/OrthoFinder/blob/gh-pages/assets/docs/begin
 ---
 
 
-This tutorial will cover:
+This tutorial covers the following.
 
 - [Downloading OrthoFinder](#downloading-orthofinder)
 - [Running OrthoFinder](#running-orthofinder)
@@ -88,14 +88,14 @@ or the [Advanced Tutorial]({{ site.baseurl }}/tutorials/advanced-tutorial/) page
 
 OrthoFinder creates a results directory named OrthoFinder inside the proteome
 directory, and puts the results here.
-My results directory `/tmp/claude-1001/-home-biol0178-orthofinder-dev-OrthoFinder/e4f3f739-81dd-4541-8267-4c5a0825a33f/scratchpad/ci/OrthoFinder/Results_Oct21` looks like this:
+My results directory `ExampleData/OrthoFinder/Results_Oct21` looks like this.
 
 {% include_relative of-output-tree.md %}
 
 
-#### Step 1: Quality Control
+#### Step 1. Quality Control
 
-Before we start diving into the orthogroups, it would behoove us to check the quality
+Before we start diving into the orthogroups, it is worth checking the quality
 of the OrthoFinder run. We want to make sure that most genes across all species
 have been assigned to orthogroups, and that the species tree looks realistic.
 
@@ -155,7 +155,7 @@ our measures of gene duplication, and might affect our assignment of orthologs a
 paralogs within an orthogroup. If you need to, you can run OrthoFinder with your own
 species tree (use the `-s` option).
 
-#### Step 2: Interpreting results
+#### Step 2. Interpreting results
 
 Now that we are happy with our OrthoFinder run, we can start diving into the results.
 
@@ -168,10 +168,10 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     (`zgrep "gi|71851854|gb|AAZ44462.1|" Orthologs/Mycoplasma_hyopneumoniae.tsv.gz | grep Mycoplasma_agalactiae`).
     The file has four columns, `Orthogroup`, `Species` (the other species), `Mycoplasma_hyopneumoniae`
     and `Orthologs`. I can see that the gene `gi|71851854|gb|AAZ44462.1|` is in orthogroup
-    `OG0000014` and that its orthologs in `Mycoplasma_agalactiae` are: `gi|290752482|emb|CBH40454.1|, gi|290752494|emb|CBH40466.1|, gi|290752976|emb|CBH40952.1|`.
+    `OG0000014` and that its orthologs in `Mycoplasma_agalactiae` are `gi|290752482|emb|CBH40454.1|, gi|290752494|emb|CBH40466.1|, gi|290752976|emb|CBH40952.1|`.
 
     For a file for each pair of species, run OrthoFinder with `-pof`, or write them afterwards
-    with `split_ortholog_files <results directory>`:
+    with `split_ortholog_files <results directory>`, as
     `Orthologs/Orthologs_Mycoplasma_hyopneumoniae/Mycoplasma_hyopneumoniae__v__Mycoplasma_agalactiae.tsv`.
 
 - ***Gene trees***<br>
@@ -181,8 +181,8 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
     the OrthoFinder2 [paper](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1832-y) for more details).
 
     All of the gene trees are in one file (`Resolved_Gene_Trees/Resolved_Gene_Trees.txt`).
-    Each line of the file contains the ID of an orthogroup (e.g. `OG0000009`:), followed by the
-    gene tree for that orthogroup. To find the tree for certain orthogroup, just search for the
+    Each line of the file contains the ID of an orthogroup (e.g. `OG0000009:`), followed by the
+    gene tree for that orthogroup. To find the tree for a certain orthogroup, just search for the
     orthogroup ID.
 
     We are going to view the tree for `OG0000009`.
@@ -218,7 +218,7 @@ Now that we are happy with our OrthoFinder run, we can start diving into the res
 
     We can see the full list of gene duplication
     events in the file `Gene_Duplication_Events/Duplications.tsv`. Here are just a few lines
-    from the file:
+    from the file.
 
     | Orthogroup   | Species Tree Node    | Gene Tree Node   |   Support | Type     | Genes 1              | Genes 2              |
 |--------------|----------------------|------------------|-----------|----------|----------------------|----------------------|

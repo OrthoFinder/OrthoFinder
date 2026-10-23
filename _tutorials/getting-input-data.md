@@ -12,7 +12,7 @@ pdfs: https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/gettti
 
 ### Downloading input files for OrthoFinder
 
-Let’s imagine we want to perform a phylogenomic analysis across a set of species:
+Let’s imagine we want to perform a phylogenomic analysis across a set of species,
 Dingo (*`Canis lupus dingo`*), Great spotted kiwi (*`Apteryx haastii`*), Kakapo (*`Strigops
 habroptila`*), Platypus (*`Ornithorhynchus anatinus`*), Tammar wallaby (*`Notamacropus
 eugenii`*), and Common wombat (*`Vombatus ursinus`*).
@@ -82,9 +82,9 @@ gunzip *.gz
 ```
 
 We’ll use a script provided with OrthoFinder to extract just the longest transcript variant
-per gene and run OrthoFinder on these files:
+per gene and run OrthoFinder on these files.
 
-You can find the script [here](https://github.com/OrthoFinder/OrthoFinder/blob/master/tools/primary_transcript.py)
+You can find the script [here](https://github.com/OrthoFinder/OrthoFinder/blob/main/tools/primary_transcript.py)
 
 To run the script, first place it in the Proteomes folder. Then, open the command line
 and navigate to the Proteomes folder (using cd). You can then use the following

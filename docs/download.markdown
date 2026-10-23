@@ -70,12 +70,12 @@ pip install .
 
 Whether you've installed OrthoFinder directly from GitHub or downloaded and set it up locally, the OrthoFinder package will only be available within the `of3_env` virtual environment. This avoids potential conflicts with Python dependencies.
 
-To deactivate the virtual environment when you are finished, run:
+To deactivate the virtual environment when you are finished, run
 ```bash
 deactivate
 ```
 
-To activate the virtual environment you have created, run:
+To activate the virtual environment you have created, run
 ```bash
 . of3_env/bin/activate
 ```
@@ -92,12 +92,12 @@ orthofinder -f ExampleData # Test OrthoFinder on an example dataset
 ```
 
 #### Uninstalling
-To uninstall on conda:
+To uninstall on conda, run
 ```bash
 conda deactivate
 conda remove -n of3_env --all
 ```
-To remove the virtual environment where OrthoFinder is installed:
+To remove the virtual environment where OrthoFinder is installed, run
 ```bash
 deactivate
 cd ..

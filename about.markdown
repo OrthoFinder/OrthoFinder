@@ -10,7 +10,7 @@ permalink: /about/
 ### Why OrthoFinder?
 
 In the coming decades, millions of species will have their genomes sequenced. This data has the power to transform comparative genomics, but we need scalable tools to handle this volume of data. OrthoFinder meets this challenge, with a new scalable framework that allows rapid orthology inference on thousands of species, without compromising accuracy. 
-We focus on:
+We focus on the following.
 
 <ul class="tight-bullets">
   <li>

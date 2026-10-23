@@ -24,7 +24,7 @@ permalink: /faq/
     <span class="qa-numbered-question">When should I use the linear species addition method?</span>
     <div class="qa-answer-block">
         <p>
-        We recommend that you use the <code>core-assign</code> framework when you have too many species to do a regular OrthoFinder run in a reasonable time. That will depend on your computing resources, but as a rough guide:
+        We recommend that you use the <code>core-assign</code> framework when you have too many species to do a regular OrthoFinder run in a reasonable time. That will depend on your computing resources, but here is a rough guide.
         </p>
 
         <ul class="qa-bullet-list">
@@ -74,14 +74,14 @@ permalink: /faq/
     <span class="qa-numbered-question">What changed between OrthoFinder v2 and the new v3?</span>
     <div class="qa-answer-block">
       <p>
-        The current version of OrthoFinder has several major changes compared to version 2:
+        The current version of OrthoFinder has several major changes compared to version 2.
       </p>
     <ul class="faq-bullet-list">
     <li>
         <div class="faq-bullet-wrapper">
         <span class="faq-bullet">•</span>
         <div class="faq-bullet-body">
-            <div class="faq-bullet-title"><strong><em>New workflow for scalability:</em></strong></div>
+            <div class="faq-bullet-title"><strong><em>New workflow for scalability</em></strong></div>
             <div class="faq-bullet-text">
             The <code>--core --assign</code> workflow uses SHOOT to create profiles for previously computed orthogroups and adds new genes to these orthogroups without requiring a costly all-versus-all sequence search. Genes that cannot be assigned using SHOOT are analysed using the standard OrthoFinder workflow.
             </div>
@@ -92,7 +92,7 @@ permalink: /faq/
         <div class="faq-bullet-wrapper">
         <span class="faq-bullet">•</span>
         <div class="faq-bullet-body">
-            <div class="faq-bullet-title"><strong><em>Phylogenetic Hierarchical Orthogroups:</em></strong></div>
+            <div class="faq-bullet-title"><strong><em>Phylogenetic Hierarchical Orthogroups</em></strong></div>
             <div class="faq-bullet-text">
             OrthoFinder now defines orthogroups at every node in the species tree, significantly increasing accuracy and enabling clade-specific orthogroup analysis.
             </div>

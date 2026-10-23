@@ -10,14 +10,14 @@ pdfs: https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/advanc
 
 ### Manually installing dependencies
 
-To run OrthoFinder3 on default setting, you will need diamond, famsa, fasttree, MCL
+To run OrthoFinder3 with the default settings, you will need diamond, famsa, fasttree and MCL.
 If you install OrthoFinder using a recommended method, you shouldn’t need to install
-any of the dependencies manually, but in case you do;
+any of the dependencies manually, but in case you do, read on.
 
 The programs bundled with OrthoFinder (in the `orthofinder-linux-intel` release and the
 source code) are built for Linux on Intel/AMD (x86-64) processors only, including WSL2 on
 Windows. On other systems, such as macOS or computers with ARM processors (e.g. Apple
-silicon), install the programs yourself, for example with conda:
+silicon), install the programs yourself, for example with conda.
 ```bash
 # Diamond
 https://github.com/bbuchfink/diamond
@@ -41,7 +41,7 @@ been completed the orthogroups can be calculated using the `-b` command (see bel
 ### Use pre-computed BLAST
 It is possible to run OrthoFinder with pre-computed BLAST results provided they are in 
 the correct format. They can be prepared in the correct format using the `-op` command 
-and, equally, the files from a previous OrthoFinder run are also in the correct format to rerun using the `-b` option. The command is simply:
+and, equally, the files from a previous OrthoFinder run are also in the correct format to rerun using the `-b` option. The command is simply
 ```bash
 orthofinder -b directory_with_processed_fasta_and_blast_results
 ```

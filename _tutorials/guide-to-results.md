@@ -8,17 +8,17 @@ pdfs: https://github.com/OrthoFinder/OrthoFinder/releases/download/v3.1.0/guide-
 ---
 
 
-*Definitions for some terms that are used in these files:*
+*Some terms used in these files are defined below.*
 
-- **Species-specific orthogroup**: An orthogroups that consist entirely of genes from
+- **Species-specific orthogroup.** An orthogroup that consists entirely of genes from
 one species.
-- **G50**: The number of genes in the orthogroup such that 50% of genes are in
+- **G50.** The number of genes in the orthogroup such that 50% of genes are in
 orthogroups of that size or larger.
-- **O50**: The smallest number of orthogroups such that 50% of genes are in orthogroups
+- **O50.** The smallest number of orthogroups such that 50% of genes are in orthogroups
 of that size or larger.
-- **Single-copy orthogroup**: An orthogroup with exactly one gene (and no more) from
+- **Single-copy orthogroup.** An orthogroup with exactly one gene (and no more) from
 each species.
-- **Unassigned gene**: A gene that has not been put into an orthogroup with any other
+- **Unassigned gene.** A gene that has not been put into an orthogroup with any other
 genes.
 
 ### Comparative_Genomics_Statistics
@@ -73,22 +73,22 @@ genes.
 ### Gene_Duplication_Events
 
 - **Duplications.tsv**<br>
-  A tab separated text file that lists all the gene duplication events identified by examining each node of each orthogroup gene tree. The columns are:
+  A tab separated text file that lists all the gene duplication events identified by examining each node of each orthogroup gene tree. The columns are as follows.
 
   <ol type="a">
     <li><strong><code>Orthogroup</code></strong></li>
-    <li><strong><code>Species Tree node</code></strong>: see <code>SpeciesTree_rooted_node_labels.txt</code></li>
-    <li><strong><code>Gene tree node</code></strong>: see orthogroup tree in <code>Resolved_Gene_Trees</code> directory</li>
-    <li><strong><code>Support</code></strong>: proportion of genes for which this node is supported</li>
-    <li><strong><code>Type</code></strong>:
+    <li><strong><code>Species Tree node</code></strong>, see <code>SpeciesTree_rooted_node_labels.txt</code></li>
+    <li><strong><code>Gene tree node</code></strong>, see the orthogroup tree in the <code>Resolved_Gene_Trees</code> directory</li>
+    <li><strong><code>Support</code></strong>, the proportion of genes for which this node is supported</li>
+    <li><strong><code>Type</code></strong>, one of
     <ol type="i">
-      <li><strong><code>Terminal</code></strong>: duplication on a terminal branch of the species tree</li>
-      <li><strong><code>Non-Terminal</code></strong>: duplication on an internal branch of the species tree & therefore shared by more than one species</li>
-      <li><strong><code>Non-Terminal: STRIDE</code></strong>: Non-Terminal duplication that also passes the very stringent STRIDE checks for what the topology of the gene tree should be post-duplication.</li>
+      <li><strong><code>Terminal</code></strong>, a duplication on a terminal branch of the species tree</li>
+      <li><strong><code>Non-Terminal</code></strong>, a duplication on an internal branch of the species tree and therefore shared by more than one species</li>
+      <li><strong><code>Non-Terminal: STRIDE</code></strong>, a Non-Terminal duplication that also passes the very stringent STRIDE checks for what the topology of the gene tree should be post-duplication.</li>
     </ol>
     </li>
-    <li><strong><code>Genes 1</code></strong>: the list of genes descended from one of the copies of the duplicate gene</li>
-    <li><strong><code>Genes 2</code></strong>: the list of genes descended from the other copy of the duplicate gene.</li>
+    <li><strong><code>Genes 1</code></strong>, the list of genes descended from one of the copies of the duplicate gene</li>
+    <li><strong><code>Genes 2</code></strong>, the list of genes descended from the other copy of the duplicate gene.</li>
   </ol>
 
 - **SpeciesTree_Gene_Duplications_0.5_Support.txt**<br> 
