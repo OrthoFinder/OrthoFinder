@@ -10,7 +10,8 @@ def test_default_alg_threads(n_blast, expected):
     assert process_args.default_alg_threads(n_blast) == expected
 
 
-def test_default_from_t_and_a_given(tmp_path):
+def test_default_from_t_and_a_given(tmp_path, monkeypatch):
+    monkeypatch.setattr(process_args, "n_cores", 64)     # (-t and -a are at most the cores: CI has 4)
     prog_caller = process_args.program_caller_with_configs([])
     options = process_args._read_options(["-f", str(tmp_path), "-t", "8"], prog_caller)[0]
     assert options.n_process_alg == 2
